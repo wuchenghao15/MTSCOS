@@ -18,11 +18,19 @@ const Hero = () => {
                     colors={["#ff2975", "#7928CA", "#0070F3", "#38bdf8"]}
                     speed={1.2}
                   >
-                    武汉本地网站搭建 | 同城GEO优化服务商
+                    武汉文海星辰文化传媒有限公司
                   </AuroraText>
                 </h1>
                 <p className="mb-12 text-base leading-relaxed! text-body-color dark:text-body-color-dark sm:text-lg md:text-xl">
-                  文海星辰专注于武汉本地网站搭建服务，提供专业的同城GEO优化解决方案，帮助企业在本地市场获得更多曝光和客户。
+                  武汉本地企业官网搭建与搜索获客服务商
+                  <br />
+                  提供 Next.js 企业官网开发、Tailwind CSS前端定制、同城GEO优化与整站SEO优化服务。
+                  <br />
+                  服务地区：武汉全市
+                  <br />
+                  服务对象：中小企业、本地商家、初创品牌
+                  <br />
+                  官网：https://whwenhaixingchen.com
                 </p>
 
               </div>

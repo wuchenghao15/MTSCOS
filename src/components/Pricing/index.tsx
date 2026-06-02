@@ -80,7 +80,7 @@ const Pricing = (props: {
         <div className="grid grid-cols-1 gap-x-8 gap-y-10 md:grid-cols-2 lg:grid-cols-3">
           <PricingBox
             packageName="企业官网搭建 · 基础版"
-            price={isMonthly ? "49" : "599"}
+            price={isMonthly ? "99" : "999"}
             duration={isMonthly ? "月" : "年"}
             subtitle={'适合个人开发者和小项目使用，快速搭建企业官网/站点，解决"没有线上门面、客户搜不到"的核心痛点'}
             onButtonClick={onButtonClick}

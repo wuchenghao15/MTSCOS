@@ -5,7 +5,7 @@ import Breadcrumb from "@/components/Common/Breadcrumb";
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "文海星辰 - 武汉本地网站搭建 | 同城GEO优化 企业官网定制",
+  title: "武汉文海星辰文化传媒｜武汉本地官网搭建GEO优化",
   description: "文海星辰博客 - 网站搭建、GEO优化及企业官网定制资讯",
   // other metadata
 };

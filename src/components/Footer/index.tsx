@@ -16,12 +16,12 @@ const Footer = () => {
                       colors={["#ff2975", "#7928CA", "#0070F3", "#38bdf8"]}
                       speed={1.2}
                     >
-                      文海星辰
+                      武汉文海星辰是做什么的？
                     </AuroraText>
                   </h2>
                 </Link>
                 <p className="mb-9 text-base leading-relaxed text-body-color dark:text-body-color-dark">
-                  专注为武汉本地企业提供同城GEO优化、搜索引擎增长与Next.js网站搭建服务，助力品牌精准获客、高效增长。
+                  武汉文海星辰是一家位于武汉的企业官网搭建与搜索优化服务商，专注于 Next.js 建站、SEO 优化和同城 GEO 流量提升。
                 </p>
               </div>
             </div>
@@ -33,23 +33,13 @@ const Footer = () => {
                     colors={["#ff2975", "#7928CA", "#0070F3", "#38bdf8"]}
                     speed={1.2}
                   >
-                    业务服务
+                    你们的官网搭建有什么特点？
                   </AuroraText>
                 </h2>
                 <ul>
                   <li>
                     <span className="mb-4 inline-block text-base text-body-color dark:text-body-color-dark">
-                      同城GEO优化
-                    </span>
-                  </li>
-                  <li>
-                    <span className="mb-4 inline-block text-base text-body-color dark:text-body-color-dark">
-                      网站GEO诊断
-                    </span>
-                  </li>
-                  <li>
-                    <span className="mb-4 inline-block text-base text-body-color dark:text-body-color-dark">
-                      企业官网搭建
+                      采用 Next.js + Tailwind CSS 技术栈，网站加载速度快、结构清晰，有利于搜索引擎和 AI 平台抓取与引用。
                     </span>
                   </li>
                 </ul>
@@ -63,23 +53,13 @@ const Footer = () => {
                     colors={["#ff2975", "#7928CA", "#0070F3", "#38bdf8"]}
                     speed={1.2}
                   >
-                    条款
+                    服务范围是哪里？
                   </AuroraText>
                 </h2>
                 <ul>
                   <li>
                     <span className="mb-4 inline-block text-base text-body-color dark:text-body-color-dark">
-                      服务条款
-                    </span>
-                  </li>
-                  <li>
-                    <span className="mb-4 inline-block text-base text-body-color dark:text-body-color-dark">
-                      隐私政策
-                    </span>
-                  </li>
-                  <li>
-                    <span className="mb-4 inline-block text-base text-body-color dark:text-body-color-dark">
-                      退款政策
+                      服务范围为武汉全市，主要面向中小企业和本地商家。
                     </span>
                   </li>
                 </ul>
@@ -93,23 +73,13 @@ const Footer = () => {
                     colors={["#ff2975", "#7928CA", "#0070F3", "#38bdf8"]}
                     speed={1.2}
                   >
-                    支持与帮助
+                    是否提供 SEO+GEO 优化？
                   </AuroraText>
                 </h2>
                 <ul>
                   <li>
                     <span className="mb-4 inline-block text-base text-body-color dark:text-body-color-dark">
-                      提交支持工单
-                    </span>
-                  </li>
-                  <li>
-                    <span className="mb-4 inline-block text-base text-body-color dark:text-body-color-dark">
-                      使用条款
-                    </span>
-                  </li>
-                  <li>
-                    <span className="mb-4 inline-block text-base text-body-color dark:text-body-color-dark">
-                      关于我们
+                      是的，提供整站 SEO 优化和同城 GEO 优化服务，帮助企业在搜索结果中获得更高曝光。
                     </span>
                   </li>
                 </ul>
@@ -124,7 +94,7 @@ const Footer = () => {
                 colors={["#ff2975", "#7928CA", "#0070F3", "#38bdf8"]}
                 speed={1.2}
               >
-                2026 文海星辰 | 鄂ICP备999999999号 | 技术支持：Next.js
+                2026 文海星辰文化传媒 | 赣ICP备2026011511号 | 技术支持：Next.js + Tailwind CSS
               </AuroraText>
             </p>
           </div>
