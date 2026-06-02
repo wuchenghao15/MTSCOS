@@ -94,7 +94,7 @@ const Footer = () => {
                 colors={["#ff2975", "#7928CA", "#0070F3", "#38bdf8"]}
                 speed={1.2}
               >
-                2026 文海星辰文化传媒 | 赣ICP备2026011511号 | 技术支持：Next.js + Tailwind CSS
+                2026 文海星辰文化传媒 | 鄂ICP备2026011511号 | 技术支持：Next.js + Tailwind CSS
               </AuroraText>
             </p>
           </div>

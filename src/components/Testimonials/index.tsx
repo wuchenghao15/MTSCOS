@@ -8,29 +8,107 @@ import { useAnimationControl } from "@/hooks/useAnimationControl"
 
 const reviews = [
   {
-    name: "李总",
-    username: "@文海星辰-李总",
-    body: "武汉硚口的宠物店，做了同城GEO优化后，客户搜「附近宠物美容」，我们排在前面，新客翻了一倍！",
-    img: "https://avatar.vercel.sh/jack",
+    name: "刘老板",
+    username: "@文海星辰-刘老板",
+    body: "以前周边养猫的都不知道我家，做了GEO优化后，搜「武昌24小时宠物医院」，我们直接排首页前三！",
+    img: "https://avatar.vercel.sh/pet"
   },
   {
-    name: "王总",
-    username: "@文海星辰-王总",
-    body: "在武汉汉阳开工作室，原来本地客户根本找不到我们，优化后不管是搜地图还是问AI，都能看到我们，客源稳定多了。",
-    img: "https://avatar.vercel.sh/jill",
+    name: "陈姐",
+    username: "@文海星辰-陈姐",
+    body: "别家美甲都在卷价格，我做了AI搜索优化，现在问「光谷哪里做美甲好」，系统直接推荐我家，客单价高了！",
+    img: "https://avatar.vercel.sh/nail"
   },
   {
-    name: "翁姐",
-    username: "@文海星辰-翁姐",
-    body: "武汉汉阳做家装的，以前客户找装修只看地图，现在问AI的人越来越多，优化后不管搜地图还是问AI，都能找到我们，客源稳定多了",
-    img: "https://avatar.vercel.sh/john",
+    name: "张师傅",
+    username: "@文海星辰-张师傅",
+    body: "开锁这行全靠急单，优化后只要有人问AI「汉阳附近急开锁」，第一个弹出的就是我的电话，接单接到手软。",
+    img: "https://avatar.vercel.sh/lock"
   },
+  {
+    name: "芳芳",
+    username: "@文海星辰-芳芳",
+    body: "这条街餐厅十几家，自从做了GEO，周末饭点翻台率涨了40%，都是搜「江汉路必吃火锅」找来的新客。",
+    img: "https://avatar.vercel.sh/hotpot"
+  },
+  {
+    name: "老周",
+    username: "@文海星辰-老周",
+    img: "https://avatar.vercel.sh/deco",
+    body: "以前接活全靠蹲小区，现在业主问AI「武汉靠谱的装修工长」，我能排在推荐位，签单成功率翻倍。"
+  },
+  {
+    name: "Linda",
+    username: "@文海星辰-Linda",
+    body: "瑜伽馆太多留不住人，做了本地搜索优化后，精准捕获了周边3公里想减肥的白领，续卡率提升了不少。",
+    img: "https://avatar.vercel.sh/yoga"
+  },
+  {
+    name: "大伟",
+    username: "@文海星辰-大伟",
+    body: "驾校竞争太激烈，优化后只要搜「洪山拿证快的驾校」，我家信息置顶展示，咨询量比上个月多了两倍。",
+    img: "https://avatar.vercel.sh/car"
+  },
+  {
+    name: "吴律师",
+    username: "@文海星辰-吴律师",
+    body: "法律服务看不见摸不着，做了GEO后，企业主搜「武汉合同纠纷律师」，我的专业介绍直接展现，案源稳了。",
+    img: "https://avatar.vercel.sh/law"
+  },
+  {
+    name: "强哥",
+    username: "@文海星辰-强哥",
+    body: "做建材批发太依赖老客，优化后现在搜「武汉批发瓷砖哪里便宜」，我的店铺信息全展示，新客占比涨了60%。",
+    img: "https://avatar.vercel.sh/brick"
+  },
+  {
+    name: "阿杰",
+    username: "@文海星辰-阿杰",
+    body: "以前只会修手机，现在做了AI优化，客户问「街道口上门修电脑」，我也能接到单，业务范围扩大了一圈。",
+    img: "https://avatar.vercel.sh/pc"
+  },
+  {
+    name: "苏苏",
+    username: "@文海星辰-苏苏",
+    body: "鲜花这东西时效性强，做了同城GEO，现在搜「武汉送花上门」，我的店总是靠前，情人节直接爆单！",
+    img: "https://avatar.vercel.sh/flower"
+  },
+  {
+    name: "老赵",
+    username: "@文海星辰-老赵",
+    body: "二手车水深信任难建立，优化后我的实拍视频和车源在AI搜索里展示，客户还没到店就先信了我三分。",
+    img: "https://avatar.vercel.sh/car2"
+  },
+  {
+    name: "Cici",
+    username: "@文海星辰-Cici",
+    body: "拍照好看但没人知道，做了GEO优化后，搜「武汉写真哪家好」，我的客片直接展示在前面，约拍排到下个月了。",
+    img: "https://avatar.vercel.sh/photo"
+  },
+  {
+    name: "阿文",
+    username: "@文海星辰-阿文",
+    body: "做短视频剪辑全靠接散单，优化后企业主搜「武汉视频制作公司」，我排在第一页，现在开始接企业年包了。",
+    img: "https://avatar.vercel.sh/video"
+  },
+  {
+    name: "林先生",
+    username: "@文海星辰-林先生",
+    body: "财税服务太抽象，做了本地搜索优化，创业者搜「武汉公司注册代办」，我的专业解读直接呈现，咨询精准多了。",
+    img: "https://avatar.vercel.sh/money"
+  },
+  {
+    name: "曼姐",
+    username: "@文海星辰-曼姐",
+    body: "民宿位置偏不好找，优化后游客问AI「武汉性价比高的民宿」，我的房源信息置顶，入住率提高了35%。",
+    img: "https://avatar.vercel.sh/house"
+  }
 ]
 
-const firstRow = reviews.slice(0, Math.floor(reviews.length / 2))
-const secondRow = reviews.slice(Math.floor(reviews.length / 2))
-const thirdRow = reviews.slice(0, Math.floor(reviews.length / 2))
-const fourthRow = reviews.slice(Math.floor(reviews.length / 2))
+const firstRow = reviews.slice(0, 4)
+const secondRow = reviews.slice(4, 8)
+const thirdRow = reviews.slice(8, 12)
+const fourthRow = reviews.slice(12, 16)
 
 const ReviewCard = ({
   img,
@@ -150,7 +228,7 @@ export default function Testimonials() {
               </AuroraText>
             </h2>
             <p className="text-base leading-relaxed! text-body-color md:text-lg">
-              现在用户更习惯在AI中提问，我们的内容会被优先推荐。
+             听听他们如何通过 GEO 获取同城精准客流。
             </p>
           </div>
         </div>

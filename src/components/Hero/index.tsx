@@ -30,7 +30,7 @@ const Hero = () => {
                   <br />
                   服务对象：中小企业、本地商家、初创品牌
                   <br />
-                  官网：https://whwenhaixingchen.com
+                  官网：https://wenhaixingchen.cn
                 </p>
 
               </div>
