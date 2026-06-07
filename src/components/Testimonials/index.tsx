@@ -213,22 +213,22 @@ export function Marquee3D() {
     >
       {/* PC端：4列布局 */}
       <div className="hidden md:flex flex-row items-center gap-4">
-        <Marquee paused={isAnimationPaused} vertical className="[--duration:20s]">
+        <Marquee paused={isAnimationPaused} vertical repeat={2} className="[--duration:20s]">
           {firstRow.map((review, index) => (
             <ReviewCard key={index} {...review} onClick={() => setModalReview(review)} onImageClick={() => handleImageClick(review.img)} />
           ))}
         </Marquee>
-        <Marquee reverse paused={isAnimationPaused} className="[--duration:20s]" vertical>
+        <Marquee reverse paused={isAnimationPaused} repeat={2} className="[--duration:20s]" vertical>
           {secondRow.map((review, index) => (
             <ReviewCard key={index} {...review} onClick={() => setModalReview(review)} onImageClick={() => handleImageClick(review.img)} />
           ))}
         </Marquee>
-        <Marquee reverse paused={isAnimationPaused} className="[--duration:20s]" vertical>
+        <Marquee reverse paused={isAnimationPaused} repeat={2} className="[--duration:20s]" vertical>
           {thirdRow.map((review, index) => (
             <ReviewCard key={index} {...review} onClick={() => setModalReview(review)} onImageClick={() => handleImageClick(review.img)} />
           ))}
         </Marquee>
-        <Marquee paused={isAnimationPaused} className="[--duration:20s]" vertical>
+        <Marquee paused={isAnimationPaused} repeat={2} className="[--duration:20s]" vertical>
           {fourthRow.map((review, index) => (
             <ReviewCard key={index} {...review} onClick={() => setModalReview(review)} onImageClick={() => handleImageClick(review.img)} />
           ))}
@@ -237,12 +237,12 @@ export function Marquee3D() {
 
       {/* 移动端：2列布局，全部16张卡片 */}
       <div className="flex md:hidden flex-row items-center justify-center gap-3 w-full px-3">
-        <Marquee paused={isAnimationPaused} vertical className="[--duration:30s]">
+        <Marquee paused={isAnimationPaused} vertical repeat={2} className="[--duration:30s]">
           {mobileFirstRow.map((review, index) => (
             <ReviewCard key={index} {...review} onClick={() => setModalReview(review)} onImageClick={() => handleImageClick(review.img)} />
           ))}
         </Marquee>
-        <Marquee reverse paused={isAnimationPaused} className="[--duration:30s]" vertical>
+        <Marquee reverse paused={isAnimationPaused} repeat={2} className="[--duration:30s]" vertical>
           {mobileSecondRow.map((review, index) => (
             <ReviewCard key={index} {...review} onClick={() => setModalReview(review)} onImageClick={() => handleImageClick(review.img)} />
           ))}
