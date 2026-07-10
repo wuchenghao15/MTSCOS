@@ -1,0 +1,51 @@
+{
+  "name": "MTSCOS AI 智能考试系统",
+  "short_name": "MTSCOS AI",
+  "description": "基于AI的智能考试管理平台，支持题库管理、智能组卷、学习分析等功能",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#7c3aed",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/static/pwa/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/static/pwa/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["education", "productivity"],
+  "lang": "zh-CN",
+  "dir": "ltr",
+  "prefer_related_applications": false,
+  "shortcuts": [
+    {
+      "name": "AI答疑",
+      "short_name": "答疑",
+      "description": "AI智能答疑助手",
+      "url": "/admin/ai-tutor",
+      "icons": [{ "src": "/static/pwa/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "错题本",
+      "short_name": "错题",
+      "description": "智能错题本",
+      "url": "/admin/wrong-book",
+      "icons": [{ "src": "/static/pwa/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "题目生成",
+      "short_name": "出题",
+      "description": "AI智能题目生成器",
+      "url": "/admin/ai-question-generator",
+      "icons": [{ "src": "/static/pwa/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}
