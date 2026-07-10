@@ -19,7 +19,7 @@
     "lodash": "^4.18.1",
     "lucide-react": "^1.16.0",
     "motion": "^12.40.0",
-    "next": "16.0.10",
+    "next": "16.2.10",
     "next-themes": "^0.2.1",
     "next-video": "^2.8.0",
     "postcss": "^8.5.3",
