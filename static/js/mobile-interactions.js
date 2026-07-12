@@ -1,4 +1,4 @@
-// 移动端交互优化
+// 移动端交互优化 - v2.0 增强版
 class MobileInteractions {
     constructor() {
         this.init();
@@ -9,13 +9,18 @@ class MobileInteractions {
         this.isDragging = false;
         this.startTime = 0;
         this.endTime = 0;
+        this.menuOpen = false;
+        this.swipeThreshold = 50;
+        this.longPressThreshold = 500;
     }
     
     init() {
-        // 初始化移动端交互事件
         this.setupTouchEvents();
         this.setupGestureEvents();
         this.setupMobileOptimizations();
+        this.setupDrawerMenu();
+        this.setupBottomNav();
+        this.setupTouchFeedback();
     }
     
     setupTouchEvents() {
@@ -201,11 +206,113 @@ class MobileInteractions {
     }
     
     isTouchDevice() {
-        // 检测是否为触摸设备
         return 'ontouchstart' in window || navigator.maxTouchPoints > 0 || navigator.msMaxTouchPoints > 0;
     }
     
-    // 添加公共方法，允许其他脚本调用
+    setupDrawerMenu() {
+        const hamburger = document.querySelector('.mobile-hamburger');
+        const overlay = document.querySelector('.mobile-menu-overlay');
+        const drawer = document.querySelector('.mobile-drawer');
+        const closeBtn = document.querySelector('.mobile-drawer-close');
+        
+        if (hamburger) {
+            hamburger.addEventListener('click', () => {
+                this.toggleDrawerMenu();
+            });
+        }
+        
+        if (overlay) {
+            overlay.addEventListener('click', () => {
+                this.closeDrawerMenu();
+            });
+        }
+        
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => {
+                this.closeDrawerMenu();
+            });
+        }
+    }
+    
+    toggleDrawerMenu() {
+        const overlay = document.querySelector('.mobile-menu-overlay');
+        const drawer = document.querySelector('.mobile-drawer');
+        const hamburger = document.querySelector('.mobile-hamburger');
+        
+        if (this.menuOpen) {
+            this.closeDrawerMenu();
+        } else {
+            this.openDrawerMenu();
+        }
+    }
+    
+    openDrawerMenu() {
+        const overlay = document.querySelector('.mobile-menu-overlay');
+        const drawer = document.querySelector('.mobile-drawer');
+        const hamburger = document.querySelector('.mobile-hamburger');
+        
+        if (overlay) overlay.classList.add('active');
+        if (drawer) drawer.classList.add('open');
+        if (hamburger) hamburger.classList.add('active');
+        
+        this.menuOpen = true;
+    }
+    
+    closeDrawerMenu() {
+        const overlay = document.querySelector('.mobile-menu-overlay');
+        const drawer = document.querySelector('.mobile-drawer');
+        const hamburger = document.querySelector('.mobile-hamburger');
+        
+        if (overlay) overlay.classList.remove('active');
+        if (drawer) drawer.classList.remove('open');
+        if (hamburger) hamburger.classList.remove('active');
+        
+        this.menuOpen = false;
+    }
+    
+    setupBottomNav() {
+        const navItems = document.querySelectorAll('.mobile-bottom-nav li');
+        
+        navItems.forEach(item => {
+            item.addEventListener('click', (e) => {
+                navItems.forEach(i => i.classList.remove('active'));
+                item.classList.add('active');
+            });
+        });
+    }
+    
+    setupTouchFeedback() {
+        const touchElements = document.querySelectorAll('.btn, .feature-card, .stat-card, .role-card, .mobile-card');
+        
+        touchElements.forEach(element => {
+            element.addEventListener('touchstart', () => {
+                element.style.transform = 'scale(0.95)';
+            }, { passive: true });
+            
+            element.addEventListener('touchend', () => {
+                element.style.transform = 'scale(1)';
+            }, { passive: true });
+            
+            element.addEventListener('touchcancel', () => {
+                element.style.transform = 'scale(1)';
+            }, { passive: true });
+        });
+    }
+    
+    handleSwipeLeft() {
+        console.log('Swipe left detected');
+        if (this.menuOpen) {
+            this.closeDrawerMenu();
+        }
+    }
+    
+    handleSwipeRight() {
+        console.log('Swipe right detected');
+        if (!this.menuOpen && this.isMobile()) {
+            this.openDrawerMenu();
+        }
+    }
+    
     getTouchStartX() {
         return this.touchStartX;
     }
@@ -224,6 +331,10 @@ class MobileInteractions {
     
     isDragging() {
         return this.isDragging;
+    }
+    
+    isMenuOpen() {
+        return this.menuOpen;
     }
 }
 

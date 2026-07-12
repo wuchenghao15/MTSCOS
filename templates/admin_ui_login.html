@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#1e293b">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>用户登录 - MTSCOS AI 智能教育平台</title>
+    <link rel="stylesheet" href="/assets/css/mtscos-design-system.css">
+    <link rel="stylesheet" href="/assets/css/login-page.css">
+    <link rel="stylesheet" href="/assets/font-awesome/css/all.min.css">
+</head>
+<body>
+    <div class="bg-gradient"></div>
+    <div class="tech-grid"></div>
+    
+    <canvas class="particle-canvas" id="particleCanvas"></canvas>
+    
+    <div class="bg-orbs">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="orb orb-3"></div>
+        <div class="orb orb-4"></div>
+    </div>
+    
+    <div class="stars" id="stars"></div>
+    <div class="particles" id="particles"></div>
+
+    <div class="network-status online" id="network-status">
+        <i class="fas fa-wifi"></i>
+        <span>网络正常</span>
+    </div>
+
+    <div class="login-container">
+        <div class="login-card">
+            <div class="brand-section">
+                <div class="brand-logo">
+                    <img src="/assets/images/mtscos_shield.svg" alt="MTSCOS Logo">
+                </div>
+                <div class="brand-title">MTSCOS AI</div>
+                <div class="brand-subtitle">智能教育平台管理系统</div>
+            </div>
+
+            <form id="login-form" onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label class="form-label">用户名</label>
+                    <div class="form-input-icon">
+                        <i class="fas fa-user"></i>
+                        <input type="text" class="form-input" id="username" placeholder="请输入用户名" required autocomplete="username">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">密码</label>
+                    <div class="form-input-icon">
+                        <i class="fas fa-lock"></i>
+                        <input type="password" class="form-input" id="password" placeholder="请输入密码" required autocomplete="current-password">
+                    </div>
+                </div>
+
+                <div class="form-options">
+                    <label class="checkbox-wrapper">
+                        <input type="checkbox" id="remember">
+                        <div class="checkbox-custom">
+                            <i class="fas fa-check"></i>
+                        </div>
+                        <span class="checkbox-label">记住我</span>
+                    </label>
+                    <a href="/forgot_password" class="forgot-link">忘记密码?</a>
+                </div>
+
+                <button type="submit" id="login-btn" class="btn btn-primary">
+                    <span>登 录</span>
+                </button>
+            </form>
+
+            <div class="divider">
+                <div class="divider-line"></div>
+                <span class="divider-text">其他登录方式</span>
+                <div class="divider-line"></div>
+            </div>
+
+            <button class="btn btn-secondary">
+                <i class="fas fa-user-plus"></i>
+                <span>注册账号</span>
+            </button>
+
+            <div class="register-section">
+                <span class="register-text">还没有账号?</span>
+                <a href="/register" class="register-link">立即注册</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function initParticles() {
+            function createStars() {
+                const container = document.getElementById('stars');
+                if (!container) return;
+                const count = 60;
+                for (let i = 0; i < count; i++) {
+                    const star = document.createElement('div');
+                    star.className = 'star';
+                    star.style.left = Math.random() * 100 + '%';
+                    star.style.top = Math.random() * 100 + '%';
+                    star.style.animationDelay = (Math.random() * 3) + 's';
+                    star.style.animationDuration = (2 + Math.random() * 3) + 's';
+                    const size = 1 + Math.random() * 2;
+                    star.style.width = size + 'px';
+                    star.style.height = size + 'px';
+                    container.appendChild(star);
+                }
+            }
+
+            function createRisingParticles() {
+                const container = document.getElementById('particles');
+                if (!container) return;
+                const classes = ['primary', 'secondary', 'accent', 'glow'];
+                const count = 35;
+                for (let i = 0; i < count; i++) {
+                    const particle = document.createElement('div');
+                    const cls = classes[Math.floor(Math.random() * classes.length)];
+                    particle.className = 'particle ' + cls;
+                    particle.style.left = Math.random() * 100 + '%';
+                    particle.style.animationDelay = (Math.random() * 18) + 's';
+                    particle.style.animationDuration = (12 + Math.random() * 14) + 's';
+                    const size = 2 + Math.random() * 6;
+                    particle.style.width = size + 'px';
+                    particle.style.height = size + 'px';
+                    container.appendChild(particle);
+                }
+            }
+
+            function initCanvasParticles() {
+                const canvas = document.getElementById('particleCanvas');
+                if (!canvas) return;
+                const ctx = canvas.getContext('2d');
+                let particles = [];
+                let animationId;
+
+                function resize() {
+                    canvas.width = window.innerWidth;
+                    canvas.height = window.innerHeight;
+                }
+
+                function createParticle() {
+                    return {
+                        x: Math.random() * canvas.width,
+                        y: Math.random() * canvas.height,
+                        vx: (Math.random() - 0.5) * 0.8,
+                        vy: (Math.random() - 0.5) * 0.8,
+                        radius: 1 + Math.random() * 2.5,
+                        opacity: 0.4 + Math.random() * 0.6
+                    };
+                }
+
+                function init() {
+                    resize();
+                    particles = [];
+                    const count = Math.floor((canvas.width * canvas.height) / 12000);
+                    for (let i = 0; i < count; i++) {
+                        particles.push(createParticle());
+                    }
+                }
+
+                function draw() {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    for (let i = 0; i < particles.length; i++) {
+                        const p = particles[i];
+                        p.x += p.vx;
+                        p.y += p.vy;
+                        if (p.x < 0) p.x = canvas.width;
+                        if (p.x > canvas.width) p.x = 0;
+                        if (p.y < 0) p.y = canvas.height;
+                        if (p.y > canvas.height) p.y = 0;
+                        
+                        ctx.beginPath();
+                        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                        ctx.fillStyle = 'rgba(255, 255, 255, ' + p.opacity + ')';
+                        ctx.fill();
+                        
+                        for (let j = i + 1; j < particles.length; j++) {
+                            const p2 = particles[j];
+                            const dx = p.x - p2.x;
+                            const dy = p.y - p2.y;
+                            const dist = Math.sqrt(dx * dx + dy * dy);
+                            if (dist < 120) {
+                                ctx.beginPath();
+                                ctx.moveTo(p.x, p.y);
+                                ctx.lineTo(p2.x, p2.y);
+                                const lineOpacity = (1 - dist / 120) * 0.3;
+                                ctx.strokeStyle = 'rgba(147, 197, 253, ' + lineOpacity + ')';
+                                ctx.lineWidth = 1;
+                                ctx.stroke();
+                            }
+                        }
+                    }
+                    animationId = requestAnimationFrame(draw);
+                }
+
+                init();
+                draw();
+
+                window.addEventListener('resize', function() {
+                    cancelAnimationFrame(animationId);
+                    init();
+                    draw();
+                });
+            }
+
+            document.addEventListener('DOMContentLoaded', function() {
+                createStars();
+                createRisingParticles();
+                initCanvasParticles();
+            });
+        })();
+
+        const API_BASE = window.location.protocol + '//' + window.location.host;
+
+        function checkNetworkStatus() {
+            if (navigator.onLine) {
+                return { online: true, message: '网络连接正常' };
+            } else {
+                return { online: false, message: '网络连接已断开' };
+            }
+        }
+
+        function updateNetworkStatus() {
+            const statusEl = document.getElementById('network-status');
+            const status = checkNetworkStatus();
+            
+            if (status.online) {
+                statusEl.classList.remove('offline');
+                statusEl.classList.add('online');
+                statusEl.innerHTML = '<i class="fas fa-wifi"></i><span>网络正常</span>';
+            } else {
+                statusEl.classList.remove('online');
+                statusEl.classList.add('offline');
+                statusEl.innerHTML = '<i class="fas fa-wifi-slash"></i><span>网络断开</span>';
+            }
+        }
+
+        window.addEventListener('online', updateNetworkStatus);
+        window.addEventListener('offline', updateNetworkStatus);
+
+        updateNetworkStatus();
+
+        function showAlert(message, type) {
+            const alertEl = document.createElement('div');
+            alertEl.className = `alert alert-${type}`;
+            alertEl.textContent = message;
+            document.body.appendChild(alertEl);
+
+            setTimeout(() => {
+                alertEl.remove();
+            }, 3000);
+        }
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
+            const remember = document.getElementById('remember').checked;
+            const btn = document.getElementById('login-btn');
+
+            if (!username || !password) {
+                showAlert('请输入用户名和密码', 'error');
+                return;
+            }
+
+            const networkStatus = checkNetworkStatus();
+            if (!networkStatus.online) {
+                showAlert('网络连接失败，请检查网络设置或稍后重试', 'error');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerHTML = '<div class="spinner"></div><span>登录中...</span>';
+
+            try {
+                const loginUrl = API_BASE + '/auth/login';
+                const res = await fetch(loginUrl, {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ username, password, remember }),
+                    credentials: 'include',
+                    timeout: 30000
+                });
+
+                if (!res.ok) {
+                    const errorData = await res.json().catch(() => ({}));
+                    let errorMsg = errorData.message || `HTTP错误: ${res.status}`;
+                    
+                    if (res.status === 403) {
+                        errorMsg = errorData.message || '访问被拒绝，请联系管理员';
+                    } else if (res.status === 401) {
+                        errorMsg = errorData.message || '用户名或密码错误';
+                    } else if (res.status === 429) {
+                        errorMsg = '请求过于频繁，请稍后再试';
+                    }
+                    
+                    showAlert(errorMsg, 'error');
+                    btn.disabled = false;
+                    btn.innerHTML = '<span>登 录</span>';
+                    return;
+                }
+
+                const data = await res.json();
+                
+                if (data.success) {
+                    showAlert('登录成功', 'success');
+                    setTimeout(() => {
+                        window.location.href = data.redirect || '/dashboard';
+                    }, 500);
+                } else {
+                    showAlert(data.message || '登录失败', 'error');
+                    btn.disabled = false;
+                    btn.innerHTML = '<span>登 录</span>';
+                }
+            } catch (error) {
+                console.error('登录错误:', error);
+                showAlert('网络连接失败，请检查网络设置或稍后重试', 'error');
+                btn.disabled = false;
+                btn.innerHTML = '<span>登 录</span>';
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0c1222">
+    <title>超级管理员控制台 - MTSCOS AI 系统</title>
+    <meta name="description" content="超级管理员控制面板 - 管理所有系统功能和AI扩展能力">
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='images/mtscos_shield.svg') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/mtscos-design-system.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='all.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/super_admin_dashboard.css') }}">
+    <script src="{{ url_for('static', filename='js/chart.umd.min.js') }}"></script>
+</head>
+<body class="super-admin-body">
+<div class="dashboard-shell">
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <div class="logo-badge">
+                <div class="logo-icon"><img src="{{ url_for('static', filename='images/mtscos_shield.svg') }}" alt="Logo"></div>
+                <div class="logo-text">
+                    <h2>MTSCOS AI</h2>
+                    <p>超级管理员控制台</p>
+                </div>
+            </div>
+        </div>
+        <div class="sidebar-nav">
+            <div class="nav-section">系统概览</div>
+            <div class="nav-item active" onclick="switchTab('overview')"><div class="nav-icon">📊</div><div class="nav-text">系统概览</div></div>
+            <div class="nav-item" onclick="switchTab('resources')"><div class="nav-icon">💻</div><div class="nav-text">资源监控</div></div>
+            <div class="nav-item" onclick="switchTab('logs')"><div class="nav-icon">📝</div><div class="nav-text">系统日志</div></div>
+            
+            <div class="nav-section">数据管理</div>
+            <div class="nav-item" onclick="switchTab('users')"><div class="nav-icon">👥</div><div class="nav-text">用户管理</div></div>
+            <div class="nav-item" onclick="switchTab('exam')"><div class="nav-icon">📋</div><div class="nav-text">考试系统</div></div>
+            <div class="nav-item" onclick="switchTab('routes')"><div class="nav-icon">🔗</div><div class="nav-text">路由管理</div></div>
+            
+            <div class="nav-section">AI 能力</div>
+            <div class="nav-item" onclick="switchTab('engines')"><div class="nav-icon">⚙️</div><div class="nav-text">AI引擎矩阵</div></div>
+            <div class="nav-item" onclick="switchTab('employees')"><div class="nav-icon">🤖</div><div class="nav-text">AI员工管理</div></div>
+            <div class="nav-item" onclick="switchTab('agent')"><div class="nav-icon">🧠</div><div class="nav-text">本地AI Agent</div></div>
+            
+            <div class="nav-section">系统维护</div>
+            <div class="nav-item" onclick="switchTab('backup')"><div class="nav-icon">💾</div><div class="nav-text">备份与恢复</div></div>
+            <div class="nav-item" onclick="window.location.href='/admin_app/security_dashboard'"><div class="nav-icon">🛡️</div><div class="nav-text">安全监控</div></div>
+            <div class="nav-item" onclick="window.location.href='/admin_app/health_details'"><div class="nav-icon">❤️</div><div class="nav-text">健康检查</div></div>
+            <div class="nav-item" onclick="switchTab('settings')"><div class="nav-icon">⚙️</div><div class="nav-text">系统设置</div></div>
+        </div>
+        <div class="sidebar-footer">
+            <div class="user-info">
+                <div class="user-avatar">{{ user.username[0].upper() if user and user.username else 'A' }}</div>
+                <div class="user-detail">
+                    <p class="user-name">{{ user.username if user else '管理员' }}</p>
+                    <p class="user-role">{{ user.role if user else 'super_admin' }}</p>
+                </div>
+                <button class="logout-btn" onclick="logout()" title="退出登录">🚪</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="page-header">
+            <h1>超级管理员控制台</h1>
+            <p>管理系统所有功能和AI扩展能力</p>
+        </div>
+
+        <div id="tab-overview" class="tab-content">
+            <div class="stats-grid">
+                <div class="stat-card blue animate-fadeInUp">
+                    <div class="stat-header">
+                        <div>
+                            <p class="stat-label">总用户数</p>
+                            <p class="stat-value" id="stat-users">--</p>
+                        </div>
+                        <div class="stat-icon">👥</div>
+                    </div>
+                </div>
+                <div class="stat-card green animate-fadeInUp" style="animation-delay: 0.05s;">
+                    <div class="stat-header">
+                        <div>
+                            <p class="stat-label">考试总数</p>
+                            <p class="stat-value" id="stat-exams">--</p>
+                        </div>
+                        <div class="stat-icon">📋</div>
+                    </div>
+                </div>
+                <div class="stat-card purple animate-fadeInUp" style="animation-delay: 0.1s;">
+                    <div class="stat-header">
+                        <div>
+                            <p class="stat-label">AI员工</p>
+                            <p class="stat-value" id="stat-employees">--</p>
+                        </div>
+                        <div class="stat-icon">🤖</div>
+                    </div>
+                </div>
+                <div class="stat-card orange animate-fadeInUp" style="animation-delay: 0.15s;">
+                    <div class="stat-header">
+                        <div>
+                            <p class="stat-label">路由总数</p>
+                            <p class="stat-value" id="stat-routes">--</p>
+                        </div>
+                        <div class="stat-icon">🔗</div>
+                    </div>
+                </div>
+                <div class="stat-card pink animate-fadeInUp" style="animation-delay: 0.2s;">
+                    <div class="stat-header">
+                        <div>
+                            <p class="stat-label">本地AI Agent</p>
+                            <p class="stat-value" id="stat-agent">--</p>
+                            <div class="stat-sub" id="agent-status">待启动</div>
+                        </div>
+                        <div class="stat-icon">🧠</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="action-grid">
+                <div class="action-card blue" onclick="window.location.href='/ai_auto_expand'">
+                    <div class="action-icon">✨</div>
+                    <p class="action-label">AI拓展</p>
+                </div>
+                <div class="action-card green" onclick="startLocalAgent()">
+                    <div class="action-icon">▶️</div>
+                    <p class="action-label">启动Agent</p>
+                </div>
+                <div class="action-card purple" onclick="reloadRoutes()">
+                    <div class="action-icon">🔄</div>
+                    <p class="action-label">刷新路由</p>
+                </div>
+                <div class="action-card orange" onclick="checkRoutes()">
+                    <div class="action-icon">✅</div>
+                    <p class="action-label">健康检查</p>
+                </div>
+                <div class="action-card pink" onclick="createBackup()">
+                    <div class="action-icon">💾</div>
+                    <p class="action-label">数据备份</p>
+                </div>
+                <div class="action-card cyan" onclick="startKnowledgeScan()">
+                    <div class="action-icon">🔍</div>
+                    <p class="action-label">知识扫描</p>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header">
+                    <h3 class="panel-title"><div class="panel-title-bar"></div>系统资源</h3>
+                </div>
+                <div class="panel-content">
+                    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:24px;">
+                        <div>
+                            <div class="resource-label"><span>CPU使用率</span><span id="cpu-percent">0%</span></div>
+                            <div class="resource-bar"><div class="resource-fill cpu" id="cpu-bar" style="width:0%"></div></div>
+                        </div>
+                        <div>
+                            <div class="resource-label"><span>内存使用率</span><span id="mem-percent">0%</span></div>
+                            <div class="resource-bar"><div class="resource-fill mem" id="mem-bar" style="width:0%"></div></div>
+                        </div>
+                        <div>
+                            <div class="resource-label"><span>磁盘使用率</span><span id="disk-percent">0%</span></div>
+                            <div class="resource-bar"><div class="resource-fill disk" id="disk-bar" style="width:0%"></div></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header">
+                    <h3 class="panel-title"><div class="panel-title-bar"></div>最近活动</h3>
+                </div>
+                <div class="panel-content">
+                    <table class="table-grid">
+                        <thead>
+                            <tr>
+                                <th>时间</th>
+                                <th>模块</th>
+                                <th>描述</th>
+                                <th>级别</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recent-activity">
+                            <tr><td colspan="4" class="empty-state">加载中...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div id="tab-resources" class="tab-content" style="display:none;">
+            <div class="panel">
+                <div class="panel-header">
+                    <h3 class="panel-title"><div class="panel-title-bar"></div>资源使用趋势</h3>
+                </div>
+                <div class="panel-content">
+                    <div class="chart-container"><canvas id="resourceChart"></canvas></div>
+                </div>
+            </div>
+            <div class="info-grid">
+                <div class="panel">
+                    <div class="panel-header">
+                        <h3 class="panel-title"><div class="panel-title-bar"></div>CPU信息</h3>
+                    </div>
+                    <div class="panel-content" id="cpu-info">加载中...</div>
+                </div>
+                <div class="panel">
+                    <div class="panel-header">
+                        <h3 class="panel-title"><div class="panel-title-bar"></div>内存信息</h3>
+                    </div>
+                    <div class="panel-content" id="mem-info">加载中...</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="tab-logs" class="tab-content" style="display:none;">
+            <div class="panel">
+                <div class="panel-header">
+                    <h3 class="panel-title"><div class="panel-title-bar"></div>系统日志</h3>
+                </div>
+                <div class="panel-content">
+                    <div class="search-bar">
+                        <input type="text" id="log-search" placeholder="搜索日志消息" onkeypress="if(event.key==='Enter')loadLogs()">
+                        <select id="log-level-filter" onchange="loadLogs()">
+                            <option value="">全部级别</option>
+                            <option value="info">INFO</option>
+                            <option value="warning">WARNING</option>
+                            <option value="error">ERROR</option>
+                            <option value="success">SUCCESS</option>
+                        </select>
+                        <button onclick="loadLogs()">搜索</button>
+                    </div>
+                    <table class="table-grid" id="log-table">
+                        <thead>
+                            <tr>
+                                <th>时间</th>
+                                <th>级别</th>
+                                <th>模块</th>
+                                <th>消息</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td colspan="4" class="empty-state">加载中...</td></tr>
+                        </tbody>
+                    </table>
+                    <div class="pagination" id="log-pagination"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="tab-users" class="tab-content" style="display:none;">
+            <div class="panel">
+                <div class="panel-header">
+                    <h3 class="panel-title"><div class="panel-title-bar"></div>用户管理</h3>
+                </div>
+                <div class="panel-content">
+                    <div class="search-bar">
+                        <input type="text" id="user-search" placeholder="搜索用户名/邮箱">
+                        <select id="user-role-filter">
+                            <option value="">全部角色</option>
+                            <option value="super_admin">超级管理员</option>
+                            <option value="admin">管理员</option>
+                            <option value="teacher">教师</option>
+                            <option value="student">学生</option>
+                        </select>
+                        <button onclick="loadUsers()">搜索</button>
+                    </div>
+                    <table class="table-grid" id="user-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>用户名</th>
+                                <th>邮箱</th>
+                                <th>角色</th>
+                                <th>状态</th>
+                                <th>创建时间</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td colspan="7" class="empty-state">加载中...</td></tr>
+                        </tbody>
+                    </table>
+                    <div class="pagination" id="user-pagination"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="tab-exam" class="tab-content" style="display:none;">
+            <div class="stats-grid" style="grid-template-columns: repeat(4, 1fr);">
+                <div class="stat-card blue">
+                    <div class="stat-header">
+                        <div>
+                            <p class="stat-label">总考试数</p>
+                            <p class="stat-value" id="exam-total">--</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="stat-card green">
+                    <div class="stat-header">
+                        <div>
+                            <p class="stat-label">进行中</p>
+                            <p class="stat-value" id="exam-active">--</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="stat-card purple">
+                    <div class="stat-header">
+                        <div>
+                            <p class="stat-label">已完成</p>
+                            <p class="stat-value" id="exam-completed">--</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="stat-card orange">
+                    <div class="stat-header">
+                        <div>
+                            <p class="stat-label">平均分</p>
+                            <p class="stat-value" id="exam-avg">--</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="panel">
+                <div class="panel-header">
+                    <h3 class="panel-title"><div class="panel-title-bar"></div>考试列表</h3>
+                </div>
+                <div class="panel-content">
+                    <div class="search-bar">
+                        <input type="text" id="exam-search" placeholder="搜索考试名称">
+                        <select id="exam-status-filter">
+                            <option value="">全部状态</option>
+                            <option value="active">进行中</option>
+                            <option value="completed">已完成</option>
+                        </select>
+                        <button onclick="loadExams()">搜索</button>
+                    </div>
+                    <table class="table-grid" id="exam-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>标题</th>
+                                <th>科目</th>
+                                <th>时长</th>
+                                <th>题目数</th>
+                                <th>状态</th>
+                                <th>创建时间</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td colspan="7" class="empty-state">加载中...</td></tr>
+                        </tbody>
+                    </table>
+                    <div class="pagination" id="exam-pagination"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="tab-routes" class="tab-content" style="display:none;">
+            <div class="panel">
+                <div class="panel-header">
+                    <h3 class="panel-title"><div class="panel-title-bar"></div>路由列表</h3>
+                </div>
+                <div class="panel-content">
+                    <div class="search-bar">
+                        <input type="text" id="route-search" placeholder="搜索路由路径" onkeypress="if(event.key==='Enter')loadRoutes()">
+                        <button onclick="loadRoutes()">搜索</button>
+                    </div>
+                    <table class="table-grid" id="route-table">
+                        <thead>
+                            <tr>
+                                <th>路径</th>
+                                <th>端点</th>
+                                <th>方法</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td colspan="3" class="empty-state">加载中...</td></tr>
+                        </tbody>
+                    </table>
+                    <div style="margin-top:12px;font-size:12px;color:var(--text-tertiary);">共 <span id="route-count">0</span> 条路由</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="tab-engines" class="tab-content" style="display:none;">
+            <div class="panel">
+                <div class="panel-header">
+                    <h3 class="panel-title"><div class="panel-title-bar"></div>AI引擎矩阵</h3>
+                </div>
+                <div class="panel-content">
+                    <div class="engine-grid" id="engine-grid">加载中...</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="tab-employees" class="tab-content" style="display:none;">
+            <div class="panel">
+                <div class="panel-header">
+                    <h3 class="panel-title"><div class="panel-title-bar"></div>AI员工列表</h3>
+                </div>
+                <div class="panel-content">
+                    <table class="table-grid" id="employee-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>名称</th>
+                                <th>角色</th>
+                                <th>状态</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td colspan="4" class="empty-state">加载中...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div id="tab-agent" class="tab-content" style="display:none;">
+            <div class="stats-grid" style="grid-template-columns: repeat(3, 1fr);">
+                <div class="stat-card blue">
+                    <div class="stat-header">
+                        <div>
+                            <p class="stat-label">Agent总数</p>
+                            <p class="stat-value" id="agent-total">--</p>
+                        </div>
+                        <div class="stat-icon">🤖</div>
+                    </div>
+                </div>
+                <div class="stat-card green">
+                    <div class="stat-header">
+                        <div>
+                            <p class="stat-label">运行中</p>
+                            <p class="stat-value" id="agent-running">--</p>
+                        </div>
+                        <div class="stat-icon">▶️</div>
+                    </div>
+                </div>
+                <div class="stat-card orange">
+                    <div class="stat-header">
+                        <div>
+                            <p class="stat-label">已停止</p>
+                            <p class="stat-value" id="agent-stopped">--</p>
+                        </div>
+                        <div class="stat-icon">⏸️</div>
+                    </div>
+                </div>
+            </div>
+            <div class="panel">
+                <div class="panel-header">
+                    <h3 class="panel-title"><div class="panel-title-bar"></div>Agent列表</h3>
+                </div>
+                <div class="panel-content">
+                    <table class="table-grid" id="agent-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>名称</th>
+                                <th>角色</th>
+                                <th>状态</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td colspan="5" class="empty-state">加载中...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div id="tab-backup" class="tab-content" style="display:none;">
+            <div class="panel">
+                <div class="panel-header">
+                    <h3 class="panel-title"><div class="panel-title-bar"></div>备份管理</h3>
+                    <button class="btn-primary" onclick="createBackup()">创建备份</button>
+                </div>
+                <div class="panel-content">
+                    <div id="backup-list">加载中...</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="tab-settings" class="tab-content" style="display:none;">
+            <div class="panel">
+                <div class="panel-header">
+                    <h3 class="panel-title"><div class="panel-title-bar"></div>系统设置</h3>
+                </div>
+                <div class="panel-content" id="settings-content">加载中...</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/super_admin_dashboard.js') }}"></script>
+</body>
+</html>
