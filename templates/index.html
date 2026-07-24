@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MTSCOS AI - 智能学习评估系统</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #6366f1;
+            --primary-light: #8b5cf6;
+            --primary-dark: #4f46e5;
+            --bg-gradient-start: #0a0a1a;
+            --bg-gradient-mid: #12123a;
+            --bg-gradient-end: #0a0a1a;
+            --card-bg: rgba(15, 15, 35, 0.75);
+            --card-bg-hover: rgba(20, 20, 45, 0.85);
+            --card-border: rgba(99, 102, 241, 0.15);
+            --card-border-hover: rgba(99, 102, 241, 0.35);
+            --text-primary: #ffffff;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --glass-blur: 24px;
+            --glass-border: 1px solid rgba(99, 102, 241, 0.2);
+            --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 60px rgba(99, 102, 241, 0.1);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-mid) 50%, var(--bg-gradient-end) 100%);
+            background-attachment: fixed;
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            overflow-x: hidden;
+        }
+
+        #particles-js {
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .particle {
+            position: absolute;
+            border-radius: 50%;
+            background: radial-gradient(circle, var(--primary-color), transparent);
+            animation: float 15s ease-in-out infinite;
+        }
+
+        .particle-line {
+            position: absolute;
+            height: 1px;
+            background: linear-gradient(90deg, var(--primary-color), transparent);
+            opacity: 0.2;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0) translateX(0); opacity: 0.6; }
+            25% { transform: translateY(-50px) translateX(20px); opacity: 0.8; }
+            50% { transform: translateY(-20px) translateX(-30px); opacity: 0.4; }
+            75% { transform: translateY(-80px) translateX(10px); opacity: 0.7; }
+        }
+
+        .login-container {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 480px;
+        }
+
+        .logo-section {
+            text-align: center;
+            margin-bottom: 40px;
+            animation: fadeInDown 0.6s ease-out;
+        }
+
+        @keyframes fadeInDown {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .logo-container {
+            width: 100px;
+            height: 100px;
+            margin: 0 auto 20px;
+            position: relative;
+        }
+
+        .system-logo-img {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            display: none;
+            object-fit: cover;
+            box-shadow: 0 0 40px rgba(99, 102, 241, 0.6);
+            animation: logoGlow 3s ease-in-out infinite;
+        }
+
+        .logo-placeholder {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            box-shadow: 0 0 40px rgba(99, 102, 241, 0.6);
+            animation: logoGlow 3s ease-in-out infinite;
+        }
+
+        @keyframes logoGlow {
+            0%, 100% { box-shadow: 0 0 40px rgba(99, 102, 241, 0.6); }
+            50% { box-shadow: 0 0 60px rgba(99, 102, 241, 0.9); }
+        }
+
+        .logo-text {
+            font-size: 28px;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 0 0 40px rgba(99, 102, 241, 0.3);
+        }
+
+        .logo-subtitle {
+            font-size: 14px;
+            color: var(--text-muted);
+            margin-top: 8px;
+        }
+
+        .system-time {
+            text-align: center;
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 30px;
+            font-family: 'Courier New', monospace;
+            animation: fadeIn 0.8s ease-out 0.2s both;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .login-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(var(--glass-blur));
+            -webkit-backdrop-filter: blur(var(--glass-blur));
+            border: var(--glass-border);
+            border-radius: 24px;
+            padding: 48px;
+            box-shadow: var(--glass-shadow);
+            animation: fadeInUp 0.6s ease-out 0.3s both;
+            transition: all 0.3s ease;
+        }
+
+        .login-card:hover {
+            background: var(--card-bg-hover);
+            border-color: var(--card-border-hover);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5), 0 0 80px rgba(99, 102, 241, 0.15);
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .login-form {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .login-form h3 {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            text-align: center;
+        }
+
+        .login-form p {
+            font-size: 14px;
+            color: var(--text-muted);
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .form-group label {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        .form-group input {
+            padding: 14px 16px;
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            font-size: 15px;
+            background: rgba(0, 0, 0, 0.25);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            color: var(--text-primary);
+            transition: all 0.3s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15), 0 0 20px rgba(99, 102, 241, 0.2);
+            background: rgba(0, 0, 0, 0.35);
+        }
+
+        .form-group input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .form-group.has-error input {
+            border-color: #ef4444;
+        }
+
+        .form-group .error-text {
+            color: #ef4444;
+            font-size: 12px;
+            display: none;
+        }
+
+        .form-group.has-error .error-text {
+            display: block;
+        }
+
+        .form-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .form-row label {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .form-row input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            margin-right: 8px;
+            accent-color: var(--primary-color);
+        }
+
+        .form-row a {
+            font-size: 14px;
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .form-row a:hover {
+            text-decoration: underline;
+        }
+
+        .btn-login {
+            width: 100%;
+            padding: 14px 24px;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
+            color: white;
+            box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4);
+        }
+
+        .btn-login:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(99, 102, 241, 0.5);
+        }
+
+        .btn-login:active {
+            transform: translateY(0);
+        }
+
+        .btn-login:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .login-message {
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-size: 14px;
+            margin-bottom: 20px;
+            display: none;
+            text-align: center;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        .login-message.error {
+            background: rgba(239, 68, 68, 0.15);
+            color: #fca5a5;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            display: block;
+        }
+
+        .login-message.success {
+            background: rgba(34, 197, 94, 0.15);
+            color: #86efac;
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            display: block;
+        }
+
+        .login-divider {
+            display: flex;
+            align-items: center;
+            margin: 24px 0;
+            color: var(--text-muted);
+            font-size: 13px;
+        }
+
+        .login-divider::before,
+        .login-divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--card-border);
+        }
+
+        .login-divider::before {
+            margin-right: 12px;
+        }
+
+        .login-divider::after {
+            margin-left: 12px;
+        }
+
+        .btn-register {
+            width: 100%;
+            padding: 14px 24px;
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: rgba(99, 102, 241, 0.1);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            color: var(--text-primary);
+        }
+
+        .btn-register:hover {
+            background: rgba(99, 102, 241, 0.2);
+            border-color: var(--primary-color);
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 0.8s linear infinite;
+            margin-right: 8px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            color: var(--text-muted);
+            font-size: 12px;
+            animation: fadeIn 0.8s ease-out 0.5s both;
+        }
+
+        .glass-effect {
+            background: rgba(15, 15, 35, 0.6);
+            backdrop-filter: blur(var(--glass-blur));
+            -webkit-backdrop-filter: blur(var(--glass-blur));
+            border: var(--glass-border);
+            border-radius: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div id="particles-js"></div>
+    
+    <div class="login-container">
+        <div class="logo-section">
+            <div class="logo-container">
+                <img id="system-logo" src="" alt="MTSCOS AI Logo" class="system-logo-img">
+                <div class="logo-placeholder" id="logo-placeholder">
+                    <i class="fas fa-brain"></i>
+                </div>
+            </div>
+            <div class="logo-text">MTSCOS AI</div>
+            <div class="logo-subtitle">智能学习评估系统</div>
+        </div>
+
+        <div class="system-time" id="system-time">
+            <i class="fas fa-clock"></i>
+            <span>加载中...</span>
+        </div>
+
+        <div class="login-card">
+            <div class="login-form">
+                <h3>欢迎回来</h3>
+                <p>请登录您的账户</p>
+                
+                <div class="login-message" id="login-message"></div>
+
+                <div class="form-group" id="username-group">
+                    <label for="index-username">用户名</label>
+                    <input type="text" id="index-username" placeholder="请输入用户名">
+                    <span class="error-text" id="username-error"></span>
+                </div>
+
+                <div class="form-group" id="password-group">
+                    <label for="index-password">密码</label>
+                    <input type="password" id="index-password" placeholder="请输入密码">
+                    <span class="error-text" id="password-error"></span>
+                </div>
+
+                <div class="form-row">
+                    <label>
+                        <input type="checkbox" id="remember-me">
+                        <span>记住我</span>
+                    </label>
+                    <a href="/auth/forgot_password">忘记密码?</a>
+                </div>
+
+                <button class="btn-login" id="login-btn" onclick="handleIndexLogin()">
+                    <span id="login-btn-text">登 录</span>
+                </button>
+
+                <div class="login-divider">或</div>
+
+                <button class="btn-register" onclick="window.location.href='/auth/register'">
+                    创 建 账 户
+                </button>
+            </div>
+        </div>
+
+        <div class="footer">
+            &copy; 2026 MTSCOS AI. All rights reserved.
+        </div>
+    </div>
+
+    <script>
+        function initParticles() {
+            const container = document.getElementById('particles-js');
+            const particleCount = 60;
+            
+            for (let i = 0; i < particleCount; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                
+                const size = Math.random() * 4 + 2;
+                particle.style.width = size + 'px';
+                particle.style.height = size + 'px';
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.top = Math.random() * 100 + '%';
+                particle.style.animationDelay = Math.random() * 15 + 's';
+                particle.style.animationDuration = (Math.random() * 10 + 10) + 's';
+                
+                const opacity = Math.random() * 0.5 + 0.2;
+                particle.style.opacity = opacity;
+                
+                container.appendChild(particle);
+            }
+        }
+
+        initParticles();
+
+        function updateSystemTime() {
+            const now = new Date();
+            const timeStr = now.toLocaleString('zh-CN', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            });
+            const timeEl = document.getElementById('system-time');
+            if (timeEl) {
+                timeEl.innerHTML = '<i class="fas fa-clock"></i> ' + timeStr;
+            }
+        }
+
+        setInterval(updateSystemTime, 1000);
+        updateSystemTime();
+
+        async function loadSystemLogo() {
+            try {
+                const response = await fetch('/api/system/logo');
+                const data = await response.json();
+                if (data.success && data.logo) {
+                    const logoImg = document.getElementById('system-logo');
+                    const placeholder = document.getElementById('logo-placeholder');
+                    logoImg.src = data.logo;
+                    logoImg.onload = function() {
+                        logoImg.style.display = 'block';
+                        placeholder.style.display = 'none';
+                    };
+                }
+            } catch (error) {
+                console.log('加载系统LOGO失败，使用默认图标');
+            }
+        }
+
+        loadSystemLogo();
+
+        async function handleIndexLogin() {
+        const username = document.getElementById('index-username').value.trim();
+        const password = document.getElementById('index-password').value.trim();
+        const remember = document.getElementById('remember-me').checked;
+        
+        const loginBtn = document.getElementById('login-btn');
+        const loginBtnText = document.getElementById('login-btn-text');
+        const messageEl = document.getElementById('login-message');
+        
+        clearErrors();
+        
+        if (!username) {
+            showError('username', '请输入用户名');
+            return;
+        }
+        
+        if (!password) {
+            showError('password', '请输入密码');
+            return;
+        }
+        
+        loginBtn.disabled = true;
+        loginBtnText.innerHTML = '<span class="loading-spinner"></span>登录中...';
+        
+        try {
+            const response = await fetch('/auth/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({ username, password, remember_me: remember })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                messageEl.className = 'login-message success';
+                messageEl.textContent = '登录成功，正在跳转...';
+                
+                if (data.user && data.user.username === 'wuchenghao15') {
+                    localStorage.setItem('mtscos_super_admin_hidden', 'true');
+                }
+                
+                setTimeout(() => {
+                    window.location.href = data.redirect || '/dashboard';
+                }, 500);
+            } else {
+                messageEl.className = 'login-message error';
+                messageEl.textContent = data.message || '登录失败';
+                loginBtn.disabled = false;
+                loginBtnText.textContent = '登 录';
+            }
+        } catch (error) {
+            messageEl.className = 'login-message error';
+            messageEl.textContent = '网络错误，请稍后重试';
+            loginBtn.disabled = false;
+            loginBtnText.textContent = '登 录';
+        }
+    }
+
+        function showError(field, message) {
+            const group = document.getElementById(field + '-group');
+            const errorEl = document.getElementById(field + '-error');
+            if (group && errorEl) {
+                group.classList.add('has-error');
+                errorEl.textContent = message;
+                errorEl.style.display = 'block';
+            }
+        }
+
+        function clearErrors() {
+            document.querySelectorAll('.form-group').forEach(group => {
+                group.classList.remove('has-error');
+            });
+            document.querySelectorAll('.error-text').forEach(el => {
+                el.style.display = 'none';
+            });
+            document.getElementById('login-message').className = 'login-message';
+            document.getElementById('login-message').textContent = '';
+        }
+
+        document.getElementById('index-username').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                document.getElementById('index-password').focus();
+            }
+        });
+
+        document.getElementById('index-password').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                handleIndexLogin();
+            }
+        });
+    </script>
+</body>
+</html>
