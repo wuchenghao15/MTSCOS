@@ -115,6 +115,33 @@ def suggest_version(current_version: str, change_type: str = 'patch') -> str:
         return next_patch_version(current_version)
 
 VERSION_DATA = {
+    '17.18.0': {
+        'major': 17,
+        'minor': 18,
+        'patch': 0,
+        'build_number': '20260725j',
+        'build_date': '2026-07-25',
+        'codename': 'Database Enhancement Edition',
+        'status': 'stable',
+        'description': '数据库增强版本，扩展数据库能力，扩充题库内容，更新系统参数和权限参数路由参数，更新AI脑库，更新已注册AI员工，维护数据库API和中间件',
+        'features': [
+            '扩展题库数据库（database_enhancement.py）- 新增5个语文听力题相关表',
+            'chinese_dictation_words - 语文听写词库表（40+词语，4个难度级别）',
+            'chinese_dictation_idioms - 语文成语词库表（40+成语，4个难度级别）',
+            'chinese_dictation_poetry - 语文古诗词库表（25首诗词，4个难度级别）',
+            'chinese_dictation_passages - 语文读文选段表（12篇文章，4个难度级别）',
+            'chinese_listening_questions - 语文听力题目表',
+            '题库分类扩展 - 新增4个语文听力分类（词语听写/成语听写/古诗词听写/读文选段听写）',
+            '数据库增强脚本执行完成 - 所有新表创建并初始化数据',
+            'AI脑库知识更新 - 添加语文听力相关知识条目',
+            'AI员工配置更新 - 更新听力题库员工技能配置',
+            '安全中间件白名单更新 - 添加语文听力API路由',
+            '访问控制中间件更新 - 添加新API权限控制',
+            '系统参数更新 - 添加语文听力相关配置项',
+            '所有数据库表创建成功'
+        ],
+        'upgrade_notes': '从v17.17.0升级：扩展数据库能力，新增5个语文听力题相关表，初始化题库内容（40词语+40成语+25诗词+12文章），更新系统参数、权限参数、路由参数，更新AI脑库和已注册AI员工配置，维护数据库API和中间件'
+    },
     '17.17.0': {
         'major': 17,
         'minor': 17,

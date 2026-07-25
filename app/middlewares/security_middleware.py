@@ -164,6 +164,8 @@ class SecurityMiddlewareClass:
                          '/api/ai_engine/self_learning/status', '/api/ai_engine/self_learning/trigger',
                          '/api/ai_engine/self_learning/discover',
                          '/api/arduino/ai/',
+                         '/api/ai/chinese_listening/',
+                         '/api/chinese_dictation/',
                          '/ai_learning_dashboard',
                          '/', '/login', '/register', '/forgot_password', '/forgot-password',
                          '/assets/', '/static/', '/favicon.ico',
