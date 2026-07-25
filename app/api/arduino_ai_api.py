@@ -9,7 +9,7 @@ from app.ai.arduino_ai_engine import ArduinoAIEngine
 from app.ai.arduino_simulator import ArduinoSimulator
 from app.ai.arduino_code_interpreter import ArduinoCodeInterpreter
 
-arduino_ai_api = Bluelogger.info('arduino_ai_api', __name__)
+arduino_ai_api = Blueprint('arduino_ai_api', __name__)
 _simulator = ArduinoSimulator()
 
 @arduino_ai_api.route('/api/arduino/ai/generate-code', methods=['POST'])
@@ -472,6 +472,205 @@ def get_learning_path():
     try:
         engine = ArduinoAIEngine()
         result = engine.get_adaptive_learning_path(user_id)
+        engine.close()
+        
+        return jsonify({
+            'success': True,
+            'data': result
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+from app.ai.arduino_ai_enhanced import ArduinoAIEnhanced
+
+@arduino_ai_api.route('/api/arduino/ai/predict-sensor-failure', methods=['POST'])
+def predict_sensor_failure():
+    """AI传感器故障预测 - 使用数据科学Agent进行ML-based预测"""
+    data = request.get_json() or {}
+    device_id = data.get('device_id', '')
+    sensor_type = data.get('sensor_type')
+    window_size = int(data.get('window_size', 50))
+    
+    if not device_id:
+        return jsonify({
+            'success': False,
+            'error': '设备ID不能为空'
+        }), 400
+    
+    try:
+        engine = ArduinoAIEnhanced()
+        result = engine.predict_sensor_failure(device_id, sensor_type, window_size)
+        engine.close()
+        
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@arduino_ai_api.route('/api/arduino/ai/digital-twin-simulate', methods=['POST'])
+def digital_twin_simulate():
+    """数字孪生模拟 - 模拟Arduino项目在虚拟环境中的运行"""
+    data = request.get_json() or {}
+    project_description = data.get('description', '')
+    components = data.get('components', [])
+    iterations = int(data.get('iterations', 10))
+    
+    if not project_description:
+        return jsonify({
+            'success': False,
+            'error': '项目描述不能为空'
+        }), 400
+    
+    try:
+        engine = ArduinoAIEnhanced()
+        result = engine.digital_twin_simulate(project_description, components, iterations)
+        engine.close()
+        
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@arduino_ai_api.route('/api/arduino/ai/component-compatibility', methods=['POST'])
+def component_compatibility():
+    """查询组件兼容性 - 使用知识图谱Agent"""
+    data = request.get_json() or {}
+    components = data.get('components', [])
+    
+    if not components:
+        return jsonify({
+            'success': False,
+            'error': '组件列表不能为空'
+        }), 400
+    
+    try:
+        engine = ArduinoAIEnhanced()
+        result = engine.get_component_compatibility(components)
+        engine.close()
+        
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@arduino_ai_api.route('/api/arduino/ai/troubleshoot-component', methods=['POST'])
+def troubleshoot_component():
+    """组件故障排除 - 使用知识图谱进行推理"""
+    data = request.get_json() or {}
+    component_name = data.get('component', '')
+    issue_description = data.get('issue', '')
+    
+    if not component_name:
+        return jsonify({
+            'success': False,
+            'error': '组件名称不能为空'
+        }), 400
+    
+    try:
+        engine = ArduinoAIEnhanced()
+        result = engine.analyze_component_troubleshooting(component_name, issue_description)
+        engine.close()
+        
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@arduino_ai_api.route('/api/arduino/ai/build-pipeline', methods=['POST'])
+def build_pipeline():
+    """创建Arduino构建流水线 - 使用DevOps Agent"""
+    data = request.get_json() or {}
+    project_id = data.get('project_id', '')
+    code = data.get('code', '')
+    
+    if not project_id or not code:
+        return jsonify({
+            'success': False,
+            'error': '项目ID和代码不能为空'
+        }), 400
+    
+    try:
+        engine = ArduinoAIEnhanced()
+        result = engine.create_build_pipeline(project_id, code)
+        engine.close()
+        
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@arduino_ai_api.route('/api/arduino/ai/analyze-camera-image', methods=['POST'])
+def analyze_camera_image():
+    """分析摄像头图像 - 使用图像处理Agent（支持ESP32-CAM）"""
+    data = request.get_json() or {}
+    image_data = data.get('image_data', '')
+    processing_type = data.get('processing_type', 'object_detection')
+    
+    if not image_data:
+        return jsonify({
+            'success': False,
+            'error': '图像数据不能为空'
+        }), 400
+    
+    try:
+        engine = ArduinoAIEnhanced()
+        result = engine.analyze_camera_image(image_data, processing_type)
+        engine.close()
+        
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@arduino_ai_api.route('/api/arduino/ai/vision-control', methods=['POST'])
+def vision_control():
+    """视觉控制 - 根据图像分析结果生成Arduino控制代码"""
+    data = request.get_json() or {}
+    image_data = data.get('image_data', '')
+    target_color = data.get('target_color')
+    target_object = data.get('target_object')
+    
+    if not image_data:
+        return jsonify({
+            'success': False,
+            'error': '图像数据不能为空'
+        }), 400
+    
+    try:
+        engine = ArduinoAIEnhanced()
+        result = engine.vision_based_control(image_data, target_color, target_object)
+        engine.close()
+        
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@arduino_ai_api.route('/api/arduino/ai/enhanced-learning-path', methods=['GET'])
+def enhanced_learning_path():
+    """增强版学习路径 - 结合AI能力推荐学习内容"""
+    user_id = int(request.args.get('user_id', 1))
+    
+    try:
+        engine = ArduinoAIEnhanced()
+        result = engine.get_enhanced_learning_path(user_id)
         engine.close()
         
         return jsonify({

@@ -69,11 +69,11 @@ void loop() {
   float h = dht.readHumidity();
   float t = dht.readTemperature();
   
-  Serial.logger.info("Humidity: ");
-  Serial.logger.info(h);
-  Serial.logger.info("%\\t");
-  Serial.logger.info("Temperature: ");
-  Serial.logger.info(t);
+  Serial.print("Humidity: ");
+  Serial.print(h);
+  Serial.print("%\\t");
+  Serial.print("Temperature: ");
+  Serial.print(t);
   Serial.println("°C");
   
   delay({{delay_ms}});
@@ -94,13 +94,13 @@ void setup() {
 void loop() {
   for (int pos = 0; pos <= 180; pos += 1) {
     myservo.write(pos);
-    Serial.logger.info("Servo: ");
+    Serial.print("Servo: ");
     Serial.println(pos);
     delay(15);
   }
   for (int pos = 180; pos >= 0; pos -= 1) {
     myservo.write(pos);
-    Serial.logger.info("Servo: ");
+    Serial.print("Servo: ");
     Serial.println(pos);
     delay(15);
   }
@@ -130,8 +130,8 @@ float getDistance() {
 
 void loop() {
   float dist = getDistance();
-  Serial.logger.info("Distance: ");
-  Serial.logger.info(dist);
+  Serial.print("Distance: ");
+  Serial.print(dist);
   Serial.println(" cm");
   delay({{delay_ms}});
 }''',
@@ -174,7 +174,7 @@ void loop() {
     fadeAmount = -fadeAmount;
   }
   
-  Serial.logger.info("Brightness: ");
+  Serial.print("Brightness: ");
   Serial.println(brightness);
   delay({{delay_ms}});
 }''',
@@ -193,7 +193,7 @@ void setup() {
 
 void loop() {
   buttonState = digitalRead(buttonPin);
-  Serial.logger.info("Button: ");
+  Serial.print("Button: ");
   Serial.println(buttonState);
   
   if (buttonState == HIGH) {
@@ -214,7 +214,7 @@ void setup() {
 
 void loop() {
   sensorValue = analogRead(potPin);
-  Serial.logger.info("Sensor Value: ");
+  Serial.print("Sensor Value: ");
   Serial.println(sensorValue);
   delay({{delay_ms}});
 }''',
@@ -231,11 +231,11 @@ _COMPONENT_MODULES = {
         'loop': [
             'float h = dht.readHumidity();',
             'float t = dht.readTemperature();',
-            'Serial.logger.info("Humidity: ");',
-            'Serial.logger.info(h);',
-            'Serial.logger.info("%\\t");',
-            'Serial.logger.info("Temperature: ");',
-            'Serial.logger.info(t);',
+            'Serial.print("Humidity: ");',
+            'Serial.print(h);',
+            'Serial.print("%\\t");',
+            'Serial.print("Temperature: ");',
+            'Serial.print(t);',
             'Serial.println("°C");'
         ],
         'params': {'dht_pin': 2},
@@ -250,11 +250,11 @@ _COMPONENT_MODULES = {
         'loop': [
             'float h = dht.readHumidity();',
             'float t = dht.readTemperature();',
-            'Serial.logger.info("Humidity: ");',
-            'Serial.logger.info(h);',
-            'Serial.logger.info("%\\t");',
-            'Serial.logger.info("Temperature: ");',
-            'Serial.logger.info(t);',
+            'Serial.print("Humidity: ");',
+            'Serial.print(h);',
+            'Serial.print("%\\t");',
+            'Serial.print("Temperature: ");',
+            'Serial.print(t);',
             'Serial.println("°C");'
         ],
         'params': {'dht_pin': 2},
@@ -359,7 +359,7 @@ _COMPONENT_MODULES = {
             'WiFi.begin(WiFi_SSID, WiFi_PASS);',
             'while (WiFi.status() != WL_CONNECTED) {',
             '  delay(500);',
-            '  Serial.logger.info(".");',
+            '  Serial.print(".");',
             '}',
             'Serial.println("");',
             'Serial.println("WiFi connected");',
@@ -432,9 +432,9 @@ _COMPOSITION_RULES = {
         'loop': [
             'float h = dht.readHumidity();',
             'float t = dht.readTemperature();',
-            'Serial.logger.info("T:");',
-            'Serial.logger.info(t);',
-            'Serial.logger.info(",H:");',
+            'Serial.print("T:");',
+            'Serial.print(t);',
+            'Serial.print(",H:");',
             'Serial.println(h);',
             'delay(2000);'
         ]
@@ -494,9 +494,9 @@ _COMPOSITION_RULES = {
             'lcd.logger.info("Hum: ");',
             'lcd.logger.info(h);',
             'lcd.logger.info("%");',
-            'Serial.logger.info("T:");',
-            'Serial.logger.info(t);',
-            'Serial.logger.info(",H:");',
+            'Serial.print("T:");',
+            'Serial.print(t);',
+            'Serial.print(",H:");',
             'Serial.println(h);',
             'delay(2000);'
         ]
