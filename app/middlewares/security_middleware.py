@@ -157,6 +157,7 @@ class SecurityMiddlewareClass:
                          '/api/questions/categories', '/api/questions/tags', '/api/questions/search',
                          '/api/questions/', '/api/subjects/', '/api/question_types/',
                          '/api/difficulty_levels/', '/api/question_tags/',
+                         '/api/dynamic/',
                          '/api/tts/languages', '/api/tts/voices', '/api/tts/cache/stats',
                          '/api/tts/speak',
                          '/api/ai-repair/stats', '/api/ai-repair/fix-history',

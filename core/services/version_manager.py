@@ -115,6 +115,32 @@ def suggest_version(current_version: str, change_type: str = 'patch') -> str:
         return next_patch_version(current_version)
 
 VERSION_DATA = {
+    '17.20.0': {
+        'major': 17,
+        'minor': 20,
+        'patch': 0,
+        'build_number': '20260725l',
+        'build_date': '2026-07-25',
+        'codename': 'Dynamic Question Engine Edition',
+        'status': 'stable',
+        'description': '动态题目生成引擎版本，取消固有化题库，支持AI自动动态生成题目和网络爬取题目，实现动态多态多维随机高质量高数量动态注入所有科目题库',
+        'features': [
+            '动态题目生成引擎（dynamic_question_engine.py）- 支持AI自动动态生成和网络爬取',
+            '多态多维随机生成策略 - 避免撞库，确保题目多样性',
+            '10个科目完整知识点覆盖（每科8个知识组，每组3-4个知识点）',
+            '6种题型模板：单选题、填空题、简答题、计算题、判断题、翻译题',
+            '动态题目标签生成 - 根据难度、题型、知识点自动生成标签',
+            '网络爬虫模块 - 支持从网络获取题目（需安装requests和beautifulsoup4）',
+            '爬取题目自动导入统一题库功能',
+            '生成历史记录 - 记录每次生成的详细信息',
+            '动态配置管理 - 支持配置每日生成量、批次大小、相似度阈值等',
+            '动态题目API（dynamic_question_api.py）- 完整的动态生成接口',
+            'API接口：生成题目、批量生成、爬取题目、导入爬取、配置管理、统计查询',
+            '安全中间件白名单更新 - 添加动态题目API路由',
+            'API蓝图注册 - 注册dynamic_question_api'
+        ],
+        'upgrade_notes': '从v17.19.0升级：建立动态题目生成引擎，取消固有化题库，支持AI自动动态生成题目（多态多维随机生成，避免撞库），支持网络爬取题目，实现动态多态多维随机高质量高数量动态注入所有科目题库，添加完整的动态题目API接口'
+    },
     '17.19.0': {
         'major': 17,
         'minor': 19,
@@ -1181,7 +1207,7 @@ VERSION_DATA = {
     }
 }
 
-CURRENT_VERSION = '17.19.0'
+CURRENT_VERSION = '17.20.0'
 
 def init_version_table():
     conn = connect('system')

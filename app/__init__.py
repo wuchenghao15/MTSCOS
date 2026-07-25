@@ -46,6 +46,7 @@ def _register_blueprints(app):
         ('ai_enterprise_api', 'app.api.ai_enterprise_api'),
         ('chinese_listening_api', 'app.api.chinese_listening_api'),
         ('unified_question_api', 'app.api.unified_question_api'),
+        ('dynamic_question_api', 'app.api.dynamic_question_api'),
     ]
     
     registered = 0
