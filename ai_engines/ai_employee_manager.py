@@ -59,6 +59,16 @@ from ai_engines.ai_document_processor import AIDocumentProcessor
 from ai_engines.ai_vulnerability_scanner import AIVulnerabilityScanner
 from ai_engines.ai_cybersecurity_agent import AICybersecurityAgent
 from ai_engines.ai_system_extension_agent import AISystemExtensionAgent
+from ai_engines.ai_data_science_agent import AIDataScienceAgent
+from ai_engines.ai_image_processing_agent import AIImageProcessingAgent
+from ai_engines.ai_speech_processing_agent import AISpeechProcessingAgent
+from ai_engines.ai_translation_agent import AITranslationAgent
+from ai_engines.ai_data_governance_agent import AIDataGovernanceAgent
+from ai_engines.ai_business_intelligence_agent import AIBusinessIntelligenceAgent
+from ai_engines.ai_devops_agent import AIDevOpsAgent
+from ai_engines.ai_microservice_agent import AIMicroserviceAgent
+from ai_engines.ai_knowledge_graph_agent import AIKnowledgeGraphAgent
+from ai_engines.ai_digital_twin_agent import AIDigitalTwinAgent
 
 try:
     from ai_engines.test_ai_employee import TestAIEmployee
@@ -159,7 +169,17 @@ class AIEmployeeManager:
             "document_processor": "文档处理AI员工",
             "vulnerability_scanner": "安全漏洞检测AI员工",
             "cybersecurity": "网络安全AI员工",
-            "system_extension": "系统扩展AI员工"
+            "system_extension": "系统扩展AI员工",
+            "data_science": "数据科学AI员工",
+            "image_processing": "图像处理AI员工",
+            "speech_processing": "语音处理AI员工",
+            "translation": "智能翻译AI员工",
+            "data_governance": "数据治理AI员工",
+            "business_intelligence": "商业智能AI员工",
+            "devops": "DevOps AI员工",
+            "microservice": "微服务管理AI员工",
+            "knowledge_graph": "知识图谱AI员工",
+            "digital_twin": "数字孪生AI员工"
         }
         self.task_queue = []
         self.running_tasks = []
@@ -528,6 +548,76 @@ class AIEmployeeManager:
         self.employees["ext_001"] = ext_employee
         self._safe_start_employee(ext_employee)
         self.add_employee_to_organizations(ext_employee)
+
+        # 创建数据科学AI员工 (级别9)
+        ds_employee = AIDataScienceAgent("ds_001", "数据科学AI")
+        ds_employee.type = "data_science"
+        self.employees["ds_001"] = ds_employee
+        self._safe_start_employee(ds_employee)
+        self.add_employee_to_organizations(ds_employee)
+
+        # 创建图像处理AI员工 (级别8)
+        img_employee = AIImageProcessingAgent("img_001", "图像处理AI")
+        img_employee.type = "image_processing"
+        self.employees["img_001"] = img_employee
+        self._safe_start_employee(img_employee)
+        self.add_employee_to_organizations(img_employee)
+
+        # 创建语音处理AI员工 (级别8)
+        speech_employee = AISpeechProcessingAgent("speech_001", "语音处理AI")
+        speech_employee.type = "speech_processing"
+        self.employees["speech_001"] = speech_employee
+        self._safe_start_employee(speech_employee)
+        self.add_employee_to_organizations(speech_employee)
+
+        # 创建智能翻译AI员工 (级别8)
+        trans_employee = AITranslationAgent("trans_001", "智能翻译AI")
+        trans_employee.type = "translation"
+        self.employees["trans_001"] = trans_employee
+        self._safe_start_employee(trans_employee)
+        self.add_employee_to_organizations(trans_employee)
+
+        # 创建数据治理AI员工 (级别8)
+        dg_employee = AIDataGovernanceAgent("dg_001", "数据治理AI")
+        dg_employee.type = "data_governance"
+        self.employees["dg_001"] = dg_employee
+        self._safe_start_employee(dg_employee)
+        self.add_employee_to_organizations(dg_employee)
+
+        # 创建商业智能AI员工 (级别8)
+        bi_employee = AIBusinessIntelligenceAgent("bi_001", "商业智能AI")
+        bi_employee.type = "business_intelligence"
+        self.employees["bi_001"] = bi_employee
+        self._safe_start_employee(bi_employee)
+        self.add_employee_to_organizations(bi_employee)
+
+        # 创建DevOps AI员工 (级别8)
+        devops_employee = AIDevOpsAgent("devops_001", "DevOps AI")
+        devops_employee.type = "devops"
+        self.employees["devops_001"] = devops_employee
+        self._safe_start_employee(devops_employee)
+        self.add_employee_to_organizations(devops_employee)
+
+        # 创建微服务管理AI员工 (级别8)
+        ms_employee = AIMicroserviceAgent("ms_001", "微服务管理AI")
+        ms_employee.type = "microservice"
+        self.employees["ms_001"] = ms_employee
+        self._safe_start_employee(ms_employee)
+        self.add_employee_to_organizations(ms_employee)
+
+        # 创建知识图谱AI员工 (级别8)
+        kg_employee = AIKnowledgeGraphAgent("kg_001", "知识图谱AI")
+        kg_employee.type = "knowledge_graph"
+        self.employees["kg_001"] = kg_employee
+        self._safe_start_employee(kg_employee)
+        self.add_employee_to_organizations(kg_employee)
+
+        # 创建数字孪生AI员工 (级别8)
+        dt_employee = AIDigitalTwinAgent("dt_001", "数字孪生AI")
+        dt_employee.type = "digital_twin"
+        self.employees["dt_001"] = dt_employee
+        self._safe_start_employee(dt_employee)
+        self.add_employee_to_organizations(dt_employee)
 
     def _parse_json_or_text(self, text):
         """解析JSON或文本，返回列表"""

@@ -115,6 +115,34 @@ def suggest_version(current_version: str, change_type: str = 'patch') -> str:
         return next_patch_version(current_version)
 
 VERSION_DATA = {
+    '17.15.0': {
+        'major': 17,
+        'minor': 15,
+        'patch': 0,
+        'build_number': '20260725g',
+        'build_date': '2026-07-25',
+        'codename': 'AI Technology Suite Edition',
+        'status': 'stable',
+        'description': 'AI技术套件扩展版本，新增10个AI技术方向Agent（数据科学、图像处理、语音处理、智能翻译、数据治理、商业智能、DevOps、微服务管理、知识图谱、数字孪生），全面覆盖AI技术栈',
+        'features': [
+            'AI数据科学Agent（ai_data_science_agent.py）- 机器学习/预测建模/特征工程/数据清洗/A/B测试',
+            'AI图像处理Agent（ai_image_processing_agent.py）- 图像识别/分类/检测/分割/生成/增强',
+            'AI语音处理Agent（ai_speech_processing_agent.py）- 语音识别/合成/声纹识别/情感分析',
+            'AI智能翻译Agent（ai_translation_agent.py）- 文本翻译/文档翻译/实时翻译/术语库/本地化',
+            'AI数据治理Agent（ai_data_governance_agent.py）- 数据质量/元数据管理/血缘分析/合规检查',
+            'AI商业智能Agent（ai_business_intelligence_agent.py）- 报表生成/趋势分析/异常检测/商业洞察',
+            'AI DevOps Agent（ai_devops_agent.py）- CI/CD/容器管理/基础设施即代码/监控告警',
+            'AI微服务管理Agent（ai_microservice_agent.py）- 服务注册/负载均衡/熔断降级/链路追踪/网关',
+            'AI知识图谱Agent（ai_knowledge_graph_agent.py）- 实体识别/关系抽取/知识推理/知识融合',
+            'AI数字孪生Agent（ai_digital_twin_agent.py）- 孪生建模/仿真模拟/预测分析/优化控制/场景推演',
+            'AI员工管理器扩展（ai_employee_manager.py）- 注册10个新Agent类型',
+            'Agent类型定义 - data_science/image_processing/speech_processing/translation/data_governance/business_intelligence/devops/microservice/knowledge_graph/digital_twin',
+            '初始员工创建 - 每个Agent类型创建初始实例',
+            '所有Agent继承AIEmployee基类 - 统一接口和属性',
+            '所有API测试通过'
+        ],
+        'upgrade_notes': '从v17.14.0升级：新增10个AI技术方向Agent，覆盖数据科学、计算机视觉、语音处理、NLP翻译、数据治理、商业智能、DevOps、微服务、知识图谱、数字孪生等核心AI技术领域'
+    },
     '17.14.0': {
         'major': 17,
         'minor': 14,
