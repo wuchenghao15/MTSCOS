@@ -115,6 +115,34 @@ def suggest_version(current_version: str, change_type: str = 'patch') -> str:
         return next_patch_version(current_version)
 
 VERSION_DATA = {
+    '17.17.0': {
+        'major': 17,
+        'minor': 17,
+        'patch': 0,
+        'build_number': '20260725i',
+        'build_date': '2026-07-25',
+        'codename': 'Chinese Listening Dictation Edition',
+        'status': 'stable',
+        'description': '语文听力听写增强版本，完善听力题逻辑和出题能力，新增语文听力题：词语听写、成语听写、古诗词听写、读文选段听写，支持四个难度级别（小学低年级/高年级/初中/高中）',
+        'features': [
+            '扩展听力题库AI员工（listening_question_employee.py）- 新增中文语言支持',
+            '词语听写题目生成（_generate_word_dictation）- 80+词语库，4个难度级别',
+            '成语听写题目生成（_generate_idiom_dictation）- 60+成语库，4个难度级别',
+            '古诗词听写题目生成（_generate_poetry_dictation）- 40+古诗词库，4个难度级别',
+            '读文选段听写题目生成（_generate_passage_dictation）- 12篇精选文章，4个难度级别',
+            '中文听写统一入口（_generate_chinese_dictation）- 支持按类型生成或混合生成',
+            '任务类型扩展 - generate_chinese/generate_word_dictation/generate_idiom_dictation/generate_poetry_dictation/generate_passage_dictation',
+            '难度分级评分系统 - 按难度级别自动计算题目分数',
+            '知识点标签系统 - 题目关联对应知识点和难度级别',
+            '语音报读支持 - 支持普通话女声/男声报读',
+            '拼音辅助提示 - 提供词语/成语拼音提示',
+            '释义说明 - 提供词语/成语含义解释',
+            '古诗词完整信息 - 包含诗名/作者/朝代/原文',
+            '读文选段关键词提取 - 自动提取文章关键词',
+            '所有生成方法测试通过'
+        ],
+        'upgrade_notes': '从v17.16.0升级：完善听力题逻辑，新增语文听力题四大类型（词语/成语/古诗词/读文选段听写），支持四个难度级别，实现完整的听写题目生成能力'
+    },
     '17.16.0': {
         'major': 17,
         'minor': 16,
