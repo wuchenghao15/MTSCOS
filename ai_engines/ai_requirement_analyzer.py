@@ -7,7 +7,7 @@ import logging
 import json
 from datetime import datetime
 from typing import Dict, List, Any
-from ai_engines.ai_employees import AIEmployee
+from ai_engines.ai_employee_system import AIEmployee
 
 logger = logging.getLogger(__name__)
 
@@ -15,11 +15,12 @@ class AIRequirementAnalyzer(AIEmployee):
     """AI需求分析Agent"""
     
     def __init__(self, employee_id: str, name: str = "AI需求分析专家"):
-        super().__init__(employee_id, name, 'requirement_analyzer', [
+        super().__init__(employee_id, name, 'requirement_analyzer', 7)
+        self.skills = [
             '需求分析', '需求提取', '需求分类',
             '需求优先级评估', '需求冲突检测', '需求文档生成',
             '用例分析', '功能点识别', '需求追溯'
-        ])
+        ]
         self.analysis_history = []
         self.total_analyses = 0
         self.total_requirements = 0

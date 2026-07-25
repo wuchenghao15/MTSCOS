@@ -7,7 +7,7 @@ import logging
 import json
 from datetime import datetime
 from typing import Dict, List, Any
-from ai_engines.ai_employees import AIEmployee
+from ai_engines.ai_employee_system import AIEmployee
 
 logger = logging.getLogger(__name__)
 
@@ -15,11 +15,12 @@ class AICodeGeneratorAgent(AIEmployee):
     """AI代码生成Agent"""
     
     def __init__(self, employee_id: str, name: str = "AI代码生成专家"):
-        super().__init__(employee_id, name, 'code_generator', [
+        super().__init__(employee_id, name, 'code_generator', 7)
+        self.skills = [
             '代码生成', '代码优化', '代码重构',
             'API生成', '数据库操作', '单元测试',
             '代码注释', '文档生成', '代码审查'
-        ])
+        ]
         self.code_history = []
         self.total_generated = 0
     

@@ -7,7 +7,7 @@ import logging
 import json
 from datetime import datetime
 from typing import Dict, List, Any
-from ai_engines.ai_employees import AIEmployee
+from ai_engines.ai_employee_system import AIEmployee
 
 logger = logging.getLogger(__name__)
 
@@ -15,11 +15,12 @@ class AIRecommendationAgent(AIEmployee):
     """AI推荐Agent"""
     
     def __init__(self, employee_id: str, name: str = "AI推荐专家"):
-        super().__init__(employee_id, name, 'recommendation', [
+        super().__init__(employee_id, name, 'recommendation', 7)
+        self.skills = [
             '个性化推荐', '协同过滤', '内容推荐',
             '混合推荐', '实时推荐', '离线推荐',
             '推荐评估', '冷启动', '推荐解释'
-        ])
+        ]
         self.user_profiles = {}
         self.item_profiles = {}
         self.recommendation_history = []

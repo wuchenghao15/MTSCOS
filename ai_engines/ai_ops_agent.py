@@ -9,7 +9,7 @@ import subprocess
 import psutil
 from datetime import datetime
 from typing import Dict, List, Any
-from ai_engines.ai_employees import AIEmployee
+from ai_engines.ai_employee_system import AIEmployee
 
 logger = logging.getLogger(__name__)
 
@@ -17,11 +17,12 @@ class AIOpsAgent(AIEmployee):
     """AI智能运维Agent"""
     
     def __init__(self, employee_id: str, name: str = "AI智能运维专家"):
-        super().__init__(employee_id, name, 'ops_agent', [
+        super().__init__(employee_id, name, 'ops_agent', 9)
+        self.skills = [
             '系统监控', '资源管理', '进程管理',
             '服务监控', '日志分析', '告警管理',
             '性能监控', '容量规划', '自动化运维'
-        ])
+        ]
         self.monitor_history = []
         self.total_monitors = 0
     

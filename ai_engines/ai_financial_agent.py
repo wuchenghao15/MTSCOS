@@ -8,7 +8,7 @@ import json
 import statistics
 from datetime import datetime
 from typing import Dict, List, Any
-from ai_engines.ai_employees import AIEmployee
+from ai_engines.ai_employee_system import AIEmployee
 
 logger = logging.getLogger(__name__)
 
@@ -16,11 +16,12 @@ class AIFinancialAgent(AIEmployee):
     """AI财务分析Agent"""
     
     def __init__(self, employee_id: str, name: str = "AI财务分析专家"):
-        super().__init__(employee_id, name, 'financial', [
+        super().__init__(employee_id, name, 'financial', 8)
+        self.skills = [
             '财务分析', '预算管理', '成本控制',
             '投资分析', '风险评估', '财务报告',
             '现金流分析', '利润分析', '财务预测'
-        ])
+        ]
         self.financial_data = {}
         self.analysis_history = []
         self.total_analyses = 0

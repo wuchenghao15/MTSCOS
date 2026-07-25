@@ -8,7 +8,7 @@ import json
 import traceback
 from datetime import datetime
 from typing import Dict, List, Any
-from ai_engines.ai_employees import AIEmployee
+from ai_engines.ai_employee_system import AIEmployee
 
 logger = logging.getLogger(__name__)
 
@@ -16,11 +16,12 @@ class AIAutoRepairAgent(AIEmployee):
     """AI自动故障修复Agent"""
     
     def __init__(self, employee_id: str, name: str = "AI自动修复专家"):
-        super().__init__(employee_id, name, 'auto_repair', [
+        super().__init__(employee_id, name, 'auto_repair', 8)
+        self.skills = [
             '故障检测', '自动修复', '代码修复',
             '错误分析', '异常处理', '系统恢复',
             '数据修复', '配置修复', '依赖修复'
-        ])
+        ]
         self.repair_history = []
         self.total_repairs = 0
         self.successful_repairs = 0

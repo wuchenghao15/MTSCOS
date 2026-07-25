@@ -7,7 +7,7 @@ import logging
 import json
 from datetime import datetime
 from typing import Dict, List, Any
-from ai_engines.ai_employees import AIEmployee
+from ai_engines.ai_employee_system import AIEmployee
 
 logger = logging.getLogger(__name__)
 
@@ -15,11 +15,12 @@ class AIPublicOpinionAgent(AIEmployee):
     """AI舆情分析Agent"""
     
     def __init__(self, employee_id: str, name: str = "AI舆情分析专家"):
-        super().__init__(employee_id, name, 'public_opinion', [
+        super().__init__(employee_id, name, 'public_opinion', 8)
+        self.skills = [
             '舆情监测', '情感分析', '热点追踪',
             '风险预警', '舆情报告', '媒体分析',
             '话题分析', '传播路径', '危机处理'
-        ])
+        ]
         self.monitored_topics = {}
         self.analysis_history = []
         self.total_analyses = 0

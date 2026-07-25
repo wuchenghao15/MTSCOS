@@ -7,7 +7,7 @@ import logging
 import json
 from datetime import datetime
 from typing import Dict, List, Any
-from ai_engines.ai_employees import AIEmployee
+from ai_engines.ai_employee_system import AIEmployee
 
 logger = logging.getLogger(__name__)
 
@@ -15,11 +15,12 @@ class AIModelManager(AIEmployee):
     """AI模型管理Agent"""
     
     def __init__(self, employee_id: str, name: str = "AI模型管理专家"):
-        super().__init__(employee_id, name, 'model_manager', [
+        super().__init__(employee_id, name, 'model_manager', 8)
+        self.skills = [
             '模型注册', '模型加载', '模型卸载',
             '模型训练', '模型评估', '模型部署',
             '模型版本', '模型监控', '模型优化'
-        ])
+        ]
         self.models = {}
         self.model_history = []
         self.total_models = 0

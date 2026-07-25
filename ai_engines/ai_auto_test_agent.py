@@ -8,7 +8,7 @@ import subprocess
 import json
 from datetime import datetime
 from typing import Dict, List, Any
-from ai_engines.ai_employees import AIEmployee
+from ai_engines.ai_employee_system import AIEmployee
 
 logger = logging.getLogger(__name__)
 
@@ -16,11 +16,12 @@ class AIAutoTestAgent(AIEmployee):
     """AI自动化测试Agent"""
     
     def __init__(self, employee_id: str, name: str = "AI自动化测试专家"):
-        super().__init__(employee_id, name, 'auto_tester', [
+        super().__init__(employee_id, name, 'auto_test', 7)
+        self.skills = [
             '单元测试生成', '集成测试', 'API测试',
             '性能测试', '回归测试', '测试报告生成',
             '测试用例设计', '测试覆盖率分析'
-        ])
+        ]
         self.test_history = []
         self.total_tests = 0
         self.passed_tests = 0

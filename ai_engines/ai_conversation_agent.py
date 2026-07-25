@@ -7,7 +7,7 @@ import logging
 import json
 from datetime import datetime
 from typing import Dict, List, Any
-from ai_engines.ai_employees import AIEmployee
+from ai_engines.ai_employee_system import AIEmployee
 
 logger = logging.getLogger(__name__)
 
@@ -15,11 +15,12 @@ class AIConversationAgent(AIEmployee):
     """AI对话Agent"""
     
     def __init__(self, employee_id: str, name: str = "AI对话专家"):
-        super().__init__(employee_id, name, 'conversation', [
+        super().__init__(employee_id, name, 'conversation', 6)
+        self.skills = [
             '对话管理', '意图识别', '对话理解',
             '回复生成', '多轮对话', '上下文管理',
             '情感分析', '意图分类', '对话总结'
-        ])
+        ]
         self.conversations = {}
         self.total_conversations = 0
         self.total_messages = 0

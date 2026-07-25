@@ -7,7 +7,7 @@ import logging
 import json
 from datetime import datetime
 from typing import Dict, List, Any
-from ai_engines.ai_employees import AIEmployee
+from ai_engines.ai_employee_system import AIEmployee
 
 logger = logging.getLogger(__name__)
 
@@ -15,11 +15,12 @@ class AICRMAgent(AIEmployee):
     """AI客户关系管理Agent"""
     
     def __init__(self, employee_id: str, name: str = "AI客户关系专家"):
-        super().__init__(employee_id, name, 'crm', [
+        super().__init__(employee_id, name, 'crm', 7)
+        self.skills = [
             '客户管理', '销售管理', '客户服务',
             '营销自动化', '客户分析', '销售预测',
             '客户分层', '忠诚度管理', 'CRM报表'
-        ])
+        ]
         self.customers = {}
         self.opportunities = {}
         self.crm_history = []

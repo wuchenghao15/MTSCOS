@@ -8,7 +8,7 @@ import json
 import statistics
 from datetime import datetime
 from typing import Dict, List, Any
-from ai_engines.ai_employees import AIEmployee
+from ai_engines.ai_employee_system import AIEmployee
 
 logger = logging.getLogger(__name__)
 
@@ -16,11 +16,12 @@ class AIDataAnalyzer(AIEmployee):
     """AI数据分析Agent"""
     
     def __init__(self, employee_id: str, name: str = "AI数据分析专家"):
-        super().__init__(employee_id, name, 'data_analyzer', [
+        super().__init__(employee_id, name, 'data_analyzer', 7)
+        self.skills = [
             '数据分析', '数据可视化', '数据清洗',
             '统计分析', '趋势分析', '异常检测',
             '数据报告', '数据挖掘', '数据预测'
-        ])
+        ]
         self.analysis_history = []
         self.total_analyses = 0
     

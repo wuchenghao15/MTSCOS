@@ -7,7 +7,7 @@ import logging
 import json
 from datetime import datetime
 from typing import Dict, List, Any
-from ai_engines.ai_employees import AIEmployee
+from ai_engines.ai_employee_system import AIEmployee
 
 logger = logging.getLogger(__name__)
 
@@ -15,11 +15,12 @@ class AIDocGenerator(AIEmployee):
     """AI文档生成Agent"""
     
     def __init__(self, employee_id: str, name: str = "AI文档生成专家"):
-        super().__init__(employee_id, name, 'doc_generator', [
+        super().__init__(employee_id, name, 'doc_generator', 6)
+        self.skills = [
             'API文档生成', '代码注释生成', '技术文档编写',
             '用户手册生成', 'README生成', '变更日志生成',
             '架构文档生成', '接口文档生成', '文档翻译'
-        ])
+        ]
         self.doc_history = []
         self.total_docs = 0
     

@@ -7,7 +7,7 @@ import logging
 import json
 from datetime import datetime
 from typing import Dict, List, Any
-from ai_engines.ai_employees import AIEmployee
+from ai_engines.ai_employee_system import AIEmployee
 
 logger = logging.getLogger(__name__)
 
@@ -15,11 +15,12 @@ class AIProjectManagementAgent(AIEmployee):
     """AI项目管理Agent"""
     
     def __init__(self, employee_id: str, name: str = "AI项目管理专家"):
-        super().__init__(employee_id, name, 'project_management', [
+        super().__init__(employee_id, name, 'project_management', 8)
+        self.skills = [
             '项目规划', '任务管理', '进度跟踪',
             '资源分配', '风险评估', '团队协作',
             '里程碑管理', '项目报告', '成本控制'
-        ])
+        ]
         self.projects = {}
         self.tasks = {}
         self.project_history = []

@@ -8,7 +8,7 @@ import ast
 import json
 from datetime import datetime
 from typing import Dict, List, Any
-from ai_engines.ai_employees import AIEmployee
+from ai_engines.ai_employee_system import AIEmployee
 
 logger = logging.getLogger(__name__)
 
@@ -16,11 +16,12 @@ class AICodeReviewAgent(AIEmployee):
     """AI代码审查Agent"""
     
     def __init__(self, employee_id: str, name: str = "AI代码审查专家"):
-        super().__init__(employee_id, name, 'code_reviewer', [
+        super().__init__(employee_id, name, 'code_review', 8)
+        self.skills = [
             '代码审查', '代码质量分析', '代码风格检查',
             '安全漏洞检测', '性能问题识别', '代码重构建议',
             '最佳实践检查', '代码复杂度分析'
-        ])
+        ]
         self.review_history = []
         self.total_reviews = 0
         self.total_issues_found = 0

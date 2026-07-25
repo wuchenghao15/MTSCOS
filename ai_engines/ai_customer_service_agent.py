@@ -7,7 +7,7 @@ import logging
 import json
 from datetime import datetime
 from typing import Dict, List, Any
-from ai_engines.ai_employees import AIEmployee
+from ai_engines.ai_employee_system import AIEmployee
 
 logger = logging.getLogger(__name__)
 
@@ -15,11 +15,12 @@ class AICustomerServiceAgent(AIEmployee):
     """AI客服Agent"""
     
     def __init__(self, employee_id: str, name: str = "AI客服专家"):
-        super().__init__(employee_id, name, 'customer_service', [
+        super().__init__(employee_id, name, 'customer_service', 6)
+        self.skills = [
             '客户咨询', '问题解答', '投诉处理',
             '订单查询', '退换货处理', '售后服务',
             '满意度调查', '工单管理', '知识库查询'
-        ])
+        ]
         self.tickets = {}
         self.ticket_history = []
         self.total_tickets = 0

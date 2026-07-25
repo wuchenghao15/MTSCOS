@@ -9,7 +9,7 @@ import time
 import threading
 from datetime import datetime, timedelta
 from typing import Dict, List, Any
-from ai_engines.ai_employees import AIEmployee
+from ai_engines.ai_employee_system import AIEmployee
 
 logger = logging.getLogger(__name__)
 
@@ -17,11 +17,12 @@ class AITaskSchedulerAgent(AIEmployee):
     """AI任务调度Agent"""
     
     def __init__(self, employee_id: str, name: str = "AI任务调度专家"):
-        super().__init__(employee_id, name, 'task_scheduler', [
+        super().__init__(employee_id, name, 'task_scheduler', 7)
+        self.skills = [
             '任务调度', '定时任务', '任务队列',
             '任务分配', '任务优先级', '任务监控',
             '任务重试', '任务取消', '任务统计'
-        ])
+        ]
         self.tasks = []
         self.task_history = []
         self.total_tasks = 0

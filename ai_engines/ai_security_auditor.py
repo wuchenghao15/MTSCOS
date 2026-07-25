@@ -7,7 +7,7 @@ import logging
 import json
 from datetime import datetime
 from typing import Dict, List, Any
-from ai_engines.ai_employees import AIEmployee
+from ai_engines.ai_employee_system import AIEmployee
 
 logger = logging.getLogger(__name__)
 
@@ -15,11 +15,12 @@ class AISecurityAuditor(AIEmployee):
     """AI安全审计Agent"""
     
     def __init__(self, employee_id: str, name: str = "AI安全审计专家"):
-        super().__init__(employee_id, name, 'security_auditor', [
+        super().__init__(employee_id, name, 'security_auditor', 9)
+        self.skills = [
             '安全漏洞检测', '代码安全审计', '权限检查',
             '敏感信息扫描', 'SQL注入检测', 'XSS检测',
             '认证安全', '授权安全', '安全合规检查'
-        ])
+        ]
         self.audit_history = []
         self.total_audits = 0
         self.total_vulnerabilities = 0

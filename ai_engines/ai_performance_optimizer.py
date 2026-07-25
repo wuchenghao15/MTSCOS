@@ -9,7 +9,7 @@ import psutil
 import json
 from datetime import datetime
 from typing import Dict, List, Any
-from ai_engines.ai_employees import AIEmployee
+from ai_engines.ai_employee_system import AIEmployee
 
 logger = logging.getLogger(__name__)
 
@@ -17,11 +17,12 @@ class AIPerformanceOptimizer(AIEmployee):
     """AI性能优化Agent"""
     
     def __init__(self, employee_id: str, name: str = "AI性能优化专家"):
-        super().__init__(employee_id, name, 'performance_optimizer', [
+        super().__init__(employee_id, name, 'performance_optimizer', 8)
+        self.skills = [
             '性能监控', '性能分析', '代码优化',
-            '数据库优化', '缓存优化', '资源管理',
-            '内存优化', 'CPU优化', '响应时间优化'
-        ])
+            '数据库优化', '缓存策略', '负载均衡',
+            '资源管理', '性能测试', '性能报告'
+        ]
         self.optimization_history = []
         self.total_optimizations = 0
         self.total_savings = 0
