@@ -115,6 +115,38 @@ def suggest_version(current_version: str, change_type: str = 'patch') -> str:
         return next_patch_version(current_version)
 
 VERSION_DATA = {
+    '17.11.0': {
+        'major': 17,
+        'minor': 11,
+        'patch': 0,
+        'build_number': '20260725c',
+        'build_date': '2026-07-25',
+        'codename': 'History Gallery Enhancement',
+        'status': 'stable',
+        'description': '项目历史馆完善版本，创建历史馆页面和API，实现版本时间线、升级记录、学习任务、知识脑库、系统规则的可视化展示，添加32条历史数据记录',
+        'features': [
+            '历史馆页面模板（templates/history_gallery.html）- 深色主题，响应式布局',
+            '版本时间线展示 - 垂直时间线卡片，显示版本号、代号、描述、功能列表',
+            '升级记录展示 - 表格形式展示版本、升级类型、AI员工数、功能数、状态',
+            '学习任务展示 - 表格形式展示任务名称、描述、类型、版本、状态',
+            '知识脑库展示 - 网格卡片形式展示知识分类、标题、内容、标签',
+            '系统规则展示 - 表格形式展示规则ID、名称、类型、描述、启用状态',
+            '统计数据面板 - 版本总数、升级次数、知识条目、学习任务数量',
+            '历史馆API路由（app/api/history_api.py）- 6个API接口',
+            '历史数据服务增强（app/history_data_service.py）- 32条初始化历史记录',
+            '历史数据分类 - system_event/ai_event/feature/upgrade/ai_learning',
+            '版本时间线API (/api/history/timeline)',
+            '升级记录API (/api/history/upgrades)',
+            '学习任务API (/api/history/learning)',
+            '知识脑库API (/api/history/knowledge)',
+            '系统规则API (/api/history/rules)',
+            '统计数据API (/api/history/stats)',
+            '历史馆页面路由 (/history)',
+            'API注册到主应用蓝图列表',
+            '所有API测试通过'
+        ],
+        'upgrade_notes': '从v17.10.0升级：完善项目历史馆功能，创建页面模板和API，添加32条历史数据记录，实现5个标签页的可视化展示'
+    },
     '17.10.0': {
         'major': 17,
         'minor': 10,
