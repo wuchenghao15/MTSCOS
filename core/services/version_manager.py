@@ -115,6 +115,39 @@ def suggest_version(current_version: str, change_type: str = 'patch') -> str:
         return next_patch_version(current_version)
 
 VERSION_DATA = {
+    '17.12.0': {
+        'major': 17,
+        'minor': 12,
+        'patch': 0,
+        'build_number': '20260725d',
+        'build_date': '2026-07-25',
+        'codename': 'AI Agent Expansion Edition',
+        'status': 'stable',
+        'description': 'AI Agent扩展版本，新增11个专业AI Agent（代码审查、自动化测试、性能优化、安全审计、需求分析、文档生成、任务调度、自动修复、数据分析、模型管理、智能运维），注册到AI员工管理器并创建统一管理API',
+        'features': [
+            'AI代码审查Agent（ai_code_review_agent.py）- 代码安全/性能/风格/复杂度检查',
+            'AI自动化测试Agent（ai_auto_test_agent.py）- 单元测试生成/运行/覆盖率分析',
+            'AI性能优化Agent（ai_performance_optimizer.py）- 性能监控/代码优化/查询优化',
+            'AI安全审计Agent（ai_security_auditor.py）- SQL注入/XSS/敏感信息泄露检测',
+            'AI需求分析Agent（ai_requirement_analyzer.py）- 需求提取/优先级排序/文档生成',
+            'AI文档生成Agent（ai_doc_generator.py）- API文档/代码文档/README/变更日志',
+            'AI任务调度Agent（ai_task_scheduler_agent.py）- 定时任务/任务队列/任务监控',
+            'AI自动修复Agent（ai_auto_repair_agent.py）- 错误分析/代码修复/数据库修复',
+            'AI数据分析Agent（ai_data_analyzer.py）- 数值分析/文本分析/趋势分析/异常检测',
+            'AI模型管理Agent（ai_model_manager.py）- 模型注册/加载/评估/监控',
+            'AI智能运维Agent（ai_ops_agent.py）- 系统监控/进程管理/日志分析/健康检查',
+            'AI Agent统一管理API（app/api/ai_agents_api.py）- 列表/详情/统计/技能/分配/搜索',
+            'AI员工管理器扩展（ai_employee_manager.py）- 注册11个新Agent类型',
+            'Agent类型定义 - code_review/auto_test/performance_optimizer/security_auditor/requirement_analyzer/doc_generator/task_scheduler/auto_repair/data_analyzer/model_manager/ops_agent',
+            '初始员工创建 - 每个Agent类型创建初始实例',
+            'create_employee支持新类型 - 通过类型名创建对应Agent实例',
+            '所有Agent继承AIEmployee基类 - 统一接口和属性',
+            '每个Agent独立技能列表 - 专业技能匹配对应职责',
+            'API路由注册到主应用蓝图列表',
+            '所有API测试通过'
+        ],
+        'upgrade_notes': '从v17.11.0升级：新增11个专业AI Agent，注册到AI员工管理器，创建统一管理API，实现代码审查、自动化测试、性能优化、安全审计等专业能力'
+    },
     '17.11.0': {
         'major': 17,
         'minor': 11,

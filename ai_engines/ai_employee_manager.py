@@ -28,6 +28,17 @@ from ai_engines.arduino_ai_employees import (
     ArduinoCodeOptimizerEmployee,
     ArduinoComponentAdvisorEmployee,
 )
+from ai_engines.ai_code_review_agent import AICodeReviewAgent
+from ai_engines.ai_auto_test_agent import AIAutoTestAgent
+from ai_engines.ai_performance_optimizer import AIPerformanceOptimizer
+from ai_engines.ai_security_auditor import AISecurityAuditor
+from ai_engines.ai_requirement_analyzer import AIRequirementAnalyzer
+from ai_engines.ai_doc_generator import AIDocGenerator
+from ai_engines.ai_task_scheduler_agent import AITaskSchedulerAgent
+from ai_engines.ai_auto_repair_agent import AIAutoRepairAgent
+from ai_engines.ai_data_analyzer import AIDataAnalyzer
+from ai_engines.ai_model_manager import AIModelManager
+from ai_engines.ai_ops_agent import AIOpsAgent
 
 try:
     from ai_engines.test_ai_employee import TestAIEmployee
@@ -97,7 +108,18 @@ class AIEmployeeManager:
             "arduino_code_generator": "Arduino代码生成AI员工",
             "arduino_code_debugger": "Arduino代码调试AI员工",
             "arduino_code_optimizer": "Arduino代码优化AI员工",
-            "arduino_component_advisor": "Arduino组件推荐AI员工"
+            "arduino_component_advisor": "Arduino组件推荐AI员工",
+            "code_review": "代码审查AI员工",
+            "auto_test": "自动化测试AI员工",
+            "performance_optimizer": "性能优化AI员工",
+            "security_auditor": "安全审计AI员工",
+            "requirement_analyzer": "需求分析AI员工",
+            "doc_generator": "文档生成AI员工",
+            "task_scheduler": "任务调度AI员工",
+            "auto_repair": "自动修复AI员工",
+            "data_analyzer": "数据分析AI员工",
+            "model_manager": "模型管理AI员工",
+            "ops_agent": "智能运维AI员工"
         }
         self.task_queue = []
         self.running_tasks = []
@@ -249,6 +271,83 @@ class AIEmployeeManager:
         self.employees["arduino_comp_001"] = arduino_comp_employee
         self._safe_start_employee(arduino_comp_employee)
         self.add_employee_to_organizations(arduino_comp_employee)
+
+        # 创建代码审查AI员工 (级别8)
+        code_review_employee = AICodeReviewAgent("code_review_001", "代码审查AI")
+        code_review_employee.type = "code_review"
+        self.employees["code_review_001"] = code_review_employee
+        self._safe_start_employee(code_review_employee)
+        self.add_employee_to_organizations(code_review_employee)
+
+        # 创建自动化测试AI员工 (级别7)
+        auto_test_employee = AIAutoTestAgent("auto_test_001", "自动化测试AI")
+        auto_test_employee.type = "auto_test"
+        self.employees["auto_test_001"] = auto_test_employee
+        self._safe_start_employee(auto_test_employee)
+        self.add_employee_to_organizations(auto_test_employee)
+
+        # 创建性能优化AI员工 (级别8)
+        perf_opt_employee = AIPerformanceOptimizer("perf_opt_001", "性能优化AI")
+        perf_opt_employee.type = "performance_optimizer"
+        self.employees["perf_opt_001"] = perf_opt_employee
+        self._safe_start_employee(perf_opt_employee)
+        self.add_employee_to_organizations(perf_opt_employee)
+
+        # 创建安全审计AI员工 (级别9)
+        security_auditor_employee = AISecurityAuditor("sec_audit_001", "安全审计AI")
+        security_auditor_employee.type = "security_auditor"
+        self.employees["sec_audit_001"] = security_auditor_employee
+        self._safe_start_employee(security_auditor_employee)
+        self.add_employee_to_organizations(security_auditor_employee)
+
+        # 创建需求分析AI员工 (级别7)
+        req_analyzer_employee = AIRequirementAnalyzer("req_analyzer_001", "需求分析AI")
+        req_analyzer_employee.type = "requirement_analyzer"
+        self.employees["req_analyzer_001"] = req_analyzer_employee
+        self._safe_start_employee(req_analyzer_employee)
+        self.add_employee_to_organizations(req_analyzer_employee)
+
+        # 创建文档生成AI员工 (级别6)
+        doc_gen_employee = AIDocGenerator("doc_gen_001", "文档生成AI")
+        doc_gen_employee.type = "doc_generator"
+        self.employees["doc_gen_001"] = doc_gen_employee
+        self._safe_start_employee(doc_gen_employee)
+        self.add_employee_to_organizations(doc_gen_employee)
+
+        # 创建任务调度AI员工 (级别7)
+        task_sched_employee = AITaskSchedulerAgent("task_sched_001", "任务调度AI")
+        task_sched_employee.type = "task_scheduler"
+        self.employees["task_sched_001"] = task_sched_employee
+        self._safe_start_employee(task_sched_employee)
+        self.add_employee_to_organizations(task_sched_employee)
+
+        # 创建自动修复AI员工 (级别8)
+        auto_repair_employee = AIAutoRepairAgent("auto_repair_001", "自动修复AI")
+        auto_repair_employee.type = "auto_repair"
+        self.employees["auto_repair_001"] = auto_repair_employee
+        self._safe_start_employee(auto_repair_employee)
+        self.add_employee_to_organizations(auto_repair_employee)
+
+        # 创建数据分析AI员工 (级别7)
+        data_analyzer_employee = AIDataAnalyzer("data_analyzer_001", "数据分析AI")
+        data_analyzer_employee.type = "data_analyzer"
+        self.employees["data_analyzer_001"] = data_analyzer_employee
+        self._safe_start_employee(data_analyzer_employee)
+        self.add_employee_to_organizations(data_analyzer_employee)
+
+        # 创建模型管理AI员工 (级别8)
+        model_mgr_employee = AIModelManager("model_mgr_001", "模型管理AI")
+        model_mgr_employee.type = "model_manager"
+        self.employees["model_mgr_001"] = model_mgr_employee
+        self._safe_start_employee(model_mgr_employee)
+        self.add_employee_to_organizations(model_mgr_employee)
+
+        # 创建智能运维AI员工 (级别9)
+        ops_agent_employee = AIOpsAgent("ops_agent_001", "智能运维AI")
+        ops_agent_employee.type = "ops_agent"
+        self.employees["ops_agent_001"] = ops_agent_employee
+        self._safe_start_employee(ops_agent_employee)
+        self.add_employee_to_organizations(ops_agent_employee)
 
     def _parse_json_or_text(self, text):
         """解析JSON或文本，返回列表"""
@@ -476,6 +575,39 @@ class AIEmployeeManager:
             employee = RuleBaseMaintenanceEmployee(employee_id, name, level)
         elif employee_type == "config_manager":
             employee = ConfigManagerEmployee(employee_id, name, employee_type, level)
+            employee.type = employee_type
+        elif employee_type == "code_review":
+            employee = AICodeReviewAgent(employee_id, name)
+            employee.type = employee_type
+        elif employee_type == "auto_test":
+            employee = AIAutoTestAgent(employee_id, name)
+            employee.type = employee_type
+        elif employee_type == "performance_optimizer":
+            employee = AIPerformanceOptimizer(employee_id, name)
+            employee.type = employee_type
+        elif employee_type == "security_auditor":
+            employee = AISecurityAuditor(employee_id, name)
+            employee.type = employee_type
+        elif employee_type == "requirement_analyzer":
+            employee = AIRequirementAnalyzer(employee_id, name)
+            employee.type = employee_type
+        elif employee_type == "doc_generator":
+            employee = AIDocGenerator(employee_id, name)
+            employee.type = employee_type
+        elif employee_type == "task_scheduler":
+            employee = AITaskSchedulerAgent(employee_id, name)
+            employee.type = employee_type
+        elif employee_type == "auto_repair":
+            employee = AIAutoRepairAgent(employee_id, name)
+            employee.type = employee_type
+        elif employee_type == "data_analyzer":
+            employee = AIDataAnalyzer(employee_id, name)
+            employee.type = employee_type
+        elif employee_type == "model_manager":
+            employee = AIModelManager(employee_id, name)
+            employee.type = employee_type
+        elif employee_type == "ops_agent":
+            employee = AIOpsAgent(employee_id, name)
             employee.type = employee_type
         else:
             raise ValueError(f"未知的员工类型: {employee_type}")
