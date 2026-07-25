@@ -43,6 +43,7 @@ def _register_blueprints(app):
         ('ai_auto_upgrade_api', 'app.api.ai_auto_upgrade_api'),
         ('ai_test_api', 'app.api.ai_test_api'),
         ('history_api', 'app.api.history_api'),
+        ('ai_enterprise_api', 'app.api.ai_enterprise_api'),
     ]
     
     registered = 0

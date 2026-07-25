@@ -653,8 +653,10 @@ class AIEmployeeManager:
             cursor.execute('SELECT COUNT(*) FROM ai_employees')
             count = cursor.fetchone()[0]
             
+            logger.info("创建核心AI员工...")
+            self.create_initial_employees()
+            
             if count > 0:
-                self.create_initial_employees()
                 logger.info(f"从数据库加载 {count} 个业务专家AI员工...")
                 
                 cursor.execute('''
@@ -668,6 +670,9 @@ class AIEmployeeManager:
                 business_count = 0
                 for row in cursor.fetchall():
                     emp_id = str(row[0])
+                    if emp_id in self.employees:
+                        continue
+                    
                     name = row[1]
                     employee_code = row[2]
                     description = row[3]
@@ -713,8 +718,7 @@ class AIEmployeeManager:
                 
                 logger.info(f"成功加载 {business_count} 个业务专家AI员工")
             else:
-                logger.info("数据库中没有业务专家员工，创建初始AI员工...")
-                self.create_initial_employees()
+                logger.info("数据库中没有业务专家员工")
             
             conn.close()
         except Exception as e:
