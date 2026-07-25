@@ -22,11 +22,14 @@ MTSCOS 版本管理器
 """
 
 import os
+import sys
 import json
 import time
 import sqlite3
 import re
 from datetime import datetime
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from db_manager import connect
 
 # 版本号格式正则

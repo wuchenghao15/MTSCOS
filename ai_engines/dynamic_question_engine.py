@@ -607,11 +607,14 @@ class DynamicQuestionEngine:
                 return None
             
             knowledge_group = random.choice(knowledge_groups)
-            knowledge_point = random.choice(knowledge_group)
+            knowledge_point = random.choice(knowledge_group) if knowledge_group else '知识点'
             
             templates = QUESTION_TEMPLATES.get(question_type, {}).get(subject, [])
             if not templates:
                 templates = QUESTION_TEMPLATES.get(question_type, {}).get('math', [])
+            
+            if not templates:
+                return None
             
             template = random.choice(templates)
             content = template(knowledge_group, difficulty)
