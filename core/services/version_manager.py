@@ -115,6 +115,37 @@ def suggest_version(current_version: str, change_type: str = 'patch') -> str:
         return next_patch_version(current_version)
 
 VERSION_DATA = {
+    '17.13.0': {
+        'major': 17,
+        'minor': 13,
+        'patch': 0,
+        'build_number': '20260725e',
+        'build_date': '2026-07-25',
+        'codename': 'AI Business Intelligence Edition',
+        'status': 'stable',
+        'description': 'AI商业智能扩展版本，新增10个专业AI Agent（代码生成、对话管理、推荐系统、营销、客服、舆情分析、财务分析、人力资源、项目管理、客户关系），全面覆盖业务运营场景',
+        'features': [
+            'AI代码生成Agent（ai_code_generator_agent.py）- 多语言代码生成/优化/API生成',
+            'AI对话管理Agent（ai_conversation_agent.py）- 对话管理/意图识别/回复生成',
+            'AI推荐系统Agent（ai_recommendation_agent.py）- 个性化推荐/协同过滤/内容推荐',
+            'AI营销Agent（ai_marketing_agent.py）- 营销策略/广告文案/A/B测试/ROI分析',
+            'AI客服Agent（ai_customer_service_agent.py）- 工单管理/问题解答/投诉处理',
+            'AI舆情分析Agent（ai_public_opinion_agent.py）- 舆情监测/情感分析/风险预警',
+            'AI财务分析Agent（ai_financial_agent.py）- 利润分析/现金流/预算管理/投资分析',
+            'AI人力资源Agent（ai_hr_agent.py）- 员工管理/招聘评估/绩效考核/薪酬计算',
+            'AI项目管理Agent（ai_project_management_agent.py）- 项目规划/任务管理/进度跟踪',
+            'AI客户关系Agent（ai_crm_agent.py）- 客户管理/销售机会/销售预测/客户分析',
+            'AI员工管理器扩展（ai_employee_manager.py）- 注册10个新Agent类型',
+            'Agent类型定义 - code_generator/conversation/recommendation/marketing/customer_service/public_opinion/financial/hr/project_management/crm',
+            '初始员工创建 - 每个Agent类型创建初始实例',
+            'create_employee支持新类型 - 通过类型名创建对应Agent实例',
+            '所有Agent继承AIEmployee基类 - 统一接口和属性',
+            '每个Agent独立技能列表 - 专业技能匹配对应职责',
+            '业务场景全覆盖 - 开发/运营/客服/财务/HR/项目管理',
+            '所有API测试通过'
+        ],
+        'upgrade_notes': '从v17.12.0升级：新增10个业务场景AI Agent，覆盖代码生成、对话管理、推荐系统、营销、客服、舆情分析、财务分析、人力资源、项目管理、客户关系等领域'
+    },
     '17.12.0': {
         'major': 17,
         'minor': 12,

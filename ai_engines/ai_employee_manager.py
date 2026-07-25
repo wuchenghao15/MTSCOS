@@ -39,6 +39,16 @@ from ai_engines.ai_auto_repair_agent import AIAutoRepairAgent
 from ai_engines.ai_data_analyzer import AIDataAnalyzer
 from ai_engines.ai_model_manager import AIModelManager
 from ai_engines.ai_ops_agent import AIOpsAgent
+from ai_engines.ai_code_generator_agent import AICodeGeneratorAgent
+from ai_engines.ai_conversation_agent import AIConversationAgent
+from ai_engines.ai_recommendation_agent import AIRecommendationAgent
+from ai_engines.ai_marketing_agent import AIMarketingAgent
+from ai_engines.ai_customer_service_agent import AICustomerServiceAgent
+from ai_engines.ai_public_opinion_agent import AIPublicOpinionAgent
+from ai_engines.ai_financial_agent import AIFinancialAgent
+from ai_engines.ai_hr_agent import AIHRAgent
+from ai_engines.ai_project_management_agent import AIProjectManagementAgent
+from ai_engines.ai_crm_agent import AICRMAgent
 
 try:
     from ai_engines.test_ai_employee import TestAIEmployee
@@ -119,7 +129,17 @@ class AIEmployeeManager:
             "auto_repair": "自动修复AI员工",
             "data_analyzer": "数据分析AI员工",
             "model_manager": "模型管理AI员工",
-            "ops_agent": "智能运维AI员工"
+            "ops_agent": "智能运维AI员工",
+            "code_generator": "代码生成AI员工",
+            "conversation": "对话管理AI员工",
+            "recommendation": "推荐系统AI员工",
+            "marketing": "营销AI员工",
+            "customer_service": "客服AI员工",
+            "public_opinion": "舆情分析AI员工",
+            "financial": "财务分析AI员工",
+            "hr": "人力资源AI员工",
+            "project_management": "项目管理AI员工",
+            "crm": "客户关系AI员工"
         }
         self.task_queue = []
         self.running_tasks = []
@@ -348,6 +368,76 @@ class AIEmployeeManager:
         self.employees["ops_agent_001"] = ops_agent_employee
         self._safe_start_employee(ops_agent_employee)
         self.add_employee_to_organizations(ops_agent_employee)
+
+        # 创建代码生成AI员工 (级别7)
+        code_gen_employee = AICodeGeneratorAgent("code_gen_001", "代码生成AI")
+        code_gen_employee.type = "code_generator"
+        self.employees["code_gen_001"] = code_gen_employee
+        self._safe_start_employee(code_gen_employee)
+        self.add_employee_to_organizations(code_gen_employee)
+
+        # 创建对话管理AI员工 (级别6)
+        conv_employee = AIConversationAgent("conv_001", "对话管理AI")
+        conv_employee.type = "conversation"
+        self.employees["conv_001"] = conv_employee
+        self._safe_start_employee(conv_employee)
+        self.add_employee_to_organizations(conv_employee)
+
+        # 创建推荐系统AI员工 (级别7)
+        rec_employee = AIRecommendationAgent("rec_001", "推荐系统AI")
+        rec_employee.type = "recommendation"
+        self.employees["rec_001"] = rec_employee
+        self._safe_start_employee(rec_employee)
+        self.add_employee_to_organizations(rec_employee)
+
+        # 创建营销AI员工 (级别7)
+        marketing_employee = AIMarketingAgent("marketing_001", "营销AI")
+        marketing_employee.type = "marketing"
+        self.employees["marketing_001"] = marketing_employee
+        self._safe_start_employee(marketing_employee)
+        self.add_employee_to_organizations(marketing_employee)
+
+        # 创建客服AI员工 (级别6)
+        cs_employee = AICustomerServiceAgent("cs_001", "客服AI")
+        cs_employee.type = "customer_service"
+        self.employees["cs_001"] = cs_employee
+        self._safe_start_employee(cs_employee)
+        self.add_employee_to_organizations(cs_employee)
+
+        # 创建舆情分析AI员工 (级别8)
+        po_employee = AIPublicOpinionAgent("po_001", "舆情分析AI")
+        po_employee.type = "public_opinion"
+        self.employees["po_001"] = po_employee
+        self._safe_start_employee(po_employee)
+        self.add_employee_to_organizations(po_employee)
+
+        # 创建财务分析AI员工 (级别8)
+        fin_employee = AIFinancialAgent("fin_001", "财务分析AI")
+        fin_employee.type = "financial"
+        self.employees["fin_001"] = fin_employee
+        self._safe_start_employee(fin_employee)
+        self.add_employee_to_organizations(fin_employee)
+
+        # 创建人力资源AI员工 (级别7)
+        hr_employee = AIHRAgent("hr_001", "人力资源AI")
+        hr_employee.type = "hr"
+        self.employees["hr_001"] = hr_employee
+        self._safe_start_employee(hr_employee)
+        self.add_employee_to_organizations(hr_employee)
+
+        # 创建项目管理AI员工 (级别8)
+        pm_employee = AIProjectManagementAgent("pm_001", "项目管理AI")
+        pm_employee.type = "project_management"
+        self.employees["pm_001"] = pm_employee
+        self._safe_start_employee(pm_employee)
+        self.add_employee_to_organizations(pm_employee)
+
+        # 创建客户关系AI员工 (级别7)
+        crm_employee = AICRMAgent("crm_001", "客户关系AI")
+        crm_employee.type = "crm"
+        self.employees["crm_001"] = crm_employee
+        self._safe_start_employee(crm_employee)
+        self.add_employee_to_organizations(crm_employee)
 
     def _parse_json_or_text(self, text):
         """解析JSON或文本，返回列表"""
@@ -608,6 +698,36 @@ class AIEmployeeManager:
             employee.type = employee_type
         elif employee_type == "ops_agent":
             employee = AIOpsAgent(employee_id, name)
+            employee.type = employee_type
+        elif employee_type == "code_generator":
+            employee = AICodeGeneratorAgent(employee_id, name)
+            employee.type = employee_type
+        elif employee_type == "conversation":
+            employee = AIConversationAgent(employee_id, name)
+            employee.type = employee_type
+        elif employee_type == "recommendation":
+            employee = AIRecommendationAgent(employee_id, name)
+            employee.type = employee_type
+        elif employee_type == "marketing":
+            employee = AIMarketingAgent(employee_id, name)
+            employee.type = employee_type
+        elif employee_type == "customer_service":
+            employee = AICustomerServiceAgent(employee_id, name)
+            employee.type = employee_type
+        elif employee_type == "public_opinion":
+            employee = AIPublicOpinionAgent(employee_id, name)
+            employee.type = employee_type
+        elif employee_type == "financial":
+            employee = AIFinancialAgent(employee_id, name)
+            employee.type = employee_type
+        elif employee_type == "hr":
+            employee = AIHRAgent(employee_id, name)
+            employee.type = employee_type
+        elif employee_type == "project_management":
+            employee = AIProjectManagementAgent(employee_id, name)
+            employee.type = employee_type
+        elif employee_type == "crm":
+            employee = AICRMAgent(employee_id, name)
             employee.type = employee_type
         else:
             raise ValueError(f"未知的员工类型: {employee_type}")
