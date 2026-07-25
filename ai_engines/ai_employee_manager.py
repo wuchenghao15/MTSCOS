@@ -49,6 +49,16 @@ from ai_engines.ai_financial_agent import AIFinancialAgent
 from ai_engines.ai_hr_agent import AIHRAgent
 from ai_engines.ai_project_management_agent import AIProjectManagementAgent
 from ai_engines.ai_crm_agent import AICRMAgent
+from ai_engines.ai_education_manager import AIEducationManager
+from ai_engines.ai_community_manager import AICommunityManager
+from ai_engines.ai_activity_manager import AIActivityManager
+from ai_engines.ai_content_creator import AIContentCreator
+from ai_engines.ai_config_manager import AIConfigManager
+from ai_engines.ai_log_analyzer import AILogAnalyzer
+from ai_engines.ai_document_processor import AIDocumentProcessor
+from ai_engines.ai_vulnerability_scanner import AIVulnerabilityScanner
+from ai_engines.ai_cybersecurity_agent import AICybersecurityAgent
+from ai_engines.ai_system_extension_agent import AISystemExtensionAgent
 
 try:
     from ai_engines.test_ai_employee import TestAIEmployee
@@ -139,7 +149,17 @@ class AIEmployeeManager:
             "financial": "财务分析AI员工",
             "hr": "人力资源AI员工",
             "project_management": "项目管理AI员工",
-            "crm": "客户关系AI员工"
+            "crm": "客户关系AI员工",
+            "education_manager": "教育管理AI员工",
+            "community_manager": "社区管理AI员工",
+            "activity_manager": "活动管理AI员工",
+            "content_creator": "内容创作AI员工",
+            "config_manager": "配置管理AI员工",
+            "log_analyzer": "日志分析AI员工",
+            "document_processor": "文档处理AI员工",
+            "vulnerability_scanner": "安全漏洞检测AI员工",
+            "cybersecurity": "网络安全AI员工",
+            "system_extension": "系统扩展AI员工"
         }
         self.task_queue = []
         self.running_tasks = []
@@ -438,6 +458,76 @@ class AIEmployeeManager:
         self.employees["crm_001"] = crm_employee
         self._safe_start_employee(crm_employee)
         self.add_employee_to_organizations(crm_employee)
+
+        # 创建教育管理AI员工 (级别8)
+        edu_employee = AIEducationManager("edu_001", "教育管理AI")
+        edu_employee.type = "education_manager"
+        self.employees["edu_001"] = edu_employee
+        self._safe_start_employee(edu_employee)
+        self.add_employee_to_organizations(edu_employee)
+
+        # 创建社区管理AI员工 (级别7)
+        comm_employee = AICommunityManager("comm_001", "社区管理AI")
+        comm_employee.type = "community_manager"
+        self.employees["comm_001"] = comm_employee
+        self._safe_start_employee(comm_employee)
+        self.add_employee_to_organizations(comm_employee)
+
+        # 创建活动管理AI员工 (级别7)
+        act_employee = AIActivityManager("act_001", "活动管理AI")
+        act_employee.type = "activity_manager"
+        self.employees["act_001"] = act_employee
+        self._safe_start_employee(act_employee)
+        self.add_employee_to_organizations(act_employee)
+
+        # 创建内容创作AI员工 (级别8)
+        content_employee = AIContentCreator("content_001", "内容创作AI")
+        content_employee.type = "content_creator"
+        self.employees["content_001"] = content_employee
+        self._safe_start_employee(content_employee)
+        self.add_employee_to_organizations(content_employee)
+
+        # 创建配置管理AI员工 (级别7)
+        cfg_employee = AIConfigManager("cfg_001", "配置管理AI")
+        cfg_employee.type = "config_manager"
+        self.employees["cfg_001"] = cfg_employee
+        self._safe_start_employee(cfg_employee)
+        self.add_employee_to_organizations(cfg_employee)
+
+        # 创建日志分析AI员工 (级别8)
+        log_employee = AILogAnalyzer("log_001", "日志分析AI")
+        log_employee.type = "log_analyzer"
+        self.employees["log_001"] = log_employee
+        self._safe_start_employee(log_employee)
+        self.add_employee_to_organizations(log_employee)
+
+        # 创建文档处理AI员工 (级别7)
+        doc_employee = AIDocumentProcessor("doc_001", "文档处理AI")
+        doc_employee.type = "document_processor"
+        self.employees["doc_001"] = doc_employee
+        self._safe_start_employee(doc_employee)
+        self.add_employee_to_organizations(doc_employee)
+
+        # 创建安全漏洞检测AI员工 (级别9)
+        vuln_employee = AIVulnerabilityScanner("vuln_001", "安全漏洞检测AI")
+        vuln_employee.type = "vulnerability_scanner"
+        self.employees["vuln_001"] = vuln_employee
+        self._safe_start_employee(vuln_employee)
+        self.add_employee_to_organizations(vuln_employee)
+
+        # 创建网络安全AI员工 (级别9)
+        cyber_employee = AICybersecurityAgent("cyber_001", "网络安全AI")
+        cyber_employee.type = "cybersecurity"
+        self.employees["cyber_001"] = cyber_employee
+        self._safe_start_employee(cyber_employee)
+        self.add_employee_to_organizations(cyber_employee)
+
+        # 创建系统扩展AI员工 (级别7)
+        ext_employee = AISystemExtensionAgent("ext_001", "系统扩展AI")
+        ext_employee.type = "system_extension"
+        self.employees["ext_001"] = ext_employee
+        self._safe_start_employee(ext_employee)
+        self.add_employee_to_organizations(ext_employee)
 
     def _parse_json_or_text(self, text):
         """解析JSON或文本，返回列表"""

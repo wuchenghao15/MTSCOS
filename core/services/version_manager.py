@@ -115,6 +115,36 @@ def suggest_version(current_version: str, change_type: str = 'patch') -> str:
         return next_patch_version(current_version)
 
 VERSION_DATA = {
+    '17.14.0': {
+        'major': 17,
+        'minor': 14,
+        'patch': 0,
+        'build_number': '20260725f',
+        'build_date': '2026-07-25',
+        'codename': 'AI Enterprise Suite Edition',
+        'status': 'stable',
+        'description': 'AI企业套件扩展版本，新增10个企业级AI Agent（教育管理、社区管理、活动管理、内容创作、配置管理、日志分析、文档处理、安全漏洞检测、网络安全、系统扩展），全面覆盖企业运营场景',
+        'features': [
+            'AI教育管理Agent（ai_education_manager.py）- 课程管理/学习路径规划/学生评估/成绩分析',
+            'AI社区管理Agent（ai_community_manager.py）- 用户管理/内容审核/帖子管理/社区健康度评估',
+            'AI活动管理Agent（ai_activity_manager.py）- 活动策划/报名管理/活动数据分析/活动评估',
+            'AI内容创作Agent（ai_content_creator.py）- 文章创作/文案撰写/标题生成/SEO优化',
+            'AI配置管理Agent（ai_config_manager.py）- 配置读写/验证/备份/恢复/审计',
+            'AI日志分析Agent（ai_log_analyzer.py）- 日志收集/解析/异常检测/性能分析/告警生成',
+            'AI文档处理Agent（ai_document_processor.py）- 文档上传/摘要/搜索/分类/对比/翻译',
+            'AI安全漏洞检测Agent（ai_vulnerability_scanner.py）- 代码审计/依赖检查/配置安全/漏洞分析',
+            'AI网络安全Agent（ai_cybersecurity_agent.py）- 入侵检测/威胁分析/防火墙管理/安全事件响应',
+            'AI系统扩展Agent（ai_system_extension_agent.py）- 插件管理/服务注册/接口扩展/性能优化',
+            'AI员工管理器扩展（ai_employee_manager.py）- 注册10个新Agent类型',
+            'Agent类型定义 - education_manager/community_manager/activity_manager/content_creator/config_manager/log_analyzer/document_processor/vulnerability_scanner/cybersecurity/system_extension',
+            '初始员工创建 - 每个Agent类型创建初始实例',
+            '所有Agent继承AIEmployee基类 - 统一接口和属性',
+            '每个Agent独立技能列表 - 专业技能匹配对应职责',
+            '企业场景全覆盖 - 教育/社区/活动/内容/配置/安全/运维',
+            '所有API测试通过'
+        ],
+        'upgrade_notes': '从v17.13.0升级：新增10个企业级AI Agent，覆盖教育管理、社区管理、活动管理、内容创作、配置管理、日志分析、文档处理、安全漏洞检测、网络安全、系统扩展等领域'
+    },
     '17.13.0': {
         'major': 17,
         'minor': 13,
