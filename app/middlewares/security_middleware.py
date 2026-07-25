@@ -155,6 +155,8 @@ class SecurityMiddlewareClass:
                          '/api/health', '/api/time', '/api/status', '/api/system_params',
                          '/api/monitoring/health',
                          '/api/questions/categories', '/api/questions/tags', '/api/questions/search',
+                         '/api/questions/', '/api/subjects/', '/api/question_types/',
+                         '/api/difficulty_levels/', '/api/question_tags/',
                          '/api/tts/languages', '/api/tts/voices', '/api/tts/cache/stats',
                          '/api/tts/speak',
                          '/api/ai-repair/stats', '/api/ai-repair/fix-history',

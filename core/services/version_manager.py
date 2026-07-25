@@ -115,6 +115,31 @@ def suggest_version(current_version: str, change_type: str = 'patch') -> str:
         return next_patch_version(current_version)
 
 VERSION_DATA = {
+    '17.19.0': {
+        'major': 17,
+        'minor': 19,
+        'patch': 0,
+        'build_number': '20260725k',
+        'build_date': '2026-07-25',
+        'codename': 'Unified Question Bank Edition',
+        'status': 'stable',
+        'description': '统一题库管理系统版本，优化管理MTSCOS题库，加强所有科目类型体量，更新题库所有科目内容保持与教辅和现实同步，支持AI自动延展题库内容',
+        'features': [
+            '统一题库管理系统（unified_question_bank.py）- 支持所有科目和题型',
+            '支持10个科目：语文、数学、英语、物理、化学、生物、历史、地理、政治、日语',
+            '支持13种题型：单选、多选、判断、填空、简答、计算、听力、写作、阅读理解、听写、翻译、编程、论述',
+            '支持3个难度级别：基础题、提高题、压轴题',
+            '支持18种题目标签：真题、模拟题、练习题、专项训练、单元测试、期中、期末、中考、高考、时政、热点、易错、高频、重点、难点、解题模型、举一反三、拓展延伸',
+            'AI自动延展题库功能 - 根据现有题目自动生成相似题目',
+            '题库同步机制 - 支持与外部教辅和网络资源同步',
+            '统一题库API（unified_question_api.py）- 完整的题库管理接口',
+            '题目增删改查、批量导入、AI延展、同步等功能',
+            '题库统计分析 - 按科目、题型、难度统计题目数量',
+            '安全中间件白名单更新 - 添加统一题库API路由',
+            'API蓝图注册 - 注册chinese_listening_api和unified_question_api'
+        ],
+        'upgrade_notes': '从v17.18.0升级：建立统一题库管理系统，支持所有科目（政治、日语、英语、数学、物理、化学、生物、历史、地理），支持所有题型，支持AI自动延展题库内容，支持与教辅和网络资源同步，添加完整的题库管理API接口'
+    },
     '17.18.0': {
         'major': 17,
         'minor': 18,
@@ -1156,7 +1181,7 @@ VERSION_DATA = {
     }
 }
 
-CURRENT_VERSION = '17.8.0'
+CURRENT_VERSION = '17.19.0'
 
 def init_version_table():
     conn = connect('system')
