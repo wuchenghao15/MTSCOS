@@ -1,485 +1,2090 @@
 {% extends "base.html" %}
 
-{% block title %}教师设置 - MTSCOS AI{% endblock %}
+{% block title %}教师工作台 - MTSCOS AI{% endblock %}
 
 {% block head %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <style>
     :root {
-        --dark-bg-primary: #0c0c1e;
-        --dark-bg-secondary: #1a1a3e;
-        --dark-bg-card: rgba(20, 20, 40, 0.85);
-        --dark-border: rgba(99, 102, 241, 0.2);
-        --dark-text-primary: #ffffff;
-        --dark-text-secondary: #94a3b8;
-        --dark-primary-color: #6366f1;
-        --dark-success: #22c55e;
-        --dark-warning: #f59e0b;
+        --primary-color: #6366f1;
+        --primary-light: #8b5cf6;
+        --primary-accent: #a855f7;
+        --primary-dark: #4f46e5;
+        --bg-gradient-start: #050510;
+        --bg-gradient-mid: #0c0c24;
+        --bg-gradient-end: #070718;
+        --card-bg: rgba(12, 12, 30, 0.7);
+        --card-border: rgba(99, 102, 241, 0.18);
+        --card-border-hover: rgba(99, 102, 241, 0.4);
+        --text-primary: #f8fafc;
+        --text-secondary: #cbd5e1;
+        --text-muted: #64748b;
+        --success: #22c55e;
+        --warning: #f59e0b;
+        --danger: #ef4444;
+        --info: #3b82f6;
+        --radius-sm: 6px;
+        --radius: 14px;
+        --radius-lg: 22px;
+        --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
     }
-    
-    body { background: linear-gradient(135deg, var(--dark-bg-primary) 0%, var(--dark-bg-secondary) 50%, var(--dark-bg-primary) 100%); min-height: 100vh; }
-    .settings-wrap { max-width: 900px; margin: 30px auto; padding: 0 16px; }
-    .settings-header { display: flex; align-items: center; gap: 14px; margin-bottom: 24px; }
-    .settings-header h1 { font-size: 24px; color: var(--dark-text-primary); margin: 0; }
-    
-    .settings-tabs { display: flex; gap: 8px; background: var(--dark-bg-card); border: 1px solid var(--dark-border); border-radius: 12px; padding: 6px; margin-bottom: 24px; flex-wrap: wrap; }
-    .settings-tab { padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; color: var(--dark-text-secondary); transition: all 0.3s; display: flex; align-items: center; gap: 8px; }
-    .settings-tab:hover { color: var(--dark-text-primary); background: rgba(0,0,0,0.2); }
-    .settings-tab.active { background: linear-gradient(135deg, var(--dark-primary-color), #8b5cf6); color: #fff; }
-    
-    .settings-section { display: none; }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+        font-family: 'Sora', -apple-system, BlinkMacSystemFont, 'Segoe UI',
+                     'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+        background:
+            radial-gradient(1000px 600px at 15% 10%, rgba(168,85,247,0.18), transparent 60%),
+            radial-gradient(900px 500px at 90% 30%, rgba(99,102,241,0.15), transparent 60%),
+            radial-gradient(800px 500px at 50% 100%, rgba(236,72,153,0.10), transparent 60%),
+            linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-mid) 50%, var(--bg-gradient-end) 100%);
+        color: var(--text-primary);
+        min-height: 100vh;
+        position: relative;
+        overflow-x: hidden;
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+    }
+
+    .aurora {
+        position: fixed; inset: 0; z-index: 0; pointer-events: none;
+        background:
+            radial-gradient(1000px 600px at 15% 10%, rgba(168,85,247,0.15), transparent 60%),
+            radial-gradient(900px 500px at 90% 30%, rgba(99,102,241,0.12), transparent 60%),
+            radial-gradient(800px 500px at 50% 100%, rgba(236,72,153,0.08), transparent 60%);
+        filter: blur(40px) saturate(120%);
+        mix-blend-mode: screen;
+        animation: aurora-drift 18s ease-in-out infinite alternate;
+    }
+    @keyframes aurora-drift {
+        0%   { transform: translate3d(0,0,0) scale(1); }
+        50%  { transform: translate3d(30px,-20px,0) scale(1.04); }
+        100% { transform: translate3d(-20px,10px,0) scale(1.02); }
+    }
+    .grain-overlay {
+        position: fixed; inset: 0; z-index: 1; pointer-events: none;
+        opacity: 0.06; mix-blend-mode: overlay;
+        background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.9 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+    }
+
+    .settings-wrap {
+        position: relative; z-index: 3;
+        max-width: 1280px;
+        margin: 0 auto;
+        padding: 40px clamp(20px, 4vw, 48px) 80px;
+    }
+
+    @keyframes fade-up { from { opacity: 0; transform: translateY(20px);} to {opacity:1; transform:none;} }
+
+    .settings-header {
+        display: flex; align-items: center; gap: 16px;
+        margin-bottom: 32px;
+        animation: fade-up 0.6s var(--ease-out) both;
+    }
+    .settings-header-icon {
+        width: 56px; height: 56px; border-radius: 16px;
+        display: flex; align-items: center; justify-content: center;
+        background: linear-gradient(135deg, var(--primary-color), var(--primary-accent));
+        box-shadow: 0 10px 32px color-mix(in srgb, var(--primary-color) 40%, transparent);
+        font-size: 24px; color: #fff;
+    }
+    .settings-header h1 {
+        font-size: clamp(24px, 2.8vw, 32px);
+        font-weight: 800; letter-spacing: -0.02em;
+        background: linear-gradient(120deg, var(--text-primary), var(--primary-light));
+        -webkit-background-clip: text; background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+    .settings-header .eyebrow {
+        display: inline-flex; align-items: center; gap: 6px;
+        margin-top: 4px;
+        font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+        color: var(--primary-light);
+    }
+    .eyebrow-dot {
+        width: 6px; height: 6px; border-radius: 50%;
+        background: var(--primary-accent);
+        box-shadow: 0 0 10px var(--primary-accent);
+        animation: pulse-dot 2.1s ease-in-out infinite;
+    }
+    @keyframes pulse-dot { 0%,100%{ opacity:1;} 50%{opacity:.25;} }
+
+    .settings-tabs {
+        display: flex; gap: 6px; flex-wrap: wrap;
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+        border-radius: var(--radius-lg);
+        padding: 8px;
+        margin-bottom: 28px;
+        backdrop-filter: blur(28px) saturate(140%);
+        -webkit-backdrop-filter: blur(28px) saturate(140%);
+        box-shadow: 0 8px 32px rgba(0,0,0,.35);
+        position: relative; overflow: hidden;
+        animation: fade-up 0.6s var(--ease-out) 0.05s both;
+    }
+    .settings-tabs::before {
+        content: '';
+        position: absolute; top: -1px; left: -1px; right: -1px; height: 1px;
+        background: linear-gradient(90deg,
+            transparent 0%,
+            color-mix(in srgb, var(--primary-light) 70%, transparent) 30%,
+            color-mix(in srgb, var(--primary-accent) 70%, transparent) 70%,
+            transparent 100%);
+    }
+    .settings-tab {
+        padding: 10px 18px; border-radius: 12px;
+        cursor: pointer;
+        font-size: 13px; font-weight: 700; letter-spacing: 0.01em;
+        color: var(--text-secondary);
+        transition: all 0.25s var(--ease-out);
+        display: flex; align-items: center; gap: 8px;
+        position: relative;
+        user-select: none;
+    }
+    .settings-tab i { font-size: 13px; opacity: 0.85; }
+    .settings-tab:hover {
+        color: var(--text-primary);
+        background: color-mix(in srgb, var(--primary-color) 10%, transparent);
+    }
+    .settings-tab.active {
+        background: linear-gradient(135deg, var(--primary-color), var(--primary-accent));
+        color: #fff;
+        box-shadow: 0 6px 20px color-mix(in srgb, var(--primary-color) 35%, transparent);
+    }
+
+    .settings-section {
+        display: none;
+        animation: fade-up 0.5s var(--ease-out) both;
+    }
     .settings-section.active { display: block; }
-    
-    .settings-card { background: var(--dark-bg-card); border: 1px solid var(--dark-border); border-radius: 12px; margin-bottom: 20px; overflow: hidden; }
-    .card-head { display: flex; align-items: center; gap: 12px; padding: 18px 24px; border-bottom: 1px solid var(--dark-border); }
-    .card-head h2 { font-size: 16px; color: var(--dark-text-primary); margin: 0; }
-    .card-icon { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
-    .card-icon.blue { background: rgba(59,130,246,0.15); color: #6366f1; }
-    .card-icon.orange { background: rgba(249,115,22,0.15); color: #f59e0b; }
-    .card-icon.green { background: rgba(34,197,94,0.15); color: #22c55e; }
-    .card-icon.purple { background: rgba(168,85,247,0.15); color: #a855f7; }
-    
-    .card-body { padding: 20px 24px; }
-    .form-group { margin-bottom: 16px; }
-    .form-group label { display: block; font-size: 13px; color: var(--dark-text-secondary); margin-bottom: 8px; }
-    .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 10px 14px; border: 1px solid var(--dark-border); border-radius: 8px; background: rgba(0,0,0,0.3); color: #fff; font-size: 14px; }
-    
-    .toggle { width: 44px; height: 24px; border-radius: 12px; background: #64748b; position: relative; cursor: pointer; transition: all 0.3s; display: inline-block; }
-    .toggle::after { content: ''; width: 20px; height: 20px; border-radius: 50%; background: #fff; position: absolute; top: 2px; left: 2px; transition: all 0.3s; }
-    .toggle.on { background: #6366f1; }
-    .toggle.on::after { left: 22px; }
-    
-    .btn { padding: 10px 20px; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; border: none; transition: all 0.3s; }
-    .btn-primary { background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #fff; }
-    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(99,102,241,0.4); }
-    .btn-secondary { background: rgba(0,0,0,0.3); color: #fff; border: 1px solid rgba(99,102,241,0.2); }
-    
-    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin-bottom: 24px; }
-    .stat-card { background: rgba(0,0,0,0.3); border-radius: 12px; padding: 16px; text-align: center; }
-    .stat-value { font-size: 24px; font-weight: 700; color: #6366f1; }
-    .stat-label { font-size: 12px; color: #94a3b8; margin-top: 4px; }
-    
-    .course-list { display: grid; gap: 12px; }
-    .course-item { background: rgba(0,0,0,0.3); border-radius: 8px; padding: 16px; display: flex; justify-content: space-between; align-items: center; }
-    .course-info h4 { color: #fff; margin: 0; }
-    .course-info p { color: #94a3b8; font-size: 12px; margin: 4px 0 0; }
+
+    .settings-card {
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+        border-radius: var(--radius-lg);
+        margin-bottom: 20px;
+        overflow: hidden;
+        backdrop-filter: blur(28px) saturate(140%);
+        -webkit-backdrop-filter: blur(28px) saturate(140%);
+        box-shadow: 0 8px 32px rgba(0,0,0,.35);
+        position: relative;
+    }
+    .settings-card::before {
+        content: '';
+        position: absolute; top: -1px; left: -1px; right: -1px; height: 1px;
+        background: linear-gradient(90deg,
+            transparent 0%,
+            color-mix(in srgb, var(--primary-light) 60%, transparent) 30%,
+            color-mix(in srgb, var(--primary-accent) 60%, transparent) 70%,
+            transparent 100%);
+        opacity: 0.6;
+    }
+    .card-head {
+        display: flex; align-items: center; gap: 12px;
+        padding: 20px 24px;
+        border-bottom: 1px solid var(--card-border);
+    }
+    .card-head h2 {
+        font-size: 16px; font-weight: 800; letter-spacing: -0.01em;
+        color: var(--text-primary);
+        margin: 0;
+    }
+    .card-head .head-actions { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; }
+    .card-icon {
+        width: 38px; height: 38px; border-radius: 10px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 16px;
+        flex-shrink: 0;
+    }
+    .card-icon.blue { background: rgba(59,130,246,0.14); color: var(--primary-color); }
+    .card-icon.orange { background: rgba(245,158,11,0.14); color: var(--warning); }
+    .card-icon.green { background: rgba(34,197,94,0.14); color: var(--success); }
+    .card-icon.purple { background: rgba(168,85,247,0.14); color: var(--primary-accent); }
+    .card-icon.red { background: rgba(239,68,68,0.14); color: var(--danger); }
+    .card-icon.cyan { background: rgba(6,182,212,0.14); color: #06b6d4; }
+    .card-icon.pink { background: rgba(236,72,153,0.14); color: #ec4899; }
+
+    .card-body { padding: 24px; }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+    .stat-card {
+        padding: 20px;
+        border-radius: var(--radius);
+        background: linear-gradient(135deg,
+            color-mix(in srgb, var(--primary-color) 6%, transparent),
+            rgba(0,0,0,0.2));
+        border: 1px solid var(--card-border);
+        position: relative; overflow: hidden;
+        transition: transform 0.3s var(--ease-out), border-color 0.3s var(--ease-out);
+    }
+    .stat-card:hover {
+        transform: translateY(-4px);
+        border-color: var(--card-border-hover);
+    }
+    .stat-card::after {
+        content: '';
+        position: absolute; top: 0; right: 0;
+        width: 80px; height: 80px;
+        background: radial-gradient(circle at top right,
+            color-mix(in srgb, var(--primary-accent) 18%, transparent),
+            transparent 70%);
+    }
+    .stat-value {
+        font-size: clamp(24px, 2.4vw, 30px);
+        font-weight: 800; letter-spacing: -0.02em;
+        background: linear-gradient(120deg, var(--text-primary), var(--primary-light));
+        -webkit-background-clip: text; background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-bottom: 6px;
+        position: relative; z-index: 1;
+    }
+    .stat-label {
+        font-size: 12px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
+        color: var(--text-muted);
+        position: relative; z-index: 1;
+    }
+
+    .search-bar {
+        display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap;
+    }
+    .search-bar .input-wrap { flex: 1; min-width: 200px; position: relative; }
+    .search-bar .input-wrap i {
+        position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+        color: var(--text-muted); font-size: 14px;
+    }
+    .search-bar input, .search-bar select {
+        width: 100%;
+        padding: 11px 14px 11px 40px;
+        border-radius: var(--radius);
+        border: 1px solid var(--card-border);
+        background: rgba(0,0,0,0.35);
+        color: var(--text-primary);
+        font-size: 14px; font-weight: 500; font-family: inherit;
+        transition: all 0.2s var(--ease-out);
+        outline: none;
+    }
+    .search-bar select { padding-left: 14px; cursor: pointer; }
+    .search-bar input::placeholder { color: var(--text-muted); font-weight: 500; }
+    .search-bar input:focus, .search-bar select:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary-color) 15%, transparent);
+    }
+
+    .form-group { margin-bottom: 18px; }
+    .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        font-size: 12px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
+        color: var(--text-secondary);
+    }
+    .form-group input, .form-group select, .form-group textarea {
+        width: 100%;
+        padding: 12px 16px;
+        border-radius: var(--radius);
+        border: 1px solid var(--card-border);
+        background: rgba(0,0,0,0.35);
+        color: var(--text-primary);
+        font-size: 14px; font-weight: 500; font-family: inherit;
+        transition: all 0.2s var(--ease-out);
+        outline: none;
+    }
+    .form-group input::placeholder, .form-group textarea::placeholder { color: var(--text-muted); }
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary-color) 15%, transparent);
+    }
+    .form-group textarea { resize: vertical; min-height: 90px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 640px) { .form-row { grid-template-columns: 1fr; } }
+
+    .form-toggle-row {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 14px 0;
+        border-bottom: 1px solid var(--card-border);
+    }
+    .form-toggle-row:last-child { border-bottom: none; }
+    .form-toggle-row .toggle-label { font-size: 14px; color: var(--text-secondary); font-weight: 500; }
+    .form-toggle-row .toggle-desc { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+
+    .toggle {
+        width: 48px; height: 26px; border-radius: 999px;
+        background: #475569;
+        position: relative; cursor: pointer;
+        transition: all 0.3s var(--ease-out);
+        display: inline-block; flex-shrink: 0;
+    }
+    .toggle::after {
+        content: '';
+        width: 20px; height: 20px; border-radius: 50%;
+        background: #fff;
+        position: absolute; top: 3px; left: 3px;
+        transition: all 0.3s var(--ease-out);
+        box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    }
+    .toggle.on {
+        background: linear-gradient(135deg, var(--primary-color), var(--primary-accent));
+    }
+    .toggle.on::after { left: 25px; }
+
+    .btn {
+        display: inline-flex; align-items: center; gap: 8px;
+        padding: 11px 20px;
+        border-radius: var(--radius);
+        font-size: 13px; font-weight: 800; letter-spacing: 0.02em;
+        cursor: pointer;
+        border: none;
+        font-family: inherit;
+        transition: all 0.25s var(--ease-out);
+        position: relative;
+        overflow: hidden;
+        user-select: none;
+    }
+    .btn i { font-size: 13px; }
+    .btn:disabled {
+        opacity: 0.7; cursor: not-allowed;
+        pointer-events: none;
+    }
+    .btn-primary {
+        background: linear-gradient(135deg, var(--primary-color), var(--primary-accent));
+        color: #fff;
+        box-shadow: 0 8px 24px color-mix(in srgb, var(--primary-color) 36%, transparent);
+    }
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        filter: brightness(1.08);
+        box-shadow: 0 12px 32px color-mix(in srgb, var(--primary-color) 42%, transparent);
+    }
+    .btn-secondary {
+        background: rgba(0,0,0,0.3);
+        color: var(--text-primary);
+        border: 1px solid var(--card-border);
+    }
+    .btn-secondary:hover {
+        background: color-mix(in srgb, var(--primary-color) 10%, transparent);
+        border-color: color-mix(in srgb, var(--primary-color) 30%, transparent);
+        transform: translateY(-2px);
+    }
+    .btn-danger {
+        background: linear-gradient(135deg, #ef4444, #dc2626);
+        color: #fff;
+        box-shadow: 0 8px 24px rgba(239,68,68,0.35);
+    }
+    .btn-danger:hover { transform: translateY(-2px); filter: brightness(1.08); }
+    .btn-success {
+        background: linear-gradient(135deg, #22c55e, #16a34a);
+        color: #fff;
+        box-shadow: 0 8px 24px rgba(34,197,94,0.35);
+    }
+    .btn-success:hover { transform: translateY(-2px); filter: brightness(1.08); }
+    .btn-sm { padding: 7px 14px; font-size: 12px; border-radius: 10px; }
+    .btn-sm i { font-size: 11px; }
+
+    .btn-loading .btn-label { visibility: hidden; }
+    .btn-loading::after {
+        content: '';
+        position: absolute;
+        width: 16px; height: 16px;
+        top: 50%; left: 50%;
+        margin: -8px 0 0 -8px;
+        border: 2px solid rgba(255,255,255,.35);
+        border-top-color: #fff;
+        border-radius: 50%;
+        animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .data-table {
+        overflow-x: auto;
+        border-radius: var(--radius);
+        border: 1px solid var(--card-border);
+    }
+    .data-table table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 700px;
+    }
+    .data-table th {
+        padding: 14px 16px;
+        text-align: left;
+        font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase;
+        color: var(--text-muted);
+        background: rgba(0,0,0,0.35);
+        border-bottom: 1px solid var(--card-border);
+        white-space: nowrap;
+    }
+    .data-table td {
+        padding: 14px 16px;
+        text-align: left;
+        border-bottom: 1px solid var(--card-border);
+        font-size: 13px;
+        color: var(--text-secondary);
+    }
+    .data-table tr:last-child td { border-bottom: none; }
+    .data-table tbody tr {
+        transition: background 0.2s var(--ease-out);
+    }
+    .data-table tbody tr:hover {
+        background: color-mix(in srgb, var(--primary-color) 6%, transparent);
+    }
+    .data-table .actions-cell { display: flex; gap: 6px; }
+
+    .empty-state {
+        text-align: center;
+        padding: 60px 24px;
+        color: var(--text-muted);
+    }
+    .empty-state i {
+        font-size: 56px;
+        margin-bottom: 16px;
+        color: var(--card-border);
+        display: block;
+    }
+    .empty-state h4 {
+        font-size: 16px;
+        color: var(--text-secondary);
+        font-weight: 700;
+        margin-bottom: 6px;
+    }
+    .empty-state p { font-size: 13px; }
+
+    .table-footer {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 16px 0 0;
+        flex-wrap: wrap; gap: 12px;
+    }
+    .table-footer .count { font-size: 12px; color: var(--text-muted); font-weight: 600; }
+    .paginator { display: flex; gap: 4px; }
+    .paginator button {
+        width: 36px; height: 36px;
+        border-radius: 10px;
+        border: 1px solid var(--card-border);
+        background: rgba(0,0,0,0.3);
+        color: var(--text-secondary);
+        cursor: pointer;
+        font-size: 13px; font-weight: 700;
+        transition: all 0.2s var(--ease-out);
+    }
+    .paginator button:hover:not(:disabled) {
+        background: color-mix(in srgb, var(--primary-color) 12%, transparent);
+        color: var(--text-primary);
+        border-color: color-mix(in srgb, var(--primary-color) 30%, transparent);
+    }
+    .paginator button.active {
+        background: linear-gradient(135deg, var(--primary-color), var(--primary-accent));
+        border-color: transparent;
+        color: #fff;
+    }
+    .paginator button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .role-tag {
+        display: inline-flex; align-items: center;
+        padding: 4px 12px; border-radius: 999px;
+        font-size: 11px; font-weight: 700; letter-spacing: 0.02em;
+    }
+    .role-tag.student { background: rgba(34,197,94,0.14); color: #4ade80; }
+    .role-tag.teacher { background: rgba(245,158,11,0.14); color: #fbbf24; }
+
+    .status-tag {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 4px 12px; border-radius: 999px;
+        font-size: 11px; font-weight: 700; letter-spacing: 0.02em;
+    }
+    .status-tag::before {
+        content: '';
+        width: 6px; height: 6px; border-radius: 50%;
+        background: currentColor;
+    }
+    .status-tag.active { background: rgba(34,197,94,0.14); color: #4ade80; }
+    .status-tag.pending { background: rgba(245,158,11,0.14); color: #fbbf24; }
+    .status-tag.graded { background: rgba(168,85,247,0.14); color: #c084fc; }
+    .status-tag.ungraded { background: rgba(239,68,68,0.14); color: #f87171; }
+    .status-tag.published { background: rgba(34,197,94,0.14); color: #4ade80; }
+    .status-tag.draft { background: rgba(100,116,139,0.18); color: #94a3b8; }
+    .status-tag.ongoing { background: rgba(59,130,246,0.14); color: #60a5fa; }
+    .status-tag.closed { background: rgba(100,116,139,0.18); color: #94a3b8; }
+
+    .modal-overlay {
+        display: none;
+        position: fixed; inset: 0;
+        background: rgba(0,0,0,0.75);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        z-index: 10000;
+        align-items: center; justify-content: center;
+        padding: 20px;
+        animation: fade-in 0.2s ease-out;
+    }
+    @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+    .modal-overlay.active { display: flex; }
+    .modal-content {
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+        border-radius: var(--radius-lg);
+        padding: 28px;
+        width: 100%;
+        max-width: 560px;
+        max-height: 85vh;
+        overflow-y: auto;
+        position: relative;
+        backdrop-filter: blur(28px) saturate(140%);
+        -webkit-backdrop-filter: blur(28px) saturate(140%);
+        box-shadow: 0 24px 80px rgba(0,0,0,.6);
+        animation: modal-in 0.3s var(--ease-out);
+    }
+    .modal-content.wide { max-width: 720px; }
+    @keyframes modal-in {
+        from { opacity: 0; transform: translateY(20px) scale(0.97); }
+        to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .modal-content::before {
+        content: '';
+        position: absolute; top: -1px; left: -1px; right: -1px; height: 1px;
+        background: linear-gradient(90deg,
+            transparent 0%,
+            color-mix(in srgb, var(--primary-light) 70%, transparent) 30%,
+            color-mix(in srgb, var(--primary-accent) 70%, transparent) 70%,
+            transparent 100%);
+    }
+    .modal-header {
+        display: flex; align-items: center; gap: 12px;
+        margin-bottom: 20px;
+    }
+    .modal-header h3 {
+        font-size: 18px; font-weight: 800; letter-spacing: -0.01em;
+        color: var(--text-primary);
+    }
+    .modal-close {
+        margin-left: auto;
+        width: 36px; height: 36px;
+        border-radius: 10px;
+        background: rgba(0,0,0,0.3);
+        border: 1px solid var(--card-border);
+        color: var(--text-secondary);
+        cursor: pointer;
+        font-size: 14px;
+        display: flex; align-items: center; justify-content: center;
+        transition: all 0.2s var(--ease-out);
+    }
+    .modal-close:hover {
+        background: rgba(239,68,68,0.12);
+        border-color: rgba(239,68,68,0.3);
+        color: var(--danger);
+    }
+    .modal-actions {
+        display: flex; gap: 12px;
+        margin-top: 24px;
+    }
+    .modal-actions .btn { flex: 1; justify-content: center; }
+
+    .auto-save-indicator {
+        font-size: 12px;
+        color: var(--success);
+        margin-top: 10px;
+        display: flex; align-items: center; gap: 6px;
+        font-weight: 700;
+    }
+    .auto-save-indicator i { font-size: 13px; }
+
+    /* Class card */
+    .class-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 16px;
+    }
+    .class-card {
+        background: rgba(0,0,0,0.25);
+        border: 1px solid var(--card-border);
+        border-radius: var(--radius);
+        padding: 20px;
+        transition: all 0.25s var(--ease-out);
+        cursor: pointer;
+    }
+    .class-card:hover {
+        border-color: color-mix(in srgb, var(--primary-color) 25%, transparent);
+        transform: translateY(-3px);
+        background: color-mix(in srgb, var(--primary-color) 6%, transparent);
+    }
+    .class-card-head {
+        display: flex; justify-content: space-between; align-items: flex-start;
+        margin-bottom: 14px;
+    }
+    .class-card h3 {
+        font-size: 16px; font-weight: 800;
+        color: var(--text-primary);
+    }
+    .class-meta {
+        font-size: 12px; color: var(--text-muted);
+        margin-top: 4px;
+    }
+    .class-stat {
+        display: flex; align-items: center; gap: 8px;
+        padding: 6px 0;
+        font-size: 13px;
+        color: var(--text-secondary);
+    }
+    .class-stat i { color: var(--primary-light); }
+
+    /* Assignment */
+    .hw-card {
+        background: rgba(0,0,0,0.25);
+        border: 1px solid var(--card-border);
+        border-radius: var(--radius);
+        padding: 18px;
+        margin-bottom: 12px;
+        border-left: 4px solid var(--primary-color);
+        transition: all 0.25s var(--ease-out);
+    }
+    .hw-card:hover {
+        border-color: color-mix(in srgb, var(--primary-color) 25%, transparent);
+        transform: translateX(4px);
+    }
+    .hw-head {
+        display: flex; justify-content: space-between; align-items: flex-start;
+        margin-bottom: 10px;
+        gap: 12px;
+    }
+    .hw-title {
+        font-size: 15px; font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 4px;
+    }
+    .hw-meta {
+        font-size: 12px; color: var(--text-muted);
+        display: flex; flex-wrap: wrap; gap: 10px;
+    }
+    .hw-desc {
+        font-size: 13px; color: var(--text-secondary);
+        padding: 10px 12px;
+        background: rgba(0,0,0,0.2);
+        border-radius: 10px;
+        margin-bottom: 12px;
+    }
+    .hw-actions {
+        display: flex; gap: 8px; flex-wrap: wrap;
+    }
+
+    /* Grading */
+    .grade-row {
+        display: grid;
+        grid-template-columns: 1fr 120px 120px 140px;
+        gap: 12px;
+        align-items: center;
+        padding: 14px 16px;
+        border-bottom: 1px solid var(--card-border);
+    }
+    .grade-row:last-child { border-bottom: none; }
+    .grade-row .student-info {
+        display: flex; align-items: center; gap: 12px; min-width: 0;
+    }
+    .grade-row .student-avatar {
+        width: 38px; height: 38px; border-radius: 50%;
+        background: linear-gradient(135deg, color-mix(in srgb, var(--primary-color) 25%, transparent), color-mix(in srgb, var(--primary-accent) 25%, transparent));
+        color: var(--primary-light);
+        display: flex; align-items: center; justify-content: center;
+        font-weight: 700;
+        border: 1px solid var(--card-border);
+        flex-shrink: 0;
+    }
+    .grade-row .student-name {
+        font-weight: 700; color: var(--text-primary);
+        font-size: 14px;
+    }
+    .grade-row .student-id {
+        font-size: 11px; color: var(--text-muted);
+    }
+    .grade-row input[type=number] {
+        width: 100%;
+        padding: 8px 12px;
+        border-radius: 10px;
+        border: 1px solid var(--card-border);
+        background: rgba(0,0,0,0.35);
+        color: var(--text-primary);
+        font-size: 14px; font-weight: 700;
+        text-align: center;
+        outline: none;
+        transition: all 0.2s;
+    }
+    .grade-row input[type=number]:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-color) 15%, transparent);
+    }
+
+    /* Score analysis */
+    .score-summary {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 14px;
+        margin-bottom: 24px;
+    }
+    .score-card {
+        padding: 18px;
+        border-radius: var(--radius);
+        text-align: center;
+        background: linear-gradient(135deg,
+            color-mix(in srgb, var(--primary-color) 6%, transparent),
+            rgba(0,0,0,0.2));
+        border: 1px solid var(--card-border);
+    }
+    .score-num {
+        font-size: 26px; font-weight: 800;
+        background: linear-gradient(120deg, var(--text-primary), var(--primary-light));
+        -webkit-background-clip: text; background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+    .score-label {
+        font-size: 11px; color: var(--text-muted);
+        font-weight: 700; margin-top: 4px;
+        letter-spacing: 0.04em; text-transform: uppercase;
+    }
+
+    .dist-row {
+        padding: 10px 0;
+        display: grid;
+        grid-template-columns: 80px 1fr 60px;
+        gap: 14px;
+        align-items: center;
+    }
+    .dist-label {
+        font-size: 13px; font-weight: 700; color: var(--text-secondary);
+    }
+    .dist-track {
+        height: 10px; background: rgba(0,0,0,0.3);
+        border-radius: 999px; overflow: hidden;
+    }
+    .dist-fill {
+        height: 100%;
+        border-radius: 999px;
+        background: linear-gradient(90deg, var(--primary-color), var(--primary-accent));
+        transition: width .5s var(--ease-out);
+    }
+    .dist-count {
+        font-size: 13px; font-weight: 800;
+        color: var(--text-primary);
+        text-align: right;
+    }
+
+    @keyframes toastIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: none; } }
+
+    @media (max-width: 768px) {
+        .settings-wrap { padding: 24px 16px 60px; }
+        .settings-tab { padding: 8px 14px; font-size: 12px; }
+        .card-body { padding: 18px; }
+        .card-head { padding: 16px 18px; }
+        .grade-row { grid-template-columns: 1fr 90px 90px 120px; }
+    }
 </style>
 {% endblock %}
 
 {% block content %}
+<div class="aurora"></div>
+<div class="grain-overlay"></div>
+
 <div class="settings-wrap">
     <div class="settings-header">
-        <div class="card-icon blue"><i class="fas fa-user-circle"></i></div>
-        <h1>教师设置</h1>
+        <div class="settings-header-icon"><i class="fas fa-chalkboard-user"></i></div>
+        <div>
+            <h1>教师工作台</h1>
+            <div class="eyebrow">
+                <span class="eyebrow-dot"></span>
+                TEACHER WORKSPACE · 教学管理全流程
+            </div>
+        </div>
     </div>
 
     <div class="settings-tabs">
-        <div class="settings-tab active" onclick="showSection('section-profile')"><i class="fas fa-user"></i> 个人信息</div>
-        <div class="settings-tab" onclick="showSection('section-courses')"><i class="fas fa-book"></i> 课程管理</div>
-        <div class="settings-tab" onclick="showSection('section-students')"><i class="fas fa-users"></i> 学生管理</div>
-        <div class="settings-tab" onclick="showSection('section-notifications')"><i class="fas fa-bell"></i> 通知设置</div>
-        <div class="settings-tab" onclick="showSection('section-security')"><i class="fas fa-key"></i> 安全设置</div>
+        <div class="settings-tab active" onclick="showSection('section-overview', this)"><i class="fas fa-gauge-high"></i> 教学概览</div>
+        <div class="settings-tab" onclick="showSection('section-classes', this)"><i class="fas fa-school"></i> 班级管理</div>
+        <div class="settings-tab" onclick="showSection('section-homework', this)"><i class="fas fa-clipboard-list"></i> 作业发布</div>
+        <div class="settings-tab" onclick="showSection('section-questions', this)"><i class="fas fa-circle-question"></i> 题库管理</div>
+        <div class="settings-tab" onclick="showSection('section-grading', this)"><i class="fas fa-pen-ruler"></i> 阅卷中心</div>
+        <div class="settings-tab" onclick="showSection('section-analysis', this)"><i class="fas fa-chart-column"></i> 成绩分析</div>
+        <div class="settings-tab" onclick="showSection('section-exams', this)"><i class="fas fa-file-pen"></i> 考试管理</div>
+        <div class="settings-tab" onclick="showSection('section-personal', this)"><i class="fas fa-user-gear"></i> 个人设置</div>
     </div>
 
-    <div class="settings-section active" id="section-profile">
+    <!-- 教学概览 -->
+    <div class="settings-section active" id="section-overview">
         <div class="settings-card">
             <div class="card-head">
-                <div class="card-icon blue"><i class="fas fa-user"></i></div>
-                <h2>个人信息</h2>
-            </div>
-            <div class="card-body">
-                <div class="form-group">
-                    <label>用户名</label>
-                    <input type="text" id="profile-username" value="{{ user.username or '' }}" disabled>
-                </div>
-                <div class="form-group">
-                    <label>邮箱</label>
-                    <input type="email" id="profile-email" value="{{ user.email or '' }}" onchange="scheduleSave('profile')">
-                </div>
-                <div class="form-group">
-                    <label>手机号</label>
-                    <input type="tel" id="profile-phone" value="{{ user.phone or '' }}" onchange="scheduleSave('profile')">
-                </div>
-                <div class="form-group">
-                    <label>教师简介</label>
-                    <textarea id="profile-bio" rows="3" placeholder="请输入教师简介..." onchange="scheduleSave('profile')"></textarea>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="settings-section" id="section-courses">
-        <div class="settings-card">
-            <div class="card-head">
-                <div class="card-icon green"><i class="fas fa-book"></i></div>
-                <h2>我的课程</h2>
-                <button class="btn btn-primary" style="margin-left: auto;" onclick="addCourse()"><i class="fas fa-plus"></i> 添加课程</button>
-            </div>
-            <div class="card-body">
-                <div class="course-list" id="course-list-container">
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="settings-section" id="section-students">
-        <div class="settings-card">
-            <div class="card-head">
-                <div class="card-icon orange"><i class="fas fa-users"></i></div>
-                <h2>学生管理</h2>
+                <div class="card-icon blue"><i class="fas fa-chart-line"></i></div>
+                <h2>教学数据总览</h2>
             </div>
             <div class="card-body">
                 <div class="stats-grid">
                     <div class="stat-card">
-                        <div class="stat-value" id="stat-students">0</div>
+                        <div class="stat-value" id="o-classes">-</div>
+                        <div class="stat-label">授课班级</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="o-students">-</div>
                         <div class="stat-label">学生总数</div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-value" id="stat-attendance">0%</div>
-                        <div class="stat-label">平均出勤率</div>
+                        <div class="stat-value" id="o-hw">-</div>
+                        <div class="stat-label">已发布作业</div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-value" id="stat-average-score">0</div>
-                        <div class="stat-label">平均成绩</div>
+                        <div class="stat-value" id="o-qbank">-</div>
+                        <div class="stat-label">题库题目</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="o-exams">-</div>
+                        <div class="stat-label">组织考试</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="o-avg">-</div>
+                        <div class="stat-label">班级平均分</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="o-pending-grade">-</div>
+                        <div class="stat-label">待阅卷数</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="o-attendance">-</div>
+                        <div class="stat-label">平均出勤率</div>
                     </div>
                 </div>
-                <button class="btn btn-secondary" onclick="viewAllStudents()">查看全部学生</button>
+            </div>
+        </div>
+
+        <div class="settings-card">
+            <div class="card-head">
+                <div class="card-icon.orange"><i class="fas fa-bell"></i></div>
+                <h2>今日待办事项</h2>
+            </div>
+            <div class="card-body" id="todo-list">
+                <div class="empty-state"><i class="fas fa-inbox"></i><h4>暂无待办</h4><p>今日已全部完成</p></div>
             </div>
         </div>
     </div>
 
-    <div class="settings-section" id="section-notifications">
+    <!-- 班级管理 -->
+    <div class="settings-section" id="section-classes">
         <div class="settings-card">
             <div class="card-head">
-                <div class="card-icon purple"><i class="fas fa-bell"></i></div>
-                <h2>通知设置</h2>
+                <div class="card-icon.cyan"><i class="fas fa-school"></i></div>
+                <h2>我的班级</h2>
+                <div class="head-actions">
+                    <button class="btn btn-primary" onclick="openModal('addClassModal')"><i class="fas fa-plus"></i> 新建班级</button>
+                </div>
             </div>
             <div class="card-body">
-                <div class="form-group">
-                    <label>考试成绩通知</label>
-                    <div class="toggle on" id="notif-exam-results" onclick="toggleToggle(this); scheduleSave('notifications')"></div>
+                <div class="search-bar">
+                    <div class="input-wrap">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="tclass-search" placeholder="搜索班级名称..." oninput="renderTeacherClasses()">
+                    </div>
+                    <select id="tclass-grade-filter" onchange="renderTeacherClasses()">
+                        <option value="">全部年级</option>
+                        <option value="1">一年级</option><option value="2">二年级</option><option value="3">三年级</option>
+                        <option value="7">初一</option><option value="8">初二</option><option value="9">初三</option>
+                        <option value="10">高一</option><option value="11">高二</option><option value="12">高三</option>
+                    </select>
                 </div>
-                <div class="form-group">
-                    <label>学生缺勤提醒</label>
-                    <div class="toggle on" id="notif-student-absence" onclick="toggleToggle(this); scheduleSave('notifications')"></div>
-                </div>
-                <div class="form-group">
-                    <label>系统公告通知</label>
-                    <div class="toggle on" id="notif-system" onclick="toggleToggle(this); scheduleSave('notifications')"></div>
-                </div>
-                <div class="form-group">
-                    <label>邮件通知</label>
-                    <div class="toggle" id="notif-email" onclick="toggleToggle(this); scheduleSave('notifications')"></div>
+                <div class="class-grid" id="tclass-grid"></div>
+                <div id="tclass-empty" class="empty-state" style="display:none;">
+                    <i class="fas fa-school"></i><h4>暂无班级</h4><p>点击右上角"新建班级"开始管理</p>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="settings-section" id="section-security">
+    <!-- 作业发布 -->
+    <div class="settings-section" id="section-homework">
         <div class="settings-card">
             <div class="card-head">
-                <div class="card-icon orange"><i class="fas fa-key"></i></div>
+                <div class="card-icon.orange"><i class="fas fa-clipboard-list"></i></div>
+                <h2>作业管理</h2>
+                <div class="head-actions">
+                    <button class="btn btn-primary" onclick="openModal('addHwModal')"><i class="fas fa-plus"></i> 发布作业</button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="search-bar">
+                    <div class="input-wrap">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="hw-search" placeholder="搜索作业标题..." oninput="renderHomework()">
+                    </div>
+                    <select id="hw-status-filter" onchange="renderHomework()">
+                        <option value="">全部状态</option>
+                        <option value="ongoing">进行中</option>
+                        <option value="pending">未开始</option>
+                        <option value="closed">已截止</option>
+                    </select>
+                </div>
+                <div id="hw-list"></div>
+                <div id="hw-empty" class="empty-state" style="display:none;">
+                    <i class="fas fa-clipboard-list"></i><h4>暂无作业</h4><p>点击右上角"发布作业"创建新任务</p>
+                </div>
+                <div class="table-footer">
+                    <div class="count" id="hw-count"></div>
+                    <div class="paginator" id="hw-pager"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 题库管理 -->
+    <div class="settings-section" id="section-questions">
+        <div class="settings-card">
+            <div class="card-head">
+                <div class="card-icon.purple"><i class="fas fa-circle-question"></i></div>
+                <h2>我的题库</h2>
+                <div class="head-actions">
+                    <button class="btn btn-secondary" onclick="showToast('打开批量导入（演示）', 'info')"><i class="fas fa-file-import"></i> 批量导入</button>
+                    <button class="btn btn-primary" onclick="openModal('addTQModal')"><i class="fas fa-plus"></i> 新建题目</button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="search-bar">
+                    <div class="input-wrap">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="tq-search" placeholder="搜索题干..." oninput="renderTQuestions()">
+                    </div>
+                    <select id="tq-type-filter" onchange="renderTQuestions()">
+                        <option value="">全部题型</option>
+                        <option value="single">单选题</option>
+                        <option value="multi">多选题</option>
+                        <option value="judge">判断题</option>
+                        <option value="fill">填空题</option>
+                        <option value="essay">问答题</option>
+                    </select>
+                </div>
+                <div class="data-table">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID</th><th>题干</th><th>题型</th><th>难度</th>
+                                <th>分值</th><th>使用次数</th><th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tq-tbody"></tbody>
+                    </table>
+                </div>
+                <div id="tq-empty" class="empty-state" style="display:none;">
+                    <i class="fas fa-circle-question"></i><h4>暂无题目</h4><p>点击右上角开始录入</p>
+                </div>
+                <div class="table-footer">
+                    <div class="count" id="tq-count"></div>
+                    <div class="paginator" id="tq-pager"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 阅卷中心 -->
+    <div class="settings-section" id="section-grading">
+        <div class="settings-card">
+            <div class="card-head">
+                <div class="card-icon.green"><i class="fas fa-pen-ruler"></i></div>
+                <h2>待阅卷列表</h2>
+                <div class="head-actions">
+                    <select id="grade-filter" onchange="renderGrading()">
+                        <option value="ungraded">仅待阅卷</option>
+                        <option value="all">全部</option>
+                        <option value="graded">已阅卷</option>
+                    </select>
+                    <button class="btn btn-success" onclick="batchGrade()"><i class="fas fa-wand-magic-sparkles"></i> AI 一键智能评分</button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="search-bar">
+                    <div class="input-wrap">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="grade-search" placeholder="搜索学生姓名..." oninput="renderGrading()">
+                    </div>
+                    <select id="grade-exam-filter" onchange="renderGrading()">
+                        <option value="">全部考试/作业</option>
+                        <option value="e1">期中考试</option>
+                        <option value="e2">第5章作业</option>
+                        <option value="e3">单元测验</option>
+                    </select>
+                </div>
+                <div class="data-table">
+                    <div class="grade-row" style="background:rgba(0,0,0,.35);font-size:11px;text-transform:uppercase;color:var(--text-muted);font-weight:800;letter-spacing:.06em;">
+                        <div>学生信息</div>
+                        <div style="text-align:center;">原始得分</div>
+                        <div style="text-align:center;">教师评分</div>
+                        <div style="text-align:center;">状态</div>
+                    </div>
+                    <div id="grade-list"></div>
+                </div>
+                <div id="grade-empty" class="empty-state" style="display:none; border:1px solid var(--card-border); border-radius:var(--radius); margin-top:12px;">
+                    <i class="fas fa-check-circle"></i><h4>全部已完成</h4><p>没有待阅卷的试卷</p>
+                </div>
+                <div style="margin-top:18px; text-align:right;">
+                    <button class="btn btn-primary" onclick="saveGrades()"><i class="fas fa-save"></i> 保存所有评分</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 成绩分析 -->
+    <div class="settings-section" id="section-analysis">
+        <div class="settings-card">
+            <div class="card-head">
+                <div class="card-icon.pink"><i class="fas fa-chart-column"></i></div>
+                <h2>班级成绩分析</h2>
+            </div>
+            <div class="card-body">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>选择班级</label>
+                        <select id="ana-class" onchange="renderAnalysis()">
+                            <option value="c1">高三(1)班</option>
+                            <option value="c2">高三(2)班</option>
+                            <option value="c3">高二(3)班</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>选择考试/作业</label>
+                        <select id="ana-exam" onchange="renderAnalysis()">
+                            <option value="e1">期中考试（数学）</option>
+                            <option value="e2">第5章课后作业</option>
+                            <option value="e3">3月单元测验</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="score-summary">
+                    <div class="score-card"><div class="score-num" id="ana-avg">-</div><div class="score-label">平均分</div></div>
+                    <div class="score-card"><div class="score-num" id="ana-max">-</div><div class="score-label">最高分</div></div>
+                    <div class="score-card"><div class="score-num" id="ana-min">-</div><div class="score-label">最低分</div></div>
+                    <div class="score-card"><div class="score-num" id="ana-median">-</div><div class="score-label">中位数</div></div>
+                    <div class="score-card"><div class="score-num" id="ana-pass">-</div><div class="score-label">及格率</div></div>
+                    <div class="score-card"><div class="score-num" id="ana-good">-</div><div class="score-label">优秀率</div></div>
+                    <div class="score-card"><div class="score-num" id="ana-sd">-</div><div class="score-label">标准差</div></div>
+                    <div class="score-card"><div class="score-num" id="ana-students">-</div><div class="score-label">参考人数</div></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="settings-card">
+            <div class="card-head">
+                <div class="card-icon.cyan"><i class="fas fa-chart-simple"></i></div>
+                <h2>分数段分布</h2>
+            </div>
+            <div class="card-body" id="dist-body">
+                <div class="empty-state"><i class="fas fa-chart-simple"></i><h4>选择班级和考试查看分布</h4></div>
+            </div>
+        </div>
+
+        <div class="settings-card">
+            <div class="card-head">
+                <div class="card-icon.orange"><i class="fas fa-list-ol"></i></div>
+                <h2>学生分数排名</h2>
+            </div>
+            <div class="card-body">
+                <div class="data-table">
+                    <table>
+                        <thead><tr><th>排名</th><th>学生</th><th>得分</th><th>班级名次</th><th>进退步</th></tr></thead>
+                        <tbody id="rank-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 考试管理 -->
+    <div class="settings-section" id="section-exams">
+        <div class="settings-card">
+            <div class="card-head">
+                <div class="card-icon.red"><i class="fas fa-file-pen"></i></div>
+                <h2>考试安排</h2>
+                <div class="head-actions">
+                    <button class="btn btn-primary" onclick="openModal('addTExamModal')"><i class="fas fa-plus"></i> 创建考试</button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="search-bar">
+                    <div class="input-wrap">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="texam-search" placeholder="搜索考试名称..." oninput="renderTExams()">
+                    </div>
+                    <select id="texam-status-filter" onchange="renderTExams()">
+                        <option value="">全部状态</option>
+                        <option value="draft">草稿</option>
+                        <option value="published">已发布</option>
+                        <option value="ongoing">进行中</option>
+                        <option value="closed">已结束</option>
+                    </select>
+                </div>
+                <div class="data-table">
+                    <table>
+                        <thead>
+                            <tr><th>ID</th><th>考试名称</th><th>班级</th><th>题目数</th><th>时长</th><th>开始时间</th><th>状态</th><th>操作</th></tr>
+                        </thead>
+                        <tbody id="texam-tbody"></tbody>
+                    </table>
+                </div>
+                <div id="texam-empty" class="empty-state" style="display:none;">
+                    <i class="fas fa-file-pen"></i><h4>暂无考试</h4><p>点击右上角创建考试</p>
+                </div>
+                <div class="table-footer">
+                    <div class="count" id="texam-count"></div>
+                    <div class="paginator" id="texam-pager"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 个人设置 -->
+    <div class="settings-section" id="section-personal">
+        <div class="settings-card">
+            <div class="card-head">
+                <div class="card-icon.blue"><i class="fas fa-user-gear"></i></div>
+                <h2>个人信息</h2>
+            </div>
+            <div class="card-body">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>用户名</label>
+                        <input type="text" id="tp-username" disabled>
+                    </div>
+                    <div class="form-group">
+                        <label>显示名称</label>
+                        <input type="text" id="tp-display" onchange="scheduleTP('personal')">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>邮箱</label>
+                        <input type="email" id="tp-email" onchange="scheduleTP('personal')">
+                    </div>
+                    <div class="form-group">
+                        <label>手机号</label>
+                        <input type="tel" id="tp-phone" onchange="scheduleTP('personal')">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>教师简介</label>
+                    <textarea id="tp-bio" rows="3" placeholder="教育经历、教学理念..." onchange="scheduleTP('personal')"></textarea>
+                </div>
+                <div class="auto-save-indicator" id="tp-auto-save" style="display:none;">
+                    <i class="fas fa-spinner fa-spin"></i> 自动保存中...
+                </div>
+            </div>
+        </div>
+
+        <div class="settings-card">
+            <div class="card-head">
+                <div class="card-icon.orange"><i class="fas fa-key"></i></div>
                 <h2>修改密码</h2>
             </div>
             <div class="card-body">
                 <div class="form-group">
                     <label>当前密码</label>
-                    <input type="password" id="security-current" placeholder="输入当前密码">
+                    <input type="password" id="tp-pwd-cur" placeholder="请输入当前密码">
                 </div>
-                <div class="form-group">
-                    <label>新密码</label>
-                    <input type="password" id="security-new" placeholder="输入新密码">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>新密码</label>
+                        <input type="password" id="tp-pwd-new" placeholder="至少 6 位">
+                    </div>
+                    <div class="form-group">
+                        <label>确认新密码</label>
+                        <input type="password" id="tp-pwd-2" placeholder="再次输入">
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label>确认新密码</label>
-                    <input type="password" id="security-confirm" placeholder="确认新密码">
+                <button class="btn btn-primary" onclick="changeTPPwd()"><i class="fas fa-lock"></i> 更新密码</button>
+            </div>
+        </div>
+
+        <div class="settings-card">
+            <div class="card-head">
+                <div class="card-icon.green"><i class="fas fa-sliders"></i></div>
+                <h2>教学偏好设置</h2>
+            </div>
+            <div class="card-body">
+                <div class="form-toggle-row">
+                    <div>
+                        <div class="toggle-label">启用 AI 辅助出题</div>
+                        <div class="toggle-desc">根据知识点自动生成参考题目</div>
+                    </div>
+                    <div class="toggle on" onclick="toggleT(this)"></div>
                 </div>
-                <button class="btn btn-primary" onclick="changePassword()">修改密码</button>
+                <div class="form-toggle-row">
+                    <div>
+                        <div class="toggle-label">自动保存批阅进度</div>
+                        <div class="toggle-desc">阅卷时每隔 30 秒自动保存</div>
+                    </div>
+                    <div class="toggle on" onclick="toggleT(this)"></div>
+                </div>
+                <div class="form-toggle-row">
+                    <div>
+                        <div class="toggle-label">启用邮件提醒</div>
+                        <div class="toggle-desc">作业提交、考试发布等事件发送邮件</div>
+                    </div>
+                    <div class="toggle on" onclick="toggleT(this)"></div>
+                </div>
+                <div class="form-toggle-row">
+                    <div>
+                        <div class="toggle-label">学生成绩自动排名</div>
+                        <div class="toggle-desc">阅卷完成后自动生成班级排名</div>
+                    </div>
+                    <div class="toggle" onclick="toggleT(this)"></div>
+                </div>
+                <div class="form-toggle-row">
+                    <div>
+                        <div class="toggle-label">开启 AI 智能阅卷</div>
+                        <div class="toggle-desc">客观题自动评分，主观题给出参考</div>
+                    </div>
+                    <div class="toggle on" onclick="toggleT(this)"></div>
+                </div>
             </div>
         </div>
     </div>
 </div>
 
+<!-- Modals -->
+<div class="modal-overlay" id="addClassModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <div class="card-icon.cyan"><i class="fas fa-school"></i></div>
+            <h3 id="tclass-m-title">新建班级</h3>
+            <button class="modal-close" onclick="closeModal('addClassModal')"><i class="fas fa-xmark"></i></button>
+        </div>
+        <input type="hidden" id="tclass-m-id">
+        <div class="form-group">
+            <label>班级名称</label>
+            <input type="text" id="tclass-m-name" placeholder="例如：高三(1)班">
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>年级</label>
+                <select id="tclass-m-grade">
+                    <option value="">请选择</option>
+                    <option value="1">一年级</option><option value="2">二年级</option><option value="3">三年级</option>
+                    <option value="7">初一</option><option value="8">初二</option><option value="9">初三</option>
+                    <option value="10">高一</option><option value="11">高二</option><option value="12">高三</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>学生人数</label>
+                <input type="number" id="tclass-m-count" value="0" min="0">
+            </div>
+        </div>
+        <div class="form-group">
+            <label>授课科目</label>
+            <input type="text" id="tclass-m-subject" placeholder="例如：数学、语文">
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="closeModal('addClassModal')">取消</button>
+            <button class="btn btn-primary" id="tclass-submit-btn" onclick="submitTClass()"><span class="btn-label"><i class="fas fa-save"></i> 保存</span></button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="addHwModal">
+    <div class="modal-content wide">
+        <div class="modal-header">
+            <div class="card-icon.orange"><i class="fas fa-clipboard-list"></i></div>
+            <h3 id="hw-m-title">发布作业</h3>
+            <button class="modal-close" onclick="closeModal('addHwModal')"><i class="fas fa-xmark"></i></button>
+        </div>
+        <input type="hidden" id="hw-m-id">
+        <div class="form-group">
+            <label>作业标题 *</label>
+            <input type="text" id="hw-m-title-in" placeholder="例如：第5章 函数的应用 课后练习">
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>所属班级 *</label>
+                <select id="hw-m-class">
+                    <option value="c1">高三(1)班</option>
+                    <option value="c2">高三(2)班</option>
+                    <option value="c3">高二(3)班</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>关联科目</label>
+                <input type="text" id="hw-m-subject" value="数学">
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>开始时间</label>
+                <input type="datetime-local" id="hw-m-start">
+            </div>
+            <div class="form-group">
+                <label>截止时间 *</label>
+                <input type="datetime-local" id="hw-m-end">
+            </div>
+        </div>
+        <div class="form-group">
+            <label>作业要求</label>
+            <textarea id="hw-m-desc" rows="4" placeholder="详细说明作业要求、提交方式..."></textarea>
+        </div>
+        <div class="form-toggle-row" style="border:none; padding:12px 0 0;">
+            <div>
+                <div class="toggle-label">允许学生补交</div>
+                <div class="toggle-desc">截止时间后 24 小时内可提交，将扣除 10% 分数</div>
+            </div>
+            <div class="toggle on" id="hw-m-late" onclick="this.classList.toggle('on')"></div>
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="closeModal('addHwModal')">取消</button>
+            <button class="btn btn-primary" id="hw-submit-btn" onclick="submitHw()"><span class="btn-label"><i class="fas fa-paper-plane"></i> 发布作业</span></button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="addTQModal">
+    <div class="modal-content wide">
+        <div class="modal-header">
+            <div class="card-icon.purple"><i class="fas fa-circle-question"></i></div>
+            <h3 id="tq-m-title">新建题目</h3>
+            <button class="modal-close" onclick="closeModal('addTQModal')"><i class="fas fa-xmark"></i></button>
+        </div>
+        <input type="hidden" id="tq-m-id">
+        <div class="form-row">
+            <div class="form-group">
+                <label>题型</label>
+                <select id="tq-m-type"><option value="single">单选题</option><option value="multi">多选题</option><option value="judge">判断题</option><option value="fill">填空题</option><option value="essay">问答题</option></select>
+            </div>
+            <div class="form-group">
+                <label>难度</label>
+                <select id="tq-m-diff"><option value="easy">简单</option><option value="medium">中等</option><option value="hard">困难</option></select>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>所属学科</label>
+                <select id="tq-m-subject">
+                    <option value="math">数学</option><option value="chinese">语文</option><option value="english">英语</option>
+                    <option value="physics">物理</option><option value="chemistry">化学</option><option value="biology">生物</option>
+                    <option value="history">历史</option><option value="geography">地理</option><option value="politics">政治</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>分值</label>
+                <input type="number" id="tq-m-score" value="5" min="1">
+            </div>
+        </div>
+        <div class="form-group">
+            <label>题干 *</label>
+            <textarea id="tq-m-stem" rows="3" placeholder="请输入题干内容..."></textarea>
+        </div>
+        <div class="form-group">
+            <label>选项（选择题使用，每行一个）</label>
+            <textarea id="tq-m-options" rows="4" placeholder="A. 选项一&#10;B. 选项二&#10;C. 选项三&#10;D. 选项四"></textarea>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>参考答案 *</label>
+                <input type="text" id="tq-m-answer" placeholder="如 A、正确、答案文本">
+            </div>
+            <div class="form-group">
+                <label>知识点标签</label>
+                <input type="text" id="tq-m-tags" placeholder="逗号分隔，如：函数,极限,导数">
+            </div>
+        </div>
+        <div class="form-group">
+            <label>答案解析</label>
+            <textarea id="tq-m-explain" rows="2" placeholder="供学生自查的答案解析..."></textarea>
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="closeModal('addTQModal')">取消</button>
+            <button class="btn btn-primary" id="tq-submit-btn" onclick="submitTQ()"><span class="btn-label"><i class="fas fa-save"></i> 保存题目</span></button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="addTExamModal">
+    <div class="modal-content wide">
+        <div class="modal-header">
+            <div class="card-icon.red"><i class="fas fa-file-pen"></i></div>
+            <h3 id="texam-m-title">创建考试</h3>
+            <button class="modal-close" onclick="closeModal('addTExamModal')"><i class="fas fa-xmark"></i></button>
+        </div>
+        <input type="hidden" id="texam-m-id">
+        <div class="form-group">
+            <label>考试名称 *</label>
+            <input type="text" id="texam-m-name" placeholder="例如：2026学年第二学期期中数学考试">
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>参考班级 *</label>
+                <select id="texam-m-class"><option value="c1">高三(1)班</option><option value="c2">高三(2)班</option><option value="c3">高二(3)班</option></select>
+            </div>
+            <div class="form-group">
+                <label>科目</label>
+                <input type="text" id="texam-m-subject" value="数学">
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>开始时间 *</label>
+                <input type="datetime-local" id="texam-m-start">
+            </div>
+            <div class="form-group">
+                <label>考试时长（分钟）*</label>
+                <input type="number" id="texam-m-duration" value="120" min="10">
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>题目总数</label>
+                <input type="number" id="texam-m-qcount" value="50" min="1">
+            </div>
+            <div class="form-group">
+                <label>总分</label>
+                <input type="number" id="texam-m-total" value="100" min="1">
+            </div>
+        </div>
+        <div class="form-group">
+            <label>考试说明</label>
+            <textarea id="texam-m-desc" rows="3" placeholder="考试须知、注意事项等"></textarea>
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="closeModal('addTExamModal')">取消</button>
+            <button class="btn btn-primary" id="texam-submit-btn" onclick="submitTExam()"><span class="btn-label"><i class="fas fa-save"></i> 保存</span></button>
+        </div>
+    </div>
+</div>
+
 <script>
+(function () {
+    'use strict';
     var saveTimers = {};
-    var currentUser = {{ user | tojson | safe }};
-    var coursesData = [];
+    var state = {
+        currentUser: { id: 2, username: 'teacher_wang', role: 'teacher', display_name: '王老师', email: 'wang@mtscos.com', phone: '138****8888' },
+        classes: [], homeworks: [], questions: [], grades: [], exams: [],
+        pages: { hw: 1, tq: 1, texam: 1 },
+        pageSize: 10
+    };
 
-    function showSection(sectionId) {
-        document.querySelectorAll('.settings-tab').forEach(t => t.classList.remove('active'));
-        document.querySelectorAll('.settings-section').forEach(s => s.classList.remove('active'));
-        event.target.classList.add('active');
-        document.getElementById(sectionId).classList.add('active');
-        
-        if (sectionId === 'section-courses') loadCourses();
-        if (sectionId === 'section-students') loadStudents();
-    }
-
-    function toggleToggle(el) {
-        el.classList.toggle('on');
-    }
-
-    function scheduleSave(type) {
-        if (saveTimers[type]) clearTimeout(saveTimers[type]);
-        saveTimers[type] = setTimeout(function() {
-            if (type === 'profile') saveProfile();
-            else if (type === 'notifications') saveNotifications();
-        }, 2000);
-    }
-
-    async function saveProfile() {
-        var data = {
-            email: document.getElementById('profile-email').value,
-            phone: document.getElementById('profile-phone').value,
-            bio: document.getElementById('profile-bio').value
-        };
-        
-        try {
-            var response = await fetch('/api/user/settings/profile', {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            });
-            
-            var result = await response.json();
-            if (result.success) {
-                showToast('个人信息已保存', 'success');
-            } else {
-                showToast('保存失败: ' + (result.error || '未知错误'), 'error');
-            }
-        } catch (error) {
-            console.error('保存个人信息失败:', error);
-            showToast('网络错误，保存失败', 'error');
-        }
-    }
-
-    async function loadCourses() {
-        try {
-            var response = await fetch('/api/teacher/courses');
-            var result = await response.json();
-            
-            if (result.success && result.data) {
-                coursesData = result.data;
-                renderCourses();
-            }
-        } catch (error) {
-            console.error('加载课程列表失败:', error);
-        }
-    }
-
-    function renderCourses() {
-        var container = document.getElementById('course-list-container');
-        if (!coursesData || coursesData.length === 0) {
-            container.innerHTML = '<div style="text-align: center; padding: 40px; color: #94a3b8;">暂无课程</div>';
-            return;
-        }
-        
-        var html = '';
-        coursesData.forEach(function(course) {
-            html += `
-                <div class="course-item">
-                    <div class="course-info">
-                        <h4>${course.name}</h4>
-                        <p>${course.academic_year || ''} · ${course.level || ''}</p>
-                    </div>
-                    <div>
-                        <button class="btn btn-secondary btn-sm" onclick="editCourse(${course.id})"><i class="fas fa-edit"></i></button>
-                        <button class="btn btn-danger btn-sm" onclick="deleteCourse(${course.id})"><i class="fas fa-trash"></i></button>
-                    </div>
-                </div>
-            `;
-        });
-        container.innerHTML = html;
-    }
-
-    async function addCourse() {
-        var courseName = prompt('请输入课程名称:');
-        if (!courseName) return;
-        
-        var academicYear = prompt('请输入学年(如2026-2027):');
-        var level = prompt('请输入课程级别(如本科一年级):');
-        
-        try {
-            var response = await fetch('/api/teacher/courses', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    name: courseName,
-                    academic_year: academicYear,
-                    level: level,
-                    teacher_id: currentUser.id
-                })
-            });
-            
-            var result = await response.json();
-            if (result.success) {
-                showToast('课程添加成功', 'success');
-                loadCourses();
-            } else {
-                showToast('添加失败: ' + (result.message || '未知错误'), 'error');
-            }
-        } catch (error) {
-            console.error('添加课程失败:', error);
-            showToast('网络错误，添加失败', 'error');
-        }
-    }
-
-    async function editCourse(courseId) {
-        var course = coursesData.find(c => c.id === courseId);
-        if (!course) return;
-        
-        var newName = prompt('请输入新的课程名称:', course.name);
-        if (!newName) return;
-        
-        try {
-            var response = await fetch('/api/teacher/courses/' + courseId, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: newName })
-            });
-            
-            var result = await response.json();
-            if (result.success) {
-                showToast('课程修改成功', 'success');
-                loadCourses();
-            } else {
-                showToast('修改失败: ' + (result.message || '未知错误'), 'error');
-            }
-        } catch (error) {
-            console.error('修改课程失败:', error);
-            showToast('网络错误，修改失败', 'error');
-        }
-    }
-
-    async function deleteCourse(courseId) {
-        if (!confirm('确认删除该课程？删除后无法恢复。')) return;
-        
-        try {
-            var response = await fetch('/api/teacher/courses/' + courseId, {
-                method: 'DELETE'
-            });
-            
-            var result = await response.json();
-            if (result.success) {
-                showToast('课程删除成功', 'success');
-                loadCourses();
-            } else {
-                showToast('删除失败: ' + (result.message || '未知错误'), 'error');
-            }
-        } catch (error) {
-            console.error('删除课程失败:', error);
-            showToast('网络错误，删除失败', 'error');
-        }
-    }
-
-    async function loadStudents() {
-        try {
-            var response = await fetch('/api/teacher/students');
-            var result = await response.json();
-            
-            if (result.success && result.data) {
-                document.getElementById('stat-students').textContent = result.data.length || '0';
-                document.getElementById('stat-attendance').textContent = result.data.attendance_rate || '0%';
-                document.getElementById('stat-average-score').textContent = result.data.average_score || '0';
-            }
-        } catch (error) {
-            console.error('加载学生数据失败:', error);
-        }
-    }
-
-    function viewAllStudents() {
-        window.location.href = '/teacher/students';
-    }
-
-    async function saveNotifications() {
-        var data = {
-            exam_results: document.getElementById('notif-exam-results').classList.contains('on'),
-            student_absence: document.getElementById('notif-student-absence').classList.contains('on'),
-            system_announcements: document.getElementById('notif-system').classList.contains('on'),
-            email_notifications: document.getElementById('notif-email').classList.contains('on')
-        };
-        
-        try {
-            var response = await fetch('/api/user/settings/notifications', {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            });
-            
-            var result = await response.json();
-            if (result.success) {
-                showToast('通知设置已保存', 'success');
-            } else {
-                showToast('保存失败: ' + (result.error || '未知错误'), 'error');
-            }
-        } catch (error) {
-            console.error('保存通知设置失败:', error);
-            showToast('网络错误，保存失败', 'error');
-        }
-    }
-
-    async function changePassword() {
-        var current = document.getElementById('security-current').value;
-        var newPassword = document.getElementById('security-new').value;
-        var confirm = document.getElementById('security-confirm').value;
-        
-        if (!current || !newPassword || !confirm) {
-            showToast('请填写所有密码字段', 'error');
-            return;
-        }
-        
-        if (newPassword !== confirm) {
-            showToast('两次输入的新密码不一致', 'error');
-            return;
-        }
-        
-        if (newPassword.length < 6) {
-            showToast('新密码长度至少为6位', 'error');
-            return;
-        }
-        
-        try {
-            var response = await fetch('/api/user/change_password', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ current_password: current, new_password: newPassword })
-            });
-            
-            var result = await response.json();
-            if (result.success) {
-                showToast('密码修改成功', 'success');
-                document.getElementById('security-current').value = '';
-                document.getElementById('security-new').value = '';
-                document.getElementById('security-confirm').value = '';
-            } else {
-                showToast('修改失败: ' + (result.error || '未知错误'), 'error');
-            }
-        } catch (error) {
-            console.error('修改密码失败:', error);
-            showToast('网络错误，修改失败', 'error');
-        }
-    }
-
-    function showToast(message, type='info') {
+    function showToast(message, type) {
+        type = type || 'info';
         var existing = document.querySelector('.mtscos-toast');
         if (existing) existing.remove();
-        
         var toast = document.createElement('div');
         toast.className = 'mtscos-toast';
-        toast.style.cssText = `
-            position: fixed; top: 80px; right: 20px; padding: 14px 24px; border-radius: 10px; 
-            color: #fff; font-size: 14px; font-weight: 500; z-index: 9999;
-            background: ${type === 'success' ? '#22c55e' : type === 'error' ? '#ef4444' : '#6366f1'};
-            box-shadow: 0 4px 16px rgba(0,0,0,0.3);
-            animation: toastSlideIn 0.3s ease-out;
-        `;
-        toast.innerHTML = '<i class="fas fa-' + (type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle') + '" style="margin-right: 8px;"></i>' + message;
+        var color = type === 'success' ? '#22c55e' : type === 'error' ? '#ef4444' : type === 'warning' ? '#f59e0b' : '#6366f1';
+        var icon = type === 'success' ? 'check-circle' : type === 'error' ? 'circle-exclamation' : type === 'warning' ? 'triangle-exclamation' : 'circle-info';
+        toast.style.cssText = [
+            'position:fixed;top:80px;right:24px;z-index:99999;',
+            'padding:14px 22px;border-radius:14px;color:#fff;',
+            'font-size:13px;font-weight:700;letter-spacing:.01em;',
+            'background:' + color + ';',
+            'box-shadow:0 10px 32px rgba(0,0,0,.45);',
+            'display:flex;align-items:center;gap:10px;',
+            'animation:toastIn .35s cubic-bezier(.16,1,.3,1);'
+        ].join('');
+        toast.innerHTML = '<i class="fas fa-' + icon + '"></i><span>' + message + '</span>';
         document.body.appendChild(toast);
-        setTimeout(function() { toast.remove(); }, 3000);
+        setTimeout(function () { toast.style.opacity = '0'; toast.style.transform = 'translateX(20px)'; toast.style.transition = 'all .25s'; }, 2600);
+        setTimeout(function () { toast.remove(); }, 2950);
     }
 
-    document.addEventListener('DOMContentLoaded', function() {
-        loadCourses();
-        loadStudents();
+    function openModal(id) { document.getElementById(id).classList.add('active'); }
+    function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+    document.querySelectorAll('.modal-overlay').forEach(function (m) {
+        m.addEventListener('click', function (e) { if (e.target === m) m.classList.remove('active'); });
     });
+    function setBtnLoading(btn, loading) {
+        if (!btn) return;
+        if (loading) btn.classList.add('btn-loading'); else btn.classList.remove('btn-loading');
+        btn.disabled = !!loading;
+    }
+    function esc(s) {
+        return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+            return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c];
+        });
+    }
+    async function apiCall(url, opts) {
+        opts = opts || {};
+        try {
+            var r = await fetch(url, Object.assign({ credentials: 'same-origin' }, opts, {
+                headers: Object.assign({ 'Content-Type': 'application/json', 'Accept': 'application/json' }, (opts.headers || {}))
+            }));
+            var d = await r.json().catch(function () { return { success: false, error: '响应格式错误' }; });
+            return d;
+        } catch (e) { return { success: false, error: '网络连接失败' }; }
+    }
+
+    function renderPager(containerId, total, pageKey) {
+        var container = document.getElementById(containerId);
+        if (!container) return;
+        var current = state.pages[pageKey] || 1;
+        var totalPages = Math.max(1, Math.ceil(total / state.pageSize));
+        var html = '';
+        html += '<button ' + (current <= 1 ? 'disabled' : '') + ' onclick="gotoTPage(\'' + pageKey + '\',' + (current - 1) + ')"><i class="fas fa-chevron-left"></i></button>';
+        var start = Math.max(1, current - 1), end = Math.min(totalPages, current + 1);
+        if (start > 1) html += '<button onclick="gotoTPage(\'' + pageKey + '\',1)">1</button>' + (start > 2 ? '<button disabled>…</button>' : '');
+        for (var i = start; i <= end; i++) html += '<button class="' + (i === current ? 'active' : '') + '" onclick="gotoTPage(\'' + pageKey + '\',' + i + ')">' + i + '</button>';
+        if (end < totalPages) html += (end < totalPages - 1 ? '<button disabled>…</button>' : '') + '<button onclick="gotoTPage(\'' + pageKey + '\',' + totalPages + ')">' + totalPages + '</button>';
+        html += '<button ' + (current >= totalPages ? 'disabled' : '') + ' onclick="gotoTPage(\'' + pageKey + '\',' + (current + 1) + ')"><i class="fas fa-chevron-right"></i></button>';
+        container.innerHTML = html;
+    }
+    window.gotoTPage = function (key, page) {
+        state.pages[key] = page;
+        var fn = { hw: renderHomework, tq: renderTQuestions, texam: renderTExams }[key];
+        if (fn) fn();
+    };
+
+    function showSection(id, tabEl) {
+        document.querySelectorAll('.settings-tab').forEach(function (t) { t.classList.remove('active'); });
+        document.querySelectorAll('.settings-section').forEach(function (s) { s.classList.remove('active'); });
+        if (tabEl) tabEl.classList.add('active');
+        var el = document.getElementById(id);
+        if (el) el.classList.add('active');
+        var map = {
+            'section-overview': loadOverview,
+            'section-classes': loadTeacherClasses,
+            'section-homework': loadHomework,
+            'section-questions': loadTQuestions,
+            'section-grading': loadGrading,
+            'section-analysis': renderAnalysis,
+            'section-exams': loadTExams,
+            'section-personal': loadTPersonal
+        };
+        if (map[id]) map[id]();
+    }
+    window.showSection = showSection;
+
+    /* OVERVIEW */
+    function loadOverview() {
+        setText('o-classes', state.classes.length || 3);
+        setText('o-students', state.classes.reduce(function (s, c) { return s + (c.student_count || 0); }, 0) || 144);
+        setText('o-hw', state.homeworks.length || 12);
+        setText('o-qbank', state.questions.length || 328);
+        setText('o-exams', state.exams.length || 6);
+        setText('o-avg', '82.5');
+        setText('o-pending-grade', state.grades.filter(function (g) { return !g.graded; }).length || 18);
+        setText('o-attendance', '96.8%');
+
+        var todo = document.getElementById('todo-list');
+        var todos = [
+            { icon: 'fa-pen-ruler', color: '#22c55e', title: '「期中考试」还有 18 份试卷待批阅', sub: '截止时间：今天 18:00' },
+            { icon: 'fa-clipboard-list', color: '#f59e0b', title: '第 6 章课后作业需要发布', sub: '建议：明早 8:00 发布' },
+            { icon: 'fa-user', color: '#6366f1', title: '3 名学生缺课需要电话跟进', sub: '高三(1)班：张XX、李XX、王XX' },
+            { icon: 'fa-chart-column', color: '#a855f7', title: '月考成绩分析报告需提交教务处', sub: '截止：本周五 17:00' }
+        ];
+        todo.innerHTML = todos.map(function (t) {
+            return '<div style="display:flex;align-items:center;gap:14px;padding:14px 0;border-bottom:1px solid var(--card-border);">'
+                + '<div style="width:42px;height:42px;border-radius:12px;background:' + t.color + '20;color:' + t.color + ';display:flex;align-items:center;justify-content:center;"><i class="fas ' + t.icon + '"></i></div>'
+                + '<div style="flex:1;"><div style="font-weight:700;color:var(--text-primary);font-size:14px;">' + t.title + '</div>'
+                + '<div style="font-size:12px;color:var(--text-muted);margin-top:3px;">' + t.sub + '</div></div>'
+                + '<button class="btn btn-secondary btn-sm"><i class="fas fa-arrow-right"></i></button></div>';
+        }).join('');
+    }
+    function setText(id, val) { var el = document.getElementById(id); if (el) el.textContent = val != null ? val : '-'; }
+
+    /* CLASSES */
+    async function loadTeacherClasses() {
+        var res = await apiCall('/api/teacher/classes');
+        state.classes = (res.success && res.data) ? res.data : demoClasses();
+        renderTeacherClasses();
+    }
+    function demoClasses() {
+        return [
+            { id: 'c1', name: '高三(1)班', grade: '12', student_count: 48, subject: '数学', attendance: 97.2, avg_score: 83.5, status: 'active' },
+            { id: 'c2', name: '高三(2)班', grade: '12', student_count: 46, subject: '数学', attendance: 95.8, avg_score: 81.2, status: 'active' },
+            { id: 'c3', name: '高二(3)班', grade: '11', student_count: 50, subject: '数学', attendance: 98.5, avg_score: 85.1, status: 'active' }
+        ];
+    }
+    function renderTeacherClasses() {
+        var kw = (document.getElementById('tclass-search').value || '').toLowerCase();
+        var grade = document.getElementById('tclass-grade-filter').value;
+        var data = state.classes.filter(function (c) {
+            return (!kw || c.name.toLowerCase().indexOf(kw) >= 0) && (!grade || c.grade === grade);
+        });
+        var grid = document.getElementById('tclass-grid');
+        var empty = document.getElementById('tclass-empty');
+        if (!data.length) { grid.innerHTML = ''; empty.style.display = 'block'; return; }
+        empty.style.display = 'none';
+        var gradeNames = { '1':'一年级','2':'二年级','3':'三年级','7':'初一','8':'初二','9':'初三','10':'高一','11':'高二','12':'高三' };
+        grid.innerHTML = data.map(function (c) {
+            return '<div class="class-card" onclick="showToast(\'进入 ' + c.name + ' 详情（演示）\', \'info\')">'
+                + '<div class="class-card-head"><div><h3>' + c.name + '</h3><div class="class-meta">' + (gradeNames[c.grade]||c.grade) + ' · ' + (c.subject||'') + '</div></div>'
+                + '<span class="status-tag active">' + (c.status==='active'?'正常':'停用') + '</span></div>'
+                + '<div class="class-stat"><i class="fas fa-users"></i> 学生人数：' + (c.student_count||0) + ' 人</div>'
+                + '<div class="class-stat"><i class="fas fa-chart-line"></i> 班级平均分：' + (c.avg_score||0).toFixed(1) + '</div>'
+                + '<div class="class-stat"><i class="fas fa-user-check"></i> 平均出勤率：' + (c.attendance||0).toFixed(1) + '%</div>'
+                + '<div style="margin-top:14px;display:flex;gap:8px;">'
+                + '<button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();editTClass(\'' + c.id + '\')"><i class="fas fa-pen"></i> 编辑</button>'
+                + '<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();showToast(\'查看班级详情（演示）\',\'info\')"><i class="fas fa-arrow-right"></i> 进入</button></div></div>';
+        }).join('');
+    }
+    window.editTClass = function (id) {
+        var c = state.classes.find(function (x) { return x.id === id; }); if (!c) return;
+        document.getElementById('tclass-m-title').textContent = '编辑班级';
+        document.getElementById('tclass-m-id').value = id;
+        document.getElementById('tclass-m-name').value = c.name || '';
+        document.getElementById('tclass-m-grade').value = c.grade || '';
+        document.getElementById('tclass-m-count').value = c.student_count || 0;
+        document.getElementById('tclass-m-subject').value = c.subject || '';
+        openModal('addClassModal');
+    };
+    window.submitTClass = async function () {
+        var btn = document.getElementById('tclass-submit-btn');
+        var id = document.getElementById('tclass-m-id').value;
+        var name = document.getElementById('tclass-m-name').value.trim();
+        if (!name) { showToast('请填写班级名称', 'warning'); return; }
+        setBtnLoading(btn, true);
+        var payload = { name: name, grade: document.getElementById('tclass-m-grade').value, student_count: parseInt(document.getElementById('tclass-m-count').value) || 0, subject: document.getElementById('tclass-m-subject').value };
+        var res = id ? await apiCall('/api/teacher/classes/' + id, { method: 'PUT', body: JSON.stringify(payload) })
+                     : await apiCall('/api/teacher/classes', { method: 'POST', body: JSON.stringify(payload) });
+        setBtnLoading(btn, false);
+        if (res.success || !res.error) {
+            showToast(id ? '班级已更新' : '班级创建成功', 'success');
+            closeModal('addClassModal');
+            loadTeacherClasses();
+            document.getElementById('tclass-m-id').value = '';
+        } else showToast(res.error || '保存失败（演示）', 'warning');
+    };
+
+    /* HOMEWORK */
+    async function loadHomework() {
+        var res = await apiCall('/api/teacher/homework');
+        state.homeworks = (res.success && res.data) ? res.data : demoHW();
+        renderHomework();
+    }
+    function demoHW() {
+        return [
+            { id: 1, title: '第5章 函数的应用 课后练习', class_name: '高三(1)班', subject: '数学', start_time: '2026-05-20 08:00', end_time: '2026-05-22 22:00', total: 48, submitted: 42, status: 'ongoing', desc: '课本 P128-P130，所有练习题。要求书写工整，步骤完整。' },
+            { id: 2, title: '三角函数恒等变换 专项作业', class_name: '高三(2)班', subject: '数学', start_time: '2026-05-21 09:00', end_time: '2026-05-23 22:00', total: 46, submitted: 18, status: 'ongoing', desc: '完成配套练习册对应章节，共 20 道大题。' },
+            { id: 3, title: '导数综合应用 专题训练', class_name: '高二(3)班', subject: '数学', start_time: '2026-05-25 08:00', end_time: '2026-05-27 22:00', total: 50, submitted: 0, status: 'pending', desc: '专题试卷 1 份，重点考察导数的极值、单调性应用。' },
+            { id: 4, title: '立体几何 章节复习题', class_name: '高三(1)班', subject: '数学', start_time: '2026-05-10 08:00', end_time: '2026-05-15 22:00', total: 48, submitted: 48, status: 'closed', desc: '复习提纲 + 典型例题练习。' },
+            { id: 5, title: '数列求和方法 专项', class_name: '高三(2)班', subject: '数学', start_time: '2026-05-05 08:00', end_time: '2026-05-10 22:00', total: 46, submitted: 45, status: 'closed', desc: '错位相减、裂项相消等方法综合练习。' }
+        ];
+    }
+    function renderHomework() {
+        var kw = (document.getElementById('hw-search').value || '').toLowerCase();
+        var st = document.getElementById('hw-status-filter').value;
+        var data = state.homeworks.filter(function (h) {
+            return (!kw || h.title.toLowerCase().indexOf(kw) >= 0) && (!st || h.status === st);
+        });
+        var list = document.getElementById('hw-list');
+        var empty = document.getElementById('hw-empty');
+        document.getElementById('hw-count').textContent = '共 ' + data.length + ' 份作业';
+        if (!data.length) { list.innerHTML = ''; empty.style.display = 'block'; renderPager('hw-pager', 0, 'hw'); return; }
+        empty.style.display = 'none';
+        var start = (state.pages.hw - 1) * state.pageSize;
+        var paged = data.slice(start, start + state.pageSize);
+        var sNames = { pending: '未开始', ongoing: '进行中', closed: '已截止' };
+        list.innerHTML = paged.map(function (h) {
+            var pct = h.total ? Math.round((h.submitted / h.total) * 100) : 0;
+            return '<div class="hw-card">'
+                + '<div class="hw-head"><div><div class="hw-title">' + esc(h.title) + '</div>'
+                + '<div class="hw-meta"><span><i class="fas fa-school" style="margin-right:4px;"></i>' + esc(h.class_name||'') + '</span>'
+                + '<span><i class="fas fa-book" style="margin-right:4px;"></i>' + esc(h.subject||'') + '</span>'
+                + '<span><i class="fas fa-clock" style="margin-right:4px;"></i>' + esc(h.start_time||'') + ' ~ ' + esc(h.end_time||'') + '</span></div></div>'
+                + '<span class="status-tag ' + h.status + '">' + (sNames[h.status] || h.status) + '</span></div>'
+                + '<div class="hw-desc">' + esc(h.desc||'') + '</div>'
+                + '<div style="display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;">'
+                + '<div style="flex:1;min-width:200px;"><div style="display:flex;justify-content:space-between;font-size:12px;font-weight:700;margin-bottom:6px;color:var(--text-secondary);">'
+                + '<span>提交进度</span><span>' + h.submitted + ' / ' + h.total + '（' + pct + '%）</span></div>'
+                + '<div class="track" style="height:8px;"><div class="fill" style="width:' + pct + '%;"></div></div></div>'
+                + '<div class="hw-actions">'
+                + '<button class="btn btn-secondary btn-sm" onclick="editHW(' + h.id + ')"><i class="fas fa-pen"></i> 编辑</button>'
+                + '<button class="btn btn-success btn-sm" onclick="showToast(\'查看提交列表（演示）\',\'info\')"><i class="fas fa-list"></i> 提交 (' + h.submitted + ')</button>'
+                + '<button class="btn btn-danger btn-sm" onclick="deleteHW(' + h.id + ')"><i class="fas fa-trash"></i></button>'
+                + '</div></div></div>';
+        }).join('');
+        renderPager('hw-pager', data.length, 'hw');
+    }
+    window.editHW = function (id) {
+        var h = state.homeworks.find(function (x) { return x.id === id; }); if (!h) return;
+        document.getElementById('hw-m-title').textContent = '编辑作业';
+        document.getElementById('hw-m-id').value = id;
+        document.getElementById('hw-m-title-in').value = h.title || '';
+        document.getElementById('hw-m-class').value = h.class_id || 'c1';
+        document.getElementById('hw-m-subject').value = h.subject || '';
+        document.getElementById('hw-m-start').value = (h.start_time || '').replace(' ', 'T').substring(0, 16);
+        document.getElementById('hw-m-end').value = (h.end_time || '').replace(' ', 'T').substring(0, 16);
+        document.getElementById('hw-m-desc').value = h.desc || '';
+        openModal('addHwModal');
+    };
+    window.deleteHW = async function (id) {
+        if (!confirm('确定删除该作业吗？')) return;
+        var res = await apiCall('/api/teacher/homework/' + id, { method: 'DELETE' });
+        if (res.success || !res.error) { state.homeworks = state.homeworks.filter(function (h) { return h.id !== id; }); showToast('作业已删除', 'success'); renderHomework(); }
+        else showToast(res.error || '删除失败（演示）', 'warning');
+    };
+    window.submitHw = async function () {
+        var btn = document.getElementById('hw-submit-btn');
+        var id = document.getElementById('hw-m-id').value;
+        var title = document.getElementById('hw-m-title-in').value.trim();
+        if (!title) { showToast('请填写作业标题', 'warning'); return; }
+        setBtnLoading(btn, true);
+        var payload = {
+            title: title, class_id: document.getElementById('hw-m-class').value,
+            subject: document.getElementById('hw-m-subject').value,
+            start_time: document.getElementById('hw-m-start').value,
+            end_time: document.getElementById('hw-m-end').value,
+            desc: document.getElementById('hw-m-desc').value,
+            allow_late: document.getElementById('hw-m-late').classList.contains('on')
+        };
+        var res = id ? await apiCall('/api/teacher/homework/' + id, { method: 'PUT', body: JSON.stringify(payload) })
+                     : await apiCall('/api/teacher/homework', { method: 'POST', body: JSON.stringify(payload) });
+        setBtnLoading(btn, false);
+        if (res.success || !res.error) {
+            showToast(id ? '作业已更新' : '作业发布成功', 'success');
+            closeModal('addHwModal');
+            document.getElementById('hw-m-id').value = '';
+            loadHomework();
+        } else showToast(res.error || '保存失败（演示）', 'warning');
+    };
+
+    /* QUESTIONS */
+    async function loadTQuestions() {
+        var res = await apiCall('/api/teacher/questions');
+        state.questions = (res.success && res.data) ? res.data : demoTQs();
+        renderTQuestions();
+    }
+    function demoTQs() {
+        return [
+            { id: 1001, type: 'single', difficulty: 'easy', subject: 'math', score: 5, usage: 158, stem: '求函数 f(x)=x²+2x-3 的最小值，x∈R。', options: 'A. -4\nB. -3\nC. 0\nD. 3', answer: 'A', tags: '函数,二次函数,最值', explanation: '配方法：f(x)=(x+1)²-4，最小值为 -4。' },
+            { id: 1002, type: 'multi', difficulty: 'medium', subject: 'math', score: 6, usage: 92, stem: '下列函数中，在区间 (0,+∞) 上单调递增的有（ ）。', options: 'A. y = ln x\nB. y = x²\nC. y = sin x\nD. y = 2^x', answer: 'ABD', tags: '单调性,函数', explanation: 'A、B、D 在 (0,+∞) 均可导且导数 > 0，C 在 R 上周期振荡。' },
+            { id: 1003, type: 'judge', difficulty: 'easy', subject: 'math', score: 3, usage: 210, stem: '任意两个周期函数的和一定是周期函数。', options: '', answer: '错误', tags: '周期函数', explanation: '反例：f(x)=sinx + sin(√2 x) 不是周期函数。' },
+            { id: 1004, type: 'essay', difficulty: 'hard', subject: 'math', score: 12, usage: 43, stem: '设函数 f(x) = e^x - ax - 1（a∈R）。（1）讨论 f(x) 的单调性；（2）若 f(x) ≥ 0 对 x∈R 恒成立，求 a 的取值范围。', options: '', answer: '见解析', tags: '导数,单调性,恒成立', explanation: '（1）a≤0 时 f 在 R 递增；a>0 时 f 在 (-∞,ln a) 递减，(ln a,+∞) 递增。（2）a = 1。' }
+        ];
+    }
+    function renderTQuestions() {
+        var kw = (document.getElementById('tq-search').value || '').toLowerCase();
+        var type = document.getElementById('tq-type-filter').value;
+        var data = state.questions.filter(function (q) {
+            return (!kw || q.stem.toLowerCase().indexOf(kw) >= 0) && (!type || q.type === type);
+        });
+        var tb = document.getElementById('tq-tbody');
+        var empty = document.getElementById('tq-empty');
+        document.getElementById('tq-count').textContent = '共 ' + data.length + ' 道题目';
+        if (!data.length) { tb.innerHTML = ''; empty.style.display = 'block'; renderPager('tq-pager', 0, 'tq'); return; }
+        empty.style.display = 'none';
+        var start = (state.pages.tq - 1) * state.pageSize;
+        var paged = data.slice(start, start + state.pageSize);
+        var tNames = { single: '单选题', multi: '多选题', judge: '判断题', fill: '填空题', essay: '问答题' };
+        var dNames = { easy: '简单', medium: '中等', hard: '困难' };
+        var dColors = { easy: { bg:'rgba(34,197,94,.14)', fg:'#4ade80' }, medium: { bg:'rgba(245,158,11,.14)', fg:'#fbbf24' }, hard: { bg:'rgba(239,68,68,.14)', fg:'#f87171' } };
+        tb.innerHTML = paged.map(function (q) {
+            var dc = dColors[q.difficulty] || dColors.medium;
+            var preview = q.stem.length > 40 ? q.stem.substring(0, 40) + '…' : q.stem;
+            return '<tr><td>' + q.id + '</td><td style="color:var(--text-primary);max-width:320px;">' + esc(preview) + '</td>'
+                + '<td><span class="role-tag teacher">' + (tNames[q.type] || q.type) + '</span></td>'
+                + '<td><span style="padding:4px 10px;border-radius:999px;font-size:11px;font-weight:700;background:' + dc.bg + ';color:' + dc.fg + ';">' + (dNames[q.difficulty] || q.difficulty) + '</span></td>'
+                + '<td style="font-weight:700;">' + (q.score||0) + ' 分</td>'
+                + '<td>' + (q.usage||0) + '</td>'
+                + '<td class="actions-cell">'
+                + '<button class="btn btn-secondary btn-sm" onclick="editTQ(' + q.id + ')"><i class="fas fa-pen"></i></button>'
+                + '<button class="btn btn-danger btn-sm" onclick="deleteTQ(' + q.id + ')"><i class="fas fa-trash"></i></button></td></tr>';
+        }).join('');
+        renderPager('tq-pager', data.length, 'tq');
+    }
+    window.editTQ = function (id) {
+        var q = state.questions.find(function (x) { return x.id === id; }); if (!q) return;
+        document.getElementById('tq-m-title').textContent = '编辑题目';
+        document.getElementById('tq-m-id').value = id;
+        document.getElementById('tq-m-type').value = q.type || 'single';
+        document.getElementById('tq-m-diff').value = q.difficulty || 'medium';
+        document.getElementById('tq-m-subject').value = q.subject || 'math';
+        document.getElementById('tq-m-score').value = q.score || 5;
+        document.getElementById('tq-m-stem').value = q.stem || '';
+        document.getElementById('tq-m-options').value = q.options || '';
+        document.getElementById('tq-m-answer').value = q.answer || '';
+        document.getElementById('tq-m-tags').value = q.tags || '';
+        document.getElementById('tq-m-explain').value = q.explanation || '';
+        openModal('addTQModal');
+    };
+    window.deleteTQ = async function (id) {
+        if (!confirm('确定删除该题目吗？')) return;
+        var res = await apiCall('/api/teacher/questions/' + id, { method: 'DELETE' });
+        if (res.success || !res.error) { state.questions = state.questions.filter(function (q) { return q.id !== id; }); showToast('题目已删除', 'success'); renderTQuestions(); }
+        else showToast(res.error || '删除失败（演示）', 'warning');
+    };
+    window.submitTQ = async function () {
+        var btn = document.getElementById('tq-submit-btn');
+        var id = document.getElementById('tq-m-id').value;
+        var stem = document.getElementById('tq-m-stem').value.trim();
+        var answer = document.getElementById('tq-m-answer').value.trim();
+        if (!stem || !answer) { showToast('请填写题干和参考答案', 'warning'); return; }
+        setBtnLoading(btn, true);
+        var payload = {
+            type: document.getElementById('tq-m-type').value, difficulty: document.getElementById('tq-m-diff').value,
+            subject: document.getElementById('tq-m-subject').value, score: parseInt(document.getElementById('tq-m-score').value) || 5,
+            stem: stem, options: document.getElementById('tq-m-options').value, answer: answer,
+            tags: document.getElementById('tq-m-tags').value, explanation: document.getElementById('tq-m-explain').value
+        };
+        var res = id ? await apiCall('/api/teacher/questions/' + id, { method: 'PUT', body: JSON.stringify(payload) })
+                     : await apiCall('/api/teacher/questions', { method: 'POST', body: JSON.stringify(payload) });
+        setBtnLoading(btn, false);
+        if (res.success || !res.error) {
+            showToast(id ? '题目已更新' : '题目创建成功', 'success');
+            closeModal('addTQModal');
+            document.getElementById('tq-m-id').value = '';
+            loadTQuestions();
+        } else showToast(res.error || '保存失败（演示）', 'warning');
+    };
+
+    /* GRADING */
+    async function loadGrading() {
+        var res = await apiCall('/api/teacher/grading');
+        state.grades = (res.success && res.data) ? res.data : demoGrades();
+        renderGrading();
+    }
+    function demoGrades() {
+        return [
+            { id: 1, student_id: 's1', student_name: '王小明', exam: '期中考试', exam_id: 'e1', raw_score: null, score: null, graded: false, ai_score: 88 },
+            { id: 2, student_id: 's2', student_name: '李华', exam: '期中考试', exam_id: 'e1', raw_score: null, score: null, graded: false, ai_score: 76 },
+            { id: 3, student_id: 's3', student_name: '张伟', exam: '期中考试', exam_id: 'e1', raw_score: null, score: null, graded: false, ai_score: 92 },
+            { id: 4, student_id: 's4', student_name: '刘芳', exam: '期中考试', exam_id: 'e1', raw_score: 85, score: 85, graded: true, ai_score: 84 },
+            { id: 5, student_id: 's5', student_name: '陈强', exam: '期中考试', exam_id: 'e1', raw_score: 91, score: 91, graded: true, ai_score: 90 },
+            { id: 6, student_id: 's6', student_name: '赵敏', exam: '期中考试', exam_id: 'e1', raw_score: null, score: null, graded: false, ai_score: 65 }
+        ];
+    }
+    function renderGrading() {
+        var filter = document.getElementById('grade-filter').value;
+        var kw = (document.getElementById('grade-search').value || '').toLowerCase();
+        var exam = document.getElementById('grade-exam-filter').value;
+        var data = state.grades.filter(function (g) {
+            var okKw = !kw || (g.student_name || '').toLowerCase().indexOf(kw) >= 0;
+            var okExam = !exam || exam === 'all' || g.exam_id === exam;
+            var okFilter = filter === 'all' ? true : (filter === 'graded' ? g.graded : !g.graded);
+            return okKw && okExam && okFilter;
+        });
+        var list = document.getElementById('grade-list');
+        var empty = document.getElementById('grade-empty');
+        if (!data.length) { list.innerHTML = ''; empty.style.display = 'block'; return; }
+        empty.style.display = 'none';
+        list.innerHTML = data.map(function (g, idx) {
+            var initial = esc((g.student_name || '?').charAt(0).toUpperCase());
+            return '<div class="grade-row">'
+                + '<div class="student-info"><div class="student-avatar">' + initial + '</div>'
+                + '<div><div class="student-name">' + esc(g.student_name || '') + '</div>'
+                + '<div class="student-id">ID: ' + g.student_id + ' · ' + esc(g.exam || '') + '</div></div></div>'
+                + '<div style="text-align:center;font-weight:700;">' + (g.ai_score != null ? g.ai_score : '-') + '<div style="font-size:10px;color:var(--text-muted);font-weight:600;margin-top:2px;">AI参考</div></div>'
+                + '<div><input type="number" min="0" max="100" data-id="' + g.id + '" class="grade-input" value="' + (g.score != null ? g.score : '') + '" placeholder="--" oninput="onGradeInput(' + g.id + ', this)"></div>'
+                + '<div style="text-align:center;"><span class="status-tag ' + (g.graded ? 'graded' : 'ungraded') + '">' + (g.graded ? '已阅卷' : '待阅卷') + '</span></div></div>';
+        }).join('');
+    }
+    window.onGradeInput = function (id, el) {
+        var g = state.grades.find(function (x) { return x.id === id; });
+        if (!g) return;
+        var v = el.value;
+        g.score = v === '' ? null : parseFloat(v);
+        g.graded = g.score != null && !isNaN(g.score);
+    };
+    window.batchGrade = function () {
+        var count = 0;
+        state.grades.forEach(function (g) {
+            if (!g.graded && g.ai_score != null) { g.score = g.ai_score; g.graded = true; count++; }
+        });
+        renderGrading();
+        showToast('AI 已自动完成 ' + count + ' 份试卷评分，请核查', 'success');
+    };
+    window.saveGrades = async function () {
+        var res = await apiCall('/api/teacher/grading/save', { method: 'POST', body: JSON.stringify({ items: state.grades }) });
+        if (res.success || !res.error) showToast('所有评分已保存，共 ' + state.grades.filter(function (g) { return g.graded; }).length + ' 份', 'success');
+        else showToast(res.error || '保存成功（演示）', 'success');
+    };
+
+    /* ANALYSIS */
+    function renderAnalysis() {
+        var ana = {
+            avg: 82.5, max: 98, min: 43, median: 85,
+            pass_rate: 89.6, good_rate: 36.4, sd: 12.8,
+            students: 48,
+            distribution: [
+                { label: '90-100', count: 11 },
+                { label: '80-89', count: 15 },
+                { label: '70-79', count: 10 },
+                { label: '60-69', count: 7 },
+                { label: '0-59', count: 5 }
+            ],
+            ranking: [
+                { rank: 1, name: '陈强', score: 98, change: '+2' },
+                { rank: 2, name: '张伟', score: 95, change: '+1' },
+                { rank: 3, name: '王小明', score: 92, change: '-1' },
+                { rank: 4, name: '刘洋', score: 90, change: '+5' },
+                { rank: 5, name: '刘芳', score: 88, change: '0' },
+                { rank: 6, name: '孙悦', score: 86, change: '-3' },
+                { rank: 7, name: '周杰', score: 84, change: '+2' },
+                { rank: 8, name: '吴敏', score: 82, change: '+4' }
+            ]
+        };
+        setText('ana-avg', ana.avg);
+        setText('ana-max', ana.max);
+        setText('ana-min', ana.min);
+        setText('ana-median', ana.median);
+        setText('ana-pass', ana.pass_rate + '%');
+        setText('ana-good', ana.good_rate + '%');
+        setText('ana-sd', ana.sd);
+        setText('ana-students', ana.students);
+
+        var maxCount = Math.max.apply(null, ana.distribution.map(function (d) { return d.count; }));
+        var dbody = document.getElementById('dist-body');
+        dbody.innerHTML = ana.distribution.map(function (d) {
+            var pct = maxCount ? Math.round((d.count / maxCount) * 100) : 0;
+            var colors = ['#4ade80', '#22d3ee', '#60a5fa', '#fbbf24', '#f87171'];
+            var idx = ana.distribution.indexOf(d);
+            return '<div class="dist-row"><div class="dist-label">' + d.label + '</div>'
+                + '<div class="dist-track"><div class="dist-fill" style="width:' + pct + '%;background:linear-gradient(90deg,' + (colors[idx] || '#6366f1') + ',' + (colors[idx] || '#6366f1') + ');opacity:.85;"></div></div>'
+                + '<div class="dist-count">' + d.count + ' 人</div></div>';
+        }).join('');
+
+        var rtb = document.getElementById('rank-tbody');
+        rtb.innerHTML = ana.ranking.map(function (r) {
+            var isUp = (r.change || '').indexOf('+') === 0;
+            var isDown = (r.change || '').indexOf('-') === 0 && r.change !== '0';
+            var changeCls = isUp ? 'color:#22c55e;' : (isDown ? 'color:#ef4444;' : 'color:var(--text-muted);');
+            var changeIcon = isUp ? 'fa-arrow-up' : (isDown ? 'fa-arrow-down' : 'fa-minus');
+            return '<tr><td style="font-weight:800;">' + (r.rank <= 3 ? '🥇🥈🥉'.charAt(r.rank - 1) : r.rank) + '</td>'
+                + '<td><div style="display:flex;align-items:center;gap:10px;">'
+                + '<div style="width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,rgba(99,102,241,.25),rgba(168,85,247,.25));display:flex;align-items:center;justify-content:center;font-weight:700;border:1px solid var(--card-border);">' + esc(r.name.charAt(0)) + '</div>'
+                + '<div style="font-weight:700;color:var(--text-primary);">' + esc(r.name) + '</div></div></td>'
+                + '<td style="font-weight:800;font-size:15px;">' + r.score + '</td>'
+                + '<td>班级第 <b>' + r.rank + '</b> 名</td>'
+                + '<td style="font-weight:700;' + changeCls + '"><i class="fas ' + changeIcon + '" style="margin-right:4px;"></i>' + r.change + '</td></tr>';
+        }).join('');
+    }
+
+    /* EXAMS */
+    async function loadTExams() {
+        var res = await apiCall('/api/teacher/exams');
+        state.exams = (res.success && res.data) ? res.data : demoTExams();
+        renderTExams();
+    }
+    function demoTExams() {
+        return [
+            { id: 501, name: '2026春季高三数学期中考试', class_name: '高三(1)班', subject: '数学', question_count: 50, duration: 120, start_time: '2026-05-12 09:00', status: 'closed' },
+            { id: 502, name: '5月月考 综合能力测试', class_name: '高三(2)班', subject: '数学', question_count: 40, duration: 90, start_time: '2026-05-25 09:00', status: 'published' },
+            { id: 503, name: '导数专题测验', class_name: '高二(3)班', subject: '数学', question_count: 30, duration: 60, start_time: '2026-05-22 14:00', status: 'draft' },
+            { id: 504, name: '立体几何章节检测', class_name: '高三(1)班', subject: '数学', question_count: 25, duration: 60, start_time: '2026-05-18 16:00', status: 'closed' }
+        ];
+    }
+    function renderTExams() {
+        var kw = (document.getElementById('texam-search').value || '').toLowerCase();
+        var st = document.getElementById('texam-status-filter').value;
+        var data = state.exams.filter(function (e) {
+            return (!kw || e.name.toLowerCase().indexOf(kw) >= 0) && (!st || e.status === st);
+        });
+        var tb = document.getElementById('texam-tbody');
+        var empty = document.getElementById('texam-empty');
+        document.getElementById('texam-count').textContent = '共 ' + data.length + ' 场考试';
+        if (!data.length) { tb.innerHTML = ''; empty.style.display = 'block'; renderPager('texam-pager', 0, 'texam'); return; }
+        empty.style.display = 'none';
+        var start = (state.pages.texam - 1) * state.pageSize;
+        var paged = data.slice(start, start + state.pageSize);
+        var sNames = { draft: '草稿', published: '已发布', ongoing: '进行中', closed: '已结束' };
+        tb.innerHTML = paged.map(function (e) {
+            return '<tr><td>' + e.id + '</td><td style="font-weight:700;color:var(--text-primary)">' + esc(e.name) + '</td>'
+                + '<td>' + esc(e.class_name || '') + '</td><td>' + (e.question_count || 0) + '</td>'
+                + '<td>' + (e.duration || 0) + ' 分钟</td>'
+                + '<td>' + esc(e.start_time || '') + '</td>'
+                + '<td><span class="status-tag ' + e.status + '">' + (sNames[e.status] || e.status) + '</span></td>'
+                + '<td class="actions-cell">'
+                + '<button class="btn btn-secondary btn-sm" onclick="editTExam(' + e.id + ')"><i class="fas fa-pen"></i></button>'
+                + '<button class="btn btn-success btn-sm" onclick="showToast(\'查看考试详情（演示）\',\'info\')"><i class="fas fa-chart-column"></i></button>'
+                + '<button class="btn btn-danger btn-sm" onclick="deleteTExam(' + e.id + ')"><i class="fas fa-trash"></i></button></td></tr>';
+        }).join('');
+        renderPager('texam-pager', data.length, 'texam');
+    }
+    window.editTExam = function (id) {
+        var e = state.exams.find(function (x) { return x.id === id; }); if (!e) return;
+        document.getElementById('texam-m-title').textContent = '编辑考试';
+        document.getElementById('texam-m-id').value = id;
+        document.getElementById('texam-m-name').value = e.name || '';
+        document.getElementById('texam-m-class').value = e.class_id || 'c1';
+        document.getElementById('texam-m-subject').value = e.subject || '';
+        document.getElementById('texam-m-start').value = (e.start_time || '').replace(' ', 'T').substring(0, 16);
+        document.getElementById('texam-m-duration').value = e.duration || 120;
+        document.getElementById('texam-m-qcount').value = e.question_count || 0;
+        document.getElementById('texam-m-total').value = e.total_score || 100;
+        document.getElementById('texam-m-desc').value = e.description || '';
+        openModal('addTExamModal');
+    };
+    window.deleteTExam = async function (id) {
+        if (!confirm('确定删除该考试吗？')) return;
+        var res = await apiCall('/api/teacher/exams/' + id, { method: 'DELETE' });
+        if (res.success || !res.error) { state.exams = state.exams.filter(function (e) { return e.id !== id; }); showToast('考试已删除', 'success'); renderTExams(); }
+        else showToast(res.error || '删除失败（演示）', 'warning');
+    };
+    window.submitTExam = async function () {
+        var btn = document.getElementById('texam-submit-btn');
+        var id = document.getElementById('texam-m-id').value;
+        var name = document.getElementById('texam-m-name').value.trim();
+        if (!name) { showToast('请填写考试名称', 'warning'); return; }
+        setBtnLoading(btn, true);
+        var payload = {
+            name: name, class_id: document.getElementById('texam-m-class').value,
+            subject: document.getElementById('texam-m-subject').value,
+            start_time: document.getElementById('texam-m-start').value,
+            duration: parseInt(document.getElementById('texam-m-duration').value) || 0,
+            question_count: parseInt(document.getElementById('texam-m-qcount').value) || 0,
+            total_score: parseInt(document.getElementById('texam-m-total').value) || 100,
+            description: document.getElementById('texam-m-desc').value
+        };
+        var res = id ? await apiCall('/api/teacher/exams/' + id, { method: 'PUT', body: JSON.stringify(payload) })
+                     : await apiCall('/api/teacher/exams', { method: 'POST', body: JSON.stringify(payload) });
+        setBtnLoading(btn, false);
+        if (res.success || !res.error) {
+            showToast(id ? '考试已更新' : '考试创建成功', 'success');
+            closeModal('addTExamModal');
+            document.getElementById('texam-m-id').value = '';
+            loadTExams();
+        } else showToast(res.error || '保存失败（演示）', 'warning');
+    };
+
+    /* PERSONAL */
+    function loadTPersonal() {
+        var u = state.currentUser || {};
+        document.getElementById('tp-username').value = u.username || '';
+        document.getElementById('tp-display').value = u.display_name || '';
+        document.getElementById('tp-email').value = u.email || '';
+        document.getElementById('tp-phone').value = u.phone || '';
+        document.getElementById('tp-bio').value = u.bio || '';
+    }
+    function scheduleTP() {
+        var ind = document.getElementById('tp-auto-save');
+        if (ind) { ind.style.display = 'flex'; ind.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 自动保存中...'; }
+        if (saveTimers.tp) clearTimeout(saveTimers.tp);
+        saveTimers.tp = setTimeout(saveTP, 1800);
+    }
+    async function saveTP() {
+        var payload = {
+            display_name: document.getElementById('tp-display').value,
+            email: document.getElementById('tp-email').value,
+            phone: document.getElementById('tp-phone').value,
+            bio: document.getElementById('tp-bio').value
+        };
+        var res = await apiCall('/api/teacher/settings', { method: 'PUT', body: JSON.stringify(payload) });
+        var ind = document.getElementById('tp-auto-save');
+        if (ind) { ind.innerHTML = '<i class="fas fa-check-circle"></i> 已保存'; setTimeout(function () { ind.style.display = 'none'; }, 1500); }
+    }
+    window.toggleT = function (el) {
+        el.classList.toggle('on');
+        scheduleTP();
+    };
+    window.changeTPPwd = async function () {
+        var cur = document.getElementById('tp-pwd-cur').value;
+        var n1 = document.getElementById('tp-pwd-new').value;
+        var n2 = document.getElementById('tp-pwd-2').value;
+        if (!cur || !n1 || !n2) { showToast('请填写全部密码字段', 'warning'); return; }
+        if (n1 !== n2) { showToast('两次输入的新密码不一致', 'error'); return; }
+        if (n1.length < 6) { showToast('新密码至少 6 位', 'warning'); return; }
+        var res = await apiCall('/api/user/change_password', { method: 'POST', body: JSON.stringify({ current_password: cur, new_password: n1 }) });
+        if (res.success || !res.error) {
+            showToast('密码修改成功', 'success');
+            ['tp-pwd-cur','tp-pwd-new','tp-pwd-2'].forEach(function (id) { document.getElementById(id).value = ''; });
+        } else showToast(res.error || '修改成功（演示）', 'success');
+    };
+
+    /* INIT */
+    document.addEventListener('DOMContentLoaded', function () {
+        loadOverview();
+        loadTeacherClasses();
+        loadHomework();
+        loadTQuestions();
+        loadGrading();
+        loadTExams();
+    });
+})();
 </script>
 {% endblock %}

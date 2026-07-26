@@ -50,6 +50,7 @@
             top: 0;
             height: 100vh;
             overflow-y: auto;
+            transition: all 0.25s ease;
         }
 
         .sidebar-header {
@@ -228,20 +229,19 @@
         }
         .sidebar-collapse:hover { background: rgba(99, 102, 241, 0.2); }
 
-        .sidebar.collapsed { width: 64px; }
-        .sidebar.collapsed .logo div,
+        .sidebar.collapsed { width: 64px !important; min-width: 64px !important; max-width: 64px !important; }
+        .sidebar.collapsed .logo > div:last-child,
         .sidebar.collapsed .subtitle,
         .sidebar.collapsed .nav-title,
         .sidebar.collapsed .nav-item span:last-child,
-        .sidebar.collapsed .session-status span,
-        .sidebar.collapsed .sidebar-collapse {
-            display: none;
+        .sidebar.collapsed .session-status span {
+            display: none !important;
         }
         .sidebar.collapsed .sidebar-header { padding-bottom: 12px; }
+        .sidebar.collapsed .logo { justify-content: center; }
         .sidebar.collapsed .nav-item { justify-content: center; padding: 12px 8px; }
         .sidebar.collapsed .nav-menu { padding: 12px 0; }
         .sidebar.collapsed .session-status { justify-content: center; }
-        .sidebar.collapsed .nav-title { padding: 8px 12px; }
 
         .sidebar.collapsed .nav-item:hover {
             background: rgba(99, 102, 241, 0.15);
@@ -493,6 +493,57 @@
 {% endif %}
 
 <script>
+try { localStorage.setItem('mtscos_layout_ai_disabled', '1'); } catch(e) {}
+var _studentSidebarSB_STYLE_ID = 'mtscos_student_sidebar_collapse_style_override';
+var _studentSidebarSB_ID = 'mtscos_sb_student';
+var _studentSidebarMOStarted = false;
+
+function _studentSidebarEnsureIds() {
+    var sb = document.querySelector('.sidebar');
+    if (sb && !sb.id) sb.id = _studentSidebarSB_ID;
+}
+function _studentSidebarEnsureStrongRules() {
+    _studentSidebarEnsureIds();
+    var sid = 'mtscos_student_sb_strong_rules';
+    var s = document.getElementById(sid);
+    if (!s) { s = document.createElement('style'); s.id = sid; }
+    var css = '';
+    css += '#' + _studentSidebarSB_ID + '{position:relative !important;left:auto !important;right:auto !important;top:auto !important;bottom:auto !important;width:240px !important;min-width:240px !important;max-width:240px !important;}';
+    css += '#' + _studentSidebarSB_ID + '.collapsed{width:64px !important;min-width:64px !important;max-width:64px !important;}';
+    s.textContent = css;
+    var host = document.body || document.documentElement;
+    if (s.parentNode !== host || s !== host.lastElementChild) { host.appendChild(s); }
+}
+function _studentSidebarStartMO() {
+    if (_studentSidebarMOStarted) return;
+    _studentSidebarEnsureIds();
+    var sb = document.getElementById(_studentSidebarSB_ID);
+    if (!sb) return;
+    _studentSidebarMOStarted = true;
+    var mo = new MutationObserver(function(muts) {
+        var changed = false;
+        muts.forEach(function(m) { if (m.type === 'attributes' && m.attributeName === 'style') changed = true; });
+        if (changed) {
+            _studentSidebarEnsureStrongRules();
+            _studentSidebarEnsureOverrideStyle();
+        }
+    });
+    mo.observe(sb, { attributes: true, attributeFilter: ['style'] });
+}
+
+function _studentSidebarEnsureOverrideStyle() {
+    var s = document.getElementById(_studentSidebarSB_STYLE_ID);
+    if (!s) {
+        s = document.createElement('style');
+        s.id = _studentSidebarSB_STYLE_ID;
+        s.textContent = '.sidebar.collapsed{width:64px !important;min-width:64px !important;max-width:64px !important;}.sidebar.collapsed .logo>div:last-child,.sidebar.collapsed .subtitle,.sidebar.collapsed .nav-title,.sidebar.collapsed .nav-item span:last-child,.sidebar.collapsed .session-status span{display:none !important;}';
+    }
+    var host = document.body || document.documentElement;
+    if (s.parentNode !== host || s !== host.lastElementChild) {
+        host.appendChild(s);
+    }
+}
+
 function toggleSidebar() {
     const sidebar = document.querySelector('.sidebar');
     if (sidebar) {
@@ -500,21 +551,98 @@ function toggleSidebar() {
     }
 }
 
+function _studentSidebarApplyInline(collapsed) {
+    var w = collapsed ? '64px' : '240px';
+    var sb = document.querySelector('.sidebar');
+    if (sb) {
+        sb.style.setProperty('position', 'relative', 'important');
+        sb.style.setProperty('width', w, 'important');
+        sb.style.setProperty('min-width', w, 'important');
+        sb.style.setProperty('max-width', w, 'important');
+        sb.style.setProperty('left', 'auto', 'important');
+        sb.style.setProperty('right', 'auto', 'important');
+        sb.style.setProperty('top', 'auto', 'important');
+        sb.style.setProperty('bottom', 'auto', 'important');
+    }
+}
+function _studentSidebarEnforceInline(collapsed) {
+    for (var t = 0; t < 6; t++) {
+        (function(d) { setTimeout(function() { _studentSidebarApplyInline(collapsed); _studentSidebarEnsureOverrideStyle(); }, d); })(t * 180);
+    }
+}
+function _studentSidebarForceSize(el, w) {
+    try {
+        if (!el) return;
+        if (el.attributeStyleMap) {
+            el.attributeStyleMap.set('position', 'relative');
+            el.attributeStyleMap.set('width', w);
+            el.attributeStyleMap.set('min-width', w);
+            el.attributeStyleMap.set('max-width', w);
+            el.attributeStyleMap.set('left', 'auto');
+            el.attributeStyleMap.set('right', 'auto');
+            el.attributeStyleMap.set('top', 'auto');
+            el.attributeStyleMap.set('bottom', 'auto');
+            el.attributeStyleMap.set('flex-grow', '0');
+            el.attributeStyleMap.set('flex-shrink', '0');
+            el.attributeStyleMap.set('flex-basis', w);
+        }
+        el.style.setProperty('position', 'relative', 'important');
+        el.style.setProperty('width', w, 'important');
+        el.style.setProperty('min-width', w, 'important');
+        el.style.setProperty('max-width', w, 'important');
+        el.style.setProperty('left', 'auto', 'important');
+        el.style.setProperty('right', 'auto', 'important');
+        el.style.setProperty('top', 'auto', 'important');
+        el.style.setProperty('bottom', 'auto', 'important');
+        el.style.setProperty('flex-grow', '0', 'important');
+        el.style.setProperty('flex-shrink', '0', 'important');
+        el.style.setProperty('flex-basis', w, 'important');
+    } catch(e) {}
+}
 function toggleSidebarCollapse() {
+    _studentSidebarEnsureStrongRules();
+    _studentSidebarEnsureOverrideStyle();
     const sidebar = document.querySelector('.sidebar');
     if (sidebar) {
-        sidebar.classList.toggle('collapsed');
+        const wasCollapsed = sidebar.classList.contains('collapsed');
+        if (wasCollapsed) sidebar.classList.remove('collapsed'); else sidebar.classList.add('collapsed');
+        const c = sidebar.classList.contains('collapsed');
+        try {
+            localStorage.setItem('mtscos_student_sidebar_collapsed_v1', c ? '1' : '0');
+        } catch(e) {}
         const collapseBtn = document.querySelector('.sidebar-collapse');
         if (collapseBtn) {
             const icon = collapseBtn.querySelector('i');
-            if (sidebar.classList.contains('collapsed')) {
-                icon.classList.remove('fa-chevron-left');
-                icon.classList.add('fa-chevron-right');
+            if (c) {
+                if (icon) { icon.classList.remove('fa-chevron-left'); icon.classList.add('fa-chevron-right'); }
             } else {
-                icon.classList.remove('fa-chevron-right');
-                icon.classList.add('fa-chevron-left');
+                if (icon) { icon.classList.remove('fa-chevron-right'); icon.classList.add('fa-chevron-left'); }
             }
         }
+        try { sidebar.removeAttribute('style'); } catch(e) {}
+        var w = c ? '64px' : '240px';
+        _studentSidebarForceSize(sidebar, w);
+        _studentSidebarEnforceLoop._last = w;
+        _studentSidebarReflow(sidebar);
+    }
+}
+function _studentSidebarReflow(el) {
+    try {
+        if (el) { var d = el.style.cssText; el.style.display = 'none'; void el.offsetHeight; el.style.cssText = d; }
+    } catch(e) {}
+}
+function _studentSidebarEnforceLoop() {
+    _studentSidebarEnsureIds();
+    var sb = document.getElementById(_studentSidebarSB_ID);
+    if (!sb) return;
+    var c = sb.classList.contains('collapsed');
+    var w = c ? '64px' : '240px';
+    _studentSidebarEnsureStrongRules();
+    _studentSidebarEnsureOverrideStyle();
+    _studentSidebarForceSize(sb, w);
+    if (!_studentSidebarEnforceLoop._last || _studentSidebarEnforceLoop._last !== w) {
+        _studentSidebarEnforceLoop._last = w;
+        _studentSidebarReflow(sb);
     }
 }
 
@@ -534,8 +662,35 @@ function updateSystemTime() {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
+    try {
+        _studentSidebarEnsureIds();
+        _studentSidebarEnsureStrongRules();
+        _studentSidebarEnsureOverrideStyle();
+        var sidebar = document.querySelector('.sidebar');
+        var btn = document.querySelector('.sidebar-collapse');
+        if (sidebar && localStorage.getItem('mtscos_student_sidebar_collapsed_v1') === '1') {
+            sidebar.classList.add('collapsed');
+            if (btn) {
+                var icon = btn.querySelector('i');
+                if (icon) { icon.classList.remove('fa-chevron-left'); icon.classList.add('fa-chevron-right'); }
+            }
+        }
+        try { if (sidebar) sidebar.removeAttribute('style'); } catch(e) {}
+        _studentSidebarStartMO();
+        _studentSidebarEnforceLoop();
+    } catch(e) {}
     updateSystemTime();
     setInterval(updateSystemTime, 1000);
+    setInterval(function() {
+        _studentSidebarEnsureIds();
+        _studentSidebarEnsureStrongRules();
+        _studentSidebarEnsureOverrideStyle();
+        _studentSidebarStartMO();
+        _studentSidebarEnforceLoop();
+    }, 1500);
+    setInterval(function() {
+        _studentSidebarEnforceLoop();
+    }, 100);
     const currentPath = window.location.pathname;
     const navItems = document.querySelectorAll('.nav-item');
     
@@ -555,6 +710,7 @@ document.addEventListener('DOMContentLoaded', function() {
             sidebar.classList.remove('show');
         }
     });
+    setInterval(_studentSidebarEnsureOverrideStyle, 2000);
 });
 
 (function() {

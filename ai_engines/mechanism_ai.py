@@ -82,11 +82,41 @@ class MechanismAI:
                 self.expire_session(session_id)
 
     def _check_vikey_sessions(self):
-        """检查Vikey会话状态: 自动处理异常情况"""
+        """检查Vikey会话状态: 自动处理异常情况 + 联动驱动侧 session_status"""
         current_time = time.time()
         for session_id, session_data in list(self.vikey_sessions.items()):
-            if current_time - session_data["last_activity"] > self.mechanism_config["vikey_lock_timeout"]:
-                self.handle_vikey_timeout(session_id)
+            timeout_s = self.mechanism_config.get("vikey_lock_timeout", 60)
+            idle = current_time - session_data.get("last_activity", 0)
+            if idle > timeout_s:
+                still_valid = False
+                try:
+                    from core.services.vikey_driver import get_vikey_manager
+                    tok = session_data.get("vikey_info", {}).get("session_token") or session_data.get("session_token")
+                    if tok:
+                        st = get_vikey_manager().session_status(tok)
+                        if st.get("valid"):
+                            still_valid = True
+                            session_data["last_activity"] = current_time
+                except Exception as e:
+                    self.logger.warning(f"检查 Vikey 驱动会话异常: {e}")
+                if not still_valid:
+                    self.handle_vikey_timeout(session_id)
+
+    def handle_vikey_timeout(self, session_id):
+        """处理Vikey会话超时，同步通知驱动侧登出 token"""
+        if session_id in self.vikey_sessions:
+            vikey_data = self.vikey_sessions[session_id]
+            self.logger.warning(f"Vikey会话超时: {session_id}")
+            try:
+                tok = vikey_data.get("vikey_info", {}).get("session_token") or vikey_data.get("session_token")
+                if tok:
+                    from core.services.vikey_driver import get_vikey_manager
+                    get_vikey_manager().logout_token(tok)
+            except Exception as e:
+                self.logger.warning(f"Vikey 驱动登出失败: {e}")
+            del self.vikey_sessions[session_id]
+            return True
+        return False
 
     def lock(self, resource_id, lock_type="exclusive", user_id=None, metadata=None):
         """锁定资源"""
@@ -255,8 +285,17 @@ class MechanismAI:
             return None
 
     def _verify_vikey_user(self, vikey_info):
-        """验证Vikey硬件用户信息"""
-        return {"verified": True, "user_id": "vikey_user"}
+        """验证Vikey硬件用户信息（对接真实 Vikey 驱动）"""
+        try:
+            from core.services.vikey_driver import get_vikey_manager
+            mgr = get_vikey_manager()
+            result = mgr.verify_vikey_hardware(vikey_info or {})
+            if result and result.get("verified"):
+                return result
+            return {"verified": False, "reason": result.get("reason") or "硬件校验未通过"}
+        except Exception as e:
+            self.logger.error(f"Vikey 驱动校验失败: {e}")
+            return {"verified": False, "reason": f"驱动校验异常: {e}"}
 
     def _switch_to_vikey_user(self, current_user_id, vikey_user_info, session_id, snapshot_id):
         """切换到Vikey用户状态"""

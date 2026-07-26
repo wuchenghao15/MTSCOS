@@ -42,6 +42,13 @@
             border-bottom: 1px solid var(--glass-border);
             box-shadow: var(--glass-shadow);
             flex-shrink: 0;
+            position: sticky;
+            top: 0 !important;
+            left: 0;
+            right: 0;
+            width: 100%;
+            z-index: 999;
+            margin: 0 !important;
         }
         .mtscos-header-left {
             display: flex;
@@ -192,8 +199,11 @@
             color: #a5b4fc;
         }
         body.with-global-header {
-            padding-top: 48px;
+            padding-top: 0;
         }
+        body.with-global-header::before,
+        body::before { margin: 0 !important; padding: 0 !important; }
+        html, body { margin: 0 !important; padding: 0 !important; }
         .mtscos-lock-overlay {
             display: none;
             position: fixed;
@@ -382,11 +392,15 @@
             display: flex;
             min-height: 100vh;
         }
+        /* 全局硬约束：20% / 10%（除主页外所有页面 2:8，mini 时 1:9）
+           注意：加 [data-theme] 前缀把特异性提升到 0-2-0，覆盖 L721 的老主题层 [data-theme] .mtscos-sidebar 不透明背景 */
+        [data-theme] .mtscos-sidebar,
         .mtscos-sidebar {
             width: 20%;
-            background: rgba(15, 15, 35, 0.95);
-            backdrop-filter: blur(24px);
-            border-right: 1px solid rgba(99, 102, 241, 0.2);
+            background: rgba(15, 15, 35, 0.55);
+            backdrop-filter: blur(32px) saturate(180%);
+            -webkit-backdrop-filter: blur(32px) saturate(180%);
+            border-right: 1px solid rgba(255,255,255,0.16);
             display: flex;
             flex-direction: column;
             position: fixed;
@@ -395,7 +409,83 @@
             bottom: 0;
             z-index: 9998;
             overflow: hidden;
+            box-shadow: 2px 0 32px rgba(0,0,0,0.14);
+            transition: width .28s cubic-bezier(.4,0,.2,1);
+            will-change: width;
         }
+        [data-theme] .mtscos-main,
+        .mtscos-main {
+            flex: 1;
+            margin-left: 20%;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            overflow: hidden;
+            transition: margin-left .28s cubic-bezier(.4,0,.2,1);
+            will-change: margin-left;
+        }
+        /* Mini 态宽度 10% / 智能回放 hover 展开 20%（均加 !important 保证优先级最高） */
+        [data-theme] body.sidebar-mini .mtscos-sidebar,
+        body.sidebar-mini .mtscos-sidebar { width: 10% !important; }
+        [data-theme] body.sidebar-mini .mtscos-main,
+        body.sidebar-mini .mtscos-main    { margin-left: 10% !important; }
+        [data-theme] body.sidebar-mini.sidebar-hovered .mtscos-sidebar,
+        body.sidebar-mini.sidebar-hovered .mtscos-sidebar { width: 20% !important; }
+        [data-theme] body.sidebar-mini.sidebar-hovered .mtscos-main,
+        body.sidebar-mini.sidebar-hovered .mtscos-main    { margin-left: 20% !important; }
+
+        /* Mini 态：文字隐藏（只保留图标），0-2-0 特异性 + 位置靠后 覆盖任何老规则 */
+        [data-theme] body.sidebar-mini .mtscos-sidebar-logo-text,
+        [data-theme] body.sidebar-mini .mtscos-nav-item > span,
+        [data-theme] body.sidebar-mini .mtscos-sidebar-user-info,
+        [data-theme] body.sidebar-mini .mtscos-sidebar-logout > span,
+        body.sidebar-mini .mtscos-sidebar-logo-text,
+        body.sidebar-mini .mtscos-nav-item > span,
+        body.sidebar-mini .mtscos-sidebar-user-info,
+        body.sidebar-mini .mtscos-sidebar-logout > span {
+            opacity: 0 !important;
+            height: 0 !important;
+            overflow: hidden !important;
+            visibility: hidden !important;
+            pointer-events: none !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        /* Mini + Hover：智能回放文字（延迟 120ms 避免抖动） */
+        [data-theme] body.sidebar-mini.sidebar-hovered .mtscos-sidebar-logo-text,
+        [data-theme] body.sidebar-mini.sidebar-hovered .mtscos-nav-item > span,
+        [data-theme] body.sidebar-mini.sidebar-hovered .mtscos-sidebar-user-info,
+        [data-theme] body.sidebar-mini.sidebar-hovered .mtscos-sidebar-logout > span,
+        body.sidebar-mini.sidebar-hovered .mtscos-sidebar-logo-text,
+        body.sidebar-mini.sidebar-hovered .mtscos-nav-item > span,
+        body.sidebar-mini.sidebar-hovered .mtscos-sidebar-user-info,
+        body.sidebar-mini.sidebar-hovered .mtscos-sidebar-logout > span {
+            opacity: 1 !important;
+            height: auto !important;
+            visibility: visible !important;
+            pointer-events: auto !important;
+            margin: unset !important;
+            padding: unset !important;
+            transition: opacity .16s ease-out .12s !important;
+        }
+        /* Mini 态图标居中 / Hover 回放左对齐 */
+        [data-theme] body.sidebar-mini .mtscos-sidebar-logo,
+        body.sidebar-mini .mtscos-sidebar-logo   { justify-content: center !important; }
+        [data-theme] body.sidebar-mini .mtscos-nav-item,
+        body.sidebar-mini .mtscos-nav-item       { justify-content: center !important; padding: 12px 8px !important; }
+        [data-theme] body.sidebar-mini .mtscos-sidebar-user,
+        body.sidebar-mini .mtscos-sidebar-user   { justify-content: center !important; }
+        [data-theme] body.sidebar-mini .mtscos-sidebar-logout,
+        body.sidebar-mini .mtscos-sidebar-logout { justify-content: center !important; }
+        [data-theme] body.sidebar-mini.sidebar-hovered .mtscos-sidebar-logo,
+        body.sidebar-mini.sidebar-hovered .mtscos-sidebar-logo   { justify-content: flex-start !important; }
+        [data-theme] body.sidebar-mini.sidebar-hovered .mtscos-nav-item,
+        body.sidebar-mini.sidebar-hovered .mtscos-nav-item       { justify-content: flex-start !important; padding: 10px 14px !important; }
+        [data-theme] body.sidebar-mini.sidebar-hovered .mtscos-sidebar-user,
+        body.sidebar-mini.sidebar-hovered .mtscos-sidebar-user   { justify-content: flex-start !important; }
+        [data-theme] body.sidebar-mini.sidebar-hovered .mtscos-sidebar-logout,
+        body.sidebar-mini.sidebar-hovered .mtscos-sidebar-logout { justify-content: center !important; }
+
         .mtscos-sidebar-header {
             padding: 20px 16px;
             border-bottom: 1px solid rgba(99, 102, 241, 0.15);
@@ -516,14 +606,8 @@
             background: rgba(239, 68, 68, 0.25);
             color: #ef4444;
         }
-        .mtscos-main {
-            flex: 1;
-            margin-left: 20%;
-            display: flex;
-            flex-direction: column;
-            min-height: 100vh;
-            overflow: hidden;
-        }
+        /* .mtscos-main 规则已合并到上面的「全局硬约束」块（L415 附近），避免重复定义导致宽度被覆盖 */
+
         .mtscos-content-scroll {
             flex: 1;
             overflow-y: auto;
@@ -549,9 +633,360 @@
         body {
             overflow: hidden;
         }
+        /* ========== THEME CSS VARIABLES ========== */
+        [data-theme="deep_blue"] {
+            --glass-bg: rgba(15, 23, 42, 0.85);
+            --glass-border: rgba(99, 102, 241, 0.2);
+            --glass-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            --accent: #6366f1;
+            --accent-soft: rgba(99, 102, 241, 0.15);
+            --accent-hover: rgba(99, 102, 241, 0.28);
+            --accent-text: #818cf8;
+            --accent-text-bright: #a5b4fc;
+            --bg-page: linear-gradient(135deg, #0a0a1a 0%, #12123a 50%, #0a0a1a 100%);
+            --bg-sidebar: rgba(15, 15, 35, 0.95);
+            --bg-card: rgba(15, 15, 35, 0.75);
+            --bg-card-alt: rgba(15, 15, 35, 0.7);
+            --text-primary: #f8fafc;
+            --text-secondary: #cbd5e1;
+            --text-muted: #94a3b8;
+            --text-faint: #64748b;
+            --border-subtle: rgba(99, 102, 241, 0.12);
+            --border-strong: rgba(99, 102, 241, 0.22);
+            --danger: #ef4444;
+            --danger-soft: rgba(239, 68, 68, 0.15);
+            --danger-text: #f87171;
+            --success: #22c55e;
+            --warning: #f59e0b;
+            --logo-accent: linear-gradient(135deg, #6366f1, #8b5cf6);
+        }
+        [data-theme="light_blue_tech"] {
+            --glass-bg: rgba(239, 246, 255, 0.85);
+            --glass-border: rgba(56, 189, 248, 0.28);
+            --glass-shadow: 0 4px 20px rgba(14, 165, 233, 0.18);
+            --accent: #0ea5e9;
+            --accent-soft: rgba(14, 165, 233, 0.14);
+            --accent-hover: rgba(14, 165, 233, 0.24);
+            --accent-text: #0284c7;
+            --accent-text-bright: #38bdf8;
+            --bg-page: linear-gradient(135deg, #e0f2fe 0%, #f0f9ff 40%, #ecfeff 100%);
+            --bg-sidebar: rgba(240, 249, 255, 0.95);
+            --bg-card: rgba(255, 255, 255, 0.82);
+            --bg-card-alt: rgba(248, 250, 252, 0.78);
+            --text-primary: #0f172a;
+            --text-secondary: #334155;
+            --text-muted: #475569;
+            --text-faint: #64748b;
+            --border-subtle: rgba(56, 189, 248, 0.18);
+            --border-strong: rgba(14, 165, 233, 0.32);
+            --danger: #dc2626;
+            --danger-soft: rgba(220, 38, 38, 0.12);
+            --danger-text: #ef4444;
+            --success: #16a34a;
+            --warning: #d97706;
+            --logo-accent: linear-gradient(135deg, #0ea5e9, #22d3ee);
+        }
+        [data-theme="light"] {
+            --glass-bg: rgba(255, 255, 255, 0.85);
+            --glass-border: rgba(148, 163, 184, 0.22);
+            --glass-shadow: 0 4px 16px rgba(15, 23, 42, 0.08);
+            --accent: #6366f1;
+            --accent-soft: rgba(99, 102, 241, 0.1);
+            --accent-hover: rgba(99, 102, 241, 0.2);
+            --accent-text: #4f46e5;
+            --accent-text-bright: #6366f1;
+            --bg-page: linear-gradient(135deg, #f8fafc 0%, #eef2ff 50%, #f1f5f9 100%);
+            --bg-sidebar: rgba(255, 255, 255, 0.96);
+            --bg-card: rgba(255, 255, 255, 0.9);
+            --bg-card-alt: rgba(248, 250, 252, 0.88);
+            --text-primary: #0f172a;
+            --text-secondary: #334155;
+            --text-muted: #475569;
+            --text-faint: #64748b;
+            --border-subtle: rgba(148, 163, 184, 0.18);
+            --border-strong: rgba(99, 102, 241, 0.26);
+            --danger: #dc2626;
+            --danger-soft: rgba(220, 38, 38, 0.1);
+            --danger-text: #ef4444;
+            --success: #16a34a;
+            --warning: #d97706;
+            --logo-accent: linear-gradient(135deg, #6366f1, #8b5cf6);
+        }
+        [data-theme="mourning"] {
+            --glass-bg: rgba(24, 24, 27, 0.88);
+            --glass-border: rgba(113, 113, 122, 0.28);
+            --glass-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+            --accent: #52525b;
+            --accent-soft: rgba(82, 82, 91, 0.2);
+            --accent-hover: rgba(113, 113, 122, 0.3);
+            --accent-text: #71717a;
+            --accent-text-bright: #a1a1aa;
+            --bg-page: linear-gradient(135deg, #0a0a0a 0%, #18181b 50%, #0a0a0a 100%);
+            --bg-sidebar: rgba(10, 10, 10, 0.97);
+            --bg-card: rgba(24, 24, 27, 0.85);
+            --bg-card-alt: rgba(24, 24, 27, 0.78);
+            --text-primary: #d4d4d8;
+            --text-secondary: #a1a1aa;
+            --text-muted: #71717a;
+            --text-faint: #52525b;
+            --border-subtle: rgba(82, 82, 91, 0.18);
+            --border-strong: rgba(113, 113, 122, 0.28);
+            --danger: #44403c;
+            --danger-soft: rgba(68, 64, 60, 0.3);
+            --danger-text: #78716c;
+            --success: #52525b;
+            --warning: #71717a;
+            --logo-accent: linear-gradient(135deg, #52525b, #71717a);
+        }
+        [data-theme] body, body[data-theme] { background: var(--bg-page); background-attachment: fixed; }
+        [data-theme] .mtscos-sidebar { background: var(--bg-sidebar); border-right: 1px solid var(--border-strong); }
+        [data-theme] .mtscos-sidebar-logo-icon,
+        [data-theme] .mtscos-sidebar-avatar,
+        [data-theme] .mtscos-user-avatar,
+        [data-theme] .lock-avatar { background: var(--logo-accent); }
+        [data-theme] .mtscos-glass-card,
+        [data-theme] .glass-effect, [data-theme] .card, [data-theme] .panel, [data-theme] .dashboard-card,
+        [data-theme] .content-box, [data-theme] .section-card, [data-theme] .info-card,
+        [data-theme] .data-card, [data-theme] .form-container, [data-theme] .modal-content,
+        [data-theme] .dialog-box, [data-theme] .popup-content, [data-theme] .list-container,
+        [data-theme] .table-container {
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            color: var(--text-primary);
+            box-shadow: var(--glass-shadow);
+        }
+        [data-theme] .mtscos-global-header,
+        [data-theme] .lock-container {
+            background: var(--glass-bg);
+            border: 1px solid var(--border-strong);
+            box-shadow: var(--glass-shadow);
+            color: var(--text-primary);
+        }
+        [data-theme] .mtscos-header-title,
+        [data-theme] .mtscos-sidebar-logo-text,
+        [data-theme] .mtscos-sidebar-username,
+        [data-theme] .lock-title,
+        [data-theme] .lock-username,
+        [data-theme] .mtscos-user-info { color: var(--text-primary); }
+        [data-theme] .mtscos-header-title i,
+        [data-theme] .mtscos-system-logo-text { color: var(--accent); }
+        [data-theme] .mtscos-nav-item { color: var(--text-muted); }
+        [data-theme] .mtscos-nav-item:hover { background: var(--accent-soft); color: var(--text-secondary); }
+        [data-theme] .mtscos-nav-item.active { background: var(--accent-hover); color: var(--accent-text); }
+        [data-theme] .mtscos-user-info,
+        [data-theme] .mtscos-sidebar-user,
+        [data-theme] .lock-user-info {
+            background: var(--accent-soft);
+            border: 1px solid var(--border-subtle);
+            color: var(--text-primary);
+        }
+        [data-theme] .mtscos-back-btn,
+        [data-theme] .mtscos-back-btn:visited { background: var(--accent-soft); color: var(--accent-text); }
+        [data-theme] .mtscos-back-btn:hover { background: var(--accent-hover); color: var(--accent-text-bright); }
+        [data-theme] .mtscos-logout-btn,
+        [data-theme] .mtscos-sidebar-logout { background: var(--danger-soft); color: var(--danger-text); }
+        [data-theme] .mtscos-logout-btn:hover,
+        [data-theme] .mtscos-sidebar-logout:hover { filter: brightness(1.1); }
+        [data-theme] .mtscos-sidebar-footer,
+        [data-theme] .mtscos-sidebar-header { border-color: var(--border-strong); }
+        [data-theme] .mtscos-sidebar-role,
+        [data-theme] .lock-role,
+        [data-theme] .lock-desc,
+        [data-theme] .lock-smart-tip { color: var(--text-muted); }
+        [data-theme] .lock-divider::before,
+        [data-theme] .lock-divider::after { background: var(--border-strong); }
+        [data-theme] .lock-input {
+            background: var(--bg-card-alt);
+            border: 1px solid var(--border-strong);
+            color: var(--text-primary);
+        }
+        [data-theme] .lock-btn,
+        [data-theme-mourning] .lock-btn {
+            background: var(--accent) !important;
+            color: white;
+        }
+        [data-theme] .mtscos-system-time { color: var(--text-muted); }
+        [data-theme] .mtscos-system-time i { color: var(--success); }
+        body[data-theme="mourning"] * { color-adjust: exact !important; }
+        body[data-theme="mourning"] img,
+        body[data-theme="mourning"] .lock-icon { filter: grayscale(100%); }
+
+        /* ========== LAYOUT & GLASS: 毛玻璃 + sidebar 2:8 / mini 1:9 / hover 智能展开 ========== */
+
+        /* ----- 毛玻璃统一变量：按主题切换透明度，不改变主色 ----- */
+        :root,
+        body[data-theme="deep_blue"] {
+            --sidebar-width: 20%;
+            --sidebar-width-mini: 10%;
+            --glass-bg: rgba(15, 23, 42, 0.55);
+            --glass-bg-strong: rgba(15, 23, 42, 0.70);
+            --glass-blur: 24px;
+            --glass-blur-strong: 32px;
+            --glass-border: 1px solid rgba(255,255,255,0.10);
+            --glass-border-strong: 1px solid rgba(255,255,255,0.16);
+            --glass-shadow: 0 16px 48px rgba(2, 6, 23, 0.35);
+        }
+        body[data-theme="light_tech"] {
+            --glass-bg: rgba(248, 250, 252, 0.60);
+            --glass-bg-strong: rgba(248, 250, 252, 0.78);
+            --glass-blur: 24px;
+            --glass-blur-strong: 32px;
+            --glass-border: 1px solid rgba(148,163,184,0.18);
+            --glass-border-strong: 1px solid rgba(148,163,184,0.28);
+            --glass-shadow: 0 16px 48px rgba(15, 23, 42, 0.10);
+        }
+        body[data-theme="soft_light"] {
+            --glass-bg: rgba(255, 255, 255, 0.62);
+            --glass-bg-strong: rgba(255, 255, 255, 0.80);
+            --glass-blur: 24px;
+            --glass-blur-strong: 32px;
+            --glass-border: 1px solid rgba(148,163,184,0.16);
+            --glass-border-strong: 1px solid rgba(148,163,184,0.26);
+            --glass-shadow: 0 16px 48px rgba(15, 23, 42, 0.08);
+        }
+        body[data-theme="mourning"] {
+            --glass-bg: rgba(24, 24, 27, 0.58);
+            --glass-bg-strong: rgba(24, 24, 27, 0.72);
+            --glass-blur: 24px;
+            --glass-blur-strong: 32px;
+            --glass-border: 1px solid rgba(161,161,170,0.18);
+            --glass-border-strong: 1px solid rgba(161,161,170,0.28);
+            --glass-shadow: 0 16px 48px rgba(0, 0, 0, 0.35);
+        }
+
+        /* ----- 全局毛玻璃通用样式（强制高毛玻璃 + 高特异性覆盖老主题层）
+           加 [data-theme] 前缀，特异性提升到 0-2-0，且位于 L720-L780 主题块之后，位置优先覆盖 ----- */
+        /* ① Header/Footer：32px 强毛玻璃 */
+        [data-theme] .site-header,
+        [data-theme] .mtscos-header,
+        [data-theme] [class*="header"][class*="fixed"],
+        .site-header,
+        .mtscos-header,
+        [class*="header"][class*="fixed"] {
+            backdrop-filter: blur(32px) saturate(180%) !important;
+            -webkit-backdrop-filter: blur(32px) saturate(180%) !important;
+            background: rgba(15, 23, 42, 0.70) !important;
+            background: var(--glass-bg-strong, rgba(15, 23, 42, 0.70)) !important;
+            border-bottom: 1px solid rgba(255,255,255,0.10) !important;
+            box-shadow: 0 2px 24px rgba(0,0,0,0.10) !important;
+        }
+        [data-theme] .site-footer,
+        [data-theme] .mtscos-footer,
+        .site-footer,
+        .mtscos-footer {
+            backdrop-filter: blur(24px) saturate(180%) !important;
+            -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
+            background: rgba(15, 23, 42, 0.55) !important;
+            background: var(--glass-bg, rgba(15, 23, 42, 0.55)) !important;
+            border-top: 1px solid rgba(255,255,255,0.10) !important;
+        }
+
+        /* ② 全站卡片 / 面板 / 登录卡 / 弹窗：24px blur 高毛玻璃 */
+        [data-theme] .card,
+        [data-theme] [class*="-card"],
+        [data-theme] [class*="Card"],
+        [data-theme] [class*="panel"],
+        [data-theme] [class*="Panel"],
+        [data-theme] [class*="home-section"],
+        [data-theme] [class*="spec"],
+        [data-theme] [class*="hero"],
+        [data-theme] [class*="changelog"],
+        [data-theme] [class*="engine-card"],
+        [data-theme] [class*="engine-matrix"],
+        [data-theme] [class*="matrix-"],
+        [data-theme] [class*="ai-card"],
+        [data-theme] [class*="comp-"],
+        [data-theme] [class*="stat-card"],
+        [data-theme] [class*="db-card"],
+        [data-theme] [class*="lane"],
+        [data-theme] [class*="chip"],
+        [data-theme] .version-tag,
+        [data-theme] .version-item,
+        [data-theme] [class*="banner"],
+        [data-theme] [class*="dialog"],
+        [data-theme] [class*="modal-content"],
+        [data-theme] [class*="tab-"],
+        .card,
+        [class*="-card"],
+        [class*="Card"],
+        [class*="panel"],
+        [class*="Panel"],
+        [class*="home-section"],
+        [class*="spec"],
+        [class*="hero"],
+        [class*="changelog"],
+        [class*="engine-card"],
+        [class*="engine-matrix"],
+        [class*="matrix-"],
+        [class*="ai-card"],
+        [class*="comp-"],
+        [class*="stat-card"],
+        [class*="db-card"],
+        [class*="lane"],
+        [class*="chip"],
+        .version-tag,
+        .version-item,
+        [class*="banner"],
+        [class*="dialog"],
+        [class*="modal-content"],
+        [class*="tab-"] {
+            backdrop-filter: blur(24px) saturate(180%) !important;
+            -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
+            background: rgba(15, 23, 42, 0.55) !important;
+            background: var(--glass-bg, rgba(15, 23, 42, 0.55)) !important;
+            border: 1px solid rgba(255,255,255,0.10) !important;
+            box-shadow: 0 16px 48px rgba(2, 6, 23, 0.35) !important;
+        }
+
+        /* ③ 登录卡（index.html）：32px 超强毛玻璃 */
+        [data-theme] .login-card,
+        [data-theme] .login-guard,
+        [data-theme] [class*="login-"],
+        .login-card,
+        .login-guard,
+        [class*="login-"] {
+            backdrop-filter: blur(32px) saturate(180%) !important;
+            -webkit-backdrop-filter: blur(32px) saturate(180%) !important;
+            background: rgba(15, 23, 42, 0.70) !important;
+            background: var(--glass-bg-strong, rgba(15, 23, 42, 0.70)) !important;
+            border: 1px solid rgba(255,255,255,0.16) !important;
+            box-shadow: 0 24px 64px rgba(0,0,0,0.35) !important;
+        }
+
+        /* Sidebar toggle 按钮样式保持 */
+        .mtscos-sidebar-toggle {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: var(--accent-soft, rgba(99,102,241,.15));
+            color: var(--accent-text, #818cf8);
+            border: 1px solid var(--border-subtle, rgba(99,102,241,.2));
+            border-radius: 8px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all .2s;
+        }
+        .mtscos-sidebar-toggle:hover { background: var(--accent-hover, rgba(99,102,241,.25)); }
+        .mtscos-theme-mourning-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            background: rgba(113,113,122,.18);
+            color: #a1a1aa;
+            border: 1px solid rgba(113,113,122,.35);
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 500;
+        }
     </style>
 </head>
-<body class="with-global-header">
+<body class="with-global-header" data-theme="{{ theme_key }}"
+      data-forced-mourning="{{ 'true' if theme_forced_mourning else 'false' }}"
+      data-is-admin="{{ 'true' if is_admin else 'false' }}"
+      data-is-super-admin="{{ 'true' if is_super_admin else 'false' }}">
     <div class="mtscos-layout">
         <aside class="mtscos-sidebar">
             <div class="mtscos-sidebar-header">
@@ -588,6 +1023,10 @@
         <div class="mtscos-main">
             <header class="mtscos-global-header">
                 <div class="mtscos-header-left">
+                    <button class="mtscos-sidebar-toggle" id="mtscos-sidebar-toggle" type="button" title="切换侧边栏比例（2:8 ↔ 1:9）">
+                        <i class="fas fa-bars"></i>
+                        <span>侧边栏</span>
+                    </button>
                     <div class="mtscos-header-title">
                         <i class="fas fa-shield-alt"></i>
                         <span>{% block page_title %}MTSCOS AI{% endblock %}</span>
@@ -602,6 +1041,9 @@
                         <img id="mtscos-system-logo" src="" alt="MTSCOS AI" class="mtscos-system-logo-img">
                         <div class="mtscos-system-logo-text">MTSCOS AI</div>
                     </div>
+                    {% if theme_forced_mourning %}
+                    <span class="mtscos-theme-mourning-tag"><i class="fas fa-ribbon"></i>国家公祭日 · 追思主题</span>
+                    {% endif %}
                     <div class="mtscos-system-time" id="mtscos-system-time">
                         <i class="fas fa-clock"></i>
                         <span>加载中...</span>
@@ -692,6 +1134,120 @@
                     this.bindLockEvents();
                     this.startSystemTime();
                     this.loadSystemLogo();
+                    this.initSidebarSmart();
+                    this.initThemeRuntime();
+                },
+
+                /* ---- Sidebar 智能收缩 / 回放 / 恢复（单一入口） ----
+                   1) 读取 localStorage → applySidebarState → 立即生效（避免首屏"手动点击后才正常"）
+                   2) 按钮 click：toggle → 写入 localStorage → apply
+                   3) hover：mini 态下鼠标进入侧栏 120ms 自动展开（回放），移出 500ms 延迟自动收起（智能收缩）
+                   4) init 后强制 reflow，保证所有 layout 与变量同步（修复 Exp 632240 首屏错位）
+                */
+                initSidebarSmart: function() {
+                    var self = this;
+                    var body = document.body;
+                    var sidebar = document.querySelector('.mtscos-sidebar');
+                    var btn = document.getElementById('mtscos-sidebar-toggle');
+                    var LS_KEY = 'mtscos_sidebar_mini';
+
+                    function applySidebarState(isMini) {
+                        if (isMini) body.classList.add('sidebar-mini');
+                        else        body.classList.remove('sidebar-mini');
+                        // 强制同步布局计算，避免"首屏不生效、需点击切换才正常"
+                        try { void (body.offsetHeight); } catch(e){}
+                    }
+
+                    // 1) localStorage 恢复（读取失败则默认展开）
+                    var isMiniStored = false;
+                    try { isMiniStored = (localStorage.getItem(LS_KEY) === 'true'); } catch(e){}
+                    applySidebarState(isMiniStored);
+
+                    // 2) 点击按钮：用户手动切换
+                    if (btn) {
+                        btn.addEventListener('click', function() {
+                            var nowMini = !body.classList.contains('sidebar-mini');
+                            try { localStorage.setItem(LS_KEY, nowMini ? 'true' : 'false'); } catch(e){}
+                            applySidebarState(nowMini);
+                        });
+                    }
+
+                    // 3) mini 态下 hover 智能回放 / 智能收缩（防抖）
+                    if (sidebar) {
+                        var hoverEnterTimer = null;
+                        var hoverLeaveTimer = null;
+                        var HOVER_ENTER_DELAY = 120; // 120ms 再展开，避免抖动
+                        var HOVER_LEAVE_DELAY = 500; // 500ms 再收起，允许用户"点到边缘"
+
+                        function isMiniMode() {
+                            return body.classList.contains('sidebar-mini');
+                        }
+
+                        sidebar.addEventListener('mouseenter', function() {
+                            if (!isMiniMode()) return;
+                            if (hoverLeaveTimer) { clearTimeout(hoverLeaveTimer); hoverLeaveTimer = null; }
+                            hoverEnterTimer = setTimeout(function() {
+                                body.classList.add('sidebar-hovered');
+                            }, HOVER_ENTER_DELAY);
+                        });
+
+                        sidebar.addEventListener('mouseleave', function() {
+                            if (hoverEnterTimer) { clearTimeout(hoverEnterTimer); hoverEnterTimer = null; }
+                            if (!isMiniMode()) { body.classList.remove('sidebar-hovered'); return; }
+                            hoverLeaveTimer = setTimeout(function() {
+                                body.classList.remove('sidebar-hovered');
+                            }, HOVER_LEAVE_DELAY);
+                        });
+                    }
+                },
+
+                getThemeMeta: function() {
+                    return {
+                        current: document.body.getAttribute('data-theme') || 'deep_blue',
+                        forcedMourning: document.body.getAttribute('data-forced-mourning') === 'true',
+                        isAdmin: document.body.getAttribute('data-is-admin') === 'true',
+                        isSuperAdmin: document.body.getAttribute('data-is-super-admin') === 'true',
+                    };
+                },
+
+                setTheme: function(theme, cb) {
+                    var xhr = new XMLHttpRequest();
+                    xhr.open('POST', '/api/theme/set', true);
+                    xhr.setRequestHeader('Content-Type', 'application/json');
+                    xhr.onreadystatechange = function() {
+                        if (xhr.readyState === 4) {
+                            var data = null;
+                            try { data = JSON.parse(xhr.responseText); } catch(e) {}
+                            if (xhr.status === 200 && data && data.success && data.theme) {
+                                document.body.setAttribute('data-theme', data.theme);
+                            }
+                            if (typeof cb === 'function') cb(data, xhr.status);
+                            else window.location.reload();
+                        }
+                    };
+                    xhr.send(JSON.stringify({ theme: theme }));
+                },
+
+                resetTheme: function(cb) {
+                    var xhr = new XMLHttpRequest();
+                    xhr.open('POST', '/api/theme/reset', true);
+                    xhr.setRequestHeader('Content-Type', 'application/json');
+                    xhr.onreadystatechange = function() {
+                        if (xhr.readyState === 4) {
+                            var data = null;
+                            try { data = JSON.parse(xhr.responseText); } catch(e) {}
+                            if (xhr.status === 200 && data && data.theme) {
+                                document.body.setAttribute('data-theme', data.theme);
+                            }
+                            if (typeof cb === 'function') cb(data, xhr.status);
+                            else window.location.reload();
+                        }
+                    };
+                    xhr.send('{}');
+                },
+
+                initThemeRuntime: function() {
+                    // placeholder for future hooks
                 },
                 
                 loadUserInfo: function() {
@@ -1399,5 +1955,482 @@
     </script>
     <script src="/assets/js/utils/apiRequest.js"></script>
     {% block scripts %}{% endblock %}
+
+    <!-- FORCE 最后强制层：毛玻璃强化 + Sidebar 2:8 / 1:9 / Hover 智能回放 -->
+    <style id="force-glass-and-sidebar">
+      [data-theme] .mtscos-sidebar, .mtscos-sidebar {
+        width: 20% !important;
+        background: rgba(15, 15, 35, 0.55) !important;
+        backdrop-filter: blur(32px) saturate(180%) !important;
+        -webkit-backdrop-filter: blur(32px) saturate(180%) !important;
+        border-right: 1px solid rgba(255,255,255,0.16) !important;
+        box-shadow: 2px 0 32px rgba(0,0,0,0.14) !important;
+        transition: width .28s cubic-bezier(.4,0,.2,1) !important;
+        will-change: width;
+      }
+      [data-theme] .mtscos-main, .mtscos-main {
+        margin-left: 20% !important;
+        transition: margin-left .28s cubic-bezier(.4,0,.2,1) !important;
+        will-change: margin-left;
+      }
+      [data-theme] body.sidebar-mini .mtscos-sidebar,
+      body.sidebar-mini .mtscos-sidebar { width: 10% !important; }
+      [data-theme] body.sidebar-mini .mtscos-main,
+      body.sidebar-mini .mtscos-main { margin-left: 10% !important; }
+      [data-theme] body.sidebar-mini.sidebar-hovered .mtscos-sidebar,
+      body.sidebar-mini.sidebar-hovered .mtscos-sidebar { width: 20% !important; }
+      [data-theme] body.sidebar-mini.sidebar-hovered .mtscos-main,
+      body.sidebar-mini.sidebar-hovered .mtscos-main { margin-left: 20% !important; }
+      [data-theme] body.sidebar-mini .mtscos-sidebar-logo-text,
+      [data-theme] body.sidebar-mini .mtscos-nav-item > span,
+      [data-theme] body.sidebar-mini .mtscos-sidebar-user-info,
+      [data-theme] body.sidebar-mini .mtscos-sidebar-logout > span,
+      body.sidebar-mini .mtscos-sidebar-logo-text,
+      body.sidebar-mini .mtscos-nav-item > span,
+      body.sidebar-mini .mtscos-sidebar-user-info,
+      body.sidebar-mini .mtscos-sidebar-logout > span {
+        opacity: 0 !important; height: 0 !important; overflow: hidden !important;
+        visibility: hidden !important; pointer-events: none !important;
+        margin: 0 !important; padding: 0 !important;
+      }
+      [data-theme] body.sidebar-mini.sidebar-hovered .mtscos-sidebar-logo-text,
+      [data-theme] body.sidebar-mini.sidebar-hovered .mtscos-nav-item > span,
+      [data-theme] body.sidebar-mini.sidebar-hovered .mtscos-sidebar-user-info,
+      [data-theme] body.sidebar-mini.sidebar-hovered .mtscos-sidebar-logout > span,
+      body.sidebar-mini.sidebar-hovered .mtscos-sidebar-logo-text,
+      body.sidebar-mini.sidebar-hovered .mtscos-nav-item > span,
+      body.sidebar-mini.sidebar-hovered .mtscos-sidebar-user-info,
+      body.sidebar-mini.sidebar-hovered .mtscos-sidebar-logout > span {
+        opacity: 1 !important; height: auto !important; visibility: visible !important;
+        pointer-events: auto !important; margin: unset !important; padding: unset !important;
+        transition: opacity .16s ease-out .12s !important;
+      }
+      [data-theme] body.sidebar-mini .mtscos-sidebar-logo,
+      body.sidebar-mini .mtscos-sidebar-logo { justify-content: center !important; }
+      [data-theme] body.sidebar-mini .mtscos-nav-item,
+      body.sidebar-mini .mtscos-nav-item { justify-content: center !important; padding: 12px 8px !important; }
+      [data-theme] body.sidebar-mini .mtscos-sidebar-user,
+      body.sidebar-mini .mtscos-sidebar-user { justify-content: center !important; }
+      [data-theme] body.sidebar-mini .mtscos-sidebar-logout,
+      body.sidebar-mini .mtscos-sidebar-logout { justify-content: center !important; }
+      [data-theme] body.sidebar-mini.sidebar-hovered .mtscos-sidebar-logo,
+      body.sidebar-mini.sidebar-hovered .mtscos-sidebar-logo { justify-content: flex-start !important; }
+      [data-theme] body.sidebar-mini.sidebar-hovered .mtscos-nav-item,
+      body.sidebar-mini.sidebar-hovered .mtscos-nav-item { justify-content: flex-start !important; padding: 10px 14px !important; }
+      [data-theme] body.sidebar-mini.sidebar-hovered .mtscos-sidebar-user,
+      body.sidebar-mini.sidebar-hovered .mtscos-sidebar-user { justify-content: flex-start !important; }
+      [data-theme] body.sidebar-mini.sidebar-hovered .mtscos-sidebar-logout,
+      body.sidebar-mini.sidebar-hovered .mtscos-sidebar-logout { justify-content: center !important; }
+      [data-theme] .site-header, [data-theme] .mtscos-header, .site-header, .mtscos-header {
+        backdrop-filter: blur(32px) saturate(180%) !important;
+        -webkit-backdrop-filter: blur(32px) saturate(180%) !important;
+        background: rgba(15, 23, 42, 0.70) !important;
+        border-bottom: 1px solid rgba(255,255,255,0.10) !important;
+        box-shadow: 0 2px 24px rgba(0,0,0,0.10) !important;
+      }
+      [data-theme] .site-footer, [data-theme] .mtscos-footer, .site-footer, .mtscos-footer {
+        backdrop-filter: blur(24px) saturate(180%) !important;
+        -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
+        background: rgba(15, 23, 42, 0.55) !important;
+        border-top: 1px solid rgba(255,255,255,0.10) !important;
+      }
+      [data-theme] .card, [data-theme] [class*="-card"], [data-theme] [class*="Card"],
+      [data-theme] [class*="panel"], [data-theme] [class*="home-section"], [data-theme] [class*="spec"],
+      [data-theme] [class*="hero"], [data-theme] [class*="changelog"], [data-theme] [class*="engine-card"],
+      [data-theme] [class*="matrix-"], [data-theme] [class*="ai-card"], [data-theme] [class*="comp-"],
+      [data-theme] [class*="stat-card"], [data-theme] [class*="db-card"], [data-theme] [class*="lane"],
+      [data-theme] [class*="chip"], [data-theme] .version-tag, [data-theme] .version-item,
+      [data-theme] [class*="banner"], [data-theme] [class*="dialog"], [data-theme] [class*="modal-content"],
+      .card, [class*="-card"], [class*="Card"], [class*="panel"], [class*="home-section"], [class*="spec"],
+      [class*="hero"], [class*="changelog"], [class*="engine-card"], [class*="matrix-"], [class*="ai-card"],
+      [class*="comp-"], [class*="stat-card"], [class*="db-card"], [class*="lane"], [class*="chip"],
+      .version-tag, .version-item, [class*="banner"], [class*="dialog"], [class*="modal-content"] {
+        backdrop-filter: blur(24px) saturate(180%) !important;
+        -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
+        background: rgba(15, 23, 42, 0.55) !important;
+        border: 1px solid rgba(255,255,255,0.10) !important;
+        box-shadow: 0 16px 48px rgba(2, 6, 23, 0.35) !important;
+      }
+      [data-theme] .login-card, [data-theme] .login-guard, [data-theme] [class*="login-"],
+      .login-card, .login-guard, [class*="login-"] {
+        backdrop-filter: blur(32px) saturate(180%) !important;
+        -webkit-backdrop-filter: blur(32px) saturate(180%) !important;
+        background: rgba(15, 23, 42, 0.70) !important;
+        border: 1px solid rgba(255,255,255,0.16) !important;
+        box-shadow: 0 24px 64px rgba(0,0,0,0.35) !important;
+      }
+    </style>
+
+    <!-- 布局AI：动态CSS修复注入点（优先级最高，放最后） -->
+    <style id="mtscos-layout-ai-fix" data-snapshot="" data-count="0">
+      /* AI员工动态注入的布局修复，由 LayoutAdjusterAIEmployee 下发 */
+    </style>
+
+    <!-- 布局AI：前端探针 + 20条规则前端检测 + 上报快照 + 接收修复CSS -->
+    <script>
+    (function () {
+      'use strict';
+      var LAYOUT_AI = {
+        API_SNAPSHOT: '/api/layout_ai/snapshot',
+        API_ACK: '/api/layout_ai/ack',
+        DEBOUNCE_MS: 900,
+        RERPORT_DELAY_INITIAL: 1200,
+        RERPORT_DELAY_RESIZE: 500,
+        MAX_ELEMENTS_SAMPLE: 60,
+        lastSentAt: 0,
+        pendingTimer: null,
+        pendingPayload: null,
+        currentSnapshotUuid: null,
+        appliedFixCount: 0,
+        disabled: false,
+
+        init: function () {
+          var self = this;
+          try {
+            var dis = localStorage.getItem('mtscos_layout_ai_disabled');
+            if (dis === '1') this.disabled = true;
+          } catch (e) {}
+          if (this.disabled) return;
+          // 首次上报：等首屏layout稳定
+          setTimeout(function () { self.reportOnce('initial'); }, this.RERPORT_DELAY_INITIAL);
+          // resize/scroll：节流上报
+          var resizeTimer = null;
+          window.addEventListener('resize', function () {
+            if (resizeTimer) clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(function () { self.reportOnce('resize'); }, self.RERPORT_DELAY_RESIZE);
+          }, { passive: true });
+          // 主题切换后重新评估
+          var bodyObserver = new MutationObserver(function (muts) {
+            muts.forEach(function (m) {
+              if (m.type === 'attributes' && (m.attributeName === 'data-theme' || m.attributeName === 'class')) {
+                self.scheduleReport('theme_or_class', 400);
+              }
+            });
+          });
+          try { bodyObserver.observe(document.body, { attributes: true, attributeFilter: ['data-theme', 'class'] }); } catch (e) {}
+          // 点击侧边栏切换按钮后立即检测
+          var tbtn = document.getElementById('mtscos-sidebar-toggle');
+          if (tbtn) tbtn.addEventListener('click', function () { self.scheduleReport('sidebar_toggle', 360); });
+          // MTSCOS.init完成后，额外做一次（避免DOM尚未就绪）
+          if (document.readyState === 'complete') self.reportOnce('dom_ready');
+          else window.addEventListener('load', function () { setTimeout(function () { self.reportOnce('load'); }, 800); });
+        },
+
+        scheduleReport: function (reason, ms) {
+          var self = this;
+          if (this.disabled) return;
+          if (this.pendingTimer) clearTimeout(this.pendingTimer);
+          this.pendingTimer = setTimeout(function () { self.reportOnce(reason || 'schedule'); }, ms || this.DEBOUNCE_MS);
+        },
+
+        reportOnce: function (reason) {
+          if (this.disabled) return;
+          var now = Date.now();
+          if (now - this.lastSentAt < 600) return; // 硬性节流：最短600ms
+          this.lastSentAt = now;
+          var payload = this.captureSnapshot(reason || 'report');
+          this.pendingPayload = payload;
+          this.sendSnapshot(payload);
+        },
+
+        captureSnapshot: function (reason) {
+          var viewport = { w: window.innerWidth || 0, h: window.innerHeight || 0, dpr: window.devicePixelRatio || 1 };
+          var sidebar = document.querySelector('.mtscos-sidebar');
+          var mainEl = document.querySelector('.mtscos-main');
+          var contentScroll = document.querySelector('.mtscos-content-scroll');
+          var sb = { w: 0, h: 0 };
+          if (sidebar) { var r = sidebar.getBoundingClientRect(); sb.w = Math.round(r.width); sb.h = Math.round(r.height); }
+          var mn = { w: 0, h: 0 };
+          if (mainEl) { var r2 = mainEl.getBoundingClientRect(); mn.w = Math.round(r2.width); mn.h = Math.round(r2.height); }
+          var body = document.body;
+          var sidebar_mini = body.classList.contains('sidebar-mini');
+          var theme = body.getAttribute('data-theme') || '';
+          var scroll = {
+            x: window.scrollX || document.documentElement.scrollLeft || 0,
+            y: window.scrollY || document.documentElement.scrollTop || 0,
+            body_scroll_height: Math.max(document.documentElement.scrollHeight, document.body.scrollHeight || 0),
+            body_client_height: document.documentElement.clientHeight || 0,
+            content_scroll_top: contentScroll ? contentScroll.scrollTop : 0,
+            content_scroll_height: contentScroll ? contentScroll.scrollHeight : 0,
+            content_client_height: contentScroll ? contentScroll.clientHeight : 0,
+          };
+          // 首页1:7:2检测（简单取header/main/footer，若存在）
+          var home_sections = null;
+          if (location.pathname === '/' || location.pathname === '') {
+            var hh = document.querySelector('.home-header, header.site-header');
+            var mh = document.querySelector('.home-main, main, section.main');
+            var fh = document.querySelector('.home-footer, footer.site-footer, footer');
+            home_sections = {
+              header_h: hh ? Math.round(hh.getBoundingClientRect().height) : 0,
+              main_h: mh ? Math.round(mh.getBoundingClientRect().height) : 0,
+              footer_h: fh ? Math.round(fh.getBoundingClientRect().height) : 0,
+            };
+          }
+          // computed: 主题变量
+          var computed = { theme_vars: {} };
+          try {
+            var cs = getComputedStyle(document.body);
+            ['--accent', '--bg-page', '--text-primary', '--border-subtle'].forEach(function (v) {
+              computed.theme_vars[v] = (cs.getPropertyValue(v) || '').trim();
+            });
+          } catch (e) {}
+          // 前端20条规则检测（轻量：关键规则直接前端评估）
+          var detected = this._frontendDetect(viewport, sb, mn, scroll, sidebar_mini, home_sections, computed, mainEl, contentScroll);
+          // 关键元素采样（避免太多）
+          var elements = this._sampleKeyElements();
+          return {
+            url: location.pathname + location.search,
+            title: document.title || '',
+            viewport: viewport,
+            sidebar: sb,
+            main: mn,
+            theme: theme,
+            sidebar_mini: !!sidebar_mini,
+            scroll: scroll,
+            computed: computed,
+            elements: elements,
+            home_sections: home_sections,
+            detected_issues: detected,
+            trigger: reason || 'capture',
+            ts: Date.now(),
+          };
+        },
+
+        _sampleKeyElements: function () {
+          var sel = [
+            '.mtscos-global-header', '.mtscos-sidebar', '.mtscos-main', '.mtscos-content-scroll',
+            '.card, .glass-effect, .dashboard-card, .section-card, .info-card, .data-card',
+            'table, .table-container',
+            '.mtscos-nav-item',
+            'form .form-container, form input, form button, form select',
+            'img, video',
+          ];
+          var set = [];
+          var all = [];
+          try { all = document.querySelectorAll(sel.join(',')); } catch (e) { return []; }
+          var limit = this.MAX_ELEMENTS_SAMPLE;
+          var n = all.length;
+          var step = Math.max(1, Math.ceil(n / limit));
+          for (var i = 0; i < n && set.length < limit; i += step) {
+            var el = all[i];
+            if (!el) continue;
+            try {
+              var r = el.getBoundingClientRect();
+              var cs = getComputedStyle(el);
+              set.push({
+                tag: el.tagName,
+                cls: (el.className && typeof el.className === 'string') ? el.className.slice(0, 120) : '',
+                id: el.id || '',
+                w: Math.round(r.width), h: Math.round(r.height),
+                x: Math.round(r.left), y: Math.round(r.top),
+                fontSize: parseInt(cs.fontSize) || 0,
+                lineHeight: cs.lineHeight || '',
+                display: cs.display || '',
+                pos: cs.position || '',
+                overflow_x: cs.overflowX || '',
+                overflow_y: cs.overflowY || '',
+              });
+            } catch (e) {}
+          }
+          return set;
+        },
+
+        _frontendDetect: function (vp, sb, mn, sc, mini, home, computed, mainEl, contentEl) {
+          var issues = [];
+          function push(rule_id, confidence, summary, selector, vars, before) {
+            issues.push({ rule_id: rule_id, confidence: confidence, summary: summary, selector: selector || '', vars: vars || {}, before: before || {} });
+          }
+          // LF001 主内容水平溢出
+          try {
+            if (contentEl && contentEl.scrollWidth > vp.w * 0.82 + 6) {
+              push('LF001', 0.88,
+                'content-scroll 宽度超过视图82%(' + contentEl.scrollWidth + ' vs ' + Math.round(vp.w*0.82) + ')',
+                '.mtscos-main, .mtscos-content-scroll',
+                { selector: '.mtscos-main, .mtscos-content-scroll' },
+                { sw: contentEl.scrollWidth, vp_w: vp.w });
+            } else if (mainEl && mainEl.scrollWidth - mainEl.clientWidth > 4) {
+              push('LF001', 0.8, 'main.scrollWidth>' + (mainEl.scrollWidth - mainEl.clientWidth) + 'px overflow-x',
+                '.mtscos-main', { selector: '.mtscos-main' },
+                { diff: mainEl.scrollWidth - mainEl.clientWidth });
+            }
+          } catch (e) {}
+          // LF003 侧边栏内容纵向溢出
+          try {
+            var nav = document.querySelector('.mtscos-sidebar-nav');
+            var sbb = document.querySelector('.mtscos-sidebar');
+            if (nav && sbb && nav.scrollHeight > sbb.clientHeight - 180) {
+              push('LF003', 0.8,
+                '侧边栏菜单溢出(nav.scrollHeight=' + nav.scrollHeight + ')',
+                '.mtscos-sidebar-nav', {},
+                { nav_sh: nav.scrollHeight, sb_ch: sbb.clientHeight });
+            }
+          } catch (e) {}
+          // LF004 元素重叠（抽样：header/sidebar/main/footer 重叠检测）
+          try {
+            var header = document.querySelector('.mtscos-global-header');
+            var sidebar = document.querySelector('.mtscos-sidebar');
+            var main2 = document.querySelector('.mtscos-main');
+            var items = [header, sidebar, main2].filter(Boolean);
+            for (var a = 0; a < items.length; a++) {
+              for (var b = a + 1; b < items.length; b++) {
+                var ra = items[a].getBoundingClientRect();
+                var rb = items[b].getBoundingClientRect();
+                var iw = Math.max(0, Math.min(ra.right, rb.right) - Math.max(ra.left, rb.left));
+                var ih = Math.max(0, Math.min(ra.bottom, rb.bottom) - Math.max(ra.top, rb.top));
+                if (iw * ih > 400) {
+                  push('LF004', 0.75,
+                    '元素重叠面积=' + (iw*ih) + ' ' + items[a].className + ' vs ' + items[b].className,
+                    '', { z: 10 }, { area: iw * ih });
+                }
+              }
+            }
+          } catch (e) {}
+          // LF005 / LF006
+          if (vp.w && sb.w) {
+            var ratio = sb.w / vp.w;
+            if (!mini && Math.abs(ratio - 0.20) > 0.03) {
+              push('LF005', Math.min(1, Math.abs(ratio-0.20)*25), '侧边栏比例 ' + ratio.toFixed(3),
+                '.mtscos-sidebar', { expected: 0.20, actual: ratio }, { sb_w: sb.w, vp_w: vp.w });
+            }
+            if (mini && Math.abs(ratio - 0.10) > 0.03) {
+              push('LF006', Math.min(1, Math.abs(ratio-0.10)*25), 'mini侧边栏比例 ' + ratio.toFixed(3),
+                'body.sidebar-mini .mtscos-sidebar', { expected: 0.10, actual: ratio }, { sb_w: sb.w, vp_w: vp.w });
+            }
+          }
+          // LF007 首页
+          if (home && home.main_h) {
+            var hh = home.header_h, mh = home.main_h, fh = home.footer_h;
+            if (mh && Math.abs((hh / mh) - 1/7) > 0.18) {
+              push('LF007', 0.7, '首页Header/Main比例 ' + (hh/mh).toFixed(3) + ' 偏离1:7',
+                '.home-header, .home-main, .home-footer', { parent_h: fh }, { hh:hh, mh:mh, fh:fh });
+            }
+          }
+          // LF008 字体过小（抽样）
+          try {
+            var allText = document.querySelectorAll('p, span, a, button, li, td, th, label, h1, h2, h3, h4, h5, h6');
+            var foundSmall = null;
+            var lim = Math.min(allText.length, 120);
+            for (var i = 0; i < lim; i += 3) {
+              var tEl = allText[i];
+              if (!tEl) continue;
+              var tcs = getComputedStyle(tEl);
+              var fs = parseInt(tcs.fontSize);
+              if (fs && fs < 11 && tEl.offsetParent !== null && (tEl.textContent || '').trim().length > 2) {
+                foundSmall = { el: tEl, fs: fs }; break;
+              }
+            }
+            if (foundSmall) {
+              var cls = foundSmall.el.className || '';
+              if (typeof cls !== 'string') cls = '';
+              push('LF008', 0.8, '小字体 ' + foundSmall.fs + 'px',
+                (foundSmall.el.tagName || '') + (cls ? '.' + cls.split(/\s+/)[0] : ''),
+                {}, { fs: foundSmall.fs });
+            }
+          } catch (e) {}
+          // LF015 图片未缩放
+          try {
+            var imgs = document.querySelectorAll('img');
+            for (var j = 0; j < Math.min(imgs.length, 30); j++) {
+              var im = imgs[j];
+              if (im.naturalWidth && im.parentElement) {
+                var pr = im.parentElement.getBoundingClientRect();
+                if (pr.width > 0 && im.naturalWidth > pr.width * 1.25) {
+                  push('LF015', 0.82,
+                    'img(' + im.naturalWidth + ') 大于父容器(' + Math.round(pr.width) + ')',
+                    'img', { selector: 'img' }, { nw: im.naturalWidth, pw: Math.round(pr.width) });
+                  break;
+                }
+              }
+            }
+          } catch (e) {}
+          // LF016 body/html 纵向滚动条
+          if (sc.body_scroll_height && sc.body_client_height && sc.body_scroll_height > sc.body_client_height + 10) {
+            push('LF016', 0.85, 'body SH=' + sc.body_scroll_height + ' CH=' + sc.body_client_height,
+              'html, body', {}, { sh: sc.body_scroll_height, ch: sc.body_client_height });
+          }
+          // LF017 主题变量缺失
+          var tv = computed.theme_vars || {};
+          var miss = ['--accent','--bg-page','--text-primary'].filter(function (k) { return !(tv[k]||'').trim(); });
+          if (miss.length) {
+            push('LF017', 0.8, '主题缺变量 ' + miss.join(','),
+              'body[data-theme="' + (computed.theme||'') + '"]',
+              { current_theme: computed.theme || 'deep_blue' }, { missing: miss });
+          }
+          // LF019 侧边栏菜单项间距
+          try {
+            var navItems = document.querySelectorAll('.mtscos-nav-item');
+            if (navItems.length >= 2) {
+              var r0 = navItems[0].getBoundingClientRect();
+              var r1 = navItems[1].getBoundingClientRect();
+              var gap = r1.top - r0.bottom;
+              if (gap < 4) {
+                push('LF019', 0.7, '菜单项间距=' + gap + 'px', '.mtscos-sidebar-nav', {}, { gap: gap });
+              }
+            }
+          } catch (e) {}
+          return issues;
+        },
+
+        sendSnapshot: function (payload) {
+          var self = this;
+          try {
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', this.API_SNAPSHOT, true);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            xhr.timeout = 6000;
+            xhr.onreadystatechange = function () {
+              if (xhr.readyState !== 4) return;
+              if (xhr.status === 200) {
+                try {
+                  var data = JSON.parse(xhr.responseText);
+                  if (data && data.success) self.applyFixes(data);
+                } catch (e) {}
+              }
+            };
+            try { xhr.send(JSON.stringify(payload)); } catch (e) {}
+          } catch (e) {}
+        },
+
+        applyFixes: function (data) {
+          var css = (data && data.fix_css) || '';
+          if (!css) return;
+          var tag = document.getElementById('mtscos-layout-ai-fix');
+          if (!tag) {
+            tag = document.createElement('style');
+            tag.id = 'mtscos-layout-ai-fix';
+            document.head.appendChild(tag);
+          }
+          try {
+            tag.textContent = '/* LayoutAI ' + (new Date().toISOString().slice(11,19)) + ' snap=' + (data.snapshot_uuid||'') + ' */\n' + css;
+            tag.setAttribute('data-snapshot', data.snapshot_uuid || '');
+            this.appliedFixCount = (this.appliedFixCount || 0) + (data.fix_count || 0);
+            tag.setAttribute('data-count', String(this.appliedFixCount));
+            this.currentSnapshotUuid = data.snapshot_uuid || null;
+            // ack 通知后端已应用
+            var ruleIds = [];
+            if (Array.isArray(data.issues)) data.issues.forEach(function (i) { if (i.rule_id) ruleIds.push(i.rule_id); });
+            this.sendAck(data.snapshot_uuid, ruleIds);
+          } catch (e) {}
+        },
+
+        sendAck: function (snapId, ruleIds) {
+          if (!snapId) return;
+          try {
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', this.API_ACK, true);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            var after = { w: window.innerWidth, h: window.innerHeight, t: Date.now() };
+            try { xhr.send(JSON.stringify({ snapshot_uuid: snapId, rule_ids: ruleIds || [], after_measure: after })); } catch (e) {}
+          } catch (e) {}
+        }
+      };
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function () { LAYOUT_AI.init(); });
+      } else {
+        LAYOUT_AI.init();
+      }
+      window.MTSCOS_LAYOUT_AI = LAYOUT_AI;
+    })();
+    </script>
 </body>
 </html>

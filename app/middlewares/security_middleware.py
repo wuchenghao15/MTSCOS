@@ -169,6 +169,8 @@ class SecurityMiddlewareClass:
                          '/api/arduino/ai/',
                          '/api/ai/chinese_listening/',
                          '/api/chinese_dictation/',
+                         '/api/vikey/',
+                         '/api/layout_ai/',
                          '/ai_learning_dashboard',
                          '/', '/login', '/register', '/forgot_password', '/forgot-password',
                          '/assets/', '/static/', '/favicon.ico',

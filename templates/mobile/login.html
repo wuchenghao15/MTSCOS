@@ -1,85 +1,70 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>mobile > login.html</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
-        .container {
-            background: white;
-            border-radius: 16px;
-            padding: 40px;
-            text-align: center;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            max-width: 500px;
-            width: 100%;
-        }
-        .icon {
-            font-size: 64px;
-            margin-bottom: 20px;
-        }
-        h1 {
-            color: #333;
-            font-size: 24px;
-            margin-bottom: 10px;
-        }
-        p {
-            color: #666;
-            margin-bottom: 20px;
-            font-size: 14px;
-        }
-        .path {
-            background: #f5f5f5;
-            padding: 10px 15px;
-            border-radius: 8px;
-            font-family: monospace;
-            font-size: 12px;
-            color: #888;
-            margin-bottom: 20px;
-        }
-        .btn {
-            display: inline-block;
-            padding: 12px 32px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            text-decoration: none;
-            border-radius: 8px;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            margin: 5px;
-        }
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
-        }
-        .btn-secondary {
-            background: #f0f0f0;
-            color: #666;
-        }
-        .btn-secondary:hover {
-            background: #e0e0e0;
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+  <meta name="theme-color" content="#4f46e5">
+  <title>登录 · MTSCOS AI</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+    html,body{height:100%;}
+    body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Segoe UI",Roboto,sans-serif;background:linear-gradient(160deg,#6366f1 0%,#8b5cf6 55%,#06b6d4 100%);color:#111827;min-height:100%;padding:env(safe-area-inset-top) 18px env(safe-area-inset-bottom);display:flex;flex-direction:column;}
+    .m-top{padding:36px 4px 18px;color:#fff;}
+    .m-top .logo{width:56px;height:56px;border-radius:16px;background:rgba(255,255,255,0.16);backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;font-size:28px;color:#fff;margin-bottom:14px;}
+    .m-top h1{font-size:24px;font-weight:800;margin-bottom:4px;}
+    .m-top p{opacity:0.86;font-size:13px;}
+    .m-card{flex:1;background:#fff;border-radius:22px 22px 0 0;margin:0 -18px -env(safe-area-inset-bottom);padding:24px 22px 30px;box-shadow:0 -10px 40px rgba(0,0,0,0.18);}
+    .m-row{margin-bottom:16px;}
+    .m-row label{font-size:12px;color:#6b7280;font-weight:600;margin-bottom:6px;display:block;}
+    .m-input{display:flex;align-items:center;gap:10px;background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;padding:12px 14px;}
+    .m-input i{color:#6366f1;}
+    .m-input input{flex:1;border:none;background:transparent;outline:none;font-size:15px;color:#111827;}
+    .m-row-2{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:#6b7280;margin:4px 0 18px;}
+    .m-row-2 a{color:#6366f1;text-decoration:none;}
+    .m-btn{display:block;width:100%;padding:14px;border:none;border-radius:12px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;font-size:15px;font-weight:800;box-shadow:0 10px 26px rgba(99,102,241,0.35);}
+    .m-btn:active{transform:scale(0.99);}
+    .m-or{display:flex;align-items:center;gap:10px;color:#9ca3af;font-size:12px;margin:20px 0 14px;}
+    .m-or:before,.m-or:after{content:"";flex:1;height:1px;background:#e5e7eb;}
+    .m-social{display:flex;gap:12px;justify-content:center;}
+    .m-social button{flex:1;padding:10px;border:1px solid #e5e7eb;border-radius:12px;background:#fff;font-size:13px;color:#374151;}
+    .m-msg{padding:10px 12px;border-radius:10px;font-size:13px;margin-bottom:14px;}
+    .m-err{background:#fef2f2;color:#b91c1c;}
+    .m-ok{background:#f0fdf4;color:#15803d;}
+    .m-foot{text-align:center;font-size:12px;color:#6b7280;margin-top:18px;}
+    .m-foot a{color:#6366f1;text-decoration:none;font-weight:600;}
+  </style>
 </head>
 <body>
-    <div class="container">
-        <div class="icon">📄</div>
-        <h1>mobile > login.html</h1>
-        <p>页面开发中: mobile/login.html</p>
-        <div class="path">/templates/mobile/login.html</div>
-        <a href="/" class="btn">返回首页</a>
-        
+  <form method="post" action="/auth/login">
+    <div class="m-top">
+      <div class="logo"><i class="fas fa-brain"></i></div>
+      <h1>欢迎回来</h1>
+      <p>登录 MTSCOS AI 移动版 · 智能学习评估平台</p>
     </div>
+    <div class="m-card">
+      {% if error %}<div class="m-msg m-err"><i class="fas fa-exclamation-circle"></i> {{ error }}</div>{% endif %}
+      {% if msg %}<div class="m-msg m-ok"><i class="fas fa-check-circle"></i> {{ msg }}</div>{% endif %}
+      <div class="m-row">
+        <label>用户名</label>
+        <div class="m-input"><i class="fas fa-user"></i><input name="username" required placeholder="请输入用户名" autocomplete="username" value="{{ request.form.username or '' }}"></div>
+      </div>
+      <div class="m-row">
+        <label>密码</label>
+        <div class="m-input"><i class="fas fa-lock"></i><input name="password" required placeholder="请输入密码" type="password" autocomplete="current-password"></div>
+      </div>
+      <div class="m-row-2">
+        <label style="margin:0;"><input type="checkbox" name="remember" value="1" style="vertical-align:middle;margin-right:4px;"> 记住我</label>
+        <a href="/auth/forgot_password">忘记密码？</a>
+      </div>
+      <button type="submit" class="m-btn"><i class="fas fa-right-to-bracket"></i> 登 录</button>
+      <div class="m-or">或使用以下方式</div>
+      <div class="m-social">
+        <button type="button"><i class="fab fa-weixin" style="color:#07c160;"></i> 微信</button>
+        <button type="button"><i class="fab fa-github"></i> GitHub</button>
+      </div>
+      <div class="m-foot">没有账户？<a href="/auth/register">立即注册</a> · <a href="/">返回电脑版</a></div>
+    </div>
+  </form>
 </body>
 </html>

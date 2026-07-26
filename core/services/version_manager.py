@@ -118,6 +118,43 @@ def suggest_version(current_version: str, change_type: str = 'patch') -> str:
         return next_patch_version(current_version)
 
 VERSION_DATA = {
+    '17.22.0': {
+        'major': 17,
+        'minor': 22,
+        'patch': 0,
+        'build_number': '20260726a',
+        'build_date': '2026-07-26',
+        'codename': 'SuperAdmin UX Unified Edition',
+        'status': 'stable',
+        'description': '超级管理员登录UX统一体验版本，实现SA用户名识别时的UI自适应隐藏与恢复；主版本与所有30+子系统版本同步对齐至17.22.0，完成系统版本一致性清理',
+        'features': [
+            '首页登录表单SA识别增强：输入wuchenghao15时自动隐藏「记住我」「忘记密码？」「或分割线」「创建新账户」四件套，切换普通用户自动恢复',
+            '密码可见性切换按钮SA场景强制隐藏，防止SA登录环节敏感操作误触',
+            '主版本CURRENT_VERSION从17.21.0升级至17.22.0，version_manager版本历史新增SA UX Unified Edition条目',
+            '全子系统版本统一升级：AI自学习/AI技能进化/AI协作/智能决策支持/AI智能学习/AI辅导助手/AI预警干预/AI知识图谱/AI题目生成/AI学习规划/移动端管理/考试系统/学习系统/课程管理/作业系统/消息通知/资源管理/数据分析/安全监控/用户认证 共20个子系统同步升级至17.22.0',
+            '前后端版本一致性修复：超管设置页sys_version硬编码17.9.0→17.22.0，app.db与Database/app.db system_versions表新增17.22.0记录',
+            'Git版本库与GitHub代码同步：版本升级变更一次性提交并推送远端仓库'
+        ],
+        'upgrade_notes': '升级依赖：1. 更新CURRENT_VERSION常量；2. 向system_versions表插入17.22.0新版本；3. 批量升级subsystem_versions所有子系统current_version/latest_version至17.22.0；4. 同步前端硬编码版本字符串（super_admin_settings、index页脚、mt_architecture页）'
+    },
+    '17.21.0': {
+        'major': 17,
+        'minor': 21,
+        'patch': 0,
+        'build_number': '20260726',
+        'build_date': '2026-07-26',
+        'codename': 'Dependency & Security Edition',
+        'status': 'stable',
+        'description': '全量依赖升级、GitHub 安全漏洞告警修复与 Dependabot 激活；升级 pyasn1 等直接可修复漏洞，标注 Python 3.10+ 升级路径修复剩余 53 项 PYSEC 漏洞',
+        'features': [
+            '核心依赖按 requirements.txt 对齐升级：Flask 3.1.3 / Werkzeug 3.1.8 / SQLAlchemy 2.0.51 / Jinja2 3.1.6 / MarkupSafe 3.0.3 / beautifulsoup4 4.15.0 / click 8.1.8 / dashscope 1.26.4 / openai 2.48.0 / psutil 7.2.2 / tqdm 4.69.1 / paho-mqtt 2.1.0 / websockets 15.0.1',
+            '修复已在 Python 3.9 兼容范围内的安全漏洞：pyasn1 0.6.3 → 0.6.4（消除 PYSEC-2026-3455/3456/3457 三项 CVE）',
+            '激活 Dependabot：pip 日更（安全补丁/小版本分组 PR）+ github-actions 周更 + docker 周更，保留 protobuf<6 / paho-mqtt<2 兼容性白名单',
+            'CI/CD 安全流水线升级：新增 pip-audit（Python 3.10 全矩阵漏洞审计）、Trivy 文件系统 CVEs+misconfig+secret 扫描并上传 SARIF 到 GitHub Code Scanning，Bandit 扫描范围扩展到 app/ai_engines/core/',
+            '已知 Python 3.9 限制：aiohttp 11/requests 1/urllib3 2/python-dotenv 1/pytest 1/filelock 2/black 2/click 1/langchain 6/langgraph 5/langsmith 4/msgpack 1/orjson 1/pillow 14/pip 3/setuptools 1 = 共 53 项 PYSEC/GHSA 需升级到 Python 3.10+ 才能用官方 Fix Version 解决',
+        ],
+        'upgrade_notes': '升级前请先切到 Python 3.10+ 环境，再执行 `pip install -r requirements.txt --upgrade`；依赖版本号 2026-07-26 基准生成'
+    },
     '17.20.0': {
         'major': 17,
         'minor': 20,
@@ -1210,7 +1247,7 @@ VERSION_DATA = {
     }
 }
 
-CURRENT_VERSION = '17.20.0'
+CURRENT_VERSION = '17.22.0'
 
 def init_version_table():
     conn = connect('system')

@@ -4,13 +4,1119 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MTSCOS AI · MT架构 | 智能学习评估平台</title>
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='images/favicon.svg') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Noto+Serif+SC:wght@600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
+            --header-h: 72px;
+            --content-max: 1280px;
+            --radius-sm: 6px;
+            --radius: 14px;
+            --radius-lg: 22px;
+            --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+        html, body { margin: 0; width: 100%; }
+        img { max-width: 100%; height: auto; object-fit: contain; }
+        body {
+            font-family: 'Sora', -apple-system, BlinkMacSystemFont, 'Segoe UI',
+                         'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background: var(--bg-gradient, #080814);
+            color: var(--text-primary, #f8fafc);
+            min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* ---------- Decorative Layers ---------- */
+        #particle-canvas { position: fixed; inset: 0; z-index: 1; pointer-events: none; }
+        .aurora {
+            position: fixed; inset: 0; z-index: 0; pointer-events: none;
+            background:
+                radial-gradient(1000px 600px at 15% 10%, rgba(168,85,247,0.22), transparent 60%),
+                radial-gradient(900px 500px at 90% 30%, rgba(99,102,241,0.18), transparent 60%),
+                radial-gradient(800px 500px at 50% 100%, rgba(236,72,153,0.12), transparent 60%);
+            filter: blur(40px) saturate(120%);
+            mix-blend-mode: screen;
+            animation: aurora-drift 18s ease-in-out infinite alternate;
+        }
+        @keyframes aurora-drift {
+            0%   { transform: translate3d(0,0,0) scale(1); }
+            50%  { transform: translate3d(30px,-20px,0) scale(1.04); }
+            100% { transform: translate3d(-20px,10px,0) scale(1.02); }
+        }
+        .grain-overlay {
+            position: fixed; inset: 0; z-index: 2; pointer-events: none;
+            opacity: 0.06; mix-blend-mode: overlay;
+            background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.9 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+        }
+        @media (hover: none) { .cursor-spotlight { display: none; } }
+
+        /* ---------- Site Header (sticky, semantic) ---------- */
+        .site-header {
+            position: sticky; top: 0; z-index: 50; width: 100%;
+            padding: 0 clamp(20px, 6vw, 80px);
+            height: var(--header-h);
+            display: flex; align-items: center; justify-content: space-between; gap: 24px;
+            background: linear-gradient(180deg, var(--header-bg-start, rgba(10,10,30,.75)) 0%, var(--header-bg-end, transparent) 100%);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border-bottom: 1px solid color-mix(in srgb, var(--primary-color, #6366f1) 8%, transparent);
+            animation: fade-down 0.7s var(--ease-out) 0.1s both;
+            transition: height 0.35s var(--ease-out),
+                        padding 0.35s var(--ease-out),
+                        background 0.35s var(--ease-out),
+                        backdrop-filter 0.35s var(--ease-out),
+                        border-color 0.35s var(--ease-out),
+                        box-shadow 0.35s var(--ease-out);
+        }
+        .site-header.shrunk {
+            height: 56px;
+            padding: 0 clamp(24px, 5vw, 72px);
+            background: var(--header-shrunk-bg, rgba(8,8,22,.78));
+            backdrop-filter: saturate(160%) blur(16px);
+            -webkit-backdrop-filter: saturate(160%) blur(16px);
+            border-color: color-mix(in srgb, var(--primary-color, #6366f1) 18%, transparent);
+            box-shadow: 0 1px 0 color-mix(in srgb, var(--primary-color, #6366f1) 12%, transparent),
+                        0 12px 30px rgba(0,0,0,.35);
+        }
+        .brand { display: inline-flex; align-items: center; gap: 12px; min-width: 0; }
+        .brand-logo {
+            width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center;
+            border-radius: 12px;
+            background: linear-gradient(135deg, var(--primary-color, #6366f1), var(--primary-accent, #a855f7));
+            box-shadow: 0 6px 24px color-mix(in srgb, var(--primary-color, #6366f1) 32%, transparent);
+        }
+        .brand-logo img { width: 26px; height: 26px; max-width: 26px; max-height: 26px; display: block; }
+        .brand-text { display: flex; flex-direction: column; line-height: 1.15; }
+        .brand-text strong {
+            font-size: 16px; font-weight: 800; letter-spacing: -0.01em;
+            color: var(--text-primary, #fff);
+        }
+        .brand-text span {
+            font-size: 11px; color: var(--text-muted, #64748b);
+            letter-spacing: 0.12em; text-transform: uppercase; font-weight: 600;
+        }
+        .site-header nav {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 6px; border-radius: 999px;
+            background: color-mix(in srgb, var(--primary-color, #6366f1) 6%, transparent);
+            border: 1px solid color-mix(in srgb, var(--primary-color, #6366f1) 14%, transparent);
+        }
+        .site-header nav a {
+            position: relative;
+            display: inline-flex; align-items: center; gap: 8px;
+            padding: 8px 16px; border-radius: 999px;
+            color: var(--text-secondary, #cbd5e1);
+            text-decoration: none; font-size: 13px; font-weight: 600;
+            transition: color 0.2s var(--ease-out), background 0.2s var(--ease-out);
+        }
+        .site-header nav a i { font-size: 12px; opacity: 0.75; }
+        .site-header nav a:hover {
+            color: var(--text-primary, #fff);
+            background: color-mix(in srgb, var(--primary-color, #6366f1) 12%, transparent);
+        }
+        .header-actions { display: inline-flex; align-items: center; gap: 12px; }
+        .header-version {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 6px 14px; border-radius: 999px; font-size: 12px; font-weight: 600;
+            background: color-mix(in srgb, var(--primary-color, #6366f1) 12%, transparent);
+            color: var(--primary-color, #6366f1);
+            border: 1px solid color-mix(in srgb, var(--primary-color, #6366f1) 22%, transparent);
+        }
+        .header-lang {
+            width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center;
+            border-radius: 10px;
+            color: var(--text-secondary, #cbd5e1);
+            background: color-mix(in srgb, var(--primary-color, #6366f1) 8%, transparent);
+            border: 1px solid color-mix(in srgb, var(--primary-color, #6366f1) 14%, transparent);
+            cursor: pointer; transition: all 0.2s var(--ease-out);
+        }
+        .header-lang:hover { color: var(--text-primary); }
+        .mtscos-theme-mourning-tag {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 6px 12px; border-radius: 999px; font-size: 12px; font-weight: 600;
+            background: rgba(113,113,122,.18); color: #a1a1aa;
+            border: 1px solid rgba(113,113,122,.35);
+        }
+        @media (max-width: 960px) {
+            .site-header nav { display: none; }
+        }
+
+        /* ---------- Shared Section Layout ---------- */
+        .site-main {
+            position: relative; z-index: 3;
+            width: 100%;
+            display: block;
+        }
+        .container {
+            width: 100%;
+            max-width: var(--content-max);
+            margin: 0 auto;
+            padding: 0 clamp(20px, 6vw, 80px);
+        }
+        .section-head {
+            margin-bottom: 56px;
+            max-width: 780px;
+        }
+        .section-eyebrow {
+            display: inline-flex; align-items: center; gap: 10px;
+            padding: 6px 14px; border-radius: 999px;
+            background: color-mix(in srgb, var(--primary-color, #6366f1) 10%, transparent);
+            border: 1px solid color-mix(in srgb, var(--primary-color, #6366f1) 25%, transparent);
+            color: var(--primary-color, #6366f1);
+            font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+            margin-bottom: 20px;
+        }
+        .section-eyebrow::before {
+            content: '';
+            width: 6px; height: 6px; border-radius: 50%;
+            background: currentColor;
+            box-shadow: 0 0 12px currentColor;
+        }
+        .section-title {
+            font-size: clamp(28px, 3.8vw, 44px);
+            font-weight: 800; line-height: 1.08; letter-spacing: -0.02em;
+            color: var(--text-primary, #fff);
+            margin-bottom: 14px;
+        }
+        .section-title em {
+            font-style: normal;
+            background: linear-gradient(120deg, var(--primary-light, #8b5cf6) 0%, var(--primary-accent, #a855f7) 50%, var(--primary-color, #6366f1) 100%);
+            -webkit-background-clip: text; background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .section-lead {
+            font-size: 16px; line-height: 1.7; color: var(--text-secondary, #cbd5e1);
+        }
+
+        @keyframes fade-down { from { opacity: 0; transform: translateY(-12px);} to {opacity:1; transform:none;} }
+        @keyframes fade-up    { from { opacity: 0; transform: translateY(24px);} to {opacity:1; transform:none;} }
+        @keyframes pulse-dot { 0%,100%{ opacity:1;} 50%{opacity:.25;} }
+        @keyframes hint-fade { from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:none;} }
+
+        /* ---------- HERO ---------- */
+        .hero {
+            position: relative;
+            padding: clamp(56px, 9vw, 120px) 0 clamp(48px, 7vw, 88px);
+            min-height: calc(100vh - var(--header-h));
+            display: flex; align-items: center;
+        }
+        .hero-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: clamp(32px, 5vw, 80px);
+            align-items: stretch;
+        }
+        .hero__content {
+            animation: fade-up 0.9s var(--ease-out) 0.2s both;
+            display: flex; flex-direction: column; justify-content: center;
+        }
+        .hero__auth {
+            animation: fade-up 0.9s var(--ease-out) 0.35s both;
+            display: flex; align-items: center;
+        }
+        .hero__auth .login-card { width: 100%; max-height: calc(100vh - 140px); overflow-y: auto; scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--primary-color,#6366f1) 45%, transparent) transparent; }
+        .hero__auth .login-card::-webkit-scrollbar { width: 6px; }
+        .hero__auth .login-card::-webkit-scrollbar-track { background: transparent; }
+        .hero__auth .login-card::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--primary-color,#6366f1) 40%, transparent); border-radius: 999px; }
+        .hero__auth .login-card::-webkit-scrollbar-thumb:hover { background: color-mix(in srgb, var(--primary-color,#6366f1) 65%, transparent); }
+        .hero-eyebrow {
+            display: inline-flex; align-items: center; gap: 10px;
+            padding: 7px 16px; border-radius: 999px;
+            background: color-mix(in srgb, var(--primary-color, #6366f1) 10%, transparent);
+            border: 1px solid color-mix(in srgb, var(--primary-color, #6366f1) 28%, transparent);
+            color: var(--primary-color, #6366f1);
+            font-size: 12px; font-weight: 700; letter-spacing: 0.02em;
+            margin-bottom: 28px;
+        }
+        .eyebrow-dot {
+            width: 7px; height: 7px; border-radius: 50%;
+            background: var(--primary-accent, #a855f7);
+            box-shadow: 0 0 12px var(--primary-accent, #a855f7);
+            animation: pulse-dot 2.1s ease-in-out infinite;
+        }
+        .hero-title {
+            font-size: clamp(40px, 6.2vw, 72px);
+            line-height: 1.02; letter-spacing: -0.03em; font-weight: 800;
+            margin-bottom: 24px;
+        }
+        .hero-title span { display: block; }
+        .hero-title .line-1 {
+            background: linear-gradient(120deg, var(--text-primary, #fff) 0%, var(--text-secondary, #cbd5e1) 55%, var(--primary-light, #8b5cf6) 100%);
+            -webkit-background-clip: text; background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .hero-title .line-2 {
+            background: linear-gradient(120deg, var(--primary-light, #8b5cf6) 0%, var(--primary-accent, #a855f7) 55%, var(--primary-color, #6366f1) 100%);
+            -webkit-background-clip: text; background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-top: 4px;
+        }
+        .hero-lead {
+            font-size: clamp(15px, 1.3vw, 18px);
+            line-height: 1.75; color: var(--text-secondary, #cbd5e1);
+            max-width: 560px;
+            margin-bottom: 32px;
+        }
+        .hero-features {
+            list-style: none; padding: 0; margin: 0 0 40px;
+            display: grid; grid-template-columns: 1fr; gap: 14px;
+            max-width: 560px;
+        }
+        .hero-features li {
+            display: flex; align-items: flex-start; gap: 14px;
+            padding: 14px 18px;
+            border-radius: var(--radius);
+            background: color-mix(in srgb, var(--primary-color, #6366f1) 4%, transparent);
+            border: 1px solid color-mix(in srgb, var(--primary-color, #6366f1) 10%, transparent);
+            color: var(--text-secondary, #cbd5e1);
+            font-size: 14px;
+            transition: transform 0.25s var(--ease-out),
+                        border-color 0.25s var(--ease-out),
+                        background 0.25s var(--ease-out);
+        }
+        .hero-features li:hover {
+            transform: translateX(4px);
+            border-color: color-mix(in srgb, var(--primary-color, #6366f1) 30%, transparent);
+            background: color-mix(in srgb, var(--primary-color, #6366f1) 8%, transparent);
+        }
+        .hero-features li i {
+            margin-top: 2px;
+            width: 30px; height: 30px; flex-shrink: 0;
+            display: inline-flex; align-items: center; justify-content: center;
+            border-radius: 9px; font-size: 13px;
+            color: var(--primary-light, #8b5cf6);
+            background: color-mix(in srgb, var(--primary-color, #6366f1) 12%, transparent);
+            border: 1px solid color-mix(in srgb, var(--primary-color, #6366f1) 25%, transparent);
+        }
+        .hero-stats {
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;
+            padding: 20px 24px;
+            border-radius: var(--radius-lg);
+            background: color-mix(in srgb, var(--primary-color, #6366f1) 6%, transparent);
+            border: 1px solid color-mix(in srgb, var(--primary-color, #6366f1) 18%, transparent);
+            max-width: 560px;
+        }
+        .stat-item { text-align: left; }
+        .stat-num {
+            font-size: clamp(22px, 2.4vw, 28px); font-weight: 800; letter-spacing: -0.02em;
+            color: var(--text-primary, #fff);
+            line-height: 1.1;
+            margin-bottom: 4px;
+        }
+        .stat-label {
+            font-size: 12px; font-weight: 600; letter-spacing: 0.04em;
+            color: var(--text-muted, #64748b); text-transform: uppercase;
+        }
+
+        /* ---------- Auth Card ---------- */
+        .login-card {
+            padding: 36px 32px 32px;
+            border-radius: calc(var(--radius-lg) + 4px);
+            background: var(--card-bg, rgba(12,12,30,.7));
+            border: 1px solid var(--card-border, rgba(99,102,241,.18));
+            backdrop-filter: blur(var(--glass-blur, 28px)) saturate(140%);
+            -webkit-backdrop-filter: blur(var(--glass-blur, 28px)) saturate(140%);
+            box-shadow: var(--glass-shadow, 0 8px 40px rgba(0,0,0,.5));
+            position: relative; overflow: hidden;
+        }
+        .login-card::before {
+            content: '';
+            position: absolute; top: -1px; left: -1px; right: -1px; height: 1px;
+            background: linear-gradient(90deg,
+                transparent 0%,
+                color-mix(in srgb, var(--primary-light, #8b5cf6) 70%, transparent) 30%,
+                color-mix(in srgb, var(--primary-accent, #a855f7) 70%, transparent) 70%,
+                transparent 100%);
+        }
+        .logo-section { text-align: center; margin-bottom: 24px; }
+        .logo-icon {
+            width: 58px; height: 58px; margin: 0 auto 14px;
+            border-radius: 18px;
+            display: flex; align-items: center; justify-content: center;
+            background: var(--logo-accent, linear-gradient(135deg,#6366f1,#8b5cf6));
+            box-shadow: 0 10px 40px color-mix(in srgb, var(--primary-color, #6366f1) 35%, transparent);
+        }
+        .logo-icon img { width: 34px; height: 34px; max-width: 34px; max-height: 34px; display: block; }
+        .brand-title {
+            font-size: 24px; font-weight: 800; letter-spacing: -0.02em;
+            color: var(--text-primary, #fff);
+            margin-bottom: 4px;
+        }
+        .brand-subtitle {
+            font-size: 13px; color: var(--text-secondary, #cbd5e1);
+            margin-bottom: 16px;
+        }
+        .ai-hint {
+            display: inline-flex; align-items: center; gap: 8px;
+            padding: 6px 12px; border-radius: 999px;
+            background: color-mix(in srgb, var(--success, #22c55e) 10%, transparent);
+            border: 1px solid color-mix(in srgb, var(--success, #22c55e) 25%, transparent);
+            font-size: 11px; font-weight: 700; letter-spacing: 0.02em;
+            color: color-mix(in srgb, var(--success, #22c55e) 85%, #fff);
+        }
+        .ai-status-dot {
+            width: 6px; height: 6px; border-radius: 50%;
+            background: var(--success, #22c55e);
+            box-shadow: 0 0 8px var(--success, #22c55e);
+            animation: pulse-dot 1.8s ease-in-out infinite;
+        }
+        .hint-word { display: inline-block; }
+        .card-header { margin-bottom: 20px; }
+        .card-header h2 { font-size: 20px; font-weight: 700; color: var(--text-primary, #fff); margin-bottom: 4px; }
+        .card-header p  { font-size: 13px; color: var(--text-secondary, #cbd5e1); }
+        .login-message {
+            min-height: 18px; margin: 0 0 14px; padding: 8px 12px;
+            border-radius: 10px; font-size: 13px; font-weight: 600;
+        }
+        .login-message.error {
+            background: color-mix(in srgb, var(--danger, #ef4444) 12%, transparent);
+            border: 1px solid color-mix(in srgb, var(--danger, #ef4444) 25%, transparent);
+            color: var(--danger, #ef4444);
+        }
+        .login-message.success {
+            background: color-mix(in srgb, var(--success, #22c55e) 12%, transparent);
+            border: 1px solid color-mix(in srgb, var(--success, #22c55e) 25%, transparent);
+            color: var(--success, #22c55e);
+        }
+        .form-group { margin-bottom: 16px; }
+        .form-group label {
+            display: block; margin-bottom: 6px;
+            font-size: 12px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
+            color: var(--text-secondary, #cbd5e1);
+        }
+        .input-wrapper { position: relative; }
+        .input-wrapper input {
+            width: 100%;
+            padding: 14px 42px 14px 16px;
+            border-radius: var(--radius);
+            border: 1px solid var(--card-border, rgba(99,102,241,.18));
+            background: color-mix(in srgb, var(--card-bg, rgba(12,12,30,.7)) 92%, black 8%);
+            color: var(--text-primary, #fff);
+            font-size: 14px; font-weight: 500; font-family: inherit;
+            transition: border-color 0.2s var(--ease-out),
+                        box-shadow 0.2s var(--ease-out), background 0.2s var(--ease-out);
+            outline: none;
+        }
+        .input-wrapper input::placeholder { color: var(--text-muted, #64748b); font-weight: 500; }
+        .input-wrapper input:focus {
+            border-color: var(--primary-color, #6366f1);
+            box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary-color, #6366f1) 15%, transparent);
+        }
+        .input-wrapper i {
+            position: absolute; right: 16px; top: 50%; transform: translateY(-50%);
+            color: var(--text-muted, #64748b); font-size: 14px;
+        }
+        .input-wrapper--pw input { padding-right: 76px; }
+        .pw-toggle-btn {
+            position: absolute; right: 44px; top: 50%; transform: translateY(-50%);
+            width: 28px; height: 28px; border-radius: 8px;
+            background: transparent; border: none; cursor: pointer;
+            color: var(--text-muted, #64748b); font-size: 14px;
+            display: inline-flex; align-items: center; justify-content: center;
+            transition: all .18s var(--ease-out);
+            outline: none;
+        }
+        .pw-toggle-btn:hover {
+            background: color-mix(in srgb, var(--primary-color, #6366f1) 14%, transparent);
+            color: var(--primary-color, #6366f1);
+        }
+        .pw-toggle-btn:focus-visible {
+            box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-color, #6366f1) 30%, transparent);
+        }
+        .pw-toggle-btn[hidden],
+        .pw-toggle-btn.is-hidden { display: none !important; }
+        .input-wrapper--pw > i.fa-lock { right: 16px; }
+        .form-group.has-error .input-wrapper input {
+            border-color: var(--danger, #ef4444);
+            box-shadow: 0 0 0 4px color-mix(in srgb, var(--danger, #ef4444) 12%, transparent);
+        }
+        .error-text {
+            display: block; margin-top: 6px;
+            font-size: 12px; color: var(--danger, #ef4444); font-weight: 600;
+            min-height: 16px;
+        }
+        .form-options {
+            display: flex; align-items: center; justify-content: space-between;
+            margin: 14px 0 20px; font-size: 13px;
+        }
+        .checkbox-wrapper { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; color: var(--text-secondary, #cbd5e1); }
+        .checkbox-wrapper input { display: none; }
+        .checkbox-custom {
+            width: 18px; height: 18px; border-radius: 5px;
+            border: 1.5px solid color-mix(in srgb, var(--primary-color, #6366f1) 35%, transparent);
+            background: color-mix(in srgb, var(--primary-color, #6366f1) 6%, transparent);
+            display: inline-flex; align-items: center; justify-content: center;
+            color: transparent; font-size: 11px;
+            transition: all 0.2s var(--ease-out);
+        }
+        .checkbox-wrapper input:checked + .checkbox-custom {
+            background: var(--logo-accent, linear-gradient(135deg,#6366f1,#8b5cf6));
+            border-color: transparent; color: #fff;
+        }
+        .link-forgot { color: var(--primary-color, #6366f1); font-weight: 600; text-decoration: none; }
+        .link-forgot:hover { text-decoration: underline; }
+        .btn-login, .btn-register {
+            width: 100%;
+            padding: 15px 24px;
+            border: none; border-radius: var(--radius);
+            font-family: inherit; font-size: 15px; font-weight: 800; letter-spacing: 0.08em;
+            cursor: pointer; position: relative; overflow: hidden;
+            transition: transform 0.2s var(--ease-out), box-shadow 0.2s var(--ease-out), filter 0.2s;
+        }
+        .btn-login {
+            background: var(--logo-accent, linear-gradient(135deg,#6366f1,#8b5cf6));
+            color: #fff;
+            box-shadow: 0 12px 36px color-mix(in srgb, var(--primary-color, #6366f1) 36%, transparent);
+        }
+        .btn-login:hover  { transform: translateY(-2px); filter: brightness(1.06); }
+        .btn-login:active { transform: translateY(0); }
+        .btn-login:disabled { opacity: 0.75; cursor: not-allowed; transform: none; }
+        .spinner {
+            display: inline-block; width: 16px; height: 16px; margin-right: 10px;
+            border: 2px solid rgba(255,255,255,.35); border-top-color: #fff;
+            border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: -3px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .divider-row {
+            margin: 18px 0 16px; position: relative; text-align: center;
+            font-size: 12px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+            color: var(--text-muted, #64748b);
+        }
+        .divider-row::before, .divider-row::after {
+            content: ''; position: absolute; top: 50%; width: calc(50% - 26px); height: 1px;
+            background: color-mix(in srgb, var(--primary-color, #6366f1) 18%, transparent);
+        }
+        .divider-row::before { left: 0; }
+        .divider-row::after  { right: 0; }
+        .btn-register {
+            background: transparent;
+            color: var(--text-primary, #fff);
+            border: 1px solid color-mix(in srgb, var(--primary-color, #6366f1) 35%, transparent);
+        }
+        .btn-register:hover {
+            background: color-mix(in srgb, var(--primary-color, #6366f1) 10%, transparent);
+            transform: translateY(-2px);
+        }
+        .version-row {
+            margin-top: 22px;
+            display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 14px;
+        }
+        .version-item {
+            display: inline-flex; align-items: center; gap: 8px;
+            font-size: 12px; font-weight: 600; color: var(--text-secondary, #cbd5e1);
+        }
+        .version-item i { color: var(--primary-light, #8b5cf6); }
+        .version-tag {
+            display: inline-flex; align-items: center;
+            padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 700;
+            background: color-mix(in srgb, var(--primary-color, #6366f1) 10%, transparent);
+            border: 1px solid color-mix(in srgb, var(--primary-color, #6366f1) 22%, transparent);
+            color: var(--primary-color, #6366f1);
+        }
+        .version-tag.mt-tag {
+            background: linear-gradient(135deg, rgba(16,185,129,.16), rgba(99,102,241,.14));
+            border-color: rgba(16,185,129,.28); color: #86efac;
+        }
+
+        /* -------- Super Admin USB Key Login (admin-only) -------- */
+        .super-admin-block {
+            display: none;
+            margin-top: 6px;
+            padding: 14px 14px 10px;
+            border-radius: var(--radius);
+            background: linear-gradient(135deg,
+                color-mix(in srgb, var(--primary-color, #6366f1) 12%, transparent),
+                color-mix(in srgb, var(--primary-accent, #a855f7) 8%, transparent));
+            border: 1px solid color-mix(in srgb, var(--primary-color, #6366f1) 22%, transparent);
+            animation: fade-up 0.45s var(--ease-out) both;
+        }
+        .super-admin-block.is-visible { display: block; }
+        .sa-header {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 12px; padding-bottom: 10px;
+            border-bottom: 1px dashed color-mix(in srgb, var(--primary-color, #6366f1) 22%, transparent);
+        }
+        .sa-title {
+            font-size: 12px; font-weight: 800; letter-spacing: 0.08em;
+            text-transform: uppercase; color: var(--primary-light, #8b5cf6);
+            display: inline-flex; align-items: center; gap: 8px;
+        }
+        .sa-title i { font-size: 13px; }
+        .sa-status {
+            font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 999px;
+            background: rgba(234,179,8,.14); color: #fcd34d; border: 1px solid rgba(234,179,8,.28);
+        }
+        .sa-status.ok { background: rgba(16,185,129,.14); color: #6ee7b7; border-color: rgba(16,185,129,.28); }
+        .sa-status.err { background: rgba(239,68,68,.14); color: #fca5a5; border-color: rgba(239,68,68,.28); }
+        .sa-status.warn { background: rgba(245,158,11,.14); color: #fcd34d; border-color: rgba(245,158,11,.28); }
+        .sa-ui-timeout-label.danger { background: rgba(239,68,68,.16) !important; color: #fca5a5 !important; animation: pulse-danger 1s ease-in-out infinite; }
+        @keyframes pulse-danger {
+            0%,100% { box-shadow: 0 0 0 0 rgba(239,68,68,.45); }
+            50% { box-shadow: 0 0 0 6px rgba(239,68,68,0); }
+        }
+        .sa-randomcode-box {
+            display: flex; align-items: center; justify-content: space-between; gap: 10px;
+            padding: 10px 12px; margin-bottom: 12px; border-radius: calc(var(--radius) - 3px);
+            background: rgba(10,10,30,.78);
+            border: 1px solid color-mix(in srgb, var(--primary-color, #6366f1) 20%, transparent);
+        }
+        .sa-randomcode-label { font-size: 11px; font-weight: 700; color: var(--text-muted, #64748b); letter-spacing: 0.06em; }
+        .sa-randomcode-value {
+            font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+            font-size: 20px; font-weight: 900; letter-spacing: 0.35em;
+            color: var(--primary-light, #8b5cf6);
+        }
+        .sa-randomcode-refresh {
+            border: none; background: transparent; cursor: pointer; color: var(--text-muted, #64748b);
+            padding: 4px 8px; border-radius: 6px; font-size: 13px; transition: all .2s;
+        }
+        .sa-randomcode-refresh:hover { background: color-mix(in srgb, var(--primary-color, #6366f1) 12%, transparent); color: var(--primary-light, #8b5cf6); }
+        .sa-countdown-ring {
+            position: relative;
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 28px; height: 28px;
+            flex-shrink: 0;
+        }
+        .sa-countdown-ring svg {
+            transform: scaleX(-1); /* 水平翻转 -> 环形减少方向变成逆时针 */
+            filter: drop-shadow(0 0 6px color-mix(in srgb, var(--primary-color,#6366f1) 60%, transparent));
+        }
+        .sa-countdown-bg {
+            stroke: color-mix(in srgb, var(--primary-color,#6366f1) 18%, transparent);
+        }
+        .sa-countdown-fg {
+            stroke: url(#saCountdownGradVar);
+            stroke: var(--primary-accent, #a855f7);
+            transition: stroke-dashoffset 0.95s linear;
+        }
+        .sa-countdown-ring.warning .sa-countdown-fg {
+            stroke: #f59e0b;
+        }
+        .sa-countdown-ring.danger .sa-countdown-fg {
+            stroke: #ef4444;
+        }
+        .sa-countdown-num {
+            position: absolute;
+            left: 0; right: 0; top: 50%; transform: translateY(-50%);
+            text-align: center;
+            font-size: 10px; font-weight: 900;
+            color: var(--primary-light, #8b5cf6);
+            font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+            line-height: 1;
+            pointer-events: none;
+        }
+        .sa-countdown-ring.warning .sa-countdown-num { color: #f59e0b; }
+        .sa-countdown-ring.danger .sa-countdown-num { color: #ef4444; }
+        .is-error-shake {
+            animation: sa-shake-x .42s cubic-bezier(.36,.07,.19,.97) both;
+        }
+        @keyframes sa-shake-x {
+            10%, 90% { transform: translateX(-1px); }
+            20%, 80% { transform: translateX(2px); }
+            30%, 50%, 70% { transform: translateX(-4px); }
+            40%, 60% { transform: translateX(4px); }
+        }
+        .sa-serial-info {
+            font-size: 11px; color: var(--text-muted, #64748b); font-weight: 600;
+            padding: 2px 2px 4px; letter-spacing: 0.02em;
+        }
+        .sa-serial-info b { color: var(--text-accent, #a5b4fc); font-weight: 800; font-family: "SF Mono", ui-monospace, monospace; }
+        .sa-hint {
+            margin-top: 6px; padding-top: 10px;
+            border-top: 1px dashed color-mix(in srgb, var(--primary-color, #6366f1) 18%, transparent);
+            font-size: 11px; font-weight: 600; color: var(--text-muted, #64748b); line-height: 1.6;
+        }
+        .sa-hint b { color: var(--danger, #ef4444); font-weight: 800; }
+
+        /* ---------- 用户名状态指示器（小点） ---------- */
+        #username-group {
+            position: relative;
+        }
+        .uname-indicator {
+            position: relative;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+        .uname-dot {
+            flex-shrink: 0;
+            width: 14px;
+            height: 14px;
+            border-radius: 999px;
+            margin-top: 34px;
+            background: var(--text-muted, #64748b);
+            border: 2px solid transparent;
+            opacity: 0;
+            transform: scale(.5);
+            pointer-events: none;
+            transition: all .22s var(--ease-out), box-shadow .22s var(--ease-out);
+        }
+        .uname-dot.visible {
+            opacity: 1;
+            transform: scale(1);
+        }
+        .uname-dot.d-gray {
+            background: #64748b;
+            box-shadow: 0 0 0 3px rgba(100,116,139,.15);
+        }
+        .uname-dot.d-green {
+            background: #10b981;
+            box-shadow: 0 0 0 3px rgba(16,185,129,.18);
+            animation: uname-dot-pulse 1.8s ease-in-out infinite;
+        }
+        .uname-dot.d-red {
+            background: #ef4444;
+            box-shadow: 0 0 0 3px rgba(239,68,68,.18);
+        }
+        .uname-dot.d-spin::after {
+            content: '';
+            position: absolute;
+            inset: -4px;
+            border-radius: 999px;
+            border: 2px solid rgba(100,116,139,.25);
+            border-top-color: var(--primary-light, #8b5cf6);
+            animation: uname-dot-spin 1s linear infinite;
+        }
+        @keyframes uname-dot-pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.12); opacity: .85; }
+        }
+        @keyframes uname-dot-spin { to { transform: rotate(360deg); } }
+        .uname-fields {
+            flex: 1 1 auto;
+            min-width: 0;
+        }
+        #username-group.sa-hide-uname .uname-fields > label,
+        #username-group.sa-hide-uname .uname-fields > .input-wrapper {
+            display: none;
+        }
+        #username-group.sa-hide-uname .uname-dot {
+            margin-top: 2px;
+        }
+        .sa-uname-banner {
+            display: none;
+            padding: 10px 14px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, rgba(16,185,129,.14), rgba(99,102,241,.14));
+            border: 1px solid rgba(16,185,129,.28);
+            color: var(--text-accent, #c7d2fe);
+            font-weight: 700;
+            font-size: 13px;
+            letter-spacing: .02em;
+            margin-bottom: 10px;
+        }
+        #username-group.sa-hide-uname .sa-uname-banner {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .sa-uname-banner i { color: #34d399; }
+
+        /* ---------- 密码状态指示器（小点） ---------- */
+        #password-group {
+            position: relative;
+        }
+        .pw-indicator {
+            position: relative;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+        .pw-dot {
+            flex-shrink: 0;
+            width: 14px;
+            height: 14px;
+            border-radius: 999px;
+            margin-top: 34px;
+            background: #ef4444;
+            border: 2px solid transparent;
+            opacity: 0;
+            transform: scale(.5);
+            pointer-events: none;
+            transition: all .22s var(--ease-out), box-shadow .22s var(--ease-out);
+        }
+        .pw-dot.visible {
+            opacity: 1;
+            transform: scale(1);
+        }
+        .pw-dot.d-red {
+            background: #ef4444;
+            box-shadow: 0 0 0 3px rgba(239,68,68,.18);
+        }
+        .pw-fields {
+            flex: 1 1 auto;
+            min-width: 0;
+        }
+
+        /* ---------- 登录按钮：灰态禁用/错误提示文本样式 ---------- */
+        .btn-login {
+            position: relative;
+            transition: all .22s var(--ease-out);
+        }
+        .btn-login[disabled],
+        .btn-login.is-disabled {
+            background: linear-gradient(135deg, #475569 0%, #334155 100%);
+            border-color: #475569;
+            color: #cbd5e1;
+            cursor: not-allowed;
+            opacity: .85;
+            pointer-events: none;
+            box-shadow: none;
+            transform: none;
+        }
+        .btn-login.is-disabled:hover {
+            transform: none;
+            box-shadow: none;
+        }
+        .btn-login .btn-error-badge {
+            display: inline-block;
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: .01em;
+        }
+        .btn-login .btn-error-badge::before {
+            content: '⚠️ ';
+            margin-right: 6px;
+        }
+
+        @media (max-width: 820px) {
+            .hero-grid { grid-template-columns: 1fr; }
+            .hero-stats { grid-template-columns: repeat(3, 1fr); }
+        }
+
+        /* ---------- FEATURES ---------- */
+        .features {
+            padding: clamp(72px, 10vw, 120px) 0;
+            position: relative;
+        }
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            align-items: stretch;
+        }
+        .feature-card {
+            padding: 30px 26px;
+            border-radius: var(--radius-lg);
+            background: var(--card-bg, rgba(12,12,30,.7));
+            border: 1px solid var(--card-border, rgba(99,102,241,.18));
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            transition: transform 0.35s var(--ease-out),
+                        border-color 0.35s var(--ease-out),
+                        box-shadow 0.35s var(--ease-out),
+                        background 0.35s var(--ease-out);
+            position: relative; overflow: hidden;
+            height: 100%;
+            display: flex; flex-direction: column;
+        }
+        .feature-card::after {
+            content: '';
+            position: absolute; inset: 0;
+            background: radial-gradient(400px 200px at var(--mx,50%) var(--my,0%),
+                        color-mix(in srgb, var(--primary-accent, #a855f7) 18%, transparent) 0%,
+                        transparent 60%);
+            opacity: 0; pointer-events: none;
+            transition: opacity 0.35s var(--ease-out);
+        }
+        .feature-card:hover {
+            transform: translateY(-6px);
+            border-color: var(--card-border-hover, rgba(99,102,241,.4));
+            box-shadow: 0 24px 60px rgba(0,0,0,.45), 0 0 0 1px color-mix(in srgb, var(--primary-color, #6366f1) 14%, transparent);
+        }
+        .feature-card:hover::after { opacity: 1; }
+        .feature-icon {
+            width: 52px; height: 52px; border-radius: 16px; margin-bottom: 22px;
+            display: inline-flex; align-items: center; justify-content: center;
+            background: var(--logo-accent, linear-gradient(135deg,#6366f1,#8b5cf6));
+            box-shadow: 0 10px 28px color-mix(in srgb, var(--primary-color, #6366f1) 34%, transparent);
+            color: #fff; font-size: 20px; position: relative; z-index: 1;
+        }
+        .feature-card:nth-child(2) .feature-icon {
+            background: linear-gradient(135deg, #06b6d4, #3b82f6);
+            box-shadow: 0 10px 28px rgba(6,182,212,.35);
+        }
+        .feature-card:nth-child(3) .feature-icon {
+            background: linear-gradient(135deg, #ec4899, #f59e0b);
+            box-shadow: 0 10px 28px rgba(236,72,153,.35);
+        }
+        .feature-card:nth-child(4) .feature-icon {
+            background: linear-gradient(135deg, #10b981, #14b8a6);
+            box-shadow: 0 10px 28px rgba(16,185,129,.35);
+        }
+        .feature-title {
+            font-size: 17px; font-weight: 800; letter-spacing: -0.01em;
+            color: var(--text-primary, #fff); margin-bottom: 10px; position: relative; z-index: 1;
+        }
+        .feature-desc {
+            font-size: 13.5px; line-height: 1.7; color: var(--text-secondary, #cbd5e1); position: relative; z-index: 1;
+        }
+        @media (max-width: 820px) { .features-grid { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 520px) { .features-grid { grid-template-columns: 1fr; } }
+
+        /* ---------- SOLUTIONS (Education Scenarios) ---------- */
+        .solutions { padding: clamp(72px, 10vw, 120px) 0; position: relative; }
+        .solutions-grid {
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px;
+            align-items: stretch;
+        }
+        .solution-card {
+            border-radius: var(--radius-lg);
+            padding: 40px 28px 32px;
+            min-height: 320px;
+            background:
+                radial-gradient(600px 300px at 100% 0%,
+                    color-mix(in srgb, var(--primary-light, #8b5cf6) 18%, transparent) 0%, transparent 55%),
+                var(--card-bg, rgba(12,12,30,.7));
+            border: 1px solid var(--card-border, rgba(99,102,241,.18));
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            display: flex; flex-direction: column; justify-content: space-between;
+            transition: transform 0.35s var(--ease-out),
+                        border-color 0.35s var(--ease-out),
+                        box-shadow 0.35s var(--ease-out);
+            position: relative; overflow: hidden;
+            height: 100%;
+        }
+        .solution-card:nth-child(1) { --sol-accent: #6366f1; --sol-accent-2: #a855f7; }
+        .solution-card:nth-child(2) { --sol-accent: #ec4899; --sol-accent-2: #f59e0b; }
+        .solution-card:nth-child(3) { --sol-accent: #06b6d4; --sol-accent-2: #10b981; }
+        .solution-card::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+            background: linear-gradient(90deg, var(--sol-accent), var(--sol-accent-2));
+        }
+        .solution-card:hover { transform: translateY(-8px); border-color: var(--card-border-hover, rgba(99,102,241,.4)); box-shadow: 0 30px 80px rgba(0,0,0,.4); }
+        .solution-num {
+            font-family: 'Noto Serif SC', serif;
+            font-size: 64px; font-weight: 800; line-height: 1;
+            background: linear-gradient(135deg, var(--sol-accent), var(--sol-accent-2));
+            -webkit-background-clip: text; background-clip: text;
+            -webkit-text-fill-color: transparent; margin-bottom: 18px; opacity: 0.9;
+        }
+        .solution-title {
+            font-size: 22px; font-weight: 800; letter-spacing: -0.01em;
+            color: var(--text-primary, #fff); margin-bottom: 10px;
+        }
+        .solution-desc { font-size: 14px; line-height: 1.75; color: var(--text-secondary, #cbd5e1); margin-bottom: 24px; flex: 1 1 auto; min-height: 98px; }
+        .solution-chips { display: flex; flex-wrap: wrap; gap: 8px; min-height: 68px; align-content: flex-start; }
+        .chip {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 5px 12px; border-radius: 999px; font-size: 11px; font-weight: 700;
+            background: color-mix(in srgb, var(--sol-accent) 12%, transparent);
+            border: 1px solid color-mix(in srgb, var(--sol-accent) 30%, transparent);
+            color: color-mix(in srgb, var(--sol-accent) 85%, #fff);
+        }
+        @media (max-width: 980px) { .solutions-grid { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 680px) { .solutions-grid { grid-template-columns: 1fr; } }
+
+        /* ---------- STATS SHOWCASE ---------- */
+        .stats-showcase { padding: clamp(56px, 8vw, 96px) 0; position: relative; }
+        .stats-band {
+            padding: 48px 48px;
+            border-radius: var(--radius-lg);
+            background:
+                linear-gradient(135deg,
+                    color-mix(in srgb, var(--primary-color, #6366f1) 18%, transparent) 0%,
+                    color-mix(in srgb, var(--primary-accent, #a855f7) 12%, transparent) 50%,
+                    color-mix(in srgb, var(--primary-color, #6366f1) 18%, transparent) 100%);
+            border: 1px solid color-mix(in srgb, var(--primary-color, #6366f1) 25%, transparent);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            display: grid; grid-template-columns: repeat(4, 1fr); gap: 32px;
+            position: relative; overflow: hidden;
+            align-items: stretch;
+        }
+        .stats-band::after {
+            content: ''; position: absolute; inset: 0; pointer-events: none;
+            background: radial-gradient(800px 300px at 10% -10%, rgba(255,255,255,.06), transparent 60%);
+        }
+        .stat-band-item { text-align: center; position: relative; z-index: 1; }
+        .stat-band-item + .stat-band-item {
+            border-left: 1px solid color-mix(in srgb, var(--primary-light, #8b5cf6) 22%, transparent);
+            padding-left: 32px;
+        }
+        .stat-band-num {
+            font-size: clamp(36px, 4.5vw, 54px); font-weight: 800; letter-spacing: -0.03em; line-height: 1;
+            background: linear-gradient(120deg, var(--text-primary, #fff), var(--primary-light, #8b5cf6));
+            -webkit-background-clip: text; background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 8px;
+        }
+        .stat-band-label {
+            font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+            color: var(--text-secondary, #cbd5e1);
+        }
+        @media (max-width: 820px) {
+            .stats-band { grid-template-columns: repeat(2, 1fr); padding: 36px 28px; }
+            .stat-band-item:nth-child(odd) { border-left: none; padding-left: 0; }
+            .stat-band-item:nth-child(n+3) { margin-top: 8px; padding-top: 32px; border-top: 1px solid color-mix(in srgb, var(--primary-light, #8b5cf6) 22%, transparent); }
+        }
+
+        /* ---------- CTA ---------- */
+        .cta { padding: clamp(56px, 8vw, 104px) 0 clamp(80px, 11vw, 136px); position: relative; }
+        .cta-card {
+            border-radius: calc(var(--radius-lg) + 8px);
+            padding: clamp(40px, 6vw, 72px);
+            background:
+                radial-gradient(700px 400px at 10% 10%,
+                    color-mix(in srgb, var(--primary-accent, #a855f7) 24%, transparent) 0%, transparent 55%),
+                radial-gradient(700px 400px at 100% 100%,
+                    color-mix(in srgb, var(--primary-color, #6366f1) 22%, transparent) 0%, transparent 60%),
+                linear-gradient(135deg, var(--primary-dark, #4f46e5), var(--primary-accent, #a855f7));
+            position: relative; overflow: hidden;
+            display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: stretch;
+            min-height: 300px;
+        }
+        .cta__content {
+            display: flex; flex-direction: column; justify-content: center;
+        }
+        .cta__actions {
+            display: flex; flex-direction: column; justify-content: center; align-items: stretch;
+        }
+        .cta-card::before {
+            content: ''; position: absolute; inset: 0; pointer-events: none;
+            background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='60' height='60'><circle cx='30' cy='30' r='1' fill='white' opacity='0.06'/></svg>");
+        }
+        .cta__content { position: relative; z-index: 1; }
+        .cta-eyebrow {
+            display: inline-flex; align-items: center; gap: 10px;
+            padding: 6px 14px; border-radius: 999px;
+            background: rgba(255,255,255,.12); color: #fff;
+            border: 1px solid rgba(255,255,255,.2);
+            font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+            margin-bottom: 22px;
+        }
+        .cta-title {
+            font-size: clamp(28px, 4vw, 44px); font-weight: 800; line-height: 1.08; letter-spacing: -0.02em;
+            color: #fff; margin-bottom: 14px;
+        }
+        .cta-lead { font-size: 16px; line-height: 1.7; color: rgba(255,255,255,.82); max-width: 520px; }
+        .cta__actions {
+            display: flex; flex-direction: column; gap: 14px; position: relative; z-index: 1;
+        }
+        .btn-cta {
+            width: 100%;
+            padding: 18px 28px; border-radius: var(--radius); border: none; cursor: pointer;
+            font-family: inherit; font-size: 15px; font-weight: 800; letter-spacing: 0.04em;
+            text-decoration: none; text-align: center; display: inline-block;
+            transition: transform 0.25s var(--ease-out), box-shadow 0.25s, filter 0.2s;
+        }
+        .btn-cta.primary {
+            background: #fff; color: var(--primary-dark, #4f46e5);
+            box-shadow: 0 20px 60px rgba(0,0,0,.3);
+        }
+        .btn-cta.primary:hover { transform: translateY(-3px); filter: brightness(1.03); }
+        .btn-cta.secondary {
+            background: rgba(255,255,255,.1); color: #fff;
+            border: 1px solid rgba(255,255,255,.28);
+        }
+        .btn-cta.secondary:hover { background: rgba(255,255,255,.18); transform: translateY(-2px); }
+        @media (max-width: 820px) {
+            .cta-card { grid-template-columns: 1fr; padding: 44px 32px; }
+        }
+
+        /* ---------- FOOTER ---------- */
+        .site-footer {
+            position: relative; z-index: 3;
+            padding: clamp(56px, 8vw, 88px) clamp(20px, 6vw, 80px) 32px;
+            background: var(--footer-bg, rgba(8,8,22,.78));
+            border-top: 1px solid color-mix(in srgb, var(--primary-color, #6366f1) 10%, transparent);
+            color: var(--text-secondary, #cbd5e1);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+        }
+        .footer-grid {
+            width: 100%; max-width: var(--content-max); margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1.5fr repeat(4, 1fr);
+            gap: 40px 48px;
+        }
+        .footer-brand-desc { margin-top: 20px; font-size: 13.5px; line-height: 1.75; color: var(--text-secondary, #cbd5e1); max-width: 360px; }
+        .site-footer h4 {
+            font-size: 13px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase;
+            color: var(--text-primary, #fff); margin-bottom: 18px;
+            display: inline-flex; align-items: center; gap: 10px;
+        }
+        .site-footer h4 i { color: var(--primary-light, #8b5cf6); font-size: 12px; }
+        .site-footer ul { list-style: none; padding: 0; margin: 0; }
+        .site-footer ul li {
+            padding: 6px 0;
+            display: flex; align-items: center; gap: 10px;
+            font-size: 13.5px;
+        }
+        .site-footer ul li i { width: 16px; color: var(--text-muted, #64748b); font-size: 12px; flex-shrink: 0; }
+        .site-footer a {
+            color: inherit; text-decoration: none;
+            transition: color 0.2s var(--ease-out), transform 0.2s var(--ease-out);
+            display: inline-block;
+        }
+        .site-footer a:hover {
+            color: var(--primary-color, #6366f1);
+            transform: translateX(2px);
+        }
+        .footer-bottom {
+            width: 100%; max-width: var(--content-max); margin: 56px auto 0;
+            padding-top: 24px;
+            border-top: 1px solid color-mix(in srgb, var(--primary-color, #6366f1) 12%, transparent);
+            display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap;
+            font-size: 12.5px; color: var(--text-muted, #64748b);
+        }
+        .socials { display: inline-flex; align-items: center; gap: 10px; }
+        .socials a {
+            width: 36px; height: 36px; border-radius: 10px;
+            display: inline-flex; align-items: center; justify-content: center;
+            background: color-mix(in srgb, var(--primary-color, #6366f1) 6%, transparent);
+            border: 1px solid color-mix(in srgb, var(--primary-color, #6366f1) 14%, transparent);
+            color: var(--text-secondary, #cbd5e1); font-size: 14px;
+            transition: all 0.2s var(--ease-out);
+        }
+        .socials a:hover {
+            color: var(--text-primary, #fff);
+            transform: translateY(-2px);
+            background: color-mix(in srgb, var(--primary-color, #6366f1) 14%, transparent);
+            border-color: color-mix(in srgb, var(--primary-color, #6366f1) 30%, transparent);
+        }
+        @media (max-width: 1080px) {
+            .footer-grid { grid-template-columns: 1fr 1fr; }
+            .footer-grid > div:first-child { grid-column: 1 / -1; }
+        }
+        @media (max-width: 560px) {
+            .footer-grid { grid-template-columns: 1fr; }
+        }
+
+        /* ---------- Animations on Scroll ---------- */
+        @media (prefers-reduced-motion: no-preference) {
+            .reveal {
+                opacity: 0; transform: translateY(28px);
+                transition: opacity 0.85s var(--ease-out), transform 0.85s var(--ease-out);
+                will-change: transform, opacity;
+            }
+            .reveal.in { opacity: 1; transform: none; }
+            .reveal.d1 { transition-delay: 0.05s; }
+            .reveal.d2 { transition-delay: 0.12s; }
+            .reveal.d3 { transition-delay: 0.19s; }
+            .reveal.d4 { transition-delay: 0.26s; }
+        }
+    </style>
+    <style>
+        /* ========== THEME VARIABLES (index 主页) ========== */
+        [data-theme="deep_blue"] {
             --primary-color: #6366f1;
             --primary-light: #8b5cf6;
             --primary-accent: #a855f7;
             --primary-dark: #4f46e5;
+            --accent: #6366f1;
+            --bg-page: #0a0a1a;
+            --border-subtle: rgba(99, 102, 241, 0.12);
             --bg-gradient-start: #050510;
             --bg-gradient-mid: #0c0c24;
             --bg-gradient-end: #070718;
@@ -21,816 +1127,829 @@
             --text-secondary: #cbd5e1;
             --text-muted: #64748b;
             --text-accent: #a5b4fc;
-            --glass-blur: 28px;
             --glass-shadow: 0 8px 40px rgba(0, 0, 0, 0.5), 0 0 80px rgba(99, 102, 241, 0.08);
-        }
-
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-
-        html, body {
-            height: 100%;
-            overflow: hidden;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
-            background: radial-gradient(ellipse at 20% 50%, rgba(99, 102, 241, 0.12) 0%, transparent 50%),
-                        radial-gradient(ellipse at 80% 20%, rgba(168, 85, 247, 0.10) 0%, transparent 50%),
-                        radial-gradient(ellipse at 50% 80%, rgba(79, 70, 229, 0.08) 0%, transparent 50%),
-                        linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-mid) 50%, var(--bg-gradient-end) 100%);
-            color: var(--text-primary);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-            position: relative;
-        }
-
-        #particle-canvas {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 0;
-            pointer-events: none;
-        }
-
-        .aurora {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 0;
-            pointer-events: none;
-            overflow: hidden;
-        }
-
-        .aurora::before,
-        .aurora::after {
-            content: '';
-            position: absolute;
-            width: 60vmax;
-            height: 60vmax;
-            border-radius: 50%;
-            filter: blur(120px);
-            opacity: 0.15;
-            animation: aurora-move 20s ease-in-out infinite alternate;
-        }
-
-        .aurora::before {
-            background: radial-gradient(circle, var(--primary-color), transparent 70%);
-            top: -20%;
-            left: -10%;
-        }
-
-        .aurora::after {
-            background: radial-gradient(circle, var(--primary-accent), transparent 70%);
-            bottom: -20%;
-            right: -10%;
-            animation-delay: -10s;
-        }
-
-        @keyframes aurora-move {
-            0% { transform: translate(0, 0) scale(1); }
-            33% { transform: translate(5%, 3%) scale(1.05); }
-            66% { transform: translate(-3%, 5%) scale(0.98); }
-            100% { transform: translate(4%, -2%) scale(1.02); }
-        }
-
-        .main-wrapper {
-            position: relative;
-            z-index: 2;
-            width: 100%;
-            max-width: 460px;
-            animation: main-fade-in 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
-        }
-
-        @keyframes main-fade-in {
-            0% { opacity: 0; transform: translateY(40px); }
-            100% { opacity: 1; transform: translateY(0); }
-        }
-
-        .header-section {
-            text-align: center;
-            margin-bottom: 36px;
-        }
-
-        .brand-mark {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 6px 14px;
-            background: rgba(99, 102, 241, 0.1);
-            border: 1px solid rgba(99, 102, 241, 0.25);
-            border-radius: 100px;
-            font-size: 12px;
-            font-weight: 600;
-            color: var(--text-accent);
-            margin-bottom: 20px;
-            letter-spacing: 0.02em;
-            animation: badge-slide 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.15s both;
-        }
-
-        .brand-mark i {
-            color: var(--primary-light);
-            font-size: 11px;
-        }
-
-        @keyframes badge-slide {
-            0% { opacity: 0; transform: translateY(-10px); }
-            100% { opacity: 1; transform: translateY(0); }
-        }
-
-        .logo-section {
-            margin-bottom: 16px;
-            animation: logo-drop 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both;
-        }
-
-        @keyframes logo-drop {
-            0% { opacity: 0; transform: scale(0.85) translateY(-10px); }
-            100% { opacity: 1; transform: scale(1) translateY(0); }
-        }
-
-        .logo-icon {
-            width: 88px;
-            height: 88px;
-            margin: 0 auto 22px;
-            border-radius: 26px;
-            background: linear-gradient(145deg, var(--primary-color) 0%, var(--primary-light) 50%, var(--primary-accent) 100%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 38px;
-            color: white;
-            position: relative;
-            box-shadow: 0 12px 40px rgba(99, 102, 241, 0.45),
-                        0 0 0 1px rgba(255, 255, 255, 0.08) inset;
-        }
-
-        .logo-icon::before {
-            content: '';
-            position: absolute;
-            inset: -4px;
-            border-radius: 30px;
-            background: linear-gradient(145deg, var(--primary-color), var(--primary-accent));
-            filter: blur(20px);
-            opacity: 0.4;
-            z-index: -1;
-            animation: logo-pulse 3s ease-in-out infinite;
-        }
-
-        @keyframes logo-pulse {
-            0%, 100% { opacity: 0.3; transform: scale(1); }
-            50% { opacity: 0.55; transform: scale(1.08); }
-        }
-
-        .logo-icon i {
-            filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.2));
-        }
-
-        .brand-title {
-            font-size: 40px;
-            font-weight: 800;
-            letter-spacing: -0.02em;
-            line-height: 1.1;
-            margin-bottom: 8px;
-            background: linear-gradient(135deg, #ffffff 0%, #e0e7ff 40%, #c7d2fe 70%, var(--primary-light) 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .brand-subtitle {
-            font-size: 15px;
-            font-weight: 500;
-            color: var(--text-secondary);
-            letter-spacing: 0.01em;
-            margin-bottom: 4px;
-        }
-
-        .ai-hint {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 12px;
-            color: var(--text-accent);
-            opacity: 0.85;
-            margin-top: 4px;
-        }
-
-        .ai-hint i {
-            font-size: 10px;
-            animation: ai-blink 1.8s ease-in-out infinite;
-        }
-
-        @keyframes ai-blink {
-            0%, 100% { opacity: 0.4; }
-            50% { opacity: 1; }
-        }
-
-        .time-section {
-            text-align: center;
-            margin-bottom: 32px;
-            animation: time-fade 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.35s both;
-        }
-
-        @keyframes time-fade {
-            0% { opacity: 0; transform: translateY(10px); }
-            100% { opacity: 1; transform: translateY(0); }
-        }
-
-        .time-display {
-            font-family: 'SF Mono', 'JetBrains Mono', 'Menlo', 'Consolas', 'Courier New', monospace;
-            font-size: 44px;
-            font-weight: 700;
-            letter-spacing: -0.02em;
-            line-height: 1;
-            margin-bottom: 8px;
-            background: linear-gradient(135deg, var(--primary-light), var(--primary-color) 50%, var(--primary-accent));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            text-shadow: 0 0 40px rgba(99, 102, 241, 0.2);
-        }
-
-        .time-colon {
-            display: inline-block;
-            animation: colon-blink 1s steps(2) infinite;
-        }
-
-        @keyframes colon-blink {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.3; }
-        }
-
-        .date-display {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 12px;
-            font-size: 13px;
-            color: var(--text-secondary);
-        }
-
-        .date-display .divider {
-            width: 3px;
-            height: 3px;
-            border-radius: 50%;
-            background: var(--primary-color);
-            opacity: 0.5;
-        }
-
-        .weekday-badge {
-            padding: 2px 10px;
-            border-radius: 100px;
-            background: rgba(99, 102, 241, 0.12);
-            color: var(--text-accent);
-            font-weight: 600;
-            font-size: 11px;
-        }
-
-        .login-card {
-            position: relative;
-            background: var(--card-bg);
-            backdrop-filter: blur(var(--glass-blur));
-            -webkit-backdrop-filter: blur(var(--glass-blur));
-            border: 1px solid var(--card-border);
-            border-radius: 24px;
-            padding: 40px 38px;
-            box-shadow: var(--glass-shadow);
-            animation: card-rise 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.45s both;
-            overflow: hidden;
-        }
-
-        .login-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 1px;
-            background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.6), transparent);
-        }
-
-        @keyframes card-rise {
-            0% { opacity: 0; transform: translateY(24px); }
-            100% { opacity: 1; transform: translateY(0); }
-        }
-
-        .login-card:hover {
-            border-color: var(--card-border-hover);
-            box-shadow: 0 12px 50px rgba(0, 0, 0, 0.55), 0 0 100px rgba(99, 102, 241, 0.12);
-        }
-
-        .card-header {
-            text-align: center;
-            margin-bottom: 28px;
-        }
-
-        .card-header h2 {
-            font-size: 22px;
-            font-weight: 700;
-            margin-bottom: 6px;
-            letter-spacing: -0.01em;
-        }
-
-        .card-header p {
-            font-size: 13px;
-            color: var(--text-muted);
-        }
-
-        .form-group {
-            margin-bottom: 18px;
-        }
-
-        .form-group label {
-            display: block;
-            font-size: 12px;
-            font-weight: 600;
-            color: var(--text-secondary);
-            margin-bottom: 7px;
-            letter-spacing: 0.02em;
-        }
-
-        .input-wrapper {
-            position: relative;
-        }
-
-        .input-wrapper i {
-            position: absolute;
-            left: 14px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: var(--text-muted);
-            font-size: 14px;
-            transition: color 0.25s;
-            z-index: 1;
-        }
-
-        .form-group input {
-            width: 100%;
-            padding: 13px 14px 13px 42px;
-            border: 1px solid rgba(99, 102, 241, 0.12);
-            border-radius: 12px;
-            font-size: 14px;
-            background: rgba(0, 0, 0, 0.22);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            color: var(--text-primary);
-            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-            font-family: inherit;
-        }
-
-        .form-group input::placeholder {
-            color: var(--text-muted);
-            opacity: 0.7;
-        }
-
-        .form-group input:focus {
-            outline: none;
-            border-color: var(--primary-color);
-            background: rgba(0, 0, 0, 0.32);
-            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.12),
-                        0 0 24px rgba(99, 102, 241, 0.18);
-        }
-
-        .form-group input:focus + i,
-        .form-group input:focus ~ i {
-            color: var(--primary-light);
-        }
-
-        .form-group.has-error input {
-            border-color: rgba(239, 68, 68, 0.5);
-            box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
-        }
-
-        .form-group .error-text {
-            color: #f87171;
-            font-size: 12px;
-            margin-top: 6px;
-            display: none;
-        }
-
-        .form-group.has-error .error-text {
-            display: block;
-        }
-
-        .form-options {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin: 6px 0 22px;
-        }
-
-        .checkbox-wrapper {
-            display: inline-flex;
-            align-items: center;
-            cursor: pointer;
-            user-select: none;
-        }
-
-        .checkbox-wrapper input {
-            display: none;
-        }
-
-        .checkbox-custom {
-            width: 16px;
-            height: 16px;
-            border-radius: 5px;
-            border: 1.5px solid rgba(99, 102, 241, 0.35);
-            background: rgba(0, 0, 0, 0.2);
-            margin-right: 7px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.2s;
-        }
-
-        .checkbox-wrapper input:checked + .checkbox-custom {
-            background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
-            border-color: var(--primary-light);
-        }
-
-        .checkbox-custom i {
-            font-size: 9px;
-            color: white;
-            opacity: 0;
-            transform: scale(0.5);
-            transition: all 0.2s;
-        }
-
-        .checkbox-wrapper input:checked + .checkbox-custom i {
-            opacity: 1;
-            transform: scale(1);
-        }
-
-        .checkbox-wrapper span {
-            font-size: 12px;
-            color: var(--text-secondary);
-        }
-
-        .link-forgot {
-            font-size: 12px;
-            color: var(--text-accent);
-            text-decoration: none;
-            font-weight: 500;
-            transition: color 0.2s;
-        }
-
-        .link-forgot:hover {
-            color: var(--primary-light);
-        }
-
-        .btn-login {
-            width: 100%;
-            padding: 13px 24px;
-            border: none;
-            border-radius: 12px;
-            font-weight: 700;
-            font-size: 15px;
-            cursor: pointer;
-            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-            background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-light) 50%, var(--primary-accent) 100%);
-            color: white;
-            box-shadow: 0 4px 20px rgba(99, 102, 241, 0.45),
-                        0 0 0 1px rgba(255, 255, 255, 0.06) inset;
-            letter-spacing: 0.02em;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .btn-login::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.12), transparent);
-            transition: left 0.5s;
-        }
-
-        .btn-login:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 32px rgba(99, 102, 241, 0.55),
-                        0 0 0 1px rgba(255, 255, 255, 0.08) inset;
-        }
-
-        .btn-login:hover::before {
-            left: 100%;
-        }
-
-        .btn-login:active {
-            transform: translateY(0);
-        }
-
-        .btn-login:disabled {
-            opacity: 0.7;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .login-message {
-            padding: 11px 14px;
-            border-radius: 10px;
-            font-size: 13px;
-            margin-bottom: 18px;
-            display: none;
-            text-align: center;
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-        }
-
-        .login-message.error {
-            background: rgba(239, 68, 68, 0.12);
-            color: #fca5a5;
-            border: 1px solid rgba(239, 68, 68, 0.25);
-            display: block;
-        }
-
-        .login-message.success {
-            background: rgba(34, 197, 94, 0.12);
-            color: #86efac;
-            border: 1px solid rgba(34, 197, 94, 0.25);
-            display: block;
-        }
-
-        .divider-row {
-            display: flex;
-            align-items: center;
-            margin: 22px 0;
-            color: var(--text-muted);
-            font-size: 11px;
-            letter-spacing: 0.08em;
-            text-transform: uppercase;
-        }
-
-        .divider-row::before,
-        .divider-row::after {
-            content: '';
-            flex: 1;
-            height: 1px;
-            background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.2), transparent);
-        }
-
-        .divider-row::before { margin-right: 14px; }
-        .divider-row::after { margin-left: 14px; }
-
-        .btn-register {
-            width: 100%;
-            padding: 12px 24px;
-            border: 1px solid rgba(99, 102, 241, 0.2);
-            border-radius: 12px;
-            font-weight: 600;
-            font-size: 14px;
-            cursor: pointer;
-            transition: all 0.25s;
-            background: rgba(99, 102, 241, 0.06);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
+            --header-bg-start: rgba(10, 10, 30, 0.75);
+            --header-bg-end: rgba(10, 10, 30, 0);
+            --header-shrunk-bg: rgba(8, 8, 22, 0.78);
+            --footer-bg: rgba(8, 8, 22, 0.78);
+            --danger: #ef4444;
+            --success: #22c55e;
+            --warning: #f59e0b;
+            --logo-accent: linear-gradient(135deg, #6366f1, #8b5cf6);
+            --bg-gradient: radial-gradient(ellipse at 20% 50%, rgba(99,102,241,0.18) 0%, transparent 55%),
+                           radial-gradient(ellipse at 80% 15%, rgba(168,85,247,0.16) 0%, transparent 55%),
+                           radial-gradient(ellipse at 60% 95%, rgba(236,72,153,0.10) 0%, transparent 55%),
+                           radial-gradient(ellipse at 10% 100%, rgba(34,211,238,0.08) 0%, transparent 60%),
+                           linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-mid) 50%, var(--bg-gradient-end) 100%);
+        }
+        [data-theme="light_blue_tech"] {
+            --primary-color: #0ea5e9;
+            --primary-light: #38bdf8;
+            --primary-accent: #22d3ee;
+            --primary-dark: #0284c7;
+            --accent: #0ea5e9;
+            --bg-page: #f0f9ff;
+            --border-subtle: rgba(56, 189, 248, 0.2);
+            --bg-gradient-start: #e0f2fe;
+            --bg-gradient-mid: #f0f9ff;
+            --bg-gradient-end: #ecfeff;
+            --card-bg: rgba(255, 255, 255, 0.78);
+            --card-border: rgba(56, 189, 248, 0.25);
+            --card-border-hover: rgba(14, 165, 233, 0.45);
+            --text-primary: #0f172a;
+            --text-secondary: #334155;
+            --text-muted: #64748b;
+            --text-accent: #0284c7;
+            --glass-shadow: 0 8px 40px rgba(14, 165, 233, 0.18), 0 0 80px rgba(56, 189, 248, 0.08);
+            --header-bg-start: rgba(240, 249, 255, 0.78);
+            --header-bg-end: rgba(240, 249, 255, 0);
+            --header-shrunk-bg: rgba(255, 255, 255, 0.88);
+            --footer-bg: rgba(240, 249, 255, 0.9);
+            --danger: #dc2626;
+            --success: #16a34a;
+            --warning: #d97706;
+            --logo-accent: linear-gradient(135deg, #0ea5e9, #22d3ee);
+            --bg-gradient: radial-gradient(ellipse at 20% 50%, rgba(14,165,233,0.12) 0%, transparent 55%),
+                           radial-gradient(ellipse at 80% 15%, rgba(34,211,238,0.10) 0%, transparent 55%),
+                           linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-mid) 50%, var(--bg-gradient-end) 100%);
+        }
+        [data-theme="light"] {
+            --primary-color: #6366f1;
+            --primary-light: #8b5cf6;
+            --primary-accent: #a855f7;
+            --primary-dark: #4f46e5;
+            --accent: #6366f1;
+            --bg-page: #f8fafc;
+            --border-subtle: rgba(148, 163, 184, 0.18);
+            --bg-gradient-start: #f8fafc;
+            --bg-gradient-mid: #eef2ff;
+            --bg-gradient-end: #f1f5f9;
+            --card-bg: rgba(255, 255, 255, 0.9);
+            --card-border: rgba(148, 163, 184, 0.2);
+            --card-border-hover: rgba(99, 102, 241, 0.36);
+            --text-primary: #0f172a;
+            --text-secondary: #334155;
+            --text-muted: #64748b;
+            --text-accent: #4f46e5;
+            --glass-shadow: 0 8px 40px rgba(15, 23, 42, 0.08), 0 0 80px rgba(99, 102, 241, 0.06);
+            --header-bg-start: rgba(255, 255, 255, 0.88);
+            --header-bg-end: rgba(255, 255, 255, 0);
+            --header-shrunk-bg: rgba(255, 255, 255, 0.96);
+            --footer-bg: rgba(248, 250, 252, 0.94);
+            --danger: #dc2626;
+            --success: #16a34a;
+            --warning: #d97706;
+            --logo-accent: linear-gradient(135deg, #6366f1, #8b5cf6);
+            --bg-gradient: radial-gradient(ellipse at 20% 50%, rgba(99,102,241,0.10) 0%, transparent 55%),
+                           radial-gradient(ellipse at 80% 15%, rgba(168,85,247,0.08) 0%, transparent 55%),
+                           linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-mid) 50%, var(--bg-gradient-end) 100%);
+        }
+        [data-theme="mourning"] {
+            --primary-color: #52525b;
+            --primary-light: #71717a;
+            --primary-accent: #a1a1aa;
+            --primary-dark: #3f3f46;
+            --accent: #71717a;
+            --bg-page: #0a0a0a;
+            --border-subtle: rgba(113, 113, 122, 0.18);
+            --bg-gradient-start: #0a0a0a;
+            --bg-gradient-mid: #18181b;
+            --bg-gradient-end: #0a0a0a;
+            --card-bg: rgba(24, 24, 27, 0.85);
+            --card-border: rgba(113, 113, 122, 0.25);
+            --card-border-hover: rgba(113, 113, 122, 0.42);
+            --text-primary: #d4d4d8;
+            --text-secondary: #a1a1aa;
+            --text-muted: #71717a;
+            --text-accent: #a1a1aa;
+            --glass-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
+            --header-bg-start: rgba(10, 10, 10, 0.82);
+            --header-bg-end: rgba(10, 10, 10, 0);
+            --header-shrunk-bg: rgba(10, 10, 10, 0.92);
+            --footer-bg: rgba(10, 10, 10, 0.88);
+            --danger: #78716c;
+            --success: #71717a;
+            --warning: #71717a;
+            --logo-accent: linear-gradient(135deg, #52525b, #71717a);
+            --bg-gradient: radial-gradient(ellipse at 20% 50%, rgba(82,82,91,0.15) 0%, transparent 55%),
+                           linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-mid) 50%, var(--bg-gradient-end) 100%);
+        }
+        [data-theme] body {
+            background: var(--bg-gradient);
             color: var(--text-primary);
         }
-
-        .btn-register:hover {
-            background: rgba(99, 102, 241, 0.14);
-            border-color: rgba(99, 102, 241, 0.4);
+        [data-theme="mourning"] img,
+        [data-theme="mourning"] .aurora,
+        [data-theme="mourning"] .cursor-spotlight,
+        [data-theme="mourning"] .brand-logo,
+        [data-theme="mourning"] .logo-icon,
+        [data-theme="mourning"] .feature-icon,
+        [data-theme="mourning"] .cta-card,
+        [data-theme="mourning"] .btn-login,
+        [data-theme="mourning"] .btn-cta.primary {
+            filter: grayscale(100%);
         }
-
-        .spinner {
-            display: inline-block;
-            width: 18px;
-            height: 18px;
-            border: 2.5px solid rgba(255, 255, 255, 0.25);
-            border-radius: 50%;
-            border-top-color: white;
-            animation: spin 0.7s linear infinite;
-            margin-right: 8px;
-            vertical-align: -4px;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        .footer-section {
-            text-align: center;
-            margin-top: 30px;
-            animation: footer-fade 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.6s both;
-        }
-
-        @keyframes footer-fade {
-            0% { opacity: 0; transform: translateY(8px); }
-            100% { opacity: 1; transform: translateY(0); }
-        }
-
-        .version-row {
-            display: inline-flex;
-            align-items: center;
-            gap: 16px;
-            padding: 7px 16px;
-            border-radius: 100px;
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            margin-bottom: 12px;
-        }
-
-        .version-item {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 11px;
-            color: var(--text-muted);
-        }
-
-        .version-item i { font-size: 10px; }
-
-        .version-tag {
-            display: inline-block;
-            padding: 1px 7px;
-            border-radius: 5px;
-            background: rgba(99, 102, 241, 0.15);
-            color: var(--text-accent);
-            font-weight: 700;
-            font-family: 'SF Mono', 'JetBrains Mono', monospace;
-            font-size: 10.5px;
-            letter-spacing: 0.02em;
-        }
-
-        .mt-tag {
-            background: linear-gradient(135deg, rgba(168, 85, 247, 0.2), rgba(99, 102, 241, 0.2));
-            color: #ddd6fe;
-            border: 1px solid rgba(168, 85, 247, 0.25);
-        }
-
-        .copyright {
-            font-size: 11px;
-            color: var(--text-muted);
-            opacity: 0.7;
-        }
-
-        @media (max-width: 480px) {
-            .login-card { padding: 32px 24px; }
-            .brand-title { font-size: 32px; }
-            .time-display { font-size: 36px; }
-            .logo-icon { width: 72px; height: 72px; font-size: 32px; border-radius: 22px; }
+        [data-theme="mourning"] .hero-title .line-1,
+        [data-theme="mourning"] .hero-title .line-2,
+        [data-theme="mourning"] .section-title em,
+        [data-theme="mourning"] .solution-num,
+        [data-theme="mourning"] .stat-band-num {
+            -webkit-text-fill-color: var(--text-primary);
+            background: var(--text-primary);
+            -webkit-background-clip: border-box; background-clip: border-box;
+            animation: none;
         }
     </style>
 </head>
-<body>
+<body data-theme="{{ theme_key }}"
+      data-forced-mourning="{{ 'true' if theme_forced_mourning else 'false' }}"
+      data-is-admin="{{ 'true' if is_admin else 'false' }}"
+      data-is-super-admin="{{ 'true' if is_super_admin else 'false' }}"
+      style="margin:0; padding:0;">
     <div class="aurora"></div>
     <canvas id="particle-canvas"></canvas>
+    <div class="grain-overlay"></div>
 
-    <div class="main-wrapper">
-        <div class="header-section">
-            <div class="brand-mark">
-                <i class="fas fa-cube"></i>
-                <span>MT ARCHITECTURE v1.0</span>
-            </div>
-
-            <div class="logo-section">
-                <div class="logo-icon">
-                    <i class="fas fa-brain"></i>
-                </div>
-                <h1 class="brand-title">MTSCOS AI</h1>
-                <p class="brand-subtitle">智能学习评估平台 · AI驱动教育未来</p>
-                <div class="ai-hint">
-                    <i class="fas fa-circle"></i>
-                    <span>AI Self-Learning System Active · 206 Rules Enforced</span>
-                </div>
+    <header class="site-header" id="home">
+        <div class="brand">
+            <div class="brand-logo"><img src="{{ url_for('static', filename='images/logo.svg') }}" alt="MTSCOS AI Logo" width="26" height="26"></div>
+            <div class="brand-text">
+                <strong>MTSCOS AI</strong>
+                <span>MT Architecture</span>
             </div>
         </div>
-
-        <div class="time-section">
-            <div class="time-display" id="clock-display">
-                <span id="time-h">00</span><span class="time-colon">:</span><span id="time-m">00</span><span class="time-colon">:</span><span id="time-s">00</span>
-            </div>
-            <div class="date-display">
-                <span id="date-text">加载中...</span>
-                <span class="divider"></span>
-                <span class="weekday-badge" id="weekday-text">--</span>
-            </div>
+        <nav aria-label="主导航">
+            <a href="#home"><i class="fas fa-home"></i> 首页</a>
+            <a href="#features"><i class="fas fa-layer-group"></i> 系统功能</a>
+            <a href="#education"><i class="fas fa-graduation-cap"></i> 教育方案</a>
+            <a href="/ai_cluster_matrix"><i class="fas fa-robot"></i> AI引擎</a>
+            <a href="/system_spec#spec"><i class="fas fa-scroll"></i> 资源中心</a>
+        </nav>
+        <div class="header-actions">
+            {% if theme_forced_mourning %}
+            <span class="mtscos-theme-mourning-tag"><i class="fas fa-ribbon"></i>国家公祭日 · 追思主题</span>
+            {% endif %}
+            <span class="header-version"><i class="fas fa-code-branch"></i> v{{ version }}</span>
+            <div class="header-lang" title="切换语言 / Language"><i class="fas fa-globe-asia"></i></div>
         </div>
+    </header>
 
-        <div class="login-card">
-            <div class="card-header">
-                <h2>欢迎回来</h2>
-                <p>登录以开启您的AI学习之旅</p>
-            </div>
+    <main class="site-main">
 
-            <div class="login-message" id="login-message"></div>
+        <!-- ===== HERO ===== -->
+        <section class="hero" aria-label="产品介绍与登录">
+            <div class="container">
+                <div class="hero-grid">
 
-            <form id="login-form" onsubmit="handleLogin(event)">
-                <div class="form-group" id="username-group">
-                    <label for="login-username">用户名</label>
-                    <div class="input-wrapper">
-                        <input type="text" id="login-username" placeholder="请输入用户名" autocomplete="username">
-                        <i class="fas fa-user"></i>
+                    <div class="hero__content">
+                        <span class="hero-eyebrow">
+                            <span class="eyebrow-dot"></span>
+                            <span>MTSCOS AI · 智能学习评估平台 · v{{ version }}</span>
+                        </span>
+                        <h1 class="hero-title">
+                            <span class="line-1">让 AI 成为教育的</span>
+                            <span class="line-2">核心基础设施</span>
+                        </h1>
+                        <p class="hero-lead">
+                            基于多智能体协作架构的新一代学习评估系统，为教师提供智能命题、精准诊断与个性化干预，
+                            为学生构建自适应的学习路径与能力画像。
+                        </p>
+                        <ul class="hero-features" aria-label="产品亮点">
+                            <li><i class="fas fa-robot"></i><span>AI 智能组卷与题目知识图谱自动标注</span></li>
+                            <li><i class="fas fa-chart-pie"></i><span>多维度能力雷达与薄弱知识点精准识别</span></li>
+                            <li><i class="fas fa-stream"></i><span>自适应学习路径与分层递进任务推荐</span></li>
+                            <li><i class="fas fa-shield-halved"></i><span>数据安全 · 权限管控 · 操作审计全程可追溯</span></li>
+                        </ul>
+                        <div class="hero-stats" aria-label="关键指标">
+                            <div class="stat-item">
+                                <div class="stat-num">{{ version }}</div>
+                                <div class="stat-label">系统版本</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-num">42+</div>
+                                <div class="stat-label">功能模块</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-num">99.9%</div>
+                                <div class="stat-label">服务可用率</div>
+                            </div>
+                        </div>
                     </div>
-                    <span class="error-text" id="username-error"></span>
-                </div>
 
-                <div class="form-group" id="password-group">
-                    <label for="login-password">密码</label>
-                    <div class="input-wrapper">
-                        <input type="password" id="login-password" placeholder="请输入密码" autocomplete="current-password">
-                        <i class="fas fa-lock"></i>
+                    <aside class="hero__auth" aria-label="登录与注册">
+                        <div class="login-card">
+
+                            <div class="logo-section">
+                                <div class="logo-icon">
+                                    <img src="{{ url_for('static', filename='images/logo.svg') }}" alt="MTSCOS AI" width="34" height="34">
+                                </div>
+                                <h2 class="brand-title">MTSCOS AI</h2>
+                                {% if is_authenticated() %}
+                                <p class="brand-subtitle">当前已登录 · {{ current_user.username or 'User' }}</p>
+                                {% else %}
+                                <p class="brand-subtitle">登录 · 开启智能学习评估</p>
+                                {% endif %}
+                                <div class="ai-hint" id="aiHint">
+                                    <span class="ai-status-dot"></span>
+                                    <span class="hint-word" id="hintWord">AI Self-Learning System Active</span>
+                                </div>
+                            </div>
+
+                            {% if is_authenticated() %}
+                            {# ===== 已登录状态卡片 ===== #}
+                            {% set _u = current_user %}
+                            {% set _role = _u.role or 'user' %}
+                            {% set _is_super = is_super_admin or (_u.username and _u.username|lower == 'wuchenghao15') %}
+                            {% set _role_label = get_role_name(_role) %}
+
+                            <div class="card-header" style="padding-bottom:12px;">
+                                <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
+                                    <div style="width:46px;height:46px;border-radius:14px;display:flex;align-items:center;justify-content:center;
+                                                background:linear-gradient(135deg,{% if _is_super %}rgba(168,85,247,.25),rgba(236,72,153,.22){% else %}rgba(99,102,241,.22),rgba(16,185,129,.2){% endif %});
+                                                border:1px solid {% if _is_super %}rgba(168,85,247,.36){% else %}rgba(99,102,241,.32){% endif %};">
+                                        <i class="fas fa-{% if _is_super %}user-shield{% elif 'admin' in _role %}user-tie{% elif _role == 'teacher' %}chalkboard-teacher{% elif 'student' in _role %}user-graduate{% elif _role == 'parent' %}users{% else %}user{% endif %}"
+                                           style="font-size:20px;color:{% if _is_super %}#d8b4fe{% else %}#a5b4fc{% endif %};"></i>
+                                    </div>
+                                    <div style="flex:1;min-width:0;">
+                                        <h3 style="margin:0 0 4px 0;font-size:15px;font-weight:800;color:var(--text-primary,#f1f5f9);">
+                                            {{ _u.real_name or _u.nickname or _u.username or '用户' }}
+                                        </h3>
+                                        <div style="font-size:12px;color:var(--text-muted,#94a3b8);font-weight:600;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                                            <span>@{{ _u.username or 'anonymous' }}</span>
+                                            <span class="version-tag"
+                                                  style="background:{% if _is_super %}linear-gradient(135deg, rgba(168,85,247,.18), rgba(236,72,153,.14)){% elif 'admin' in _role %}linear-gradient(135deg, rgba(99,102,241,.18), rgba(56,189,248,.14)){% else %}linear-gradient(135deg, rgba(16,185,129,.16), rgba(99,102,241,.12)){% endif %};
+                                                         border-color:{% if _is_super %}rgba(168,85,247,.38){% elif 'admin' in _role %}rgba(99,102,241,.36){% else %}rgba(16,185,129,.32){% endif %};
+                                                         color:{% if _is_super %}#e9d5ff{% elif 'admin' in _role %}#c7d2fe{% else %}#6ee7b7{% endif %};">
+                                                {% if _is_super %}<i class="fas fa-crown" style="margin-right:4px;"></i>{% endif %}
+                                                {{ _role_label }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <p style="margin:0;font-size:12px;color:var(--text-secondary,#cbd5e1);font-weight:500;">
+                                    会话已建立，您可以直接使用系统功能或进入管理控制台。
+                                </p>
+                            </div>
+
+                            <div class="login-message success" id="login-message-already"
+                                 style="margin-bottom:14px;background:linear-gradient(135deg, rgba(16,185,129,.12), rgba(99,102,241,.1));
+                                        border:1px solid rgba(16,185,129,.28);color:#bbf7d0;padding:10px 12px;border-radius:12px;font-size:12px;font-weight:700;">
+                                <i class="fas fa-circle-check" style="margin-right:6px;color:#34d399;"></i>
+                                身份已核验 · 欢迎回到 MTSCOS AI
+                            </div>
+
+                            <div style="display:grid;gap:10px;">
+                                <button type="button" class="btn-login"
+                                        onclick="window.location.href='/dashboard'">
+                                    <i class="fas fa-gauge-high" style="margin-right:8px;"></i><span>进入控制台</span>
+                                </button>
+                                <button type="button" class="btn-login" style="background:linear-gradient(135deg,
+                                                {% if _is_super %}rgba(168,85,247,.92), rgba(236,72,153,.85){% else %}rgba(99,102,241,.92), rgba(56,189,248,.85){% endif %});"
+                                        onclick="window.location.href='/settings'">
+                                    <i class="fas fa-sliders" style="margin-right:8px;"></i><span>{% if _is_super %}进入超级管理员后台{% elif 'admin' in _role %}进入管理员设置{% else %}个人设置{% endif %}</span>
+                                </button>
+                                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                                    <button type="button" class="btn-register" style="padding:11px 12px;font-size:12px;margin:0;"
+                                            onclick="window.location.href='/dashboard'">
+                                        <i class="fas fa-house" style="margin-right:6px;"></i>工作台
+                                    </button>
+                                    <button type="button" class="btn-register" style="padding:11px 12px;font-size:12px;margin:0;"
+                                            onclick="window.location.href='/auth/logout'">
+                                        <i class="fas fa-right-from-bracket" style="margin-right:6px;"></i>退出登录
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="divider-row">继续浏览首页</div>
+
+                            <div class="version-row">
+                                <span class="version-item">
+                                    <i class="fas fa-layer-group"></i>
+                                    <a href="/mt_architecture" style="color:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:8px;">
+                                    <span>MT架构</span>
+                                    <span class="version-tag mt-tag">v2.0</span>
+                                    </a>
+                                </span>
+                                <span class="version-item">
+                                    <i class="fas fa-code-branch"></i>
+                                    <span>系统版本</span>
+                                    <span class="version-tag" id="sys-version">v{{ version }}</span>
+                                </span>
+                            </div>
+
+                            {% else %}
+                            {# ===== 未登录状态：原登录表单 ===== #}
+                            <div class="card-header">
+                                <h2>欢迎回来</h2>
+                                <p>登录以开启您的AI学习之旅</p>
+                            </div>
+
+                            <div class="login-message" id="login-message"></div>
+
+                            <form id="login-form" onsubmit="handleLogin(event)" autocomplete="on">
+                                <div class="form-group" id="username-group">
+                                    <div class="uname-indicator">
+                                        <span class="uname-dot" id="uname-dot" title="用户名状态指示"></span>
+                                        <div class="uname-fields">
+                                            <div class="sa-uname-banner" id="sa-uname-banner"><i class="fas fa-user-shield"></i><span>超级管理员身份已核验</span></div>
+                                            <label for="login-username">用户名</label>
+                                            <div class="input-wrapper">
+                                                <input type="text" id="login-username" placeholder="请输入用户名" autocomplete="username">
+                                                <i class="fas fa-user"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <span class="error-text" id="username-error"></span>
+                                </div>
+
+                                <div class="form-group" id="password-group">
+                                    <div class="pw-indicator">
+                                        <span class="pw-dot" id="pw-dot" title="密码格式状态指示"></span>
+                                        <div class="pw-fields">
+                                            <label for="login-password">密码</label>
+                                            <div class="input-wrapper input-wrapper--pw">
+                                                <input type="password" id="login-password" placeholder="请输入密码" autocomplete="current-password">
+                                                <button type="button" class="pw-toggle-btn" id="pw-toggle-btn" aria-label="显示密码" title="显示/隐藏密码">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                                <i class="fas fa-lock"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <span class="error-text" id="password-error"></span>
+                                </div>
+
+                                <div class="super-admin-block" id="super-admin-block" aria-hidden="true">
+                                    <div class="sa-header">
+                                        <span class="sa-title"><i class="fas fa-key"></i>超级管理员 · USB密钥强认证</span>
+                                        <span class="sa-ui-timeout-label" id="sa-ui-timeout-label" style="display:none;align-items:center;gap:4px;padding:2px 8px;border-radius:999px;background:rgba(251,191,36,0.12);color:#f59e0b;font-size:11px;font-weight:700;letter-spacing:0.03em;transition:all .15s ease;">
+                                            <i class="fas fa-clock"></i><span>120s</span>
+                                        </span>
+                                        <span class="sa-status" id="sa-status">检测硬件中…</span>
+                                    </div>
+
+                                    <div class="sa-randomcode-box" title="登录挑战随机码，每1分钟自动刷新，请勿手动刷新" style="padding:8px 10px;margin-bottom:10px;">
+                                        <span class="sa-randomcode-label">第2因子 · 随机挑战码</span>
+                                        <span class="sa-randomcode-value" id="sa-random-code" style="font-size:18px;letter-spacing:0.28em;">------</span>
+                                        <span class="sa-countdown-ring" id="sa-countdown-ring" title="60秒后自动刷新">
+                                            <svg viewBox="0 0 36 36" width="28" height="28">
+                                                <circle class="sa-countdown-bg" cx="18" cy="18" r="15" fill="none" stroke-width="3" stroke-linecap="round"></circle>
+                                                <circle class="sa-countdown-fg" id="sa-countdown-fg" cx="18" cy="18" r="15" fill="none" stroke-width="3" stroke-linecap="round"
+                                                        stroke-dasharray="94.248" stroke-dashoffset="0"
+                                                        transform="rotate(-90 18 18)"></circle>
+                                            </svg>
+                                            <span class="sa-countdown-num" id="sa-countdown-num">60</span>
+                                        </span>
+                                    </div>
+
+                                    <div class="form-group" id="vikey-serial-group" style="margin-bottom:8px;">
+                                        <label for="vikey-serial" style="font-size:11px;">USB 密钥序列号</label>
+                                        <div class="input-wrapper">
+                                            <input type="text" id="vikey-serial" placeholder="等待硬件检测…" readonly autocomplete="off" style="padding:10px 38px 10px 14px;font-size:12px;">
+                                            <i class="fas fa-microchip" style="color:var(--primary-light,#8b5cf6);"></i>
+                                        </div>
+                                        <span class="sa-serial-info" id="sa-binding-info">未绑定</span>
+                                    </div>
+
+                                    <div class="form-group" id="sa-challenge-input-group" style="margin-bottom:6px;">
+                                        <label for="sa-challenge-input" style="font-size:11px;">请输入上方显示的挑战码 <span style="color:#f59e0b;font-weight:700;">（非 USB 密码）</span></label>
+                                        <div class="input-wrapper">
+                                            <input type="text" id="sa-challenge-input" inputmode="numeric" pattern="[0-9]{6}" maxlength="6"
+                                                   placeholder="请输入上方6位挑战码数字" autocomplete="off"
+                                                   style="padding:10px 38px 10px 14px;font-size:14px;font-family:'SF Mono',ui-monospace,Menlo,Consolas,monospace;font-weight:800;letter-spacing:0.4em;text-align:center;">
+                                            <i class="fas fa-user-shield" style="color:var(--primary-light,#8b5cf6);"></i>
+                                        </div>
+                                        <span class="error-text" id="sa-challenge-input-error"></span>
+                                    </div>
+
+                                    <p class="sa-hint" style="font-size:11px;margin:4px 0 0 0;line-height:1.45;">
+                                        <b>安全提示：</b>超级管理员登录必须插入专属USB硬件密钥，并将上方显示的<b style="color:#8b5cf6;">6位挑战码</b>正确输入至输入框中。
+                                        USB密钥内部PIN已由系统自动验证，无需手动输入。任何要素缺失或错误，系统将一律提示「用户名或密码错误」且不区分原因。
+                                    </p>
+                                </div>
+
+                                <div class="form-options" id="form-options-row">
+                                    <label class="checkbox-wrapper">
+                                        <input type="checkbox" id="remember-me">
+                                        <span class="checkbox-custom"><i class="fas fa-check"></i></span>
+                                        <span>记住我</span>
+                                    </label>
+                                    <a href="/auth/forgot_password" class="link-forgot" id="forgot-password-link">忘记密码？</a>
+                                </div>
+
+                                <button type="submit" class="btn-login" id="login-btn">
+                                    <span id="login-btn-text">登 录</span>
+                                </button>
+                            </form>
+
+                            <div class="divider-row" id="divider-row-or">或</div>
+
+                            <button class="btn-register" id="btn-register" onclick="window.location.href='/auth/register'">
+                                创 建 新 账 户
+                            </button>
+
+                            <div class="version-row">
+                                <span class="version-item">
+                                    <i class="fas fa-layer-group"></i>
+                                    <a href="/mt_architecture" style="color:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:8px;">
+                                    <span>MT架构</span>
+                                    <span class="version-tag mt-tag">v2.0</span>
+                                    </a>
+                                </span>
+                                <span class="version-item">
+                                    <i class="fas fa-code-branch"></i>
+                                    <span>系统版本</span>
+                                    <span class="version-tag" id="sys-version">v{{ version }}</span>
+                                </span>
+                            </div>
+                            {% endif %}
+
+                        </div>
+                    </aside>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===== FEATURES ===== -->
+        <section class="features" id="features">
+            <div class="container">
+                <div class="section-head reveal">
+                    <span class="section-eyebrow">System Capabilities</span>
+                    <h2 class="section-title">四大能力引擎 <em>驱动智能命题闭环</em></h2>
+                    <p class="section-lead">从题目知识图谱自动标注、学情诊断到个性化学习路径，AI员工全程介入，释放教师 80% 的机械劳动时间，让教学回归本质。</p>
+                </div>
+                <div class="features-grid">
+                    <article class="feature-card reveal d1" data-track-hover>
+                        <div class="feature-icon"><i class="fas fa-sitemap"></i></div>
+                        <h3 class="feature-title">AI 智能命题引擎</h3>
+                        <p class="feature-desc">
+                            覆盖 K12/职业/高等等全学科题库，基于 Bloom 认知层级与知识点图谱，
+                            自动完成难度/区分度/信度校验，支持情景化命题与多题型混排。
+                        </p>
+                    </article>
+                    <article class="feature-card reveal d2" data-track-hover>
+                        <div class="feature-icon"><i class="fas fa-brain"></i></div>
+                        <h3 class="feature-title">多维度学情诊断</h3>
+                        <p class="feature-desc">
+                            能力雷达 + 知识点掌握热力图 + 错题归因树，精确定位“为什么错”，
+                            而非仅停留在“哪里错”，为精准干预提供依据。
+                        </p>
+                    </article>
+                    <article class="feature-card reveal d3" data-track-hover>
+                        <div class="feature-icon"><i class="fas fa-route"></i></div>
+                        <h3 class="feature-title">自适应学习路径</h3>
+                        <p class="feature-desc">
+                            基于 IRT + 强化学习的推荐算法，为每一位学生动态生成
+                            螺旋式上升的学习序列，结合间隔复习与支架式教学。
+                        </p>
+                    </article>
+                    <article class="feature-card reveal d4" data-track-hover>
+                        <div class="feature-icon"><i class="fas fa-user-shield"></i></div>
+                        <h3 class="feature-title">权限与审计中心</h3>
+                        <p class="feature-desc">
+                            等保三级合规的分级权限体系，RBAC + ABAC 双模型；
+                            操作全链路审计、敏感数据脱敏，满足各级教育监管要求。
+                        </p>
+                    </article>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===== SOLUTIONS ===== -->
+        <section class="solutions" id="education">
+            <div class="container">
+                <div class="section-head reveal">
+                    <span class="section-eyebrow">Education Scenarios</span>
+                    <h2 class="section-title">覆盖 <em>全场景教育方案</em>，因材施教</h2>
+                    <p class="section-lead">从基础教育学段到高等教育与终身学习，MTSCOS AI 提供标准化部署 + 行业专用增强模块的组合策略。</p>
+                </div>
+                <div class="solutions-grid">
+                    <article class="solution-card reveal d1">
+                        <div>
+                            <div class="solution-num">01</div>
+                            <h3 class="solution-title">K12 基础教育</h3>
+                            <p class="solution-desc">
+                                对接部编版/各版本课标，AI 自动批改语文作文与英语写作，
+                                薄弱知识点微课自动推送，家校互通日报一键生成。
+                            </p>
+                        </div>
+                        <div class="solution-chips">
+                            <span class="chip"><i class="fas fa-book"></i> 语文智能批改</span>
+                            <span class="chip"><i class="fas fa-language"></i> 英语口语测评</span>
+                            <span class="chip"><i class="fas fa-chalkboard-user"></i> 双师课堂</span>
+                        </div>
+                    </article>
+                    <article class="solution-card reveal d2">
+                        <div>
+                            <div class="solution-num">02</div>
+                            <h3 class="solution-title">成人与职业教育</h3>
+                            <p class="solution-desc">
+                                职业资格 / IT认证 / 公考题库全覆盖，结合岗位胜任力模型诊断，
+                                生成 OJT 在岗训练计划，为培训机构提供 SaaS 级运营能力。
+                            </p>
+                        </div>
+                        <div class="solution-chips">
+                            <span class="chip"><i class="fas fa-briefcase"></i> 岗位胜任力</span>
+                            <span class="chip"><i class="fas fa-certificate"></i> 证书体系</span>
+                            <span class="chip"><i class="fas fa-building"></i> SaaS 机构版</span>
+                        </div>
+                    </article>
+                    <article class="solution-card reveal d3">
+                        <div>
+                            <div class="solution-num">03</div>
+                            <h3 class="solution-title">高等教育与终身学习</h3>
+                            <p class="solution-desc">
+                                微专业 + 学位课程混合式教学平台，支持大课 MOOC 规模直播 +
+                                AI 助教实时答疑 + 学术诚信检测（作业/论文防抄袭）。
+                            </p>
+                        </div>
+                        <div class="solution-chips">
+                            <span class="chip"><i class="fas fa-graduation-cap"></i> MOOC 大课</span>
+                            <span class="chip"><i class="fas fa-comments"></i> AI 助教</span>
+                            <span class="chip"><i class="fas fa-magnifying-glass"></i> 学术诚信</span>
+                        </div>
+                    </article>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===== STATS BAND ===== -->
+        <section class="stats-showcase">
+            <div class="container">
+                <div class="stats-band">
+                    <div class="stat-band-item reveal d1">
+                        <div class="stat-band-num">206</div>
+                        <div class="stat-band-label">内置业务规则</div>
                     </div>
-                    <span class="error-text" id="password-error"></span>
+                    <div class="stat-band-item reveal d2">
+                        <div class="stat-band-num">14ms</div>
+                        <div class="stat-band-label">命题引擎平均响应</div>
+                    </div>
+                    <div class="stat-band-item reveal d3">
+                        <div class="stat-band-num">99.97%</div>
+                        <div class="stat-band-label">判分一致性</div>
+                    </div>
+                    <div class="stat-band-item reveal d4">
+                        <div class="stat-band-num">3 级</div>
+                        <div class="stat-band-label">等保合规认证</div>
+                    </div>
                 </div>
+            </div>
+        </section>
 
-                <div class="form-options">
-                    <label class="checkbox-wrapper">
-                        <input type="checkbox" id="remember-me">
-                        <span class="checkbox-custom"><i class="fas fa-check"></i></span>
-                        <span>记住我</span>
-                    </label>
-                    <a href="/auth/forgot_password" class="link-forgot">忘记密码？</a>
+        <!-- ===== CTA ===== -->
+        <section class="cta">
+            <div class="container">
+                <div class="cta-card reveal">
+                    <div class="cta__content">
+                        <span class="cta-eyebrow">立即开始</span>
+                        <h2 class="cta-title">让您的教学团队拥有一位不知疲倦的 AI 员工</h2>
+                        <p class="cta-lead">
+                            免费注册即可体验核心能力：智能组卷 + 学情诊断 + AI 答疑。
+                            机构版支持私有化部署与 LDAP/钉钉/企微 单点登录集成。
+                        </p>
+                    </div>
+                    <div class="cta__actions">
+                        <a class="btn-cta primary" href="/auth/register"><i class="fas fa-rocket"></i> &nbsp; 创建教育机构账户</a>
+                        <a class="btn-cta secondary" href="/mt_architecture"><i class="fas fa-shield"></i> &nbsp; 深入了解 MT 架构 v2.0</a>
+                    </div>
                 </div>
+            </div>
+        </section>
 
-                <button type="submit" class="btn-login" id="login-btn">
-                    <span id="login-btn-text">登 录</span>
-                </button>
-            </form>
+    </main>
 
-            <div class="divider-row">或</div>
+    <!-- ===== FOOTER ===== -->
+    <footer class="site-footer" aria-label="网站页脚">
+        <div class="footer-grid">
+            <div class="footer-brand-col">
+                <div class="brand">
+                    <div class="brand-logo"><img src="{{ url_for('static', filename='images/logo.svg') }}" alt="MTSCOS AI Logo" width="26" height="26"></div>
+                    <div class="brand-text">
+                        <strong>MTSCOS AI</strong>
+                        <span>Intelligent Learning Platform</span>
+                    </div>
+                </div>
+                <p class="footer-brand-desc">
+                    MTSCOS AI · MT架构 驱动的智能学习评估平台，覆盖 K12 / 成人 / 高等教育 全场景。
+                    基于自主学习的AI脑库，提供自适应出题、智能诊断、学情画像、AI答疑等一体化能力。
+                </p>
+            </div>
 
-            <button class="btn-register" onclick="window.location.href='/auth/register'">
-                创 建 新 账 户
-            </button>
+            <div>
+                <h4><i class="fas fa-layer-group"></i> 产品</h4>
+                <ul>
+                    <li><a href="/exam_system/exams"><i class="fas fa-angle-right"></i> 考试与题库系统</a></li>
+                    <li><a href="#ai-tutor"><i class="fas fa-angle-right"></i> AI 辅导老师</a></li>
+                    <li><a href="#diagnosis"><i class="fas fa-angle-right"></i> 学情诊断</a></li>
+                    <li><a href="#knowledge"><i class="fas fa-angle-right"></i> AI知识脑库</a></li>
+                </ul>
+            </div>
+
+            <div>
+                <h4><i class="fas fa-book-open"></i> 资源中心</h4>
+                <ul>
+                    <li><a href="/system_spec#spec"><i class="fas fa-angle-right"></i> 📘 系统规范（§1-§5 硬约束）</a></li>
+                    <li><a href="/system_spec#docs"><i class="fas fa-angle-right"></i> 📖 使用文档（§6 快速开始）</a></li>
+                    <li><a href="/system_spec#api"><i class="fas fa-angle-right"></i> 🔌 API 接口（§7 对外能力）</a></li>
+                    <li><a href="/system_spec#rules"><i class="fas fa-angle-right"></i> ⚖️ 系统规则（§8 安全/审计）</a></li>
+                    <li><a href="/system_spec#faq"><i class="fas fa-angle-right"></i> ❓ 常见问题 FAQ（§9）</a></li>
+                </ul>
+            </div>
+
+            <div>
+                <h4><i class="fas fa-bolt"></i> 快速入口</h4>
+                <ul>
+                    <li><a href="/auth/login"><i class="fas fa-angle-right"></i> 登录 / 注册账户</a></li>
+                    <li><a href="/exam_system/exams"><i class="fas fa-angle-right"></i> 考试中心 / 题库</a></li>
+                    <li><a href="/teacher_portal"><i class="fas fa-angle-right"></i> 教师工作台</a></li>
+                    <li><a href="/student_portal"><i class="fas fa-angle-right"></i> 学生学习门户</a></li>
+                    <li><a href="/settings"><i class="fas fa-angle-right"></i> 个人设置 / 数据</a></li>
+                    <li><a href="/mt_architecture"><i class="fas fa-angle-right"></i> 🛡️ MT 架构 v2.0</a></li>
+                </ul>
+            </div>
+
+            <div>
+                <h4><i class="fas fa-phone"></i> 联系我们</h4>
+                <ul class="footer-contact">
+                    <li><i class="fas fa-map-marker-alt"></i> 北京市海淀区科技园区</li>
+                    <li><i class="fas fa-phone"></i> 400-888-8888</li>
+                    <li><i class="fas fa-envelope"></i> contact@mtscos.com</li>
+                    <li><i class="fas fa-clock"></i> 周一至周五 9:00-18:00</li>
+                </ul>
+            </div>
         </div>
 
-        <div class="footer-section">
-            <div class="version-row">
-                <span class="version-item">
-                    <i class="fas fa-layer-group"></i>
-                    <span>MT架构</span>
-                    <span class="version-tag mt-tag">v1.0</span>
-                </span>
-                <span class="version-item">
-                    <i class="fas fa-code-branch"></i>
-                    <span>系统版本</span>
-                    <span class="version-tag" id="sys-version">v{{ version }}</span>
-                </span>
-            </div>
-            <div class="copyright">
-                &copy; 2026 MTSCOS AI · All Rights Reserved · Powered by MT Architecture
+        <div class="footer-bottom">
+            <div>&copy; 2026 MTSCOS AI · 版权所有 · 作者: Chenghao Wu · 京ICP备12345678号 · Powered by MT Architecture</div>
+            <div class="socials" aria-label="社交媒体链接">
+                <a href="#gh" title="GitHub"><i class="fab fa-github"></i></a>
+                <a href="#wx" title="微信"><i class="fab fa-weixin"></i></a>
+                <a href="#wb" title="微博"><i class="fab fa-weibo"></i></a>
+                <a href="#mail" title="邮件"><i class="fas fa-envelope"></i></a>
+                <a href="#rss" title="订阅"><i class="fas fa-rss"></i></a>
             </div>
         </div>
-    </div>
+    </footer>
 
     <script>
+        (function initDesignSystem() {
+            const spotlight = document.createElement('div');
+            spotlight.id = 'cursor-spotlight';
+            spotlight.className = 'cursor-spotlight';
+            spotlight.style.cssText = 'position:fixed;left:0;top:0;width:640px;height:640px;pointer-events:none;z-index:3;border-radius:50%;background:radial-gradient(circle,rgba(168,85,247,0.09) 0%,rgba(99,102,241,0.05) 35%,transparent 70%);transform:translate(-50%,-50%);mix-blend-mode:screen;transition:opacity 0.3s;opacity:0;';
+            document.body.appendChild(spotlight);
+            let sx = window.innerWidth / 2, sy = window.innerHeight / 2, tx = sx, ty = sy;
+            function animateSpotlight() {
+                sx += (tx - sx) * 0.12;
+                sy += (ty - sy) * 0.12;
+                spotlight.style.transform = `translate(${sx}px, ${sy}px) translate(-50%, -50%)`;
+                requestAnimationFrame(animateSpotlight);
+            }
+            animateSpotlight();
+            window.addEventListener('mousemove', e => { tx = e.clientX; ty = e.clientY; spotlight.style.opacity = '1'; });
+            window.addEventListener('mouseleave', () => { spotlight.style.opacity = '0'; });
+
+            // 卡片鼠标跟随高亮
+            document.querySelectorAll('[data-track-hover]').forEach(card => {
+                card.addEventListener('mousemove', e => {
+                    const r = card.getBoundingClientRect();
+                    card.style.setProperty('--mx', ((e.clientX - r.left) / r.width * 100).toFixed(1) + '%');
+                    card.style.setProperty('--my', ((e.clientY - r.top) / r.height * 100).toFixed(1) + '%');
+                });
+            });
+        })();
+
+        (function initHeaderScrollCompress() {
+            const header = document.querySelector('.site-header');
+            if (!header) return;
+            let lastY = window.scrollY;
+            const update = () => {
+                const y = window.scrollY;
+                if (y > 6) header.classList.add('shrunk');
+                else header.classList.remove('shrunk');
+                lastY = y;
+            };
+            window.addEventListener('scroll', update, { passive: true });
+            update();
+        })();
+
+        (function initHintRotator() {
+            const hints = [
+                'AI Self-Learning System Active · 206 Rules Enforced',
+                '多智能体协作引擎已就绪 · 命题/诊断/干预一体化',
+                '知识点图谱自动构建 · 学科覆盖 K12 + 高等教育',
+                '实时分析引擎 · 毫秒级响应 · 万级并发无压力',
+                '数据加密传输 · 权限分级管控 · 等保三级合规'
+            ];
+            const el = document.getElementById('hintWord');
+            if (!el) return;
+            let i = 0;
+            setInterval(() => {
+                i = (i + 1) % hints.length;
+                el.style.animation = 'none';
+                void el.offsetWidth;
+                el.textContent = hints[i];
+                el.style.animation = 'hint-fade 0.5s cubic-bezier(0.16, 1, 0.3, 1) both';
+            }, 3600);
+        })();
+
+        (function initScrollReveals() {
+            if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelectorAll('.reveal').forEach(el => el.classList.add('in'));
+                return;
+            }
+            const io = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('in');
+                        io.unobserve(entry.target);
+                    }
+                });
+            }, { threshold: 0.12, rootMargin: '0px 0px -60px 0px' });
+            document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+        })();
+
         (function initParticles() {
             const canvas = document.getElementById('particle-canvas');
+            if (!canvas) return;
             const ctx = canvas.getContext('2d');
             let width, height, particles = [];
-            const PARTICLE_COUNT = Math.min(90, Math.floor(window.innerWidth / 12));
-            const MAX_DISTANCE = 130;
+            const PARTICLE_COUNT = Math.min(110, Math.floor(window.innerWidth / 10));
+            const MAX_DISTANCE = 140;
+            const mouse = { x: -9999, y: -9999, active: false };
 
             function resize() {
                 width = canvas.width = window.innerWidth * window.devicePixelRatio;
                 height = canvas.height = window.innerHeight * window.devicePixelRatio;
                 canvas.style.width = window.innerWidth + 'px';
                 canvas.style.height = window.innerHeight + 'px';
+                ctx.setTransform(1, 0, 0, 1, 0, 0);
                 ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
             }
             resize();
-            window.addEventListener('resize', resize);
+            window.addEventListener('resize', () => {
+                resize();
+                const target = Math.min(110, Math.floor(window.innerWidth / 10));
+                while (particles.length < target) particles.push(new Particle());
+                if (particles.length > target) particles.length = target;
+            });
+
+            window.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; mouse.active = true; });
+            window.addEventListener('mouseleave', () => { mouse.active = false; });
 
             class Particle {
-                constructor() {
-                    this.reset(true);
-                }
+                constructor() { this.reset(true); }
                 reset(initial) {
                     this.x = Math.random() * window.innerWidth;
                     this.y = Math.random() * window.innerHeight;
-                    this.vx = (Math.random() - 0.5) * 0.5;
-                    this.vy = (Math.random() - 0.5) * 0.5;
-                    this.radius = Math.random() * 1.8 + 0.7;
-                    const colors = ['rgba(99, 102, 241, ', 'rgba(139, 92, 246, ', 'rgba(168, 85, 247, ', 'rgba(192, 132, 252, '];
+                    this.vx = (Math.random() - 0.5) * 0.45;
+                    this.vy = (Math.random() - 0.5) * 0.45;
+                    this.radius = Math.random() * 1.8 + 0.6;
+                    const colors = ['rgba(99, 102, 241, ', 'rgba(139, 92, 246, ', 'rgba(168, 85, 247, ', 'rgba(236, 72, 153, '];
                     this.colorBase = colors[Math.floor(Math.random() * colors.length)];
-                    this.alpha = initial ? Math.random() * 0.5 + 0.2 : 0;
-                    this.targetAlpha = Math.random() * 0.5 + 0.25;
+                    this.alpha = initial ? Math.random() * 0.55 + 0.2 : 0;
+                    this.targetAlpha = Math.random() * 0.55 + 0.25;
                 }
                 update() {
+                    if (mouse.active) {
+                        const dx = mouse.x - this.x;
+                        const dy = mouse.y - this.y;
+                        const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+                        if (dist < 260) {
+                            const force = (1 - dist / 260) * 0.045;
+                            this.vx += (dx / dist) * force;
+                            this.vy += (dy / dist) * force;
+                        }
+                    }
+                    const speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
+                    const limit = 1.6;
+                    if (speed > limit) {
+                        this.vx = (this.vx / speed) * limit;
+                        this.vy = (this.vy / speed) * limit;
+                    }
+                    this.vx *= 0.985;
+                    this.vy *= 0.985;
+                    this.vx += (Math.random() - 0.5) * 0.015;
+                    this.vy += (Math.random() - 0.5) * 0.015;
                     this.x += this.vx;
                     this.y += this.vy;
-                    if (this.alpha < this.targetAlpha) this.alpha += 0.004;
-                    if (this.x < 0 || this.x > window.innerWidth) this.vx *= -1;
-                    if (this.y < 0 || this.y > window.innerHeight) this.vy *= -1;
+                    if (this.alpha < this.targetAlpha) this.alpha += 0.005;
+                    if (this.x < -20) this.x = window.innerWidth + 20;
+                    if (this.x > window.innerWidth + 20) this.x = -20;
+                    if (this.y < -20) this.y = window.innerHeight + 20;
+                    if (this.y > window.innerHeight + 20) this.y = -20;
                 }
                 draw() {
                     ctx.beginPath();
                     ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
                     ctx.fillStyle = this.colorBase + this.alpha + ')';
                     ctx.fill();
-                    const glow = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.radius * 4);
-                    glow.addColorStop(0, this.colorBase + (this.alpha * 0.4) + ')');
+                    const glow = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.radius * 4.5);
+                    glow.addColorStop(0, this.colorBase + (this.alpha * 0.42) + ')');
                     glow.addColorStop(1, this.colorBase + '0)');
                     ctx.beginPath();
-                    ctx.arc(this.x, this.y, this.radius * 4, 0, Math.PI * 2);
+                    ctx.arc(this.x, this.y, this.radius * 4.5, 0, Math.PI * 2);
                     ctx.fillStyle = glow;
                     ctx.fill();
                 }
@@ -843,42 +1962,55 @@
                     for (let j = i + 1; j < particles.length; j++) {
                         const dx = particles[i].x - particles[j].x;
                         const dy = particles[i].y - particles[j].y;
-                        const dist = Math.sqrt(dx * dx + dy * dy);
-                        if (dist < MAX_DISTANCE) {
-                            const opacity = (1 - dist / MAX_DISTANCE) * 0.25;
+                        const dist2 = dx * dx + dy * dy;
+                        if (dist2 < MAX_DISTANCE * MAX_DISTANCE) {
+                            const dist = Math.sqrt(dist2);
+                            const opacity = (1 - dist / MAX_DISTANCE) * 0.26;
                             ctx.beginPath();
                             ctx.moveTo(particles[i].x, particles[i].y);
                             ctx.lineTo(particles[j].x, particles[j].y);
                             ctx.strokeStyle = 'rgba(139, 92, 246, ' + opacity + ')';
-                            ctx.lineWidth = 0.6;
+                            ctx.lineWidth = 0.55;
                             ctx.stroke();
                         }
                     }
                 }
             }
 
-            let mouseX = -1000, mouseY = -1000;
-            window.addEventListener('mousemove', (e) => {
-                mouseX = e.clientX;
-                mouseY = e.clientY;
-            });
-
             function drawMouseConnections() {
-                if (mouseX < 0) return;
+                if (!mouse.active) return;
+                const r2 = MAX_DISTANCE * 1.25;
+                const r2sq = r2 * r2;
                 for (let i = 0; i < particles.length; i++) {
-                    const dx = particles[i].x - mouseX;
-                    const dy = particles[i].y - mouseY;
-                    const dist = Math.sqrt(dx * dx + dy * dy);
-                    if (dist < MAX_DISTANCE * 1.2) {
-                        const opacity = (1 - dist / (MAX_DISTANCE * 1.2)) * 0.35;
+                    const dx = particles[i].x - mouse.x;
+                    const dy = particles[i].y - mouse.y;
+                    const d2 = dx * dx + dy * dy;
+                    if (d2 < r2sq) {
+                        const dist = Math.sqrt(d2);
+                        const opacity = (1 - dist / r2) * 0.42;
                         ctx.beginPath();
                         ctx.moveTo(particles[i].x, particles[i].y);
-                        ctx.lineTo(mouseX, mouseY);
-                        ctx.strokeStyle = 'rgba(168, 85, 247, ' + opacity + ')';
-                        ctx.lineWidth = 0.8;
+                        ctx.lineTo(mouse.x, mouse.y);
+                        const grad = ctx.createLinearGradient(particles[i].x, particles[i].y, mouse.x, mouse.y);
+                        grad.addColorStop(0, 'rgba(168, 85, 247, ' + opacity + ')');
+                        grad.addColorStop(1, 'rgba(236, 72, 153, ' + (opacity * 0.7) + ')');
+                        ctx.strokeStyle = grad;
+                        ctx.lineWidth = 0.85;
                         ctx.stroke();
                     }
                 }
+            }
+
+            function drawMouseCore() {
+                if (!mouse.active) return;
+                const g = ctx.createRadialGradient(mouse.x, mouse.y, 0, mouse.x, mouse.y, 90);
+                g.addColorStop(0, 'rgba(168, 85, 247, 0.18)');
+                g.addColorStop(0.5, 'rgba(99, 102, 241, 0.06)');
+                g.addColorStop(1, 'rgba(99, 102, 241, 0)');
+                ctx.fillStyle = g;
+                ctx.beginPath();
+                ctx.arc(mouse.x, mouse.y, 90, 0, Math.PI * 2);
+                ctx.fill();
             }
 
             function animate() {
@@ -886,64 +2018,726 @@
                 particles.forEach(p => { p.update(); p.draw(); });
                 drawConnections();
                 drawMouseConnections();
+                drawMouseCore();
                 requestAnimationFrame(animate);
             }
-            animate();
+            requestAnimationFrame(animate);
         })();
 
-        (function updateClock() {
-            const weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
-            function update() {
-                const now = new Date();
-                const pad = n => n.toString().padStart(2, '0');
-                document.getElementById('time-h').textContent = pad(now.getHours());
-                document.getElementById('time-m').textContent = pad(now.getMinutes());
-                document.getElementById('time-s').textContent = pad(now.getSeconds());
-                document.getElementById('date-text').textContent =
-                    now.getFullYear() + ' 年 ' + (now.getMonth() + 1) + ' 月 ' + now.getDate() + ' 日';
-                document.getElementById('weekday-text').textContent = weekdays[now.getDay()];
+        /* =========================================================
+         *  MTSCOS 登录认证增强
+         *   - wuchenghao15 超级管理员：必须插入USB硬件密钥
+         *     验证 7 要素：用户名+密码+随机码+USB Key ID+USB Key PIN+SSL证书
+         *   - 其他用户：验证 SSL证书指纹 + 密码
+         * ========================================================= */
+        const _sa = {
+            serial: null,
+            challenge_id: null,
+            random_code: null,
+            binding_ok: false,
+            vikey_present: false,
+            detectPromise: null,
+            challengePromise: null,
+            auto_refresh_timer: null,
+            countdown_timer: null,
+            countdown_left: 0,
+            countdown_total: 60,
+            ui_timeout_timer: null,
+            ui_timeout_seconds: 120,
+            ui_timeout_left: 0,
+        };
+
+        var _sa_countdown_RAF = null;
+
+        function _saStartCountdown(totalSeconds) {
+            _saStopCountdown();
+            _sa.countdown_total = Math.max(1, parseInt(totalSeconds || 60, 10));
+            _sa.countdown_left = _sa.countdown_total;
+            var ring = document.getElementById('sa-countdown-ring');
+            var fg = document.getElementById('sa-countdown-fg');
+            var num = document.getElementById('sa-countdown-num');
+            var CIRC = 2 * Math.PI * 15; // ≈94.248，跟stroke-dasharray保持一致
+            function _apply() {
+                var ratio = Math.max(0, Math.min(1, _sa.countdown_left / _sa.countdown_total));
+                var offset = CIRC * (1 - ratio);
+                if (fg) {
+                    fg.style.strokeDashoffset = String(offset);
+                }
+                if (num) num.textContent = String(_sa.countdown_left);
+                if (ring) {
+                    ring.classList.remove('warning', 'danger');
+                    if (_sa.countdown_left <= 10) ring.classList.add('danger');
+                    else if (_sa.countdown_left <= 20) ring.classList.add('warning');
+                }
             }
-            update();
-            setInterval(update, 1000);
+            _apply();
+            _sa.countdown_timer = setInterval(function () {
+                _sa.countdown_left -= 1;
+                if (_sa.countdown_left <= 0) {
+                    _saStopCountdown();
+                    fetchChallenge().catch(function () {});
+                    return;
+                }
+                _apply();
+            }, 1000);
+        }
+
+        function _saStopCountdown() {
+            if (_sa.countdown_timer) {
+                clearInterval(_sa.countdown_timer);
+                _sa.countdown_timer = null;
+            }
+        }
+
+        function _saStopAutoRefresh() {
+            if (_sa.auto_refresh_timer) {
+                clearTimeout(_sa.auto_refresh_timer);
+                _sa.auto_refresh_timer = null;
+            }
+        }
+
+        function _saScheduleAutoRefresh(delayMs) {
+            _saStopAutoRefresh();
+            _sa.auto_refresh_timer = setTimeout(function () {
+                fetchChallenge().catch(function () {});
+            }, Math.max(1000, parseInt(delayMs || 60000, 10)));
+        }
+
+        function _saStopUITimeout() {
+            if (_sa.ui_timeout_timer) {
+                clearInterval(_sa.ui_timeout_timer);
+                _sa.ui_timeout_timer = null;
+            }
+            var lbl = document.getElementById('sa-ui-timeout-label');
+            if (lbl) lbl.style.display = 'none';
+        }
+
+        function _saResetUITimeout() {
+            _sa.ui_timeout_left = _sa.ui_timeout_seconds;
+            var lbl = document.getElementById('sa-ui-timeout-label');
+            if (lbl) {
+                lbl.style.display = 'inline-flex';
+                var s = lbl.querySelector('span');
+                if (s) s.textContent = String(_sa.ui_timeout_left) + 's';
+            }
+        }
+
+        function _saStartUITimeout() {
+            _saStopUITimeout();
+            _saResetUITimeout();
+            _sa.ui_timeout_timer = setInterval(function () {
+                _sa.ui_timeout_left -= 1;
+                var lbl = document.getElementById('sa-ui-timeout-label');
+                if (lbl) {
+                    var s = lbl.querySelector('span');
+                    if (s) s.textContent = String(Math.max(0, _sa.ui_timeout_left)) + 's';
+                    if (_sa.ui_timeout_left <= 30) lbl.classList.add('danger');
+                    else lbl.classList.remove('danger');
+                }
+                if (_sa.ui_timeout_left <= 0) {
+                    _saStopUITimeout();
+                    try { _saHideBlock(); } catch(_e){}
+                    try { _setSaUnameHiddenBanner(false); } catch(_e){}
+                    try {
+                        _sa.serial = null; _sa.vikey_present = false; _sa.binding_ok = false;
+                        _sa.challenge_id = null; _sa.random_code = null;
+                        var chInput = document.getElementById('sa-challenge-input');
+                        if (chInput) chInput.value = '';
+                        var pInput = document.getElementById('login-password');
+                        if (pInput) pInput.value = '';
+                        var uInput = document.getElementById('login-username');
+                        if (uInput) {
+                            uInput.value = '';
+                            try { setUnameDot('hidden'); } catch(_e){}
+                            try { _lastCheckInfo = null; } catch(_e){}
+                            try { _updateLoginBtnState(); } catch(_e){}
+                            try { uInput.focus(); } catch(_e){}
+                        }
+                        _saSetRandom('------');
+                        _saSetStatus('超级管理员会话超时，已恢复普通登录界面', 'warn');
+                        setTimeout(function(){ try { _saSetStatus('', ''); } catch(_e){} }, 3500);
+                    } catch(_e){}
+                }
+            }, 1000);
+        }
+
+        function _saShowBlock() {
+            var block = document.getElementById('super-admin-block');
+            if (block) { block.classList.add('is-visible'); block.setAttribute('aria-hidden', 'false'); }
+            try { _saStartCountdown(60); } catch(_e){}
+            try { _saScheduleAutoRefresh(60000); } catch(_e){}
+            try { _saStartUITimeout(); } catch(_e){}
+            setTimeout(function(){
+                var card = block.closest('.login-card');
+                if (card) {
+                    try { card.scrollTo({ top: card.scrollHeight, behavior: 'smooth' }); }
+                    catch(_e){ card.scrollTop = card.scrollHeight; }
+                }
+            }, 180);
+        }
+        function _saHideBlock() {
+            var block = document.getElementById('super-admin-block');
+            if (block) { block.classList.remove('is-visible'); block.setAttribute('aria-hidden', 'true'); }
+            try { _saStopAutoRefresh(); } catch(_e){}
+            try { _saStopCountdown(); } catch(_e){}
+            try { _saStopUITimeout(); } catch(_e){}
+        }
+        function _saSetStatus(text, cls) {
+            var el = document.getElementById('sa-status');
+            if (!el) return;
+            el.className = 'sa-status' + (cls ? ' ' + cls : '');
+            el.textContent = text;
+        }
+        function _saSetRandom(code) {
+            var el = document.getElementById('sa-random-code');
+            if (el) el.textContent = code || '------';
+        }
+        function _saSetSerial(serial, info) {
+            var input = document.getElementById('vikey-serial');
+            var infoEl = document.getElementById('sa-binding-info');
+            if (input) input.value = serial || '';
+            if (infoEl) infoEl.innerHTML = info || '未绑定';
+        }
+
+        /* =========================================================
+         *  用户名状态小点指示器 & 密码记忆 & 超级管理员隐藏label/input
+         * ========================================================= */
+        var _LS_REMEMBER_KEY = 'mtscos_login_remember_v2';
+        var _ADMIN_LIKE_ROLES = {'super_admin':1, 'admin':1, 'hardware_admin':1, 'cluster_manager':1};
+        var _lastCheckInfo = null;
+        var _unameDebounceTimer = null;
+
+        function setUnameDot(state /* 'visible' | 'hidden' | 'loading' */, color /* 'green' | 'red' | 'gray' */) {
+            var dot = document.getElementById('uname-dot');
+            if (!dot) return;
+            dot.className = 'uname-dot';
+            if (state !== 'hidden') dot.classList.add('visible');
+            if (state === 'loading') dot.classList.add('d-spin');
+            if (color === 'green') dot.classList.add('d-green');
+            else if (color === 'red') dot.classList.add('d-red');
+            else if (color === 'gray') dot.classList.add('d-gray');
+            try { _updateLoginBtnState(); } catch(_e){}
+        }
+
+        var _lastPwFormatError = null;
+
+        function setPwDot(state /* 'visible' | 'hidden' */) {
+            var dot = document.getElementById('pw-dot');
+            if (!dot) return;
+            dot.className = 'pw-dot';
+            if (state !== 'hidden') { dot.classList.add('visible'); dot.classList.add('d-red'); }
+            try { _updateLoginBtnState(); } catch(_e){}
+        }
+
+        function _validatePasswordFormat(pw) {
+            if (pw === null || pw === undefined) pw = '';
+            var s = String(pw);
+            if (!s) return { ok: true, msg: '' };
+            if (s.length < 6) return { ok: false, msg: '密码长度不足（至少6位）' };
+            if (s.length > 128) return { ok: false, msg: '密码过长（最多128位）' };
+            if (/[\r\n\t\v\f]/.test(s)) return { ok: false, msg: '密码含非法控制字符' };
+            return { ok: true, msg: '' };
+        }
+
+        function _getUnameIssue() {
+            if (!_lastCheckInfo) {
+                var uVal = document.getElementById('login-username') ? (document.getElementById('login-username').value || '').trim() : '';
+                if (!uVal) return { ok: true, msg: '' };
+                return null;
+            }
+            var d = _lastCheckInfo || {};
+            if (d.error && /^(db_|exception_|fetch_|network_)/.test(String(d.error||''))) {
+                return { ok: false, msg: '网络异常，无法验证用户名' };
+            }
+            if (d.exists === false) return { ok: false, msg: '该用户名不存在' };
+            if (d.is_active === false) return { ok: false, msg: '账户已被禁用' };
+            if (d.exists === true && d.is_active !== false) return { ok: true, msg: '' };
+            return null;
+        }
+
+        function _updateLoginBtnState() {
+            var btn = document.getElementById('login-btn');
+            var btnText = document.getElementById('login-btn-text');
+            if (!btn || !btnText) return;
+            var uEl = document.getElementById('login-username');
+            var pEl = document.getElementById('login-password');
+            var uVal = uEl ? (uEl.value || '').trim() : '';
+            var pVal = pEl ? (pEl.value || '') : '';
+            var uIssue = _getUnameIssue();
+
+            var pwIssue = null;
+            if (pVal && _lastPwFormatError) pwIssue = { ok: false, msg: _lastPwFormatError };
+
+            var errorMsg = null;
+            if (!uVal) errorMsg = '请输入用户名';
+            else if (uIssue && uIssue.ok === false) errorMsg = uIssue.msg;
+            else if (!pVal) errorMsg = '请输入密码';
+            else if (pwIssue && pwIssue.ok === false) errorMsg = pwIssue.msg;
+
+            if (errorMsg) {
+                btn.setAttribute('disabled', 'disabled');
+                btn.classList.add('is-disabled');
+                btnText.innerHTML = '<span class="btn-error-badge">' + errorMsg + '</span>';
+            } else {
+                btn.removeAttribute('disabled');
+                btn.classList.remove('is-disabled');
+                btnText.textContent = '登 录';
+            }
+        }
+
+        function _isAdminLike(info_or_role) {
+            if (!info_or_role) return false;
+            var r;
+            if (typeof info_or_role === 'string') r = info_or_role;
+            else r = info_or_role.role || '';
+            return !!_ADMIN_LIKE_ROLES[(r || '').toLowerCase()];
+        }
+
+        function _setSaUnameHiddenBanner(visible, titleText) {
+            var grp = document.getElementById('username-group');
+            var banner = document.getElementById('sa-uname-banner');
+            if (!grp) return;
+            if (visible) grp.classList.add('sa-hide-uname');
+            else grp.classList.remove('sa-hide-uname');
+            if (banner && titleText) {
+                var span = banner.querySelector('span');
+                if (span) span.textContent = titleText;
+            }
+        }
+
+        async function checkUsername(rawVal, skipHideFlip) {
+            var val = (rawVal || '').trim();
+            if (!val) {
+                setUnameDot('hidden');
+                _lastCheckInfo = null;
+                if (!skipHideFlip) _setSaUnameHiddenBanner(false);
+                return null;
+            }
+            setUnameDot('loading', 'gray');
+            try {
+                var url = '/auth/check_username?username=' + encodeURIComponent(val);
+                var r = await fetch(url, { credentials: 'include', cache: 'no-store' });
+                var d;
+                try { d = await r.json(); } catch (_e) { d = null; }
+                if (!d || d.success === false) {
+                    // 数据库或API连接失败 -> 灰
+                    setUnameDot('visible', 'gray');
+                    _lastCheckInfo = {exists: false, role: null, is_admin_like: false, error: d ? (d.error || 'api_fail') : 'net_fail'};
+                    if (!skipHideFlip) _setSaUnameHiddenBanner(false);
+                    return _lastCheckInfo;
+                }
+                if (d.exists && d.is_active !== false) {
+                    setUnameDot('visible', 'green');
+                } else {
+                    setUnameDot('visible', 'red');
+                }
+                _lastCheckInfo = {
+                    exists: !!d.exists, role: d.role || '', username: d.username || '',
+                    is_active: !!d.is_active, is_admin_like: !!d.is_admin_like,
+                };
+                // wuchenghao15 验证正确 -> 隐藏label和input框，显示banner
+                var isSuper = (d.username || val || '').toLowerCase() === 'wuchenghao15';
+                if (isSuper && d.exists && d.is_active !== false && !skipHideFlip) {
+                    _setSaUnameHiddenBanner(true, '超级管理员身份已核验 · 请继续完成硬件多因子认证');
+                } else if (!skipHideFlip) {
+                    _setSaUnameHiddenBanner(false);
+                }
+                return _lastCheckInfo;
+            } catch (e) {
+                setUnameDot('visible', 'gray');
+                _lastCheckInfo = {exists: false, role: null, is_admin_like: false, error: 'exception_' + String(e||'').slice(0,50)};
+                if (!skipHideFlip) _setSaUnameHiddenBanner(false);
+                return _lastCheckInfo;
+            }
+        }
+
+        function saveLoginIfAllowed(username, password, info_or_role) {
+            try {
+                if (!username || !password) return false;
+                // 管理员和超级管理员 忽略记忆规则
+                if (_isAdminLike(info_or_role)) {
+                    try { localStorage.removeItem(_LS_REMEMBER_KEY); } catch(_e){}
+                    return false;
+                }
+                var payload = { v: 2, u: String(username).slice(0, 64), p: String(password).slice(0, 128), t: Date.now() };
+                localStorage.setItem(_LS_REMEMBER_KEY, JSON.stringify(payload));
+                return true;
+            } catch (e) { return false; }
+        }
+
+        function restoreSavedLogin() {
+            try {
+                var raw = localStorage.getItem(_LS_REMEMBER_KEY);
+                if (!raw) return null;
+                var obj = JSON.parse(raw);
+                if (!obj || !obj.u || !obj.p) return null;
+                var uEl = document.getElementById('login-username');
+                var pEl = document.getElementById('login-password');
+                if (uEl) uEl.value = obj.u;
+                if (pEl) pEl.value = obj.p;
+                // 管理员账号即使有记忆也绝不填密码（理论上save就已经拒存了，这里双重保险）
+                if (_isAdminLike(_lastCheckInfo) || (obj.u || '').toLowerCase() === 'wuchenghao15') {
+                    if (pEl) pEl.value = '';
+                    try { localStorage.removeItem(_LS_REMEMBER_KEY); } catch(_e){}
+                }
+                return obj;
+            } catch (e) { return null; }
+        }
+
+        (function initUnameLogic(){
+            var uEl = document.getElementById('login-username');
+            if (!uEl) return;
+            function onInput() {
+                var val = uEl.value || '';
+                if (!val.trim()) {
+                    if (_unameDebounceTimer) { clearTimeout(_unameDebounceTimer); _unameDebounceTimer = null; }
+                    setUnameDot('hidden');
+                    _lastCheckInfo = null;
+                    _setSaUnameHiddenBanner(false);
+                    return;
+                }
+                // 只要非空 -> 先显示灰色指示器
+                setUnameDot('visible', 'gray');
+                if (_unameDebounceTimer) clearTimeout(_unameDebounceTimer);
+                _unameDebounceTimer = setTimeout(function() { checkUsername(val); }, 320);
+            }
+            function onBlur() {
+                // blur 时立即再次校验
+                checkUsername(uEl.value || '');
+                // 如果是 wuchenghao15 -> 触发 detectVikey 展开超级管理员区
+                if ((uEl.value || '').trim().toLowerCase() === 'wuchenghao15') {
+                    _saShowBlock();
+                    detectVikey();
+                } else {
+                    _saHideBlock();
+                }
+            }
+            uEl.addEventListener('input', onInput);
+            uEl.addEventListener('blur', onBlur);
+            // 页面加载恢复记忆后，立即对已存在用户名做一次检查
+            setTimeout(function() {
+                var restored = restoreSavedLogin();
+                if (restored && restored.u) {
+                    checkUsername(restored.u);
+                    if ((restored.u || '').toLowerCase() === 'wuchenghao15') {
+                        _saShowBlock();
+                        detectVikey();
+                    }
+                }
+            }, 60);
         })();
+
+
+        (function initPasswordLogic(){
+            var pEl = document.getElementById('login-password');
+            if (!pEl) return;
+            function recheck() {
+                var val = pEl.value || '';
+                var r = _validatePasswordFormat(val);
+                if (!val.trim()) {
+                    _lastPwFormatError = null;
+                    setPwDot('hidden');
+                    return;
+                }
+                if (!r.ok) {
+                    _lastPwFormatError = r.msg;
+                    setPwDot('visible');
+                } else {
+                    _lastPwFormatError = null;
+                    setPwDot('hidden');
+                }
+            }
+            pEl.addEventListener('focus', function () {
+                // 获焦：隐藏小点
+                setPwDot('hidden');
+            });
+            pEl.addEventListener('blur', function () {
+                // 失焦：如果空→隐藏；非空→校验
+                var val = pEl.value || '';
+                if (!val.trim()) {
+                    _lastPwFormatError = null;
+                    setPwDot('hidden');
+                } else {
+                    var r = _validatePasswordFormat(val);
+                    if (!r.ok) {
+                        _lastPwFormatError = r.msg;
+                        setPwDot('visible');
+                    } else {
+                        _lastPwFormatError = null;
+                        setPwDot('hidden');
+                    }
+                }
+            });
+            pEl.addEventListener('input', function () {
+                var val = pEl.value || '';
+                if (!val.trim()) {
+                    _lastPwFormatError = null;
+                    setPwDot('hidden');
+                    return;
+                }
+                // 输入过程中只更新按钮状态，不显示小点（要等blur才显示错误红点）
+                var r = _validatePasswordFormat(val);
+                _lastPwFormatError = r.ok ? null : r.msg;
+                try { _updateLoginBtnState(); } catch(_e){}
+            });
+            // 页面初始状态同步一次按钮
+            try { _updateLoginBtnState(); } catch(_e){}
+        })();
+
+
+        async function detectVikey() {
+            if (_sa.detectPromise) return _sa.detectPromise;
+            _saSetStatus('检测硬件中…', '');
+            _sa.detectPromise = (async function () {
+                try {
+                    var r = await fetch('/api/vikey/detect', { credentials: 'include' });
+                    var d = await r.json();
+                    var data = d.data || d;
+                    var count = parseInt(data.device_count || 0, 10);
+                    var devices = data.devices || [];
+                    if (!count || !devices.length) {
+                        _sa.vikey_present = false; _sa.serial = null; _sa.binding_ok = false;
+                        _saSetStatus('未检测到USB密钥', 'err');
+                        _saSetSerial('', '<b style="color:#ef4444">未检测到硬件密钥，无法登录超级管理员</b>');
+                        _saSetRandom('------');
+                        return false;
+                    }
+                    var bindings = [];
+                    if (data.bindings && Array.isArray(data.bindings)) {
+                        bindings = data.bindings.slice();
+                    }
+                    for (var di = 0; di < devices.length; di++) {
+                        var dd = devices[di];
+                        if (dd && dd.binding && typeof dd.binding === 'object') {
+                            var bsn = dd.binding.serial || dd.serial || dd.id;
+                            if (bsn) {
+                                var merged = {};
+                                for (var k in dd.binding) { if (Object.prototype.hasOwnProperty.call(dd.binding, k)) merged[k] = dd.binding[k]; }
+                                if (!merged.serial) merged.serial = bsn;
+                                bindings.push(merged);
+                            }
+                        }
+                    }
+                    var matchDev = null, matchBind = null;
+                    for (var i = 0; i < devices.length; i++) {
+                        var dev = devices[i];
+                        var sn = dev.serial || dev.id;
+                        if (!sn) continue;
+                        for (var j = 0; j < bindings.length; j++) {
+                            var b = bindings[j];
+                            var bser = b.serial || b.device_serial || '';
+                            if (bser === sn && (b.username || '').toLowerCase() === 'wuchenghao15' && (b.binding_status || b.status || '') === 'bound') {
+                                matchDev = dev; matchBind = b; break;
+                            }
+                        }
+                        if (matchDev) break;
+                    }
+                    if (!matchDev && devices.length) matchDev = devices[0];
+                    _sa.serial = matchDev.serial || matchDev.id;
+                    _sa.vikey_present = true;
+                    _sa.binding_ok = !!(matchBind && (matchBind.username || '').toLowerCase() === 'wuchenghao15' && ((matchBind.binding_status || matchBind.status || '') === 'bound'));
+                    if (_sa.binding_ok) {
+                        _saSetStatus('硬件已就绪', 'ok');
+                    } else {
+                        _saSetStatus('硬件未绑定超级管理员', 'err');
+                    }
+                    _saSetSerial(_sa.serial,
+                        _sa.binding_ok
+                            ? '检测到管理员密钥：<b>' + _sa.serial + '</b> 绑定用户：<b>wuchenghao15</b>'
+                            : '<b style="color:#f59e0b">检测到硬件：' + _sa.serial + '（未绑定或非管理员密钥）</b>'
+                    );
+                    await fetchChallenge();
+                    return true;
+                } catch (e) {
+                    _sa.vikey_present = false; _sa.binding_ok = false; _sa.serial = null;
+                    _saSetStatus('硬件检测失败', 'err');
+                    _saSetRandom('------');
+                    return false;
+                }
+            })();
+            return _sa.detectPromise;
+        }
+
+        async function fetchChallenge() {
+            try {
+                var r = await fetch('/api/vikey/challenge', { credentials: 'include' });
+                var d = await r.json();
+                var data = d.data || d;
+                _sa.challenge_id = data.challenge_id;
+                _sa.random_code = data.random_code;
+                _saSetRandom(data.random_code || '------');
+                var expiresIn = parseInt(data.expires_in || 60, 10);
+                try { _saStartCountdown(expiresIn); } catch(_e){}
+                try { _saScheduleAutoRefresh(expiresIn * 1000); } catch(_e){}
+                return true;
+            } catch (e) {
+                _saSetRandom('??????');
+                return false;
+            }
+        }
+
+        async function genSslFingerprint() {
+            try {
+                var salt = window.location.host + '|' + navigator.userAgent.slice(0, 80) + '|' + (new Date().toDateString()) + '|MTSCOS_SSL_FP_V1';
+                if (window.crypto && crypto.subtle) {
+                    var buf = new TextEncoder().encode(salt + '|' + (window.screen.width + 'x' + window.screen.height));
+                    var digest = await crypto.subtle.digest('SHA-256', buf);
+                    var arr = Array.from(new Uint8Array(digest));
+                    return arr.map(function (b) { return b.toString(16).padStart(2, '0'); }).join('');
+                }
+                var h = 0x811c9dc5;
+                for (var i = 0; i < salt.length; i++) { h = Math.imul(h ^ salt.charCodeAt(i), 0x01000193); }
+                var s = ((h >>> 0).toString(16) + '00000000').slice(0, 8);
+                return s + s + s + s + s + s + s + s;
+            } catch (e) {
+                return '0'.repeat(64);
+            }
+        }
+
+        async function hardwareAnonymousAuth(user_challenge_input) {
+            var body = {
+                serial: _sa.serial,
+                challenge_id: _sa.challenge_id,
+                random_code: String(user_challenge_input || '').trim(),
+            };
+            var r = await fetch('/api/vikey/hardware_anonymous_auth', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify(body),
+            });
+            var d = await r.json();
+            if (!r.ok || d.success === false) {
+                var msg = d.message || ('硬件认证失败 HTTP ' + r.status);
+                var err = new Error(msg); err.payload = d;
+                throw err;
+            }
+            var data = d.data || d;
+            return data.vikey_auth_token;
+        }
 
         async function handleLogin(e) {
             e.preventDefault();
-            const username = document.getElementById('login-username').value.trim();
-            const password = document.getElementById('login-password').value.trim();
-            const remember = document.getElementById('remember-me').checked;
-            const loginBtn = document.getElementById('login-btn');
-            const loginBtnText = document.getElementById('login-btn-text');
-            const messageEl = document.getElementById('login-message');
+            var username = document.getElementById('login-username').value.trim();
+            var password = document.getElementById('login-password').value.trim();
+            var remember = document.getElementById('remember-me').checked;
+            var loginBtn = document.getElementById('login-btn');
+            var loginBtnText = document.getElementById('login-btn-text');
+            var messageEl = document.getElementById('login-message');
 
             clearErrors();
 
             if (!username) { showError('username', '请输入用户名'); return; }
             if (!password) { showError('password', '请输入密码'); return; }
 
+            var pwChk = _validatePasswordFormat(password);
+            if (!pwChk.ok) {
+                showError('password', pwChk.msg);
+                _lastPwFormatError = pwChk.msg;
+                setPwDot('visible');
+                return;
+            }
+            if (loginBtn.classList.contains('is-disabled') || loginBtn.hasAttribute('disabled')) {
+                try { _updateLoginBtnState(); } catch(_e){}
+                return;
+            }
+
+            var isSuper = username.toLowerCase() === 'wuchenghao15';
+            var vikey_auth_token = null;
+            var vikey_serial = null;
+            var sa_challenge_value = null;
+
+            if (isSuper) {
+                if (!_sa.vikey_present) {
+                    messageEl.className = 'login-message error';
+                    messageEl.textContent = '用户名或密码错误';
+                    return;
+                }
+                var challengeInput = document.getElementById('sa-challenge-input');
+                sa_challenge_value = challengeInput ? (challengeInput.value || '').trim() : '';
+                if (!/^\d{6}$/.test(sa_challenge_value)) {
+                    messageEl.className = 'login-message error';
+                    messageEl.textContent = '用户名或密码错误';
+                    if (challengeInput) {
+                        challengeInput.focus();
+                        try { challengeInput.classList.add('is-error-shake'); } catch(_e){}
+                        setTimeout(function(){ try { challengeInput.classList.remove('is-error-shake'); } catch(_e){} }, 450);
+                    }
+                    return;
+                }
+                if (!_sa.challenge_id || !_sa.random_code) {
+                    try { await fetchChallenge(); } catch (e) {}
+                    if (!_sa.challenge_id) {
+                        messageEl.className = 'login-message error';
+                        messageEl.textContent = '用户名或密码错误';
+                        return;
+                    }
+                }
+                try {
+                    loginBtn.disabled = true;
+                    loginBtnText.innerHTML = '<span class="spinner"></span>验证硬件密钥中...';
+                    vikey_auth_token = await hardwareAnonymousAuth(sa_challenge_value);
+                    vikey_serial = _sa.serial;
+                } catch (err) {
+                    messageEl.className = 'login-message error';
+                    messageEl.textContent = '用户名或密码错误';
+                    loginBtn.disabled = false;
+                    loginBtnText.textContent = '登 录';
+                    try { await fetchChallenge(); } catch (e) {}
+                    return;
+                }
+            }
+
             loginBtn.disabled = true;
             loginBtnText.innerHTML = '<span class="spinner"></span>登录中...';
 
             try {
-                const response = await fetch('/auth/login', {
+                var ssl_fp = await genSslFingerprint();
+                var payload = {
+                    username: username,
+                    password: password,
+                    remember_me: remember,
+                    ssl_fingerprint: ssl_fp,
+                };
+                if (isSuper && vikey_auth_token) {
+                    payload.vikey_auth_token = vikey_auth_token;
+                    payload.vikey_serial = vikey_serial;
+                }
+
+                var response = await fetch('/auth/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-                    body: JSON.stringify({ username, password, remember_me: remember })
+                    credentials: 'include',
+                    body: JSON.stringify(payload),
                 });
-                const data = await response.json();
+                var data = await response.json();
 
                 if (data.success) {
                     messageEl.className = 'login-message success';
                     messageEl.textContent = '登录成功，正在跳转...';
                     if (data.user && data.user.username === 'wuchenghao15') {
                         localStorage.setItem('mtscos_super_admin_hidden', 'true');
+                        _setSaUnameHiddenBanner(true, '超级管理员身份已核验 · 正在进入系统');
                     }
-                    setTimeout(() => { window.location.href = data.redirect || '/dashboard'; }, 500);
+                    // 记住用户名和密码（管理员/超级管理员角色忽略规则）
+                    try {
+                        var loginUserRole = (data.user && data.user.role) ? data.user.role : null;
+                        var roleInfo = loginUserRole ? { role: loginUserRole } : _lastCheckInfo;
+                        saveLoginIfAllowed(username, password, roleInfo);
+                    } catch (_sle) {}
+                    setTimeout(function () { window.location.href = data.redirect || '/dashboard'; }, 500);
                 } else {
                     messageEl.className = 'login-message error';
                     messageEl.textContent = data.message || '登录失败';
                     loginBtn.disabled = false;
                     loginBtnText.textContent = '登 录';
+                    // 登录失败 -> 超级管理员 或 账户不存在时立刻刷新挑战码+红/灰小点
+                    try {
+                        if (!_lastCheckInfo || _lastCheckInfo.exists === false) {
+                            setUnameDot('visible', 'red');
+                        }
+                    } catch(_u){}
+                    if (isSuper) { try { await fetchChallenge(); } catch (e) {} }
                 }
             } catch (error) {
                 messageEl.className = 'login-message error';
@@ -954,24 +2748,140 @@
         }
 
         function showError(field, message) {
-            const group = document.getElementById(field + '-group');
-            const errorEl = document.getElementById(field + '-error');
+            var group = document.getElementById(field + '-group');
+            var errorEl = document.getElementById(field + '-error');
             if (group && errorEl) {
+                group.classList.remove('has-error');
+                void group.offsetWidth;
                 group.classList.add('has-error');
                 errorEl.textContent = message;
             }
         }
 
         function clearErrors() {
-            document.querySelectorAll('.form-group').forEach(g => g.classList.remove('has-error'));
-            const msg = document.getElementById('login-message');
-            msg.className = 'login-message';
-            msg.textContent = '';
+            document.querySelectorAll('.form-group').forEach(function (g) { g.classList.remove('has-error'); });
+            var msg = document.getElementById('login-message');
+            if (msg) { msg.className = 'login-message'; msg.textContent = ''; }
         }
 
-        document.getElementById('login-username').addEventListener('keypress', e => {
+        (function bindSuperAdminUX() {
+            var uInput = document.getElementById('login-username');
+            var pInput = document.getElementById('login-password');
+            var pwBtn = document.getElementById('pw-toggle-btn');
+            var pwIcon = pwBtn ? pwBtn.querySelector('i') : null;
+            var pwVisible = false;
+            var formOptionsEl = document.getElementById('form-options-row');
+            var dividerOrEl = document.getElementById('divider-row-or');
+            var btnRegisterEl = document.getElementById('btn-register');
+            function _setSaExtraUIHidden(hidden) {
+                try {
+                    if (formOptionsEl) formOptionsEl.style.display = hidden ? 'none' : '';
+                    if (dividerOrEl) dividerOrEl.style.display = hidden ? 'none' : '';
+                    if (btnRegisterEl) btnRegisterEl.style.display = hidden ? 'none' : '';
+                } catch (_e) {}
+            }
+            if (pwBtn && pInput) {
+                pwBtn.addEventListener('click', function () {
+                    if (pwBtn.classList.contains('is-hidden')) return;
+                    pwVisible = !pwVisible;
+                    pInput.type = pwVisible ? 'text' : 'password';
+                    if (pwIcon) {
+                        pwIcon.classList.toggle('fa-eye', !pwVisible);
+                        pwIcon.classList.toggle('fa-eye-slash', pwVisible);
+                    }
+                    pwBtn.setAttribute('aria-label', pwVisible ? '隐藏密码' : '显示密码');
+                    pwBtn.setAttribute('title', pwVisible ? '隐藏密码' : '显示密码');
+                });
+            }
+            if (!uInput) return;
+
+            function handleUsernameChange() {
+                var v = (uInput.value || '').trim();
+                if (v.toLowerCase() === 'wuchenghao15') {
+                    _saShowBlock();
+                    _sa.detectPromise = null;
+                    detectVikey();
+                    _setSaExtraUIHidden(true);
+                    if (pwBtn) {
+                        pwBtn.classList.add('is-hidden');
+                        pwBtn.setAttribute('hidden', '');
+                        if (pInput && pwVisible) {
+                            pwVisible = false;
+                            pInput.type = 'password';
+                            if (pwIcon) { pwIcon.classList.remove('fa-eye-slash'); pwIcon.classList.add('fa-eye'); }
+                        }
+                    }
+                } else {
+                    _saHideBlock();
+                    _sa.serial = null; _sa.vikey_present = false; _sa.binding_ok = false;
+                    _sa.challenge_id = null; _sa.random_code = null;
+                    var chInput = document.getElementById('sa-challenge-input');
+                    if (chInput) chInput.value = '';
+                    _setSaExtraUIHidden(false);
+                    if (pwBtn) {
+                        pwBtn.classList.remove('is-hidden');
+                        pwBtn.removeAttribute('hidden');
+                    }
+                }
+            }
+            uInput.addEventListener('change', handleUsernameChange);
+            uInput.addEventListener('blur', handleUsernameChange);
+            uInput.addEventListener('input', function () {
+                if ((uInput.value || '').toLowerCase() === 'wuchenghao15') handleUsernameChange();
+                if (_sa.ui_timeout_timer) try { _saResetUITimeout(); } catch(_e){}
+            });
+            uInput.addEventListener('keydown', function () {
+                if (_sa.ui_timeout_timer) try { _saResetUITimeout(); } catch(_e){}
+            });
+
+            var pInput = document.getElementById('login-password');
+            if (pInput) {
+                pInput.addEventListener('input', function () {
+                    if (_sa.ui_timeout_timer) try { _saResetUITimeout(); } catch(_e){}
+                });
+                pInput.addEventListener('keydown', function () {
+                    if (_sa.ui_timeout_timer) try { _saResetUITimeout(); } catch(_e){}
+                });
+            }
+
+            (function bindSaChallengeInput() {
+                var chInput = document.getElementById('sa-challenge-input');
+                if (!chInput) return;
+                chInput.addEventListener('input', function () {
+                    var val = (chInput.value || '').replace(/\D/g, '').slice(0, 6);
+                    if (val !== chInput.value) chInput.value = val;
+                    try { _updateLoginBtnState(); } catch(_e){}
+                    if (_sa.ui_timeout_timer) try { _saResetUITimeout(); } catch(_e){}
+                });
+                chInput.addEventListener('keydown', function () {
+                    if (_sa.ui_timeout_timer) try { _saResetUITimeout(); } catch(_e){}
+                });
+                chInput.addEventListener('keypress', function (e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        document.getElementById('login-form').requestSubmit();
+                    }
+                });
+            })();
+
+            if (uInput.value && uInput.value.toLowerCase() === 'wuchenghao15') handleUsernameChange();
+        })();
+
+        document.getElementById('login-username').addEventListener('keypress', function (e) {
             if (e.key === 'Enter') document.getElementById('login-password').focus();
         });
+        document.getElementById('login-password').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                document.getElementById('login-form').requestSubmit();
+            }
+        });
+        document.getElementById('login-form').onsubmit = handleLogin;
+
+        (function bindForgotPassword() {
+            var a = document.getElementById('forgot-password-link');
+            if (a) a.addEventListener('click', function (e) { e.preventDefault(); window.location.href = '/auth/forgot_password'; });
+        })();
     </script>
 </body>
 </html>

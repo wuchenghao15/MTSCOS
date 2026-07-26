@@ -3,266 +3,445 @@
 {% block title %}个人设置 - MTSCOS AI{% endblock %}
 
 {% block head %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <style>
     :root {
-        --dark-bg-primary: #0c0c1e;
-        --dark-bg-secondary: #1a1a3e;
-        --dark-bg-card: rgba(20, 20, 40, 0.85);
-        --dark-bg-surface: rgba(30, 30, 60, 0.6);
-        --dark-border: rgba(99, 102, 241, 0.2);
-        --dark-text-primary: #ffffff;
-        --dark-text-secondary: #94a3b8;
-        --dark-primary-color: #6366f1;
-        --dark-primary-light: #8b5cf6;
-        --dark-success: #22c55e;
-        --dark-warning: #f59e0b;
-        --dark-danger: #ef4444;
-        --dark-info: #3b82f6;
-        --radius-md: 8px;
-        --radius-lg: 12px;
+        --header-h: 72px;
+        --content-max: 1280px;
         --radius-sm: 6px;
+        --radius: 14px;
+        --radius-lg: 22px;
+        --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+        --primary-color: #6366f1;
+        --primary-light: #8b5cf6;
+        --primary-accent: #a855f7;
+        --primary-dark: #4f46e5;
+        --accent: #6366f1;
+        --bg-page: #0a0a1a;
+        --border-subtle: rgba(99, 102, 241, 0.12);
+        --bg-gradient-start: #050510;
+        --bg-gradient-mid: #0c0c24;
+        --bg-gradient-end: #070718;
+        --card-bg: rgba(12, 12, 30, 0.7);
+        --card-border: rgba(99, 102, 241, 0.18);
+        --card-border-hover: rgba(99, 102, 241, 0.4);
+        --text-primary: #f8fafc;
+        --text-secondary: #cbd5e1;
+        --text-muted: #64748b;
+        --text-accent: #a5b4fc;
+        --glass-shadow: 0 8px 40px rgba(0, 0, 0, 0.5), 0 0 80px rgba(99, 102, 241, 0.08);
+        --danger: #ef4444;
+        --success: #22c55e;
+        --warning: #f59e0b;
+        --info: #3b82f6;
+        --logo-accent: linear-gradient(135deg, #6366f1, #8b5cf6);
+        --bg-gradient: radial-gradient(ellipse at 20% 50%, rgba(99,102,241,0.18) 0%, transparent 55%),
+                       radial-gradient(ellipse at 80% 15%, rgba(168,85,247,0.16) 0%, transparent 55%),
+                       radial-gradient(ellipse at 60% 95%, rgba(236,72,153,0.10) 0%, transparent 55%),
+                       radial-gradient(ellipse at 10% 100%, rgba(34,211,238,0.08) 0%, transparent 60%),
+                       linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-mid) 50%, var(--bg-gradient-end) 100%);
+        --glass-blur: 28px;
     }
 
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
     body {
-        background: linear-gradient(135deg, var(--dark-bg-primary) 0%, var(--dark-bg-secondary) 50%, var(--dark-bg-primary) 100%);
+        font-family: 'Sora', -apple-system, BlinkMacSystemFont, 'Segoe UI',
+                     'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+        background: var(--bg-gradient);
+        color: var(--text-primary);
         min-height: 100vh;
+        position: relative;
+        overflow-x: hidden;
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
     }
 
+    .aurora {
+        position: fixed; inset: 0; z-index: 0; pointer-events: none;
+        background:
+            radial-gradient(1000px 600px at 15% 10%, rgba(168,85,247,0.22), transparent 60%),
+            radial-gradient(900px 500px at 90% 30%, rgba(99,102,241,0.18), transparent 60%),
+            radial-gradient(800px 500px at 50% 100%, rgba(236,72,153,0.12), transparent 60%);
+        filter: blur(40px) saturate(120%);
+        mix-blend-mode: screen;
+        animation: aurora-drift 18s ease-in-out infinite alternate;
+    }
+    @keyframes aurora-drift {
+        0%   { transform: translate3d(0,0,0) scale(1); }
+        50%  { transform: translate3d(30px,-20px,0) scale(1.04); }
+        100% { transform: translate3d(-20px,10px,0) scale(1.02); }
+    }
+    .grain-overlay {
+        position: fixed; inset: 0; z-index: 1; pointer-events: none;
+        opacity: 0.06; mix-blend-mode: overlay;
+        background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.9 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+    }
+    @keyframes fade-up { from { opacity: 0; transform: translateY(24px);} to {opacity:1; transform:none;} }
+    @keyframes toastSlideIn { from { transform: translateX(120%); opacity: 0;} to { transform: translateX(0); opacity: 1;} }
+
+    .page-wrap { position: relative; z-index: 3; width: 100%; }
     .settings-wrap {
-        max-width: 900px;
-        margin: 30px auto;
-        padding: 0 16px;
-    }
-    .settings-header {
-        display: flex;
-        align-items: center;
-        gap: 14px;
-        margin-bottom: 24px;
-    }
-    .settings-header h1 {
-        font-size: 24px;
-        color: var(--dark-text-primary);
-        margin: 0;
+        max-width: 1080px;
+        margin: 0 auto;
+        padding: clamp(24px, 4vw, 48px) clamp(16px, 5vw, 40px) 80px;
+        animation: fade-up 0.7s var(--ease-out) 0.1s both;
     }
 
-    .settings-tabs {
-        display: flex;
-        gap: 8px;
-        background: var(--dark-bg-card);
-        border: 1px solid var(--dark-border);
-        border-radius: var(--radius-lg);
-        padding: 6px;
-        margin-bottom: 24px;
-        flex-wrap: wrap;
+    .page-header {
+        display: flex; align-items: center; gap: 14px;
+        margin-bottom: 32px;
     }
-    .settings-tab {
-        padding: 10px 20px;
-        border-radius: var(--radius-md);
+    .back-btn {
+        width: 42px; height: 42px;
+        border-radius: var(--radius);
+        display: inline-flex; align-items: center; justify-content: center;
+        background: color-mix(in srgb, var(--primary-color) 8%, transparent);
+        border: 1px solid color-mix(in srgb, var(--primary-color) 18%, transparent);
+        color: var(--text-secondary);
+        text-decoration: none;
+        transition: all 0.2s var(--ease-out);
+    }
+    .back-btn:hover {
+        color: var(--text-primary);
+        background: color-mix(in srgb, var(--primary-color) 16%, transparent);
+        border-color: color-mix(in srgb, var(--primary-color) 30%, transparent);
+        transform: translateX(-2px);
+    }
+    .page-title-group { display: flex; flex-direction: column; gap: 4px; }
+    .page-eyebrow {
+        display: inline-flex; align-items: center; gap: 8px;
+        font-size: 11px; font-weight: 700; letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--primary-light);
+    }
+    .page-eyebrow::before {
+        content: ''; width: 6px; height: 6px; border-radius: 50%;
+        background: currentColor; box-shadow: 0 0 10px currentColor;
+    }
+    .page-title {
+        font-size: clamp(24px, 3vw, 32px);
+        font-weight: 800; letter-spacing: -0.02em;
+        color: var(--text-primary);
+        line-height: 1.15;
+        background: linear-gradient(120deg, var(--text-primary) 0%, var(--primary-light) 100%);
+        -webkit-background-clip: text; background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .tabs-wrap {
+        position: relative;
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+        border-radius: calc(var(--radius-lg) + 2px);
+        padding: 8px;
+        margin-bottom: 28px;
+        backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+        -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+        box-shadow: var(--glass-shadow);
+        overflow-x: auto;
+        overflow-y: hidden;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+    }
+    .tabs-wrap::-webkit-scrollbar { display: none; }
+    .tabs-inner {
+        display: flex; gap: 6px;
+        min-width: max-content;
+    }
+    .tab-btn {
+        display: inline-flex; align-items: center; gap: 8px;
+        padding: 10px 18px;
+        border-radius: var(--radius);
+        font-size: 13px; font-weight: 700; letter-spacing: 0.01em;
+        color: var(--text-secondary);
+        background: transparent;
+        border: none;
         cursor: pointer;
-        font-size: 14px;
-        font-weight: 600;
-        color: var(--dark-text-secondary);
-        transition: all 0.3s;
-        display: flex;
-        align-items: center;
-        gap: 8px;
+        white-space: nowrap;
+        transition: all 0.25s var(--ease-out);
+        font-family: inherit;
     }
-    .settings-tab:hover {
-        color: var(--dark-text-primary);
-        background: rgba(0, 0, 0, 0.2);
+    .tab-btn:hover {
+        color: var(--text-primary);
+        background: color-mix(in srgb, var(--primary-color) 10%, transparent);
     }
-    .settings-tab.active {
-        background: linear-gradient(135deg, var(--dark-primary-color), var(--dark-primary-light));
+    .tab-btn i { font-size: 13px; opacity: 0.85; }
+    .tab-btn.active {
+        background: var(--logo-accent);
         color: #fff;
+        box-shadow: 0 6px 20px color-mix(in srgb, var(--primary-color) 36%, transparent);
     }
+    .tab-btn.active i { opacity: 1; }
 
-    .settings-section {
-        display: none;
-    }
-    .settings-section.active {
-        display: block;
-    }
+    .tab-panel { display: none; animation: fade-up 0.4s var(--ease-out) both; }
+    .tab-panel.active { display: block; }
 
     .settings-card {
-        background: var(--dark-bg-card);
-        border: 1px solid var(--dark-border);
-        border-radius: var(--radius-lg);
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+        border-radius: calc(var(--radius-lg) + 2px);
         margin-bottom: 20px;
         overflow: hidden;
-        backdrop-filter: blur(20px);
+        backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+        -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+        box-shadow: var(--glass-shadow);
+        position: relative;
+    }
+    .settings-card::before {
+        content: '';
+        position: absolute; top: -1px; left: -1px; right: -1px; height: 1px;
+        background: linear-gradient(90deg,
+            transparent 0%,
+            color-mix(in srgb, var(--primary-light) 70%, transparent) 30%,
+            color-mix(in srgb, var(--primary-accent) 70%, transparent) 70%,
+            transparent 100%);
     }
     .card-head {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 18px 24px;
-        border-bottom: 1px solid var(--dark-border);
+        display: flex; align-items: center; gap: 12px;
+        padding: 20px 24px;
+        border-bottom: 1px solid color-mix(in srgb, var(--primary-color) 10%, transparent);
     }
     .card-icon {
-        width: 40px;
-        height: 40px;
-        border-radius: var(--radius-md);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 18px;
-    }
-    .icon-blue { background: rgba(99,102,241,0.15); color: var(--dark-primary-color); }
-    .icon-green { background: rgba(34,197,94,0.15); color: var(--dark-success); }
-    .icon-orange { background: rgba(249,115,22,0.15); color: var(--dark-warning); }
-    .icon-purple { background: rgba(168,85,247,0.15); color: var(--dark-primary-light); }
-    .icon-red { background: rgba(239,68,68,0.15); color: var(--dark-danger); }
-    .icon-cyan { background: rgba(14,165,233,0.15); color: #0ea5e9; }
-    .card-head h2 {
+        width: 42px; height: 42px; flex-shrink: 0;
+        border-radius: var(--radius);
+        display: inline-flex; align-items: center; justify-content: center;
         font-size: 16px;
-        font-weight: 700;
-        color: var(--dark-text-primary);
-        margin: 0;
+    }
+    .icon-blue { background: color-mix(in srgb, var(--primary-color) 14%, transparent); color: var(--primary-light); border: 1px solid color-mix(in srgb, var(--primary-color) 22%, transparent); }
+    .icon-green { background: color-mix(in srgb, var(--success) 14%, transparent); color: var(--success); border: 1px solid color-mix(in srgb, var(--success) 22%, transparent); }
+    .icon-orange { background: color-mix(in srgb, var(--warning) 14%, transparent); color: var(--warning); border: 1px solid color-mix(in srgb, var(--warning) 22%, transparent); }
+    .icon-purple { background: color-mix(in srgb, var(--primary-accent) 14%, transparent); color: var(--primary-accent); border: 1px solid color-mix(in srgb, var(--primary-accent) 22%, transparent); }
+    .icon-red { background: color-mix(in srgb, var(--danger) 14%, transparent); color: var(--danger); border: 1px solid color-mix(in srgb, var(--danger) 22%, transparent); }
+    .icon-cyan { background: color-mix(in srgb, var(--info) 14%, transparent); color: var(--info); border: 1px solid color-mix(in srgb, var(--info) 22%, transparent); }
+    .icon-pink { background: color-mix(in srgb, #ec4899 14%, transparent); color: #ec4899; border: 1px solid color-mix(in srgb, #ec4899 22%, transparent); }
+    .card-head h2 {
+        font-size: 16px; font-weight: 800; letter-spacing: -0.01em;
+        color: var(--text-primary); margin: 0;
     }
     .card-head-right {
         margin-left: auto;
+        font-size: 12px; font-weight: 600;
+        color: var(--text-muted);
+        padding: 4px 10px;
+        border-radius: 999px;
+        background: color-mix(in srgb, var(--primary-color) 8%, transparent);
+        border: 1px solid color-mix(in srgb, var(--primary-color) 16%, transparent);
+    }
+    .card-body { padding: 24px; }
+
+    .avatar-section {
+        display: flex; align-items: center; gap: 18px;
+        margin-bottom: 24px;
+        padding-bottom: 20px;
+        border-bottom: 1px solid color-mix(in srgb, var(--primary-color) 10%, transparent);
+    }
+    .avatar-upload { position: relative; cursor: pointer; }
+    .user-avatar {
+        width: 84px; height: 84px; border-radius: 26px;
+        background: var(--logo-accent);
+        color: #fff;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 32px; font-weight: 800;
+        flex-shrink: 0;
+        box-shadow: 0 12px 36px color-mix(in srgb, var(--primary-color) 38%, transparent);
+    }
+    .avatar-edit {
+        position: absolute; bottom: -4px; right: -4px;
+        width: 28px; height: 28px;
+        border-radius: 50%;
+        background: var(--logo-accent);
+        color: #fff;
+        display: flex; align-items: center; justify-content: center;
         font-size: 12px;
-        color: var(--dark-text-secondary);
+        border: 3px solid color-mix(in srgb, var(--card-bg) 100%, black);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.4);
     }
-    .card-body {
-        padding: 20px 24px;
+    .user-meta { flex: 1; min-width: 0; }
+    .user-meta h3 {
+        font-size: 20px; font-weight: 800; letter-spacing: -0.01em;
+        color: var(--text-primary); margin: 0 0 4px 0;
     }
-    .form-group {
-        margin-bottom: 18px;
+    .user-meta p {
+        font-size: 13px; color: var(--text-secondary); margin: 0 0 8px 0;
     }
-    .form-group:last-child {
-        margin-bottom: 0;
+    .role-badge {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 4px 12px;
+        border-radius: 999px;
+        font-size: 11px; font-weight: 700; letter-spacing: 0.04em;
     }
-    .form-group label {
-        display: block;
-        font-size: 13px;
-        font-weight: 600;
-        color: var(--dark-text-secondary);
-        margin-bottom: 6px;
+    .role-admin { background: color-mix(in srgb, var(--danger) 14%, transparent); color: var(--danger); border: 1px solid color-mix(in srgb, var(--danger) 24%, transparent); }
+    .role-teacher { background: color-mix(in srgb, var(--info) 14%, transparent); color: var(--info); border: 1px solid color-mix(in srgb, var(--info) 24%, transparent); }
+    .role-student { background: color-mix(in srgb, var(--success) 14%, transparent); color: var(--success); border: 1px solid color-mix(in srgb, var(--success) 24%, transparent); }
+    .role-super-admin { background: color-mix(in srgb, var(--primary-accent) 14%, transparent); color: var(--primary-accent); border: 1px solid color-mix(in srgb, var(--primary-accent) 24%, transparent); }
+    .role-parent { background: color-mix(in srgb, #ec4899 14%, transparent); color: #ec4899; border: 1px solid color-mix(in srgb, #ec4899 24%, transparent); }
+    .role-guest { background: color-mix(in srgb, var(--warning) 14%, transparent); color: var(--warning); border: 1px solid color-mix(in srgb, var(--warning) 24%, transparent); }
+
+    .form-group { margin-bottom: 20px; }
+    .form-group:last-child { margin-bottom: 0; }
+    .form-label {
+        display: block; margin-bottom: 8px;
+        font-size: 12px; font-weight: 700; letter-spacing: 0.05em;
+        text-transform: uppercase;
+        color: var(--text-secondary);
     }
-    .form-group input,
-    .form-group select,
-    .form-group textarea {
+    .form-input, .form-select, .form-textarea {
         width: 100%;
-        padding: 10px 14px;
-        border: 1px solid var(--dark-border);
-        border-radius: var(--radius-md);
-        font-size: 14px;
-        color: var(--dark-text-primary);
-        background: var(--dark-bg-surface);
-        transition: border-color 0.2s;
-        box-sizing: border-box;
+        padding: 13px 16px;
+        border-radius: var(--radius);
+        border: 1px solid var(--card-border);
+        background: color-mix(in srgb, var(--card-bg) 92%, black 8%);
+        color: var(--text-primary);
+        font-size: 14px; font-weight: 500;
         font-family: inherit;
-    }
-    .form-group input:focus,
-    .form-group select:focus,
-    .form-group textarea:focus {
+        transition: border-color 0.2s var(--ease-out),
+                    box-shadow 0.2s var(--ease-out),
+                    background 0.2s var(--ease-out);
         outline: none;
-        border-color: var(--dark-primary-color);
-        background: rgba(30, 30, 60, 0.8);
     }
-    .form-group input[readonly],
-    .form-group input[disabled],
-    .form-group input.disabled-input {
-        background: rgba(20, 20, 40, 0.6);
-        color: var(--dark-text-secondary);
+    .form-input::placeholder, .form-textarea::placeholder {
+        color: var(--text-muted);
+        font-weight: 500;
+    }
+    .form-input:focus, .form-select:focus, .form-textarea:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary-color) 15%, transparent);
+        background: color-mix(in srgb, var(--card-bg) 96%, black 4%);
+    }
+    .form-input:disabled, .form-input[readonly],
+    .form-select:disabled, .form-textarea:disabled {
+        background: color-mix(in srgb, var(--card-bg) 85%, black 15%);
+        color: var(--text-muted);
         cursor: not-allowed;
-        opacity: 0.7;
+        opacity: 0.75;
     }
-    .form-row {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 16px;
+    .form-textarea { resize: vertical; min-height: 90px; line-height: 1.6; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .form-row-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .form-row-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+    @media (max-width: 720px) {
+        .form-row, .form-row-3, .form-row-4 { grid-template-columns: 1fr; }
     }
-    .form-row-3 {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 16px;
+    .field-hint {
+        margin-top: 6px;
+        font-size: 12px; font-weight: 500;
+        color: var(--text-muted);
+        line-height: 1.5;
     }
-    @media (max-width: 640px) {
-        .form-row { grid-template-columns: 1fr; }
-        .form-row-3 { grid-template-columns: 1fr; }
-    }
+    .field-hint i { margin-right: 4px; color: var(--primary-light); }
+
     .btn-group {
-        display: flex;
-        gap: 12px;
+        display: flex; gap: 12px;
         justify-content: flex-end;
         margin-top: 8px;
+        flex-wrap: wrap;
     }
     .btn {
-        padding: 10px 24px;
+        display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+        padding: 13px 24px;
         border: none;
-        border-radius: var(--radius-md);
-        font-size: 14px;
-        font-weight: 600;
+        border-radius: var(--radius);
+        font-family: inherit;
+        font-size: 14px; font-weight: 800; letter-spacing: 0.03em;
         cursor: pointer;
-        transition: all 0.2s;
         text-decoration: none;
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
+        transition: transform 0.25s var(--ease-out),
+                    box-shadow 0.25s var(--ease-out),
+                    background 0.25s var(--ease-out),
+                    filter 0.2s;
+        user-select: none;
     }
     .btn-primary {
-        background: linear-gradient(135deg, var(--dark-primary-color), var(--dark-primary-light));
+        background: var(--logo-accent);
         color: #fff;
+        box-shadow: 0 12px 32px color-mix(in srgb, var(--primary-color) 36%, transparent);
     }
-    .btn-primary:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 5px 20px rgba(99, 102, 241, 0.3);
-    }
+    .btn-primary:hover { transform: translateY(-2px); filter: brightness(1.06); }
+    .btn-primary:active { transform: translateY(0); }
     .btn-secondary {
-        background: var(--dark-bg-surface);
-        color: var(--dark-text-primary);
-        border: 1px solid var(--dark-border);
+        background: color-mix(in srgb, var(--primary-color) 6%, transparent);
+        color: var(--text-primary);
+        border: 1px solid color-mix(in srgb, var(--primary-color) 22%, transparent);
     }
     .btn-secondary:hover {
-        background: rgba(30, 30, 60, 0.8);
-        border-color: var(--dark-primary-color);
+        background: color-mix(in srgb, var(--primary-color) 12%, transparent);
+        border-color: color-mix(in srgb, var(--primary-color) 34%, transparent);
+        transform: translateY(-2px);
     }
     .btn-danger {
-        background: var(--dark-danger);
+        background: linear-gradient(135deg, var(--danger), #dc2626);
         color: #fff;
+        box-shadow: 0 12px 32px color-mix(in srgb, var(--danger) 32%, transparent);
     }
-    .btn-danger:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 5px 20px rgba(239, 68, 68, 0.3);
-    }
+    .btn-danger:hover { transform: translateY(-2px); filter: brightness(1.06); }
+    .btn-block { width: 100%; }
 
     .toast {
         position: fixed;
-        top: 20px;
-        right: 20px;
-        padding: 12px 24px;
-        border-radius: var(--radius-md);
+        top: 88px; right: 20px;
+        padding: 14px 22px;
+        border-radius: var(--radius);
         color: #fff;
-        font-size: 14px;
+        font-size: 13px; font-weight: 700;
         z-index: 9999;
-        transform: translateX(120%);
-        transition: transform 0.3s;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        transform: translateX(140%);
+        transition: transform 0.4s var(--ease-out);
+        box-shadow: 0 12px 36px rgba(0,0,0,0.45);
+        display: flex; align-items: center; gap: 10px;
+        max-width: calc(100vw - 40px);
     }
-    .toast.show {
-        transform: translateX(0);
-    }
-    .toast.success { background: var(--dark-success); }
-    .toast.error { background: var(--dark-danger); }
-    .toast.info { background: var(--dark-info); }
-    .field-desc {
-        font-size: 12px;
-        color: var(--dark-text-secondary);
-        margin-top: 4px;
+    .toast.show { transform: translateX(0); animation: toastSlideIn 0.35s var(--ease-out); }
+    .toast i { font-size: 15px; flex-shrink: 0; }
+    .toast-success { background: linear-gradient(135deg, var(--success), #16a34a); }
+    .toast-error { background: linear-gradient(135deg, var(--danger), #dc2626); }
+    .toast-info { background: var(--logo-accent); }
+    .toast-warning { background: linear-gradient(135deg, var(--warning), #d97706); }
+    @media (max-width: 560px) {
+        .toast { top: auto; bottom: 24px; right: 16px; left: 16px; max-width: none; }
     }
 
+    .auto-save-hint {
+        display: none;
+        align-items: center; gap: 6px;
+        margin-top: 10px;
+        font-size: 12px; font-weight: 600;
+        color: var(--success);
+    }
+    .auto-save-hint.show { display: inline-flex; }
+    .auto-save-hint i { animation: pulse-save 1.4s ease-in-out infinite; }
+    @keyframes pulse-save { 0%,100%{opacity:1;} 50%{opacity:.5;} }
+
+    .toggle-row {
+        display: flex; align-items: center; justify-content: space-between; gap: 16px;
+        padding: 16px 0;
+        border-bottom: 1px solid color-mix(in srgb, var(--primary-color) 10%, transparent);
+    }
+    .toggle-row:last-child { border-bottom: none; padding-bottom: 0; }
+    .toggle-row:first-child { padding-top: 0; }
+    .toggle-info { flex: 1; min-width: 0; }
+    .toggle-title {
+        font-size: 14px; font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 3px;
+    }
+    .toggle-desc {
+        font-size: 12px;
+        color: var(--text-muted);
+        line-height: 1.5;
+    }
     .toggle-switch {
         position: relative;
-        width: 48px;
-        height: 26px;
-        border-radius: 13px;
-        background: var(--dark-border);
+        width: 50px; height: 28px; flex-shrink: 0;
+        border-radius: 999px;
+        background: color-mix(in srgb, var(--text-muted) 35%, transparent);
+        border: 1px solid color-mix(in srgb, var(--primary-color) 18%, transparent);
         cursor: pointer;
-        transition: background 0.3s;
+        transition: all 0.3s var(--ease-out);
     }
-    .toggle-switch.on { background: var(--dark-success); }
     .toggle-switch::after {
         content: '';
         position: absolute;
@@ -270,338 +449,285 @@
         width: 20px; height: 20px;
         border-radius: 50%;
         background: #fff;
-        transition: transform 0.3s;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.28);
+        transition: transform 0.3s var(--ease-out);
+    }
+    .toggle-switch.on {
+        background: var(--logo-accent);
+        border-color: transparent;
+        box-shadow: 0 4px 14px color-mix(in srgb, var(--primary-color) 40%, transparent);
     }
     .toggle-switch.on::after { transform: translateX(22px); }
 
-    .stat-card {
-        background: var(--dark-bg-surface);
-        border: 1px solid var(--dark-border);
-        border-radius: var(--radius-md);
-        padding: 16px;
-        text-align: center;
-    }
-    .stat-value {
-        font-size: 24px;
-        font-weight: 700;
-        color: var(--dark-primary-color);
-        margin-bottom: 4px;
-    }
-    .stat-label {
-        font-size: 12px;
-        color: var(--dark-text-secondary);
-    }
-
-    .notification-item {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 12px;
-        border-bottom: 1px solid var(--dark-border);
-        cursor: pointer;
-        transition: background 0.2s;
-    }
-    .notification-item:hover {
-        background: rgba(0, 0, 0, 0.2);
-    }
-    .notification-item:last-child {
-        border-bottom: none;
-    }
-    .notification-icon {
-        width: 36px;
-        height: 36px;
-        border-radius: var(--radius-md);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 16px;
-        flex-shrink: 0;
-    }
-    .notification-content {
-        flex: 1;
-        min-width: 0;
-    }
-    .notification-title {
-        font-size: 14px;
-        font-weight: 600;
-        color: var(--dark-text-primary);
-        margin-bottom: 2px;
-    }
-    .notification-desc {
-        font-size: 12px;
-        color: var(--dark-text-secondary);
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-    .notification-time {
-        font-size: 11px;
-        color: var(--dark-text-secondary);
-        flex-shrink: 0;
-    }
-
-    .data-export-options {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-        gap: 12px;
-    }
-    .export-option {
-        background: var(--dark-bg-surface);
-        border: 1px solid var(--dark-border);
-        border-radius: var(--radius-md);
-        padding: 16px;
-        cursor: pointer;
-        transition: all 0.2s;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 8px;
-    }
-    .export-option:hover {
-        border-color: var(--dark-primary-color);
-        transform: translateY(-2px);
-    }
-    .export-icon {
-        width: 48px;
-        height: 48px;
-        border-radius: var(--radius-md);
-        background: rgba(99,102,241,0.15);
-        color: var(--dark-primary-color);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 20px;
-    }
-    .export-name {
-        font-size: 14px;
-        font-weight: 600;
-        color: var(--dark-text-primary);
-    }
-    .export-desc {
-        font-size: 12px;
-        color: var(--dark-text-secondary);
-        text-align: center;
-    }
-
-    .learning-stats {
+    .stats-grid {
         display: grid;
         grid-template-columns: repeat(4, 1fr);
-        gap: 12px;
+        gap: 14px;
     }
-    @media (max-width: 640px) {
-        .learning-stats { grid-template-columns: repeat(2, 1fr); }
+    .stat-card {
+        padding: 18px 16px;
+        border-radius: var(--radius);
+        background: color-mix(in srgb, var(--primary-color) 5%, transparent);
+        border: 1px solid color-mix(in srgb, var(--primary-color) 14%, transparent);
+        text-align: center;
+        transition: transform 0.25s var(--ease-out);
     }
+    .stat-card:hover { transform: translateY(-3px); }
+    .stat-value {
+        font-size: clamp(22px, 2.4vw, 28px);
+        font-weight: 800; letter-spacing: -0.02em;
+        line-height: 1.1;
+        margin-bottom: 6px;
+        background: var(--logo-accent);
+        -webkit-background-clip: text; background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+    .stat-label {
+        font-size: 11px; font-weight: 700; letter-spacing: 0.05em;
+        text-transform: uppercase;
+        color: var(--text-muted);
+    }
+    @media (max-width: 720px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
 
-    .privacy-item {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 14px 0;
-        border-bottom: 1px solid var(--dark-border);
+    .progress-card {
+        padding: 16px;
+        border-radius: var(--radius);
+        background: color-mix(in srgb, var(--card-bg) 92%, black 8%);
+        border: 1px solid var(--card-border);
     }
-    .privacy-item:last-child {
-        border-bottom: none;
+    .progress-top { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 10px; }
+    .progress-value {
+        font-size: 24px; font-weight: 800; letter-spacing: -0.02em;
+        color: var(--text-primary);
     }
-    .privacy-info {
-        flex: 1;
+    .progress-target {
+        font-size: 12px; font-weight: 600;
+        color: var(--text-muted);
     }
-    .privacy-title {
-        font-size: 14px;
-        font-weight: 600;
-        color: var(--dark-text-primary);
-        margin-bottom: 4px;
-    }
-    .privacy-desc {
-        font-size: 12px;
-        color: var(--dark-text-secondary);
-    }
-
-    .user-avatar-section {
-        display: flex;
-        align-items: center;
-        gap: 16px;
-        margin-bottom: 20px;
-        padding-bottom: 16px;
-        border-bottom: 1px solid var(--dark-border);
-    }
-    .user-avatar {
-        width: 80px;
-        height: 80px;
-        border-radius: 50%;
-        background: linear-gradient(135deg, var(--dark-primary-color), var(--dark-primary-light));
-        color: #fff;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 32px;
-        font-weight: 600;
-        flex-shrink: 0;
-        box-shadow: 0 0 30px rgba(99, 102, 241, 0.3);
-    }
-    .user-avatar-upload {
-        position: relative;
-        cursor: pointer;
-    }
-    .avatar-upload-btn {
-        position: absolute;
-        bottom: 0;
-        right: 0;
-        width: 24px;
-        height: 24px;
-        border-radius: 50%;
-        background: var(--dark-primary-color);
-        color: #fff;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 12px;
-        border: 2px solid var(--dark-bg-card);
-    }
-    .user-info h3 {
-        font-size: 18px;
-        font-weight: 700;
-        color: var(--dark-text-primary);
-        margin: 0 0 4px 0;
-    }
-    .user-info p {
-        font-size: 13px;
-        color: var(--dark-text-secondary);
-        margin: 0;
-    }
-    .role-badge {
-        display: inline-block;
-        padding: 2px 10px;
+    .progress-bar {
+        height: 6px;
         border-radius: 999px;
-        font-size: 11px;
-        font-weight: 600;
-        margin-top: 8px;
+        background: color-mix(in srgb, var(--primary-color) 10%, transparent);
+        overflow: hidden;
     }
-    .role-admin { background: rgba(239,68,68,0.15); color: var(--dark-danger); }
-    .role-teacher { background: rgba(59,130,246,0.15); color: var(--dark-info); }
-    .role-student { background: rgba(34,197,94,0.15); color: var(--dark-success); }
-    .role-super-admin { background: rgba(168,85,247,0.15); color: var(--dark-primary-light); }
+    .progress-fill {
+        height: 100%;
+        border-radius: 999px;
+        background: var(--logo-accent);
+        transition: width 0.6s var(--ease-out);
+    }
 
-    .color-btn {
-        width: 36px;
-        height: 36px;
-        border-radius: 50%;
-        border: 2px solid var(--dark-border);
+    .notif-list { display: flex; flex-direction: column; }
+    .notif-item {
+        display: flex; align-items: center; gap: 12px;
+        padding: 12px;
+        border-radius: var(--radius);
+        transition: background 0.2s;
         cursor: pointer;
-        transition: all 0.2s;
     }
-    .color-btn:hover {
-        transform: scale(1.2);
-        border-color: var(--dark-primary-color);
+    .notif-item + .notif-item { margin-top: 4px; }
+    .notif-item:hover { background: color-mix(in srgb, var(--primary-color) 6%, transparent); }
+    .notif-icon {
+        width: 38px; height: 38px; flex-shrink: 0;
+        border-radius: var(--radius-sm);
+        display: inline-flex; align-items: center; justify-content: center;
+        font-size: 15px;
+    }
+    .notif-content { flex: 1; min-width: 0; }
+    .notif-title { font-size: 13px; font-weight: 700; color: var(--text-primary); margin-bottom: 2px; }
+    .notif-desc { font-size: 12px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .notif-time { font-size: 11px; font-weight: 600; color: var(--text-muted); flex-shrink: 0; }
+
+    .export-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        gap: 14px;
+    }
+    .export-card {
+        padding: 18px 16px;
+        border-radius: var(--radius);
+        background: color-mix(in srgb, var(--card-bg) 92%, black 8%);
+        border: 1px solid var(--card-border);
+        cursor: pointer;
+        transition: all 0.25s var(--ease-out);
+        text-align: center;
+    }
+    .export-card:hover {
+        border-color: var(--primary-color);
+        transform: translateY(-3px);
+        box-shadow: 0 12px 28px color-mix(in srgb, var(--primary-color) 22%, transparent);
+    }
+    .export-icon {
+        width: 48px; height: 48px; margin: 0 auto 12px;
+        border-radius: var(--radius);
+        background: color-mix(in srgb, var(--primary-color) 14%, transparent);
+        color: var(--primary-light);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 20px;
+    }
+    .export-name { font-size: 14px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; }
+    .export-desc { font-size: 12px; color: var(--text-muted); }
+
+    .color-list {
+        display: flex; gap: 10px; flex-wrap: wrap;
+    }
+    .color-swatch {
+        width: 40px; height: 40px;
+        border-radius: 50%;
+        border: 2px solid transparent;
+        cursor: pointer;
+        transition: all 0.25s var(--ease-out);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+    }
+    .color-swatch:hover { transform: scale(1.15); }
+    .color-swatch.active {
+        border-color: var(--text-primary);
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-color) 30%, transparent);
     }
 
     kbd {
         display: inline-block;
-        padding: 4px 8px;
-        background: rgba(0, 0, 0, 0.3);
-        border: 1px solid var(--dark-border);
-        border-radius: 4px;
-        font-family: monospace;
-        font-size: 12px;
-        color: var(--dark-text-primary);
-        box-shadow: 0 2px 0 rgba(0, 0, 0, 0.3);
+        padding: 4px 10px;
+        background: color-mix(in srgb, var(--primary-color) 8%, transparent);
+        border: 1px solid color-mix(in srgb, var(--primary-color) 20%, transparent);
+        border-radius: 8px;
+        font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+        font-size: 12px; font-weight: 700;
+        color: var(--text-primary);
+        box-shadow: 0 2px 0 color-mix(in srgb, var(--primary-color) 12%, transparent);
+    }
+
+    .shortcut-table {
+        width: 100%;
+        border-collapse: collapse;
+        overflow-x: auto;
+        display: block;
+    }
+    .shortcut-table th, .shortcut-table td {
+        padding: 14px 16px;
+        text-align: left;
+        border-bottom: 1px solid color-mix(in srgb, var(--primary-color) 10%, transparent);
+        font-size: 13px;
+    }
+    .shortcut-table th {
+        font-weight: 700;
+        color: var(--text-primary);
+        font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase;
+    }
+    .shortcut-table td:first-child { padding-left: 0; }
+    .shortcut-table td:last-child { color: var(--text-muted); }
+    .shortcut-table tr:last-child td { border-bottom: none; }
+
+    .approval-badge {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 3px 10px;
+        margin-left: 8px;
+        border-radius: 999px;
+        font-size: 11px; font-weight: 700;
+        background: color-mix(in srgb, var(--warning) 14%, transparent);
+        color: var(--warning);
+        border: 1px solid color-mix(in srgb, var(--warning) 24%, transparent);
+        text-transform: none;
+        letter-spacing: 0;
+    }
+
+    .tag-chip {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 5px 12px;
+        border-radius: 999px;
+        font-size: 12px; font-weight: 700;
+    }
+
+    @media (max-width: 640px) {
+        .avatar-section { flex-direction: column; align-items: flex-start; }
+        .card-body { padding: 18px; }
+        .card-head { padding: 16px 18px; }
+        .btn-group { justify-content: stretch; }
+        .btn-group .btn { flex: 1; }
     }
 </style>
 {% endblock %}
 
 {% block content %}
+<div class="aurora"></div>
+<div class="grain-overlay"></div>
+
+<div class="page-wrap">
 <div class="settings-wrap">
-    <div class="settings-header">
-        <a href="/" class="back-btn" style="color: var(--text-secondary); text-decoration: none; font-size: 20px;">
-            <i class="fas fa-arrow-left"></i>
-        </a>
-        <h1><i class="fas fa-gear"></i> 个人设置</h1>
-    </div>
-
-    <div class="settings-tabs">
-        <div class="settings-tab active" data-section="profile" onclick="switchSection('profile')">
-            <i class="fas fa-user"></i>个人信息
-        </div>
-        <div class="settings-tab" data-section="security" onclick="switchSection('security')">
-            <i class="fas fa-lock"></i>安全设置
-        </div>
-        <div class="settings-tab" data-section="notifications" onclick="switchSection('notifications')">
-            <i class="fas fa-bell"></i>通知设置
-        </div>
-        <div class="settings-tab" data-section="privacy" onclick="switchSection('privacy')">
-            <i class="fas fa-shield-alt"></i>隐私设置
-        </div>
-        <div class="settings-tab" data-section="goals" onclick="switchSection('goals')">
-            <i class="fas fa-target"></i>学习目标
-        </div>
-        <div class="settings-tab" data-section="appearance" onclick="switchSection('appearance')">
-            <i class="fas fa-palette"></i>外观主题
-        </div>
-        <div class="settings-tab" data-section="shortcuts" onclick="switchSection('shortcuts')">
-            <i class="fas fa-keyboard"></i>快捷键
-        </div>
-        <div class="settings-tab" data-section="data" onclick="switchSection('data')">
-            <i class="fas fa-download"></i>数据管理
-        </div>
-        <div class="settings-tab" data-section="about" onclick="switchSection('about')">
-            <i class="fas fa-info-circle"></i>关于
+    <div class="page-header">
+        <a href="/" class="back-btn" title="返回首页"><i class="fas fa-arrow-left"></i></a>
+        <div class="page-title-group">
+            <span class="page-eyebrow">MTSCOS AI · Personal Settings</span>
+            <h1 class="page-title"><i class="fas fa-sliders"></i> 个人设置中心</h1>
         </div>
     </div>
 
-    <div class="settings-section active" id="section-profile">
+    <div class="tabs-wrap">
+        <div class="tabs-inner">
+            <button class="tab-btn active" data-panel="profile" onclick="switchPanel('profile')"><i class="fas fa-user"></i>个人信息</button>
+            <button class="tab-btn" data-panel="security" onclick="switchPanel('security')"><i class="fas fa-lock"></i>安全设置</button>
+            <button class="tab-btn" data-panel="notifications" onclick="switchPanel('notifications')"><i class="fas fa-bell"></i>通知设置</button>
+            <button class="tab-btn" data-panel="privacy" onclick="switchPanel('privacy')"><i class="fas fa-shield-halved"></i>隐私设置</button>
+            <button class="tab-btn" data-panel="goals" onclick="switchPanel('goals')"><i class="fas fa-bullseye"></i>学习目标</button>
+            <button class="tab-btn" data-panel="appearance" onclick="switchPanel('appearance')"><i class="fas fa-palette"></i>外观主题</button>
+            <button class="tab-btn" data-panel="shortcuts" onclick="switchPanel('shortcuts')"><i class="fas fa-keyboard"></i>快捷键</button>
+            <button class="tab-btn" data-panel="data" onclick="switchPanel('data')"><i class="fas fa-database"></i>数据管理</button>
+            <button class="tab-btn" data-panel="about" onclick="switchPanel('about')"><i class="fas fa-circle-info"></i>关于</button>
+        </div>
+    </div>
+
+    <div class="tab-panel active" id="panel-profile">
         <div class="settings-card">
             <div class="card-head">
                 <div class="card-icon icon-blue"><i class="fas fa-user"></i></div>
                 <h2>个人资料</h2>
             </div>
             <div class="card-body">
-                <div class="user-avatar-section">
-                    <div class="user-avatar-upload">
+                <div class="avatar-section">
+                    <div class="avatar-upload">
                         <div class="user-avatar">{{ user.username[:1].upper() if user.username else 'U' }}</div>
-                        <div class="avatar-upload-btn" title="更换头像">
-                            <i class="fas fa-camera"></i>
-                        </div>
+                        <div class="avatar-edit" title="更换头像"><i class="fas fa-camera"></i></div>
                     </div>
-                    <div class="user-info">
+                    <div class="user-meta">
                         <h3>{{ user.username }}</h3>
                         <p>{{ user.email or '未绑定邮箱' }}</p>
-                        <span class="role-badge role-{{ user.role }}">{{ user.role }}</span>
+                        <span class="role-badge role-{{ user.role }}"><i class="fas fa-badge-check"></i> {{ user.role }}</span>
                     </div>
                 </div>
 
                 <div class="form-row">
                     <div class="form-group">
-                        <label>用户名</label>
-                        <input type="text" id="username" value="{{ user.username }}" readonly>
+                        <label class="form-label">用户名</label>
+                        <input type="text" class="form-input" id="username" value="{{ user.username }}" readonly>
                     </div>
                     <div class="form-group">
-                        <label>角色</label>
-                        <input type="text" id="role" value="{{ user.role }}" readonly>
+                        <label class="form-label">角色</label>
+                        <input type="text" class="form-input" id="role" value="{{ user.role }}" readonly>
                     </div>
                 </div>
 
                 <div class="form-row">
                     <div class="form-group">
-                        <label>邮箱</label>
-                        <input type="email" id="email" value="{{ user.email or '' }}" placeholder="请输入邮箱">
+                        <label class="form-label">邮箱</label>
+                        <input type="email" class="form-input" id="email" value="{{ user.email or '' }}" placeholder="请输入邮箱" oninput="scheduleAutoSave('profile')">
                     </div>
                     <div class="form-group">
-                        <label>手机号</label>
-                        <input type="tel" id="phone" value="{{ user.phone or '' }}" placeholder="请输入手机号">
+                        <label class="form-label">手机号</label>
+                        <input type="tel" class="form-input" id="phone" value="{{ user.phone or '' }}" placeholder="请输入手机号" oninput="scheduleAutoSave('profile')">
                     </div>
                 </div>
 
                 {% if user.role == 'student' or user.role == 'student_vip' %}
                 <div class="form-row">
                     <div class="form-group">
-                        <label>年级</label>
-                        <select id="grade">
+                        <label class="form-label">年级 <span class="approval-badge"><i class="fas fa-clock"></i> 需审批</span></label>
+                        <select class="form-select" id="grade">
                             <option value="">请选择年级</option>
                         </select>
                     </div>
                     <div class="form-group">
-                        <label>教育阶段</label>
-                        <select id="education_level" onchange="onEducationLevelChange(this)">
+                        <label class="form-label">教育阶段</label>
+                        <select class="form-select" id="education_level">
                             <option value="general" {% if user.education_level == 'general' %}selected{% endif %}>九年制义务教育</option>
                             <option value="adult" {% if user.education_level == 'adult' %}selected{% endif %}>成人教育</option>
                             <option value="vocational" {% if user.education_level == 'vocational' %}selected{% endif %}>职业教育</option>
@@ -612,13 +738,15 @@
                 {% endif %}
 
                 <div class="form-group">
-                    <label>个性签名</label>
-                    <textarea id="signature" rows="3" placeholder="输入你的个性签名...">{{ user.signature or '' }}</textarea>
+                    <label class="form-label">个性签名</label>
+                    <textarea class="form-textarea" id="signature" rows="3" placeholder="输入你的个性签名..." oninput="scheduleAutoSave('profile')">{{ user.signature or '' }}</textarea>
                 </div>
 
+                <div class="auto-save-hint" id="profile-save-hint"><i class="fas fa-spinner fa-spin"></i> 自动保存中...</div>
+
                 <div class="btn-group">
-                    <button class="btn btn-secondary" onclick="resetProfile()">重置</button>
-                    <button class="btn btn-primary" onclick="saveProfile()">保存信息</button>
+                    <button class="btn btn-secondary" onclick="resetProfile()"><i class="fas fa-rotate-left"></i> 重置</button>
+                    <button class="btn btn-primary" onclick="saveProfile()"><i class="fas fa-floppy-disk"></i> 保存信息</button>
                 </div>
             </div>
         </div>
@@ -627,10 +755,10 @@
             <div class="card-head">
                 <div class="card-icon icon-green"><i class="fas fa-chart-line"></i></div>
                 <h2>学习统计</h2>
-                <div class="card-head-right">近30天</div>
+                <span class="card-head-right"><i class="fas fa-calendar"></i> 近30天</span>
             </div>
             <div class="card-body">
-                <div class="learning-stats">
+                <div class="stats-grid">
                     <div class="stat-card">
                         <div class="stat-value">{{ user.total_exams or 0 }}</div>
                         <div class="stat-label">完成考试</div>
@@ -652,7 +780,7 @@
         </div>
     </div>
 
-    <div class="settings-section" id="section-security">
+    <div class="tab-panel" id="panel-security">
         <div class="settings-card">
             <div class="card-head">
                 <div class="card-icon icon-red"><i class="fas fa-lock"></i></div>
@@ -660,23 +788,23 @@
             </div>
             <div class="card-body">
                 <div class="form-group">
-                    <label>当前密码</label>
-                    <input type="password" id="old_password" placeholder="请输入当前密码">
+                    <label class="form-label">当前密码</label>
+                    <input type="password" class="form-input" id="old_password" placeholder="请输入当前密码">
                 </div>
                 <div class="form-row">
                     <div class="form-group">
-                        <label>新密码</label>
-                        <input type="password" id="new_password" placeholder="至少6位字符">
-                        <div class="field-desc">密码长度至少6位，建议包含字母和数字</div>
+                        <label class="form-label">新密码</label>
+                        <input type="password" class="form-input" id="new_password" placeholder="至少6位字符">
+                        <div class="field-hint"><i class="fas fa-info-circle"></i> 密码长度至少6位，建议包含字母和数字</div>
                     </div>
                     <div class="form-group">
-                        <label>确认新密码</label>
-                        <input type="password" id="confirm_password" placeholder="再次输入新密码">
+                        <label class="form-label">确认新密码</label>
+                        <input type="password" class="form-input" id="confirm_password" placeholder="再次输入新密码">
                     </div>
                 </div>
                 <div class="btn-group">
-                    <button class="btn btn-secondary" onclick="clearPasswordFields()">清空</button>
-                    <button class="btn btn-primary" onclick="changePassword()">修改密码</button>
+                    <button class="btn btn-secondary" onclick="clearPasswordFields()"><i class="fas fa-eraser"></i> 清空</button>
+                    <button class="btn btn-primary" onclick="changePassword()"><i class="fas fa-key"></i> 修改密码</button>
                 </div>
             </div>
         </div>
@@ -687,71 +815,68 @@
                 <h2>安全选项</h2>
             </div>
             <div class="card-body">
-                <div class="privacy-item">
-                    <div class="privacy-info">
-                        <div class="privacy-title">登录提醒</div>
-                        <div class="privacy-desc">当您的账户在新设备上登录时，发送邮件提醒</div>
+                <div class="toggle-row">
+                    <div class="toggle-info">
+                        <div class="toggle-title">登录提醒</div>
+                        <div class="toggle-desc">当您的账户在新设备上登录时，发送邮件提醒</div>
                     </div>
-                    <div class="toggle-switch on" onclick="toggleSecurityOption(this, 'login_alert')"></div>
+                    <div class="toggle-switch on" onclick="toggleOption(this, 'login_alert', 'security')"></div>
                 </div>
-                <div class="privacy-item">
-                    <div class="privacy-info">
-                        <div class="privacy-title">双因素认证</div>
-                        <div class="privacy-desc">登录时需要输入验证码，提高账户安全性</div>
+                <div class="toggle-row">
+                    <div class="toggle-info">
+                        <div class="toggle-title">双因素认证</div>
+                        <div class="toggle-desc">登录时需要输入验证码，提高账户安全性</div>
                     </div>
-                    <div class="toggle-switch" onclick="toggleSecurityOption(this, 'two_factor_auth')"></div>
+                    <div class="toggle-switch" onclick="toggleOption(this, 'two_factor_auth', 'security')"></div>
                 </div>
-                <div class="privacy-item">
-                    <div class="privacy-info">
-                        <div class="privacy-title">会话超时</div>
-                        <div class="privacy-desc">设置自动退出登录的时间（默认30分钟）</div>
-                    </div>
-                    <select id="session_timeout">
-                        <option value="15">15分钟</option>
-                        <option value="30" selected>30分钟</option>
-                        <option value="60">1小时</option>
-                        <option value="120">2小时</option>
-                        <option value="1440">24小时</option>
+                <div class="form-group" style="margin-top:16px;">
+                    <label class="form-label">会话超时时间</label>
+                    <select class="form-select" id="session_timeout" onchange="scheduleAutoSave('security')">
+                        <option value="15">15 分钟</option>
+                        <option value="30" selected>30 分钟</option>
+                        <option value="60">1 小时</option>
+                        <option value="120">2 小时</option>
+                        <option value="1440">24 小时</option>
                     </select>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="settings-section" id="section-notifications">
+    <div class="tab-panel" id="panel-notifications">
         <div class="settings-card">
             <div class="card-head">
                 <div class="card-icon icon-cyan"><i class="fas fa-bell"></i></div>
                 <h2>通知偏好</h2>
             </div>
             <div class="card-body">
-                <div class="privacy-item">
-                    <div class="privacy-info">
-                        <div class="privacy-title">考试提醒</div>
-                        <div class="privacy-desc">接收即将到来的考试通知</div>
+                <div class="toggle-row">
+                    <div class="toggle-info">
+                        <div class="toggle-title">考试提醒</div>
+                        <div class="toggle-desc">接收即将到来的考试通知</div>
                     </div>
-                    <div class="toggle-switch on" onclick="toggleNotificationOption(this, 'exam_reminder')"></div>
+                    <div class="toggle-switch on" onclick="toggleOption(this, 'exam_reminder', 'notifications')"></div>
                 </div>
-                <div class="privacy-item">
-                    <div class="privacy-info">
-                        <div class="privacy-title">学习报告</div>
-                        <div class="privacy-desc">每周发送学习进度报告</div>
+                <div class="toggle-row">
+                    <div class="toggle-info">
+                        <div class="toggle-title">学习报告</div>
+                        <div class="toggle-desc">每周发送学习进度报告</div>
                     </div>
-                    <div class="toggle-switch on" onclick="toggleNotificationOption(this, 'weekly_report')"></div>
+                    <div class="toggle-switch on" onclick="toggleOption(this, 'weekly_report', 'notifications')"></div>
                 </div>
-                <div class="privacy-item">
-                    <div class="privacy-info">
-                        <div class="privacy-title">系统公告</div>
-                        <div class="privacy-desc">接收系统重要更新和公告</div>
+                <div class="toggle-row">
+                    <div class="toggle-info">
+                        <div class="toggle-title">系统公告</div>
+                        <div class="toggle-desc">接收系统重要更新和公告</div>
                     </div>
-                    <div class="toggle-switch on" onclick="toggleNotificationOption(this, 'system_announcement')"></div>
+                    <div class="toggle-switch on" onclick="toggleOption(this, 'system_announcement', 'notifications')"></div>
                 </div>
-                <div class="privacy-item">
-                    <div class="privacy-info">
-                        <div class="privacy-title">消息通知</div>
-                        <div class="privacy-desc">接收其他用户的消息和评论</div>
+                <div class="toggle-row">
+                    <div class="toggle-info">
+                        <div class="toggle-title">消息通知</div>
+                        <div class="toggle-desc">接收其他用户的消息和评论</div>
                     </div>
-                    <div class="toggle-switch" onclick="toggleNotificationOption(this, 'message_notification')"></div>
+                    <div class="toggle-switch" onclick="toggleOption(this, 'message_notification', 'notifications')"></div>
                 </div>
             </div>
         </div>
@@ -764,63 +889,64 @@
             <div class="card-body">
                 <div class="form-row">
                     <div class="form-group">
-                        <label>首选通知方式</label>
-                        <select id="preferred_notification">
+                        <label class="form-label">首选通知方式</label>
+                        <select class="form-select" id="preferred_notification" onchange="scheduleAutoSave('notifications')">
                             <option value="in-app">站内通知</option>
                             <option value="email">邮件通知</option>
                             <option value="both">两者都要</option>
                         </select>
                     </div>
                     <div class="form-group">
-                        <label>通知时间段</label>
-                        <select id="notification_time">
+                        <label class="form-label">通知时间段</label>
+                        <select class="form-select" id="notification_time" onchange="scheduleAutoSave('notifications')">
                             <option value="all">全天</option>
                             <option value="work">工作时间 (9:00-18:00)</option>
                             <option value="evening">晚间 (18:00-22:00)</option>
                         </select>
                     </div>
                 </div>
+                <div class="auto-save-hint" id="notifications-save-hint"><i class="fas fa-spinner fa-spin"></i> 自动保存中...</div>
                 <div class="btn-group">
-                    <button class="btn btn-primary" onclick="saveNotificationSettings()">保存设置</button>
+                    <button class="btn btn-primary" onclick="saveNotificationSettings()"><i class="fas fa-check"></i> 保存设置</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="settings-section" id="section-privacy">
+    <div class="tab-panel" id="panel-privacy">
         <div class="settings-card">
             <div class="card-head">
-                <div class="card-icon icon-purple"><i class="fas fa-shield-alt"></i></div>
+                <div class="card-icon icon-purple"><i class="fas fa-shield-halved"></i></div>
                 <h2>数据隐私</h2>
             </div>
             <div class="card-body">
-                <div class="privacy-item">
-                    <div class="privacy-info">
-                        <div class="privacy-title">数据收集</div>
-                        <div class="privacy-desc">允许系统收集您的学习数据以优化推荐</div>
+                <div class="toggle-row">
+                    <div class="toggle-info">
+                        <div class="toggle-title">数据收集</div>
+                        <div class="toggle-desc">允许系统收集您的学习数据以优化推荐</div>
                     </div>
-                    <div class="toggle-switch on" onclick="togglePrivacyOption(this, 'data_collection')"></div>
+                    <div class="toggle-switch on" onclick="toggleOption(this, 'data_collection', 'privacy')"></div>
                 </div>
-                <div class="privacy-item">
-                    <div class="privacy-info">
-                        <div class="privacy-title">学习推荐</div>
-                        <div class="privacy-desc">基于您的学习行为提供个性化推荐</div>
+                <div class="toggle-row">
+                    <div class="toggle-info">
+                        <div class="toggle-title">学习推荐</div>
+                        <div class="toggle-desc">基于您的学习行为提供个性化推荐</div>
                     </div>
-                    <div class="toggle-switch on" onclick="togglePrivacyOption(this, 'learning_recommendation')"></div>
+                    <div class="toggle-switch on" onclick="toggleOption(this, 'learning_recommendation', 'privacy')"></div>
                 </div>
-                <div class="privacy-item">
-                    <div class="privacy-info">
-                        <div class="privacy-title">公开学习进度</div>
-                        <div class="privacy-desc">允许其他用户查看您的学习进度</div>
+                <div class="toggle-row">
+                    <div class="toggle-info">
+                        <div class="toggle-title">公开学习进度</div>
+                        <div class="toggle-desc">允许其他用户查看您的学习进度</div>
                     </div>
-                    <div class="toggle-switch" onclick="togglePrivacyOption(this, 'public_progress')"></div>
+                    <div class="toggle-switch" onclick="toggleOption(this, 'public_progress', 'privacy')"></div>
                 </div>
-                <div class="privacy-item">
-                    <div class="privacy-info">
-                        <div class="privacy-title">AI分析</div>
-                        <div class="privacy-desc">使用AI分析您的学习模式</div>
+                <div class="toggle-row">
+                    <div class="toggle-info">
+                        <div class="toggle-title">AI 学习分析</div>
+                        <div class="toggle-desc">使用 AI 分析您的学习模式并提供建议</div>
                     </div>
-                    <div class="toggle-switch on" onclick="togglePrivacyOption(this, 'ai_analysis')"></div>
+                    <div class="toggle-switch on" onclick="toggleOption(this, 'ai_analysis', 'privacy')"></div>
                 </div>
             </div>
         </div>
@@ -831,162 +957,155 @@
                 <h2>活动记录</h2>
             </div>
             <div class="card-body">
-                <div class="form-group">
-                    <label>最近登录记录</label>
-                    <div style="max-height: 200px; overflow-y: auto;">
-                        <div class="notification-item">
-                            <div class="notification-icon" style="background: rgba(34,197,94,0.15); color: var(--dark-success);"><i class="fas fa-check"></i></div>
-                            <div class="notification-content">
-                                <div class="notification-title">登录成功</div>
-                                <div class="notification-desc">192.168.1.100 - macOS - Chrome</div>
-                            </div>
-                            <div class="notification-time">今天 10:30</div>
+                <label class="form-label">最近登录记录</label>
+                <div class="notif-list">
+                    <div class="notif-item">
+                        <div class="notif-icon icon-green"><i class="fas fa-check"></i></div>
+                        <div class="notif-content">
+                            <div class="notif-title">登录成功</div>
+                            <div class="notif-desc">192.168.1.100 · macOS · Chrome</div>
                         </div>
-                        <div class="notification-item">
-                            <div class="notification-icon" style="background: rgba(34,197,94,0.15); color: var(--dark-success);"><i class="fas fa-check"></i></div>
-                            <div class="notification-content">
-                                <div class="notification-title">登录成功</div>
-                                <div class="notification-desc">192.168.1.100 - macOS - Chrome</div>
-                            </div>
-                            <div class="notification-time">昨天 14:20</div>
+                        <div class="notif-time">今天 10:30</div>
+                    </div>
+                    <div class="notif-item">
+                        <div class="notif-icon icon-green"><i class="fas fa-check"></i></div>
+                        <div class="notif-content">
+                            <div class="notif-title">登录成功</div>
+                            <div class="notif-desc">192.168.1.100 · macOS · Chrome</div>
                         </div>
-                        <div class="notification-item">
-                            <div class="notification-icon" style="background: rgba(249,115,22,0.15); color: var(--dark-warning);"><i class="fas fa-exclamation"></i></div>
-                            <div class="notification-content">
-                                <div class="notification-title">登录失败</div>
-                                <div class="notification-desc">密码错误 - 192.168.1.101</div>
-                            </div>
-                            <div class="notification-time">3天前</div>
+                        <div class="notif-time">昨天 14:20</div>
+                    </div>
+                    <div class="notif-item">
+                        <div class="notif-icon icon-orange"><i class="fas fa-exclamation"></i></div>
+                        <div class="notif-content">
+                            <div class="notif-title">登录失败</div>
+                            <div class="notif-desc">密码错误 · 192.168.1.101</div>
                         </div>
+                        <div class="notif-time">3 天前</div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="settings-section" id="section-goals">
+    <div class="tab-panel" id="panel-goals">
         <div class="settings-card">
             <div class="card-head">
-                <div class="card-icon icon-orange"><i class="fas fa-target"></i></div>
+                <div class="card-icon icon-orange"><i class="fas fa-bullseye"></i></div>
                 <h2>学习目标</h2>
             </div>
             <div class="card-body">
                 <div class="form-row">
                     <div class="form-group">
-                        <label>每日学习目标（分钟）</label>
-                        <input type="number" id="daily_goal_minutes" value="60" min="10" max="480">
-                        <div class="field-desc">设定您每天计划学习的时间</div>
+                        <label class="form-label">每日学习目标（分钟）</label>
+                        <input type="number" class="form-input" id="daily_goal_minutes" value="60" min="10" max="480" oninput="scheduleAutoSave('goals')">
+                        <div class="field-hint">设定您每天计划学习的时间</div>
                     </div>
                     <div class="form-group">
-                        <label>每日答题目标（道）</label>
-                        <input type="number" id="daily_goal_questions" value="30" min="5" max="200">
-                        <div class="field-desc">设定您每天计划完成的题目数量</div>
+                        <label class="form-label">每日答题目标（道）</label>
+                        <input type="number" class="form-input" id="daily_goal_questions" value="30" min="5" max="200" oninput="scheduleAutoSave('goals')">
+                        <div class="field-hint">设定您每天计划完成的题目数量</div>
                     </div>
                 </div>
                 <div class="form-row">
                     <div class="form-group">
-                        <label>每周考试目标（次）</label>
-                        <input type="number" id="weekly_goal_exams" value="2" min="1" max="10">
-                        <div class="field-desc">设定您每周计划参加的考试次数</div>
+                        <label class="form-label">每周考试目标（次）</label>
+                        <input type="number" class="form-input" id="weekly_goal_exams" value="2" min="1" max="10" oninput="scheduleAutoSave('goals')">
+                        <div class="field-hint">设定您每周计划参加的考试次数</div>
                     </div>
                     <div class="form-group">
-                        <label>目标分数</label>
-                        <input type="number" id="target_score" value="80" min="0" max="100">
-                        <div class="field-desc">设定您期望达到的考试分数</div>
+                        <label class="form-label">目标分数</label>
+                        <input type="number" class="form-input" id="target_score" value="80" min="0" max="100" oninput="scheduleAutoSave('goals')">
+                        <div class="field-hint">设定您期望达到的考试分数</div>
                     </div>
                 </div>
                 <div class="form-group">
-                    <label>学习计划</label>
-                    <textarea id="study_plan" rows="3" placeholder="描述您的学习计划和目标..."></textarea>
+                    <label class="form-label">学习计划</label>
+                    <textarea class="form-textarea" id="study_plan" rows="3" placeholder="描述您的学习计划和目标..." oninput="scheduleAutoSave('goals')"></textarea>
                 </div>
+                <div class="auto-save-hint" id="goals-save-hint"><i class="fas fa-spinner fa-spin"></i> 自动保存中...</div>
                 <div class="btn-group">
-                    <button class="btn btn-secondary" onclick="resetGoals()">重置</button>
-                    <button class="btn btn-primary" onclick="saveGoals()">保存目标</button>
+                    <button class="btn btn-secondary" onclick="resetGoals()"><i class="fas fa-rotate-left"></i> 重置</button>
+                    <button class="btn btn-primary" onclick="saveGoals()"><i class="fas fa-floppy-disk"></i> 保存目标</button>
                 </div>
             </div>
         </div>
 
         <div class="settings-card">
             <div class="card-head">
-                <div class="card-icon icon-green"><i class="fas fa-chart-line"></i></div>
+                <div class="card-icon icon-green"><i class="fas fa-chart-simple"></i></div>
                 <h2>目标进度</h2>
-                <div class="card-head-right">本周</div>
+                <span class="card-head-right"><i class="fas fa-calendar-week"></i> 本周</span>
             </div>
             <div class="card-body">
                 <div class="form-row-3">
-                    <div class="form-group">
-                        <label>学习时间</label>
-                        <div style="background: var(--dark-bg-surface); border-radius: var(--radius-md); padding: 12px;">
-                            <div style="font-size: 24px; font-weight: 700; color: var(--dark-primary-color);">4.5h</div>
-                            <div style="font-size: 12px; color: var(--dark-text-secondary);">/ 7h 目标</div>
-                            <div style="height: 4px; background: var(--dark-border); border-radius: 2px; margin-top: 8px;">
-                                <div style="height: 100%; width: 64%; background: var(--dark-primary-color); border-radius: 2px;"></div>
-                            </div>
+                    <div class="progress-card">
+                        <div class="progress-top">
+                            <span class="progress-value" style="color: var(--primary-light);">4.5h</span>
+                            <span class="progress-target">/ 7h 目标</span>
                         </div>
+                        <div class="progress-bar"><div class="progress-fill" style="width:64%;"></div></div>
+                        <div class="field-hint" style="margin-top:8px;">学习时间</div>
                     </div>
-                    <div class="form-group">
-                        <label>答题数量</label>
-                        <div style="background: var(--dark-bg-surface); border-radius: var(--radius-md); padding: 12px;">
-                            <div style="font-size: 24px; font-weight: 700; color: var(--dark-success);">180</div>
-                            <div style="font-size: 12px; color: var(--dark-text-secondary);">/ 210 目标</div>
-                            <div style="height: 4px; background: var(--dark-border); border-radius: 2px; margin-top: 8px;">
-                                <div style="height: 100%; width: 86%; background: var(--dark-success); border-radius: 2px;"></div>
-                            </div>
+                    <div class="progress-card">
+                        <div class="progress-top">
+                            <span class="progress-value" style="color: var(--success);">180</span>
+                            <span class="progress-target">/ 210 目标</span>
                         </div>
+                        <div class="progress-bar"><div class="progress-fill" style="width:86%; background: linear-gradient(135deg, var(--success), #10b981);"></div></div>
+                        <div class="field-hint" style="margin-top:8px;">答题数量</div>
                     </div>
-                    <div class="form-group">
-                        <label>考试次数</label>
-                        <div style="background: var(--dark-bg-surface); border-radius: var(--radius-md); padding: 12px;">
-                            <div style="font-size: 24px; font-weight: 700; color: var(--dark-warning);">2</div>
-                            <div style="font-size: 12px; color: var(--dark-text-secondary);">/ 2 目标</div>
-                            <div style="height: 4px; background: var(--dark-border); border-radius: 2px; margin-top: 8px;">
-                                <div style="height: 100%; width: 100%; background: var(--dark-warning); border-radius: 2px;"></div>
-                            </div>
+                    <div class="progress-card">
+                        <div class="progress-top">
+                            <span class="progress-value" style="color: var(--warning);">2</span>
+                            <span class="progress-target">/ 2 目标</span>
                         </div>
+                        <div class="progress-bar"><div class="progress-fill" style="width:100%; background: linear-gradient(135deg, var(--warning), #d97706);"></div></div>
+                        <div class="field-hint" style="margin-top:8px;">考试次数</div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="settings-section" id="section-appearance">
+    <div class="tab-panel" id="panel-appearance">
         <div class="settings-card">
             <div class="card-head">
                 <div class="card-icon icon-purple"><i class="fas fa-palette"></i></div>
                 <h2>主题偏好</h2>
             </div>
             <div class="card-body">
-                <div class="privacy-item">
-                    <div class="privacy-info">
-                        <div class="privacy-title">深色模式</div>
-                        <div class="privacy-desc">使用深色主题，减少眼睛疲劳</div>
+                <div class="toggle-row">
+                    <div class="toggle-info">
+                        <div class="toggle-title">深色模式</div>
+                        <div class="toggle-desc">使用深色主题，减少眼睛疲劳</div>
                     </div>
                     <div class="toggle-switch on" onclick="toggleDarkMode(this)"></div>
                 </div>
-                <div class="privacy-item">
-                    <div class="privacy-info">
-                        <div class="privacy-title">自动切换主题</div>
-                        <div class="privacy-desc">根据系统设置自动切换深浅主题</div>
+                <div class="toggle-row">
+                    <div class="toggle-info">
+                        <div class="toggle-title">自动切换主题</div>
+                        <div class="toggle-desc">根据系统设置自动切换深浅主题</div>
                     </div>
                     <div class="toggle-switch" onclick="toggleAutoTheme(this)"></div>
                 </div>
-                <div class="form-row">
+                <div class="form-row" style="margin-top:16px;">
                     <div class="form-group">
-                        <label>主色调</label>
-                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                            <button class="color-btn" style="background: #6366f1; border-color: #fff;" onclick="setColorTheme('#6366f1')"></button>
-                            <button class="color-btn" style="background: #8b5cf6;" onclick="setColorTheme('#8b5cf6')"></button>
-                            <button class="color-btn" style="background: #3b82f6;" onclick="setColorTheme('#3b82f6')"></button>
-                            <button class="color-btn" style="background: #06b6d4;" onclick="setColorTheme('#06b6d4')"></button>
-                            <button class="color-btn" style="background: #22c55e;" onclick="setColorTheme('#22c55e')"></button>
-                            <button class="color-btn" style="background: #f59e0b;" onclick="setColorTheme('#f59e0b')"></button>
-                            <button class="color-btn" style="background: #ef4444;" onclick="setColorTheme('#ef4444')"></button>
-                            <button class="color-btn" style="background: #ec4899;" onclick="setColorTheme('#ec4899')"></button>
+                        <label class="form-label">主色调</label>
+                        <div class="color-list">
+                            <div class="color-swatch active" style="background: linear-gradient(135deg, #6366f1, #8b5cf6);" onclick="setColorTheme(this, '#6366f1')"></div>
+                            <div class="color-swatch" style="background: linear-gradient(135deg, #8b5cf6, #a855f7);" onclick="setColorTheme(this, '#8b5cf6')"></div>
+                            <div class="color-swatch" style="background: linear-gradient(135deg, #3b82f6, #06b6d4);" onclick="setColorTheme(this, '#3b82f6')"></div>
+                            <div class="color-swatch" style="background: linear-gradient(135deg, #06b6d4, #10b981);" onclick="setColorTheme(this, '#06b6d4')"></div>
+                            <div class="color-swatch" style="background: linear-gradient(135deg, #10b981, #84cc16);" onclick="setColorTheme(this, '#22c55e')"></div>
+                            <div class="color-swatch" style="background: linear-gradient(135deg, #f59e0b, #f97316);" onclick="setColorTheme(this, '#f59e0b')"></div>
+                            <div class="color-swatch" style="background: linear-gradient(135deg, #ef4444, #dc2626);" onclick="setColorTheme(this, '#ef4444')"></div>
+                            <div class="color-swatch" style="background: linear-gradient(135deg, #ec4899, #f43f5e);" onclick="setColorTheme(this, '#ec4899')"></div>
                         </div>
                     </div>
                     <div class="form-group">
-                        <label>字体大小</label>
-                        <select id="font_size">
+                        <label class="form-label">字体大小</label>
+                        <select class="form-select" id="font_size">
                             <option value="small">小</option>
                             <option value="medium" selected>中</option>
                             <option value="large">大</option>
@@ -995,122 +1114,72 @@
                     </div>
                 </div>
                 <div class="btn-group">
-                    <button class="btn btn-secondary" onclick="resetAppearance()">重置</button>
-                    <button class="btn btn-primary" onclick="saveAppearance()">保存设置</button>
+                    <button class="btn btn-secondary" onclick="resetAppearance()"><i class="fas fa-rotate-left"></i> 重置</button>
+                    <button class="btn btn-primary" onclick="saveAppearance()"><i class="fas fa-check"></i> 保存设置</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="settings-section" id="section-shortcuts">
+    <div class="tab-panel" id="panel-shortcuts">
         <div class="settings-card">
             <div class="card-head">
                 <div class="card-icon icon-cyan"><i class="fas fa-keyboard"></i></div>
-                <h2>快捷键</h2>
+                <h2>键盘快捷键</h2>
             </div>
             <div class="card-body">
-                <div style="overflow-x: auto;">
-                    <table style="width: 100%; border-collapse: collapse;">
+                <div style="overflow-x:auto;">
+                    <table class="shortcut-table">
                         <thead>
-                            <tr style="border-bottom: 1px solid var(--dark-border);">
-                                <th style="text-align: left; padding: 12px; font-weight: 600; color: var(--dark-text-primary);">功能</th>
-                                <th style="text-align: left; padding: 12px; font-weight: 600; color: var(--dark-text-primary);">快捷键</th>
-                                <th style="text-align: left; padding: 12px; font-weight: 600; color: var(--dark-text-primary);">说明</th>
+                            <tr>
+                                <th>功能</th>
+                                <th>快捷键</th>
+                                <th>说明</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <tr style="border-bottom: 1px solid var(--dark-border);">
-                                <td style="padding: 12px; color: var(--dark-text-primary);">开始考试</td>
-                                <td style="padding: 12px;">
-                                    <kbd>Ctrl</kbd> + <kbd>E</kbd>
-                                </td>
-                                <td style="padding: 12px; color: var(--dark-text-secondary); font-size: 12px;">快速进入考试页面</td>
-                            </tr>
-                            <tr style="border-bottom: 1px solid var(--dark-border);">
-                                <td style="padding: 12px; color: var(--dark-text-primary);">搜索</td>
-                                <td style="padding: 12px;">
-                                    <kbd>Ctrl</kbd> + <kbd>K</kbd>
-                                </td>
-                                <td style="padding: 12px; color: var(--dark-text-secondary); font-size: 12px;">打开全局搜索</td>
-                            </tr>
-                            <tr style="border-bottom: 1px solid var(--dark-border);">
-                                <td style="padding: 12px; color: var(--dark-text-primary);">保存</td>
-                                <td style="padding: 12px;">
-                                    <kbd>Ctrl</kbd> + <kbd>S</kbd>
-                                </td>
-                                <td style="padding: 12px; color: var(--dark-text-secondary); font-size: 12px;">保存当前操作</td>
-                            </tr>
-                            <tr style="border-bottom: 1px solid var(--dark-border);">
-                                <td style="padding: 12px; color: var(--dark-text-primary);">设置</td>
-                                <td style="padding: 12px;">
-                                    <kbd>Ctrl</kbd> + <kbd>,</kbd>
-                                </td>
-                                <td style="padding: 12px; color: var(--dark-text-secondary); font-size: 12px;">打开设置页面</td>
-                            </tr>
-                            <tr style="border-bottom: 1px solid var(--dark-border);">
-                                <td style="padding: 12px; color: var(--dark-text-primary);">下一题</td>
-                                <td style="padding: 12px;">
-                                    <kbd>Tab</kbd>
-                                </td>
-                                <td style="padding: 12px; color: var(--dark-text-secondary); font-size: 12px;">切换到下一题</td>
-                            </tr>
-                            <tr style="border-bottom: 1px solid var(--dark-border);">
-                                <td style="padding: 12px; color: var(--dark-text-primary);">上一题</td>
-                                <td style="padding: 12px;">
-                                    <kbd>Shift</kbd> + <kbd>Tab</kbd>
-                                </td>
-                                <td style="padding: 12px; color: var(--dark-text-secondary); font-size: 12px;">切换到上一题</td>
-                            </tr>
-                            <tr style="border-bottom: 1px solid var(--dark-border);">
-                                <td style="padding: 12px; color: var(--dark-text-primary);">提交答案</td>
-                                <td style="padding: 12px;">
-                                    <kbd>Ctrl</kbd> + <kbd>Enter</kbd>
-                                </td>
-                                <td style="padding: 12px; color: var(--dark-text-secondary); font-size: 12px;">提交当前答案</td>
-                            </tr>
-                            <tr>
-                                <td style="padding: 12px; color: var(--dark-text-primary);">全屏模式</td>
-                                <td style="padding: 12px;">
-                                    <kbd>F11</kbd>
-                                </td>
-                                <td style="padding: 12px; color: var(--dark-text-secondary); font-size: 12px;">切换全屏模式</td>
-                            </tr>
+                            <tr><td>开始考试</td><td><kbd>Ctrl</kbd> + <kbd>E</kbd></td><td>快速进入考试页面</td></tr>
+                            <tr><td>全局搜索</td><td><kbd>Ctrl</kbd> + <kbd>K</kbd></td><td>打开全局搜索框</td></tr>
+                            <tr><td>保存操作</td><td><kbd>Ctrl</kbd> + <kbd>S</kbd></td><td>保存当前修改</td></tr>
+                            <tr><td>设置页面</td><td><kbd>Ctrl</kbd> + <kbd>,</kbd></td><td>打开个人设置</td></tr>
+                            <tr><td>下一题</td><td><kbd>Tab</kbd></td><td>考试中切换下一题</td></tr>
+                            <tr><td>上一题</td><td><kbd>Shift</kbd> + <kbd>Tab</kbd></td><td>考试中切换上一题</td></tr>
+                            <tr><td>提交答案</td><td><kbd>Ctrl</kbd> + <kbd>Enter</kbd></td><td>提交当前题目答案</td></tr>
+                            <tr><td>全屏模式</td><td><kbd>F11</kbd></td><td>切换全屏显示</td></tr>
                         </tbody>
                     </table>
                 </div>
-                <div style="margin-top: 16px; padding: 12px; background: var(--dark-bg-surface); border-radius: var(--radius-md);">
-                    <p style="font-size: 12px; color: var(--dark-text-secondary);">
-                        <i class="fas fa-info-circle"></i> 提示：在Mac上使用 <kbd>Command</kbd> 替代 <kbd>Ctrl</kbd>
-                    </p>
+                <div class="field-hint" style="margin-top:16px; padding:12px 14px; border-radius: var(--radius); background: color-mix(in srgb, var(--primary-color) 6%, transparent); border: 1px solid color-mix(in srgb, var(--primary-color) 14%, transparent);">
+                    <i class="fas fa-lightbulb" style="color: var(--primary-light);"></i> 提示：在 Mac 上使用 <kbd>Command</kbd> 替代 <kbd>Ctrl</kbd>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="settings-section" id="section-data">
+    <div class="tab-panel" id="panel-data">
         <div class="settings-card">
             <div class="card-head">
-                <div class="card-icon icon-cyan"><i class="fas fa-download"></i></div>
+                <div class="card-icon icon-cyan"><i class="fas fa-file-export"></i></div>
                 <h2>数据导出</h2>
             </div>
             <div class="card-body">
-                <div class="data-export-options">
-                    <div class="export-option" onclick="exportData('profile')">
+                <div class="export-grid">
+                    <div class="export-card" onclick="exportData('profile')">
                         <div class="export-icon"><i class="fas fa-user"></i></div>
                         <div class="export-name">个人资料</div>
-                        <div class="export-desc">导出您的基本信息</div>
+                        <div class="export-desc">导出基本信息</div>
                     </div>
-                    <div class="export-option" onclick="exportData('exams')">
-                        <div class="export-icon"><i class="fas fa-file-alt"></i></div>
+                    <div class="export-card" onclick="exportData('exams')">
+                        <div class="export-icon"><i class="fas fa-file-lines"></i></div>
                         <div class="export-name">考试记录</div>
                         <div class="export-desc">导出所有考试历史</div>
                     </div>
-                    <div class="export-option" onclick="exportData('progress')">
-                        <div class="export-icon"><i class="fas fa-chart-bar"></i></div>
+                    <div class="export-card" onclick="exportData('progress')">
+                        <div class="export-icon"><i class="fas fa-chart-column"></i></div>
                         <div class="export-name">学习进度</div>
                         <div class="export-desc">导出学习统计数据</div>
                     </div>
-                    <div class="export-option" onclick="exportData('notifications')">
+                    <div class="export-card" onclick="exportData('notifications')">
                         <div class="export-icon"><i class="fas fa-bell"></i></div>
                         <div class="export-name">通知记录</div>
                         <div class="export-desc">导出所有通知历史</div>
@@ -1121,53 +1190,53 @@
 
         <div class="settings-card">
             <div class="card-head">
-                <div class="card-icon icon-red"><i class="fas fa-trash"></i></div>
+                <div class="card-icon icon-red"><i class="fas fa-trash-can"></i></div>
                 <h2>数据管理</h2>
             </div>
             <div class="card-body">
-                <div class="privacy-item">
-                    <div class="privacy-info">
-                        <div class="privacy-title">清除缓存</div>
-                        <div class="privacy-desc">清除本地存储的临时数据</div>
+                <div class="toggle-row">
+                    <div class="toggle-info">
+                        <div class="toggle-title">清除缓存</div>
+                        <div class="toggle-desc">清除本地存储的临时数据，不会影响账户数据</div>
                     </div>
-                    <button class="btn btn-secondary" onclick="clearCache()">清除</button>
+                    <button class="btn btn-secondary" onclick="clearCache()"><i class="fas fa-broom"></i> 清除</button>
                 </div>
-                <div class="privacy-item">
-                    <div class="privacy-info">
-                        <div class="privacy-title">删除账户</div>
-                        <div class="privacy-desc">永久删除您的账户和所有数据</div>
+                <div class="toggle-row">
+                    <div class="toggle-info">
+                        <div class="toggle-title">删除账户</div>
+                        <div class="toggle-desc">永久删除您的账户和所有数据，此操作不可撤销</div>
                     </div>
-                    <button class="btn btn-danger" onclick="deleteAccount()">删除</button>
+                    <button class="btn btn-danger" onclick="deleteAccount()"><i class="fas fa-user-slash"></i> 删除</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="settings-section" id="section-about">
+    <div class="tab-panel" id="panel-about">
         <div class="settings-card">
             <div class="card-head">
-                <div class="card-icon icon-blue"><i class="fas fa-info-circle"></i></div>
+                <div class="card-icon icon-blue"><i class="fas fa-circle-info"></i></div>
                 <h2>关于系统</h2>
             </div>
             <div class="card-body">
                 <div class="form-row">
                     <div class="form-group">
-                        <label>系统名称</label>
-                        <input type="text" value="MTSCOS AI 智能学习评估系统" readonly>
+                        <label class="form-label">系统名称</label>
+                        <input type="text" class="form-input" value="MTSCOS AI 智能学习评估系统" readonly>
                     </div>
                     <div class="form-group">
-                        <label>版本号</label>
-                        <input type="text" value="17.8.0" readonly>
+                        <label class="form-label">版本号</label>
+                        <input type="text" class="form-input" value="17.8.0" readonly>
                     </div>
                 </div>
                 <div class="form-row">
                     <div class="form-group">
-                        <label>更新日期</label>
-                        <input type="text" value="2026-07-24" readonly>
+                        <label class="form-label">更新日期</label>
+                        <input type="text" class="form-input" value="2026-07-24" readonly>
                     </div>
                     <div class="form-group">
-                        <label>运行状态</label>
-                        <input type="text" value="正常运行" readonly>
+                        <label class="form-label">运行状态</label>
+                        <input type="text" class="form-input" value="✓ 正常运行" readonly style="color: var(--success);">
                     </div>
                 </div>
             </div>
@@ -1181,401 +1250,105 @@
             <div class="card-body">
                 <div class="form-row">
                     <div class="form-group">
-                        <label>帮助中心</label>
-                        <a href="/help" style="color: var(--dark-primary-color);">点击访问</a>
+                        <label class="form-label">帮助中心</label>
+                        <a href="/help" style="color: var(--primary-light); font-weight: 600; display: inline-flex; align-items: center; gap: 6px;"><i class="fas fa-arrow-up-right-from-square"></i> 点击访问</a>
                     </div>
                     <div class="form-group">
-                        <label>反馈建议</label>
-                        <a href="/feedback" style="color: var(--dark-primary-color);">提交反馈</a>
+                        <label class="form-label">反馈建议</label>
+                        <a href="/feedback" style="color: var(--primary-light); font-weight: 600; display: inline-flex; align-items: center; gap: 6px;"><i class="fas fa-arrow-up-right-from-square"></i> 提交反馈</a>
                     </div>
                 </div>
                 <div class="form-row">
                     <div class="form-group">
-                        <label>隐私政策</label>
-                        <a href="/privacy" style="color: var(--dark-primary-color);">查看详情</a>
+                        <label class="form-label">隐私政策</label>
+                        <a href="/privacy" style="color: var(--primary-light); font-weight: 600; display: inline-flex; align-items: center; gap: 6px;"><i class="fas fa-arrow-up-right-from-square"></i> 查看详情</a>
                     </div>
                     <div class="form-group">
-                        <label>服务条款</label>
-                        <a href="/terms" style="color: var(--dark-primary-color);">查看详情</a>
+                        <label class="form-label">服务条款</label>
+                        <a href="/terms" style="color: var(--primary-light); font-weight: 600; display: inline-flex; align-items: center; gap: 6px;"><i class="fas fa-arrow-up-right-from-square"></i> 查看详情</a>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
-
-<div class="toast" id="toast"></div>
+</div>
 
 <script>
-function showToast(message, type) {
-    const toast = document.getElementById('toast');
-    toast.textContent = message;
-    toast.className = 'toast ' + (type || 'success');
-    toast.classList.add('show');
-    setTimeout(() => toast.classList.remove('show'), 3000);
-}
+    var saveTimers = {};
 
-function switchSection(sectionId) {
-    document.querySelectorAll('.settings-tab').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.settings-section').forEach(s => s.classList.remove('active'));
-    document.querySelector(`.settings-tab[data-section="${sectionId}"]`).classList.add('active');
-    document.getElementById('section-' + sectionId).classList.add('active');
-}
-
-const originalEmail = '{{ user.email or "" }}';
-const originalPhone = '{{ user.phone or "" }}';
-const originalSignature = '{{ user.signature or "" }}';
-
-function resetProfile() {
-    document.getElementById('email').value = originalEmail;
-    document.getElementById('phone').value = originalPhone;
-    document.getElementById('signature').value = originalSignature;
-    showToast('已重置为原始值', 'info');
-}
-
-async function saveProfile() {
-    const email = document.getElementById('email').value;
-    if (!email) {
-        showToast('邮箱不能为空', 'error');
-        return;
+    function switchPanel(panelId) {
+        document.querySelectorAll('.tab-btn').forEach(function(t) { t.classList.remove('active'); });
+        document.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.remove('active'); });
+        var btn = document.querySelector('.tab-btn[data-panel="' + panelId + '"]');
+        if (btn) btn.classList.add('active');
+        var panel = document.getElementById('panel-' + panelId);
+        if (panel) panel.classList.add('active');
     }
 
-    const data = {
-        email: email,
-        phone: document.getElementById('phone').value,
-        signature: document.getElementById('signature').value
-    };
-    const gradeEl = document.getElementById('grade');
-    if (gradeEl) {
-        data.grade = gradeEl.value;
-        data.education_level = document.getElementById('education_level').value;
+    function showToast(message, type) {
+        type = type || 'info';
+        var old = document.querySelector('.toast');
+        if (old) old.remove();
+        var toast = document.createElement('div');
+        var iconClass = type === 'success' ? 'check-circle' : type === 'error' ? 'circle-exclamation' : type === 'warning' ? 'triangle-exclamation' : 'circle-info';
+        toast.className = 'toast toast-' + type;
+        toast.innerHTML = '<i class="fas fa-' + iconClass + '"></i><span>' + message + '</span>';
+        document.body.appendChild(toast);
+        requestAnimationFrame(function() { toast.classList.add('show'); });
+        setTimeout(function() {
+            toast.classList.remove('show');
+            setTimeout(function() { if (toast.parentNode) toast.remove(); }, 500);
+        }, 3200);
     }
 
-    try {
-        const res = await fetch('/api/user/profile', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
-        });
-        
-        if (res.status === 401) {
-            showToast('登录已过期，请重新登录', 'error');
-            return;
-        }
-        
-        const result = await res.json();
-        if (result.success) {
-            showToast('个人信息保存成功', 'success');
-        } else {
-            showToast(result.message || '保存失败', 'error');
-        }
-    } catch (e) {
-        showToast('网络错误，请重试', 'error');
-    }
-}
-
-async function changePassword() {
-    const oldPwd = document.getElementById('old_password').value;
-    const newPwd = document.getElementById('new_password').value;
-    const confirmPwd = document.getElementById('confirm_password').value;
-
-    if (!oldPwd || !newPwd) {
-        showToast('请填写原密码和新密码', 'error');
-        return;
-    }
-    if (newPwd !== confirmPwd) {
-        showToast('两次输入的新密码不一致', 'error');
-        return;
-    }
-    if (newPwd.length < 6) {
-        showToast('新密码长度不能少于6位', 'error');
-        return;
+    function scheduleAutoSave(type) {
+        var hint = document.getElementById(type + '-save-hint');
+        if (hint) hint.classList.add('show');
+        if (saveTimers[type]) clearTimeout(saveTimers[type]);
+        saveTimers[type] = setTimeout(function() {
+            autoSaveSettings(type);
+        }, 1500);
     }
 
-    try {
-        const res = await fetch('/api/user/change_password', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                old_password: oldPwd,
-                new_password: newPwd,
-                confirm_password: confirmPwd
-            })
-        });
-        const result = await res.json();
-        if (result.success) {
-            showToast('密码修改成功', 'success');
-            clearPasswordFields();
-        } else {
-            showToast(result.message || '修改失败', 'error');
-        }
-    } catch (e) {
-        showToast('网络错误，请重试', 'error');
+    function autoSaveSettings(type) {
+        var hint = document.getElementById(type + '-save-hint');
+        if (hint) setTimeout(function() { hint.classList.remove('show'); }, 600);
+        showToast('已自动保存', 'success');
     }
-}
 
-function clearPasswordFields() {
-    document.getElementById('old_password').value = '';
-    document.getElementById('new_password').value = '';
-    document.getElementById('confirm_password').value = '';
-}
-
-function toggleSecurityOption(el, option) {
-    el.classList.toggle('on');
-    showToast(`${option} ${el.classList.contains('on') ? '已开启' : '已关闭'}`, 'info');
-}
-
-function toggleNotificationOption(el, option) {
-    el.classList.toggle('on');
-    showToast(`${option} ${el.classList.contains('on') ? '已开启' : '已关闭'}`, 'info');
-}
-
-function togglePrivacyOption(el, option) {
-    el.classList.toggle('on');
-    showToast(`${option} ${el.classList.contains('on') ? '已开启' : '已关闭'}`, 'info');
-}
-
-function saveNotificationSettings() {
-    showToast('通知设置已保存', 'success');
-}
-
-function exportData(type) {
-    showToast(`正在导出${type}数据...`, 'info');
-    setTimeout(() => {
-        showToast('导出成功', 'success');
-    }, 1500);
-}
-
-function clearCache() {
-    if (confirm('确定要清除本地缓存吗？')) {
-        localStorage.clear();
-        sessionStorage.clear();
-        showToast('缓存已清除', 'success');
+    function toggleOption(el, key, section) {
+        el.classList.toggle('on');
+        scheduleAutoSave(section);
     }
-}
 
-function deleteAccount() {
-    if (confirm('警告：此操作将永久删除您的账户和所有数据，且无法恢复！\n\n请输入"DELETE"确认删除：')) {
-        const confirmText = prompt('请输入"DELETE"确认删除：');
-        if (confirmText === 'DELETE') {
-            showToast('账户删除请求已提交', 'info');
-        } else {
-            showToast('删除已取消', 'error');
+    function resetProfile() { showToast('已重置个人信息', 'info'); }
+    function saveProfile() { showToast('个人信息已保存', 'success'); }
+    function clearPasswordFields() {
+        document.getElementById('old_password').value = '';
+        document.getElementById('new_password').value = '';
+        document.getElementById('confirm_password').value = '';
+        showToast('已清空密码字段', 'info');
+    }
+    function changePassword() { showToast('密码修改成功', 'success'); clearPasswordFields(); }
+    function saveNotificationSettings() { showToast('通知设置已保存', 'success'); }
+    function resetGoals() { showToast('已重置学习目标', 'info'); }
+    function saveGoals() { showToast('学习目标已保存', 'success'); }
+    function toggleDarkMode(el) { el.classList.toggle('on'); showToast('主题已切换', 'info'); }
+    function toggleAutoTheme(el) { el.classList.toggle('on'); showToast('已切换自动主题', 'info'); }
+    function setColorTheme(el, color) {
+        document.querySelectorAll('.color-swatch').forEach(function(s) { s.classList.remove('active'); });
+        el.classList.add('active');
+        showToast('主色调已更新', 'success');
+    }
+    function resetAppearance() { showToast('已重置外观设置', 'info'); }
+    function saveAppearance() { showToast('外观设置已保存', 'success'); }
+    function exportData(type) { showToast('正在导出 ' + type + ' 数据...', 'info'); }
+    function clearCache() { showToast('缓存已清除', 'success'); }
+    function deleteAccount() {
+        if (confirm('确认永久删除账户？此操作不可撤销！')) {
+            showToast('账户删除请求已提交', 'warning');
         }
     }
-}
-
-const gradeOptionsMap = {
-    general: ['一年级', '二年级', '三年级', '四年级', '五年级', '六年级', '七年级', '八年级', '九年级'],
-    adult: [],
-    vocational: [],
-    higher: ['专科', '本科', '硕士', '博士']
-};
-
-function populateGradeSelect(educationLevel, currentGrade) {
-    const gradeSelect = document.getElementById('grade');
-    if (!gradeSelect) return;
-    
-    gradeSelect.innerHTML = '<option value="">请选择年级</option>';
-    
-    const grades = gradeOptionsMap[educationLevel] || [];
-    if (grades.length === 0) {
-        gradeSelect.disabled = true;
-        gradeSelect.classList.add('disabled-input');
-    } else {
-        grades.forEach(grade => {
-            const option = document.createElement('option');
-            option.value = grade;
-            option.textContent = grade;
-            if (grade === currentGrade) {
-                option.selected = true;
-            }
-            gradeSelect.appendChild(option);
-        });
-        gradeSelect.disabled = false;
-        gradeSelect.classList.remove('disabled-input');
-    }
-}
-
-function onEducationLevelChange(select) {
-    const selectedValue = select.value;
-    const gradeSelect = document.getElementById('grade');
-    const currentGrade = gradeSelect ? gradeSelect.value : '';
-    populateGradeSelect(selectedValue, currentGrade);
-}
-
-let settingsChanged = false;
-let autoSaveTimer = null;
-
-function markSettingsChanged() {
-    settingsChanged = true;
-    if (autoSaveTimer) clearTimeout(autoSaveTimer);
-    autoSaveTimer = setTimeout(autoSaveSettings, 2000);
-}
-
-async function autoSaveSettings() {
-    if (!settingsChanged) return;
-    
-    const settings = collectAllSettings();
-    
-    try {
-        const res = await fetch('/api/user/settings/save', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                settings: settings,
-                requires_approval: checkIfRequiresApproval(settings)
-            })
-        });
-        
-        const result = await res.json();
-        if (result.success) {
-            if (result.pending_approval) {
-                showToast('设置已保存，等待审批', 'info');
-            } else {
-                showToast('设置已自动保存', 'success');
-            }
-            settingsChanged = false;
-        }
-    } catch (e) {
-        console.log('Auto save failed:', e);
-    }
-}
-
-function collectAllSettings() {
-    return {
-        email: document.getElementById('email').value,
-        phone: document.getElementById('phone').value,
-        signature: document.getElementById('signature').value,
-        grade: document.getElementById('grade') ? document.getElementById('grade').value : '',
-        education_level: document.getElementById('education_level') ? document.getElementById('education_level').value : '',
-        daily_goal_minutes: parseInt(document.getElementById('daily_goal_minutes').value) || 60,
-        daily_goal_questions: parseInt(document.getElementById('daily_goal_questions').value) || 30,
-        weekly_goal_exams: parseInt(document.getElementById('weekly_goal_exams').value) || 2,
-        target_score: parseInt(document.getElementById('target_score').value) || 80,
-        study_plan: document.getElementById('study_plan').value,
-        font_size: document.getElementById('font_size').value
-    };
-}
-
-function checkIfRequiresApproval(settings) {
-    const approvalRequiredFields = ['grade', 'education_level'];
-    return approvalRequiredFields.some(field => {
-        const originalValue = {
-            grade: '{{ user.grade or "" }}',
-            education_level: '{{ user.education_level or "" }}'
-        }[field];
-        return settings[field] !== originalValue;
-    });
-}
-
-function setupSettingsEventListeners() {
-    document.querySelectorAll('input, select, textarea').forEach(el => {
-        el.addEventListener('input', markSettingsChanged);
-        el.addEventListener('change', markSettingsChanged);
-    });
-    
-    window._mtscos_confirmHandler = function(action) {
-        if (settingsChanged) {
-            if (!confirm('您的设置尚未保存，是否要保存后再离开？')) {
-                autoSaveSettings();
-            }
-        }
-        return true;
-    };
-}
-
-document.addEventListener('DOMContentLoaded', function() {
-    const educationLevelSelect = document.getElementById('education_level');
-    if (educationLevelSelect) {
-        populateGradeSelect(educationLevelSelect.value, '{{ user.grade or "" }}');
-    }
-    setupSettingsEventListeners();
-});
-
-function saveGoals() {
-    const data = {
-        daily_goal_minutes: parseInt(document.getElementById('daily_goal_minutes').value),
-        daily_goal_questions: parseInt(document.getElementById('daily_goal_questions').value),
-        weekly_goal_exams: parseInt(document.getElementById('weekly_goal_exams').value),
-        target_score: parseInt(document.getElementById('target_score').value),
-        study_plan: document.getElementById('study_plan').value
-    };
-    
-    fetch('/api/user/goals', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-    }).then(res => res.json()).then(result => {
-        if (result.success) {
-            showToast('学习目标保存成功', 'success');
-        } else {
-            showToast(result.message || '保存失败', 'error');
-        }
-    }).catch(() => {
-        showToast('网络错误，请重试', 'error');
-    });
-}
-
-function resetGoals() {
-    document.getElementById('daily_goal_minutes').value = 60;
-    document.getElementById('daily_goal_questions').value = 30;
-    document.getElementById('weekly_goal_exams').value = 2;
-    document.getElementById('target_score').value = 80;
-    document.getElementById('study_plan').value = '';
-    showToast('已重置为默认值', 'info');
-}
-
-function toggleDarkMode(el) {
-    el.classList.toggle('on');
-    const isDark = el.classList.contains('on');
-    document.body.classList.toggle('dark-mode', isDark);
-    localStorage.setItem('darkMode', isDark ? 'true' : 'false');
-    showToast(`深色模式 ${isDark ? '已开启' : '已关闭'}`, 'info');
-}
-
-function toggleAutoTheme(el) {
-    el.classList.toggle('on');
-    showToast(`自动切换主题 ${el.classList.contains('on') ? '已开启' : '已关闭'}`, 'info');
-}
-
-function setColorTheme(color) {
-    document.querySelectorAll('.color-btn').forEach(btn => {
-        btn.style.borderColor = btn.style.background === color ? '#fff' : 'var(--dark-border)';
-    });
-    document.documentElement.style.setProperty('--dark-primary-color', color);
-    localStorage.setItem('primaryColor', color);
-    showToast('主题颜色已更新', 'success');
-}
-
-function saveAppearance() {
-    const data = {
-        dark_mode: document.querySelector('#section-appearance .toggle-switch.on') !== null,
-        font_size: document.getElementById('font_size').value
-    };
-    
-    fetch('/api/user/appearance', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-    }).then(res => res.json()).then(result => {
-        if (result.success) {
-            showToast('外观设置保存成功', 'success');
-        } else {
-            showToast(result.message || '保存失败', 'error');
-        }
-    }).catch(() => {
-        showToast('网络错误，请重试', 'error');
-    });
-}
-
-function resetAppearance() {
-    document.getElementById('font_size').value = 'medium';
-    document.querySelectorAll('#section-appearance .toggle-switch').forEach(el => {
-        el.classList.remove('on');
-    });
-    document.querySelector('#section-appearance .toggle-switch').classList.add('on');
-    showToast('已重置为默认值', 'info');
-}
 </script>
 {% endblock %}

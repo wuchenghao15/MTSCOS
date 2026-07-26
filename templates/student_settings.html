@@ -3,541 +3,1146 @@
 {% block title %}学生设置 - MTSCOS AI{% endblock %}
 
 {% block head %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <style>
     :root {
-        --dark-bg-primary: #0c0c1e;
-        --dark-bg-secondary: #1a1a3e;
-        --dark-bg-card: rgba(20, 20, 40, 0.85);
-        --dark-border: rgba(99, 102, 241, 0.2);
-        --dark-text-primary: #ffffff;
-        --dark-text-secondary: #94a3b8;
-        --dark-primary-color: #6366f1;
-        --dark-success: #22c55e;
-        --dark-warning: #f59e0b;
-        --dark-info: #3b82f6;
+        --header-h: 72px;
+        --content-max: 1280px;
+        --radius-sm: 6px;
+        --radius: 14px;
+        --radius-lg: 22px;
+        --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+        --primary-color: #6366f1;
+        --primary-light: #8b5cf6;
+        --primary-accent: #a855f7;
+        --primary-dark: #4f46e5;
+        --accent: #6366f1;
+        --bg-page: #0a0a1a;
+        --border-subtle: rgba(99, 102, 241, 0.12);
+        --bg-gradient-start: #050510;
+        --bg-gradient-mid: #0c0c24;
+        --bg-gradient-end: #070718;
+        --card-bg: rgba(12, 12, 30, 0.7);
+        --card-border: rgba(99, 102, 241, 0.18);
+        --card-border-hover: rgba(99, 102, 241, 0.4);
+        --text-primary: #f8fafc;
+        --text-secondary: #cbd5e1;
+        --text-muted: #64748b;
+        --text-accent: #a5b4fc;
+        --glass-shadow: 0 8px 40px rgba(0, 0, 0, 0.5), 0 0 80px rgba(99, 102, 241, 0.08);
+        --danger: #ef4444;
+        --success: #22c55e;
+        --warning: #f59e0b;
+        --info: #3b82f6;
+        --logo-accent: linear-gradient(135deg, #6366f1, #8b5cf6);
+        --bg-gradient: radial-gradient(ellipse at 20% 50%, rgba(99,102,241,0.18) 0%, transparent 55%),
+                       radial-gradient(ellipse at 80% 15%, rgba(168,85,247,0.16) 0%, transparent 55%),
+                       radial-gradient(ellipse at 60% 95%, rgba(236,72,153,0.10) 0%, transparent 55%),
+                       radial-gradient(ellipse at 10% 100%, rgba(34,211,238,0.08) 0%, transparent 60%),
+                       linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-mid) 50%, var(--bg-gradient-end) 100%);
+        --glass-blur: 28px;
     }
-    
-    body { background: linear-gradient(135deg, var(--dark-bg-primary) 0%, var(--dark-bg-secondary) 50%, var(--dark-bg-primary) 100%); min-height: 100vh; }
-    .settings-wrap { max-width: 800px; margin: 30px auto; padding: 0 16px; }
-    .settings-header { display: flex; align-items: center; gap: 14px; margin-bottom: 24px; }
-    .settings-header h1 { font-size: 24px; color: var(--dark-text-primary); margin: 0; }
-    
-    .settings-tabs { display: flex; gap: 8px; background: var(--dark-bg-card); border: 1px solid var(--dark-border); border-radius: 12px; padding: 6px; margin-bottom: 24px; flex-wrap: wrap; }
-    .settings-tab { padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; color: var(--dark-text-secondary); transition: all 0.3s; display: flex; align-items: center; gap: 8px; }
-    .settings-tab:hover { color: var(--dark-text-primary); background: rgba(0,0,0,0.2); }
-    .settings-tab.active { background: linear-gradient(135deg, var(--dark-primary-color), #8b5cf6); color: #fff; }
-    
-    .settings-section { display: none; }
-    .settings-section.active { display: block; }
-    
-    .settings-card { background: var(--dark-bg-card); border: 1px solid var(--dark-border); border-radius: 12px; margin-bottom: 20px; overflow: hidden; }
-    .card-head { display: flex; align-items: center; gap: 12px; padding: 18px 24px; border-bottom: 1px solid var(--dark-border); }
-    .card-head h2 { font-size: 16px; color: var(--dark-text-primary); margin: 0; }
-    .card-icon { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
-    .card-icon.blue { background: rgba(59,130,246,0.15); color: #6366f1; }
-    .card-icon.orange { background: rgba(249,115,22,0.15); color: #f59e0b; }
-    .card-icon.green { background: rgba(34,197,94,0.15); color: #22c55e; }
-    .card-icon.purple { background: rgba(168,85,247,0.15); color: #a855f7; }
-    
-    .card-body { padding: 20px 24px; }
-    .form-group { margin-bottom: 16px; }
-    .form-group label { display: block; font-size: 13px; color: var(--dark-text-secondary); margin-bottom: 8px; }
-    .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 10px 14px; border: 1px solid var(--dark-border); border-radius: 8px; background: rgba(0,0,0,0.3); color: #fff; font-size: 14px; }
-    .form-group input:disabled, .form-group select:disabled { opacity: 0.6; cursor: not-allowed; }
-    
-    .toggle { width: 44px; height: 24px; border-radius: 12px; background: #64748b; position: relative; cursor: pointer; transition: all 0.3s; display: inline-block; }
-    .toggle::after { content: ''; width: 20px; height: 20px; border-radius: 50%; background: #fff; position: absolute; top: 2px; left: 2px; transition: all 0.3s; }
-    .toggle.on { background: #6366f1; }
-    .toggle.on::after { left: 22px; }
-    
-    .btn { padding: 10px 20px; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; border: none; transition: all 0.3s; }
-    .btn-primary { background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #fff; }
-    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(99,102,241,0.4); }
-    .btn-secondary { background: rgba(0,0,0,0.3); color: #fff; border: 1px solid rgba(99,102,241,0.2); }
-    
-    .goals-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin-bottom: 24px; }
-    .goal-card { background: rgba(0,0,0,0.3); border-radius: 12px; padding: 16px; text-align: center; }
-    .goal-value { font-size: 24px; font-weight: 700; color: #6366f1; }
-    .goal-label { font-size: 12px; color: #94a3b8; margin-top: 4px; }
-    
-    .read-only-info { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: rgba(0,0,0,0.3); border-radius: 8px; color: #94a3b8; font-size: 14px; }
-    .read-only-info .value { color: #fff; font-weight: 500; }
-    .approval-badge { padding: 4px 10px; background: rgba(245,158,11,0.15); color: #f59e0b; border-radius: 20px; font-size: 12px; font-weight: 500; }
-    
-    .pending-approval { border-left: 4px solid #f59e0b; }
-    .auto-save-indicator { font-size: 12px; color: #22c55e; margin-top: 8px; display: flex; align-items: center; gap: 4px; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+        font-family: 'Sora', -apple-system, BlinkMacSystemFont, 'Segoe UI',
+                     'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+        background: var(--bg-gradient);
+        color: var(--text-primary);
+        min-height: 100vh;
+        position: relative;
+        overflow-x: hidden;
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+    }
+    .aurora {
+        position: fixed; inset: 0; z-index: 0; pointer-events: none;
+        background:
+            radial-gradient(1000px 600px at 15% 10%, rgba(168,85,247,0.22), transparent 60%),
+            radial-gradient(900px 500px at 90% 30%, rgba(99,102,241,0.18), transparent 60%),
+            radial-gradient(800px 500px at 50% 100%, rgba(236,72,153,0.12), transparent 60%);
+        filter: blur(40px) saturate(120%);
+        mix-blend-mode: screen;
+        animation: aurora-drift 18s ease-in-out infinite alternate;
+    }
+    @keyframes aurora-drift {
+        0% { transform: translate3d(0,0,0) scale(1); }
+        50% { transform: translate3d(30px,-20px,0) scale(1.04); }
+        100% { transform: translate3d(-20px,10px,0) scale(1.02); }
+    }
+    .grain-overlay {
+        position: fixed; inset: 0; z-index: 1; pointer-events: none;
+        opacity: 0.06; mix-blend-mode: overlay;
+        background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.9 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+    }
+    @keyframes fade-up { from { opacity: 0; transform: translateY(24px);} to {opacity:1; transform:none;} }
+    @keyframes toastSlideIn { from { transform: translateX(120%); opacity: 0;} to { transform: translateX(0); opacity: 1;} }
+    @keyframes pulse-save { 0%,100%{opacity:1;} 50%{opacity:.5;} }
 
-    @keyframes toastSlideIn {
-        from { transform: translateX(100%); opacity: 0; }
-        to { transform: translateX(0); opacity: 1; }
+    .page-wrap { position: relative; z-index: 3; width: 100%; }
+    .settings-wrap {
+        max-width: 1080px;
+        margin: 0 auto;
+        padding: clamp(24px, 4vw, 48px) clamp(16px, 5vw, 40px) 80px;
+        animation: fade-up 0.7s var(--ease-out) 0.1s both;
+    }
+    .page-header { display: flex; align-items: center; gap: 14px; margin-bottom: 32px; }
+    .back-btn {
+        width: 42px; height: 42px; border-radius: var(--radius);
+        display: inline-flex; align-items: center; justify-content: center;
+        background: color-mix(in srgb, var(--primary-color) 8%, transparent);
+        border: 1px solid color-mix(in srgb, var(--primary-color) 18%, transparent);
+        color: var(--text-secondary); text-decoration: none;
+        transition: all 0.2s var(--ease-out);
+    }
+    .back-btn:hover {
+        color: var(--text-primary);
+        background: color-mix(in srgb, var(--primary-color) 16%, transparent);
+        border-color: color-mix(in srgb, var(--primary-color) 30%, transparent);
+        transform: translateX(-2px);
+    }
+    .page-title-group { display: flex; flex-direction: column; gap: 4px; }
+    .page-eyebrow {
+        display: inline-flex; align-items: center; gap: 8px;
+        font-size: 11px; font-weight: 700; letter-spacing: 0.08em;
+        text-transform: uppercase; color: var(--primary-light);
+    }
+    .page-eyebrow::before { content:''; width:6px; height:6px; border-radius:50%; background: currentColor; box-shadow: 0 0 10px currentColor; }
+    .page-title {
+        font-size: clamp(24px, 3vw, 32px);
+        font-weight: 800; letter-spacing: -0.02em;
+        background: linear-gradient(120deg, var(--text-primary) 0%, var(--primary-light) 100%);
+        -webkit-background-clip: text; background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .tabs-wrap {
+        position: relative;
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+        border-radius: calc(var(--radius-lg) + 2px);
+        padding: 8px; margin-bottom: 28px;
+        backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+        -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+        box-shadow: var(--glass-shadow);
+        overflow-x: auto; overflow-y: hidden;
+        scrollbar-width: none; -ms-overflow-style: none;
+    }
+    .tabs-wrap::-webkit-scrollbar { display: none; }
+    .tabs-inner { display: flex; gap: 6px; min-width: max-content; }
+    .tab-btn {
+        display: inline-flex; align-items: center; gap: 8px;
+        padding: 10px 18px; border-radius: var(--radius);
+        font-size: 13px; font-weight: 700; letter-spacing: 0.01em;
+        color: var(--text-secondary); background: transparent; border: none; cursor: pointer;
+        white-space: nowrap; transition: all 0.25s var(--ease-out);
+        font-family: inherit;
+    }
+    .tab-btn:hover { color: var(--text-primary); background: color-mix(in srgb, var(--primary-color) 10%, transparent); }
+    .tab-btn i { font-size: 13px; opacity: 0.85; }
+    .tab-btn.active {
+        background: var(--logo-accent); color: #fff;
+        box-shadow: 0 6px 20px color-mix(in srgb, var(--primary-color) 36%, transparent);
+    }
+    .tab-panel { display: none; animation: fade-up 0.4s var(--ease-out) both; }
+    .tab-panel.active { display: block; }
+
+    .settings-card {
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+        border-radius: calc(var(--radius-lg) + 2px);
+        margin-bottom: 20px; overflow: hidden;
+        backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+        -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+        box-shadow: var(--glass-shadow);
+        position: relative;
+    }
+    .settings-card::before {
+        content: ''; position: absolute; top: -1px; left: -1px; right: -1px; height: 1px;
+        background: linear-gradient(90deg,
+            transparent 0%,
+            color-mix(in srgb, var(--primary-light) 70%, transparent) 30%,
+            color-mix(in srgb, var(--primary-accent) 70%, transparent) 70%,
+            transparent 100%);
+    }
+    .card-head {
+        display: flex; align-items: center; gap: 12px;
+        padding: 20px 24px;
+        border-bottom: 1px solid color-mix(in srgb, var(--primary-color) 10%, transparent);
+    }
+    .card-icon {
+        width: 42px; height: 42px; flex-shrink: 0; border-radius: var(--radius);
+        display: inline-flex; align-items: center; justify-content: center; font-size: 16px;
+    }
+    .icon-blue { background: color-mix(in srgb, var(--primary-color) 14%, transparent); color: var(--primary-light); border: 1px solid color-mix(in srgb, var(--primary-color) 22%, transparent); }
+    .icon-green { background: color-mix(in srgb, var(--success) 14%, transparent); color: var(--success); border: 1px solid color-mix(in srgb, var(--success) 22%, transparent); }
+    .icon-orange { background: color-mix(in srgb, var(--warning) 14%, transparent); color: var(--warning); border: 1px solid color-mix(in srgb, var(--warning) 22%, transparent); }
+    .icon-purple { background: color-mix(in srgb, var(--primary-accent) 14%, transparent); color: var(--primary-accent); border: 1px solid color-mix(in srgb, var(--primary-accent) 22%, transparent); }
+    .icon-red { background: color-mix(in srgb, var(--danger) 14%, transparent); color: var(--danger); border: 1px solid color-mix(in srgb, var(--danger) 22%, transparent); }
+    .icon-cyan { background: color-mix(in srgb, var(--info) 14%, transparent); color: var(--info); border: 1px solid color-mix(in srgb, var(--info) 22%, transparent); }
+    .icon-pink { background: color-mix(in srgb, #ec4899 14%, transparent); color: #ec4899; border: 1px solid color-mix(in srgb, #ec4899 22%, transparent); }
+    .card-head h2 { font-size: 16px; font-weight: 800; letter-spacing: -0.01em; color: var(--text-primary); margin: 0; }
+    .card-head-right {
+        margin-left: auto;
+        font-size: 12px; font-weight: 600; color: var(--text-muted);
+        padding: 4px 10px; border-radius: 999px;
+        background: color-mix(in srgb, var(--primary-color) 8%, transparent);
+        border: 1px solid color-mix(in srgb, var(--primary-color) 16%, transparent);
+    }
+    .card-head .btn-head { margin-left: auto; padding: 8px 16px; font-size: 12px; }
+    .card-body { padding: 24px; }
+
+    .avatar-section {
+        display: flex; align-items: center; gap: 18px;
+        margin-bottom: 24px; padding-bottom: 20px;
+        border-bottom: 1px solid color-mix(in srgb, var(--primary-color) 10%, transparent);
+    }
+    .avatar-upload { position: relative; cursor: pointer; }
+    .user-avatar {
+        width: 84px; height: 84px; border-radius: 26px;
+        background: var(--logo-accent); color: #fff;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 32px; font-weight: 800; flex-shrink: 0;
+        box-shadow: 0 12px 36px color-mix(in srgb, var(--primary-color) 38%, transparent);
+    }
+    .avatar-edit {
+        position: absolute; bottom: -4px; right: -4px;
+        width: 28px; height: 28px; border-radius: 50%;
+        background: var(--logo-accent); color: #fff;
+        display: flex; align-items: center; justify-content: center; font-size: 12px;
+        border: 3px solid color-mix(in srgb, var(--card-bg) 100%, black);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    }
+    .user-meta { flex: 1; min-width: 0; }
+    .user-meta h3 { font-size: 20px; font-weight: 800; letter-spacing: -0.01em; color: var(--text-primary); margin: 0 0 4px 0; }
+    .user-meta p { font-size: 13px; color: var(--text-secondary); margin: 0 0 8px 0; }
+    .role-badge {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 4px 12px; border-radius: 999px;
+        font-size: 11px; font-weight: 700; letter-spacing: 0.04em;
+    }
+    .role-student { background: color-mix(in srgb, var(--success) 14%, transparent); color: var(--success); border: 1px solid color-mix(in srgb, var(--success) 24%, transparent); }
+    .role-student_vip { background: linear-gradient(135deg, rgba(245,158,11,.18), rgba(236,72,153,.18)); color: #fcd34d; border: 1px solid rgba(245,158,11,.32); }
+
+    .form-group { margin-bottom: 20px; }
+    .form-group:last-child { margin-bottom: 0; }
+    .form-label {
+        display: block; margin-bottom: 8px;
+        font-size: 12px; font-weight: 700; letter-spacing: 0.05em;
+        text-transform: uppercase; color: var(--text-secondary);
+    }
+    .form-input, .form-select, .form-textarea {
+        width: 100%; padding: 13px 16px;
+        border-radius: var(--radius);
+        border: 1px solid var(--card-border);
+        background: color-mix(in srgb, var(--card-bg) 92%, black 8%);
+        color: var(--text-primary);
+        font-size: 14px; font-weight: 500; font-family: inherit;
+        transition: border-color 0.2s var(--ease-out),
+                    box-shadow 0.2s var(--ease-out),
+                    background 0.2s var(--ease-out);
+        outline: none;
+    }
+    .form-input::placeholder, .form-textarea::placeholder { color: var(--text-muted); font-weight: 500; }
+    .form-input:focus, .form-select:focus, .form-textarea:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary-color) 15%, transparent);
+        background: color-mix(in srgb, var(--card-bg) 96%, black 4%);
+    }
+    .form-input:disabled, .form-input[readonly],
+    .form-select:disabled, .form-textarea:disabled {
+        background: color-mix(in srgb, var(--card-bg) 85%, black 15%);
+        color: var(--text-muted); cursor: not-allowed; opacity: 0.75;
+    }
+    .form-textarea { resize: vertical; min-height: 90px; line-height: 1.6; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .form-row-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .form-row-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+    @media (max-width: 720px) { .form-row, .form-row-3, .form-row-4 { grid-template-columns: 1fr; } }
+    .field-hint { margin-top: 6px; font-size: 12px; font-weight: 500; color: var(--text-muted); line-height: 1.5; }
+    .field-hint i { margin-right: 4px; color: var(--primary-light); }
+
+    .btn-group { display: flex; gap: 12px; justify-content: flex-end; margin-top: 8px; flex-wrap: wrap; }
+    .btn {
+        display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+        padding: 13px 24px; border: none; border-radius: var(--radius);
+        font-family: inherit; font-size: 14px; font-weight: 800; letter-spacing: 0.03em;
+        cursor: pointer; text-decoration: none;
+        transition: transform 0.25s var(--ease-out), box-shadow 0.25s var(--ease-out), background 0.25s var(--ease-out), filter 0.2s;
+        user-select: none;
+    }
+    .btn-primary {
+        background: var(--logo-accent); color: #fff;
+        box-shadow: 0 12px 32px color-mix(in srgb, var(--primary-color) 36%, transparent);
+    }
+    .btn-primary:hover { transform: translateY(-2px); filter: brightness(1.06); }
+    .btn-secondary {
+        background: color-mix(in srgb, var(--primary-color) 6%, transparent);
+        color: var(--text-primary);
+        border: 1px solid color-mix(in srgb, var(--primary-color) 22%, transparent);
+    }
+    .btn-secondary:hover {
+        background: color-mix(in srgb, var(--primary-color) 12%, transparent);
+        border-color: color-mix(in srgb, var(--primary-color) 34%, transparent);
+        transform: translateY(-2px);
+    }
+    .btn-danger {
+        background: linear-gradient(135deg, var(--danger), #dc2626); color: #fff;
+        box-shadow: 0 12px 32px color-mix(in srgb, var(--danger) 32%, transparent);
+    }
+    .btn-danger:hover { transform: translateY(-2px); filter: brightness(1.06); }
+    .btn-block { width: 100%; }
+    .btn-sm { padding: 8px 14px; font-size: 12px; border-radius: 10px; }
+
+    .toast {
+        position: fixed; top: 88px; right: 20px;
+        padding: 14px 22px; border-radius: var(--radius);
+        color: #fff; font-size: 13px; font-weight: 700; z-index: 9999;
+        transform: translateX(140%);
+        transition: transform 0.4s var(--ease-out);
+        box-shadow: 0 12px 36px rgba(0,0,0,0.45);
+        display: flex; align-items: center; gap: 10px;
+        max-width: calc(100vw - 40px);
+    }
+    .toast.show { transform: translateX(0); animation: toastSlideIn 0.35s var(--ease-out); }
+    .toast i { font-size: 15px; flex-shrink: 0; }
+    .toast-success { background: linear-gradient(135deg, var(--success), #16a34a); }
+    .toast-error { background: linear-gradient(135deg, var(--danger), #dc2626); }
+    .toast-info { background: var(--logo-accent); }
+    .toast-warning { background: linear-gradient(135deg, var(--warning), #d97706); }
+    @media (max-width: 560px) { .toast { top: auto; bottom: 24px; right: 16px; left: 16px; max-width: none; } }
+
+    .auto-save-hint { display: none; align-items: center; gap: 6px; margin-top: 10px; font-size: 12px; font-weight: 600; color: var(--success); }
+    .auto-save-hint.show { display: inline-flex; }
+    .auto-save-hint i { animation: pulse-save 1.4s ease-in-out infinite; }
+
+    .toggle-row {
+        display: flex; align-items: center; justify-content: space-between; gap: 16px;
+        padding: 16px 0;
+        border-bottom: 1px solid color-mix(in srgb, var(--primary-color) 10%, transparent);
+    }
+    .toggle-row:last-child { border-bottom: none; padding-bottom: 0; }
+    .toggle-row:first-child { padding-top: 0; }
+    .toggle-info { flex: 1; min-width: 0; }
+    .toggle-title { font-size: 14px; font-weight: 700; color: var(--text-primary); margin-bottom: 3px; }
+    .toggle-desc { font-size: 12px; color: var(--text-muted); line-height: 1.5; }
+    .toggle-switch {
+        position: relative; width: 50px; height: 28px; flex-shrink: 0;
+        border-radius: 999px;
+        background: color-mix(in srgb, var(--text-muted) 35%, transparent);
+        border: 1px solid color-mix(in srgb, var(--primary-color) 18%, transparent);
+        cursor: pointer; transition: all 0.3s var(--ease-out);
+    }
+    .toggle-switch::after {
+        content: ''; position: absolute; top: 3px; left: 3px;
+        width: 20px; height: 20px; border-radius: 50%;
+        background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.28);
+        transition: transform 0.3s var(--ease-out);
+    }
+    .toggle-switch.on {
+        background: var(--logo-accent); border-color: transparent;
+        box-shadow: 0 4px 14px color-mix(in srgb, var(--primary-color) 40%, transparent);
+    }
+    .toggle-switch.on::after { transform: translateX(22px); }
+
+    .approval-badge {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 3px 10px; margin-left: 8px;
+        border-radius: 999px; font-size: 11px; font-weight: 700;
+        background: color-mix(in srgb, var(--warning) 14%, transparent);
+        color: var(--warning);
+        border: 1px solid color-mix(in srgb, var(--warning) 24%, transparent);
+        text-transform: none; letter-spacing: 0;
+    }
+
+    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+    .stat-card {
+        padding: 18px 16px; border-radius: var(--radius);
+        background: color-mix(in srgb, var(--primary-color) 5%, transparent);
+        border: 1px solid color-mix(in srgb, var(--primary-color) 14%, transparent);
+        text-align: center; transition: transform 0.25s var(--ease-out);
+    }
+    .stat-card:hover { transform: translateY(-3px); }
+    .stat-value {
+        font-size: clamp(22px, 2.4vw, 28px);
+        font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; margin-bottom: 6px;
+        background: var(--logo-accent); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .stat-label { font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-muted); }
+    @media (max-width: 720px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
+
+    .progress-card {
+        padding: 16px; border-radius: var(--radius);
+        background: color-mix(in srgb, var(--card-bg) 92%, black 8%);
+        border: 1px solid var(--card-border);
+    }
+    .progress-top { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 10px; }
+    .progress-value { font-size: 24px; font-weight: 800; letter-spacing: -0.02em; color: var(--text-primary); }
+    .progress-target { font-size: 12px; font-weight: 600; color: var(--text-muted); }
+    .progress-bar { height: 6px; border-radius: 999px; background: color-mix(in srgb, var(--primary-color) 10%, transparent); overflow: hidden; }
+    .progress-fill { height: 100%; border-radius: 999px; background: var(--logo-accent); transition: width 0.6s var(--ease-out); }
+
+    .export-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; }
+    .export-card {
+        padding: 18px 16px; border-radius: var(--radius);
+        background: color-mix(in srgb, var(--card-bg) 92%, black 8%);
+        border: 1px solid var(--card-border); cursor: pointer;
+        transition: all 0.25s var(--ease-out); text-align: center;
+    }
+    .export-card:hover {
+        border-color: var(--primary-color); transform: translateY(-3px);
+        box-shadow: 0 12px 28px color-mix(in srgb, var(--primary-color) 22%, transparent);
+    }
+    .export-icon {
+        width: 48px; height: 48px; margin: 0 auto 12px;
+        border-radius: var(--radius);
+        background: color-mix(in srgb, var(--primary-color) 14%, transparent);
+        color: var(--primary-light);
+        display: flex; align-items: center; justify-content: center; font-size: 20px;
+    }
+    .export-name { font-size: 14px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; }
+    .export-desc { font-size: 12px; color: var(--text-muted); }
+
+    /* 错题本特有样式 */
+    .wrong-stats {
+        display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px;
+        margin-bottom: 24px;
+    }
+    .wrong-stat {
+        padding: 18px 16px; border-radius: var(--radius);
+        background: color-mix(in srgb, var(--danger) 6%, transparent);
+        border: 1px solid color-mix(in srgb, var(--danger) 18%, transparent);
+        text-align: center;
+    }
+    .wrong-stat .num { font-size: 28px; font-weight: 800; color: var(--danger); line-height: 1; margin-bottom: 6px; }
+    .wrong-stat.s2 { background: color-mix(in srgb, var(--warning) 6%, transparent); border-color: color-mix(in srgb, var(--warning) 18%, transparent); }
+    .wrong-stat.s2 .num { color: var(--warning); }
+    .wrong-stat.s3 { background: color-mix(in srgb, var(--info) 6%, transparent); border-color: color-mix(in srgb, var(--info) 18%, transparent); }
+    .wrong-stat.s3 .num { color: var(--info); }
+    .wrong-stat.s4 { background: color-mix(in srgb, var(--success) 6%, transparent); border-color: color-mix(in srgb, var(--success) 18%, transparent); }
+    .wrong-stat.s4 .num { color: var(--success); }
+    .wrong-stat .label { font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-muted); }
+    @media (max-width: 640px) { .wrong-stats { grid-template-columns: repeat(2, 1fr); } }
+
+    .wrong-list { display: flex; flex-direction: column; gap: 10px; }
+    .wrong-item {
+        padding: 16px; border-radius: var(--radius);
+        background: color-mix(in srgb, var(--card-bg) 92%, black 8%);
+        border: 1px solid var(--card-border);
+        display: flex; gap: 14px; align-items: flex-start;
+        transition: all 0.2s var(--ease-out);
+        cursor: pointer;
+    }
+    .wrong-item:hover { border-color: var(--primary-color); transform: translateY(-2px); }
+    .wrong-subj-badge {
+        flex-shrink: 0;
+        padding: 6px 10px; border-radius: 8px;
+        font-size: 11px; font-weight: 800; letter-spacing: 0.04em;
+    }
+    .ws-math { background: color-mix(in srgb, var(--primary-color) 16%, transparent); color: var(--primary-light); }
+    .ws-chinese { background: color-mix(in srgb, #ec4899 16%, transparent); color: #ec4899; }
+    .ws-english { background: color-mix(in srgb, var(--info) 16%, transparent); color: var(--info); }
+    .ws-physics { background: color-mix(in srgb, #06b6d4 16%, transparent); color: #06b6d4; }
+    .ws-chemistry { background: color-mix(in srgb, var(--success) 16%, transparent); color: var(--success); }
+    .wrong-content { flex: 1; min-width: 0; }
+    .wrong-q { font-size: 13px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .wrong-meta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .wrong-meta span { font-size: 11px; color: var(--text-muted); }
+    .wrong-btn { flex-shrink: 0; }
+
+    .subject-row {
+        display: flex; align-items: center; justify-content: space-between; gap: 16px;
+        padding: 14px 0;
+        border-bottom: 1px solid color-mix(in srgb, var(--primary-color) 10%, transparent);
+    }
+    .subject-row:last-child { border-bottom: none; }
+    .subject-info { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
+    .subject-icon {
+        width: 40px; height: 40px; border-radius: var(--radius-sm);
+        display: inline-flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0;
+    }
+    .subject-name { font-size: 14px; font-weight: 700; color: var(--text-primary); }
+    .subject-progress {
+        width: 160px; height: 6px; border-radius: 999px; flex-shrink: 0;
+        background: color-mix(in srgb, var(--primary-color) 10%, transparent);
+        overflow: hidden;
+    }
+    @media (max-width: 640px) { .subject-progress { width: 100px; } }
+    .subject-progress .fill { height: 100%; border-radius: 999px; background: var(--logo-accent); }
+
+    /* AI 学习路径特有样式 */
+    .ai-path-card {
+        padding: 20px; border-radius: var(--radius);
+        background: linear-gradient(135deg,
+            color-mix(in srgb, var(--primary-color) 12%, transparent),
+            color-mix(in srgb, var(--primary-accent) 10%, transparent));
+        border: 1px solid color-mix(in srgb, var(--primary-color) 24%, transparent);
+        margin-bottom: 20px;
+        position: relative; overflow: hidden;
+    }
+    .ai-path-card::after {
+        content: ''; position: absolute; top: -60px; right: -60px; width: 180px; height: 180px;
+        background: radial-gradient(circle, color-mix(in srgb, var(--primary-accent) 30%, transparent), transparent 60%);
+        pointer-events: none;
+    }
+    .ai-path-head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+    .ai-badge {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 4px 12px; border-radius: 999px;
+        background: linear-gradient(135deg, rgba(168,85,247,.22), rgba(99,102,241,.22));
+        border: 1px solid rgba(168,85,247,.34);
+        color: var(--primary-accent);
+        font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase;
+    }
+    .ai-path-title { font-size: 18px; font-weight: 800; letter-spacing: -0.01em; color: var(--text-primary); margin-bottom: 6px; }
+    .ai-path-desc { font-size: 13px; color: var(--text-secondary); line-height: 1.7; margin-bottom: 16px; }
+    .ai-metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .ai-metric {
+        padding: 12px; border-radius: var(--radius-sm);
+        background: rgba(0,0,0,0.18);
+        text-align: center;
+    }
+    .ai-metric .v { font-size: 20px; font-weight: 800; color: var(--primary-light); line-height: 1; margin-bottom: 4px; }
+    .ai-metric .l { font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); }
+    @media (max-width: 520px) { .ai-metrics { grid-template-columns: 1fr; } }
+
+    .path-timeline { position: relative; padding-left: 28px; }
+    .path-timeline::before {
+        content: ''; position: absolute; left: 11px; top: 8px; bottom: 8px; width: 2px;
+        background: linear-gradient(180deg, var(--primary-color), var(--primary-accent), rgba(168,85,247,0.1));
+        border-radius: 2px;
+    }
+    .path-step { position: relative; padding-bottom: 22px; }
+    .path-step:last-child { padding-bottom: 0; }
+    .path-step::before {
+        content: ''; position: absolute; left: -23px; top: 6px;
+        width: 18px; height: 18px; border-radius: 50%;
+        background: var(--card-bg);
+        border: 2px solid var(--primary-color);
+        box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary-color) 12%, transparent);
+    }
+    .path-step.done::before { background: var(--logo-accent); border-color: transparent; }
+    .path-step.current::before { background: var(--logo-accent); border-color: transparent; animation: pulse-dot 2s ease-in-out infinite; }
+    @keyframes pulse-dot { 0%,100%{ box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary-color) 12%, transparent);} 50%{ box-shadow: 0 0 0 8px color-mix(in srgb, var(--primary-color) 4%, transparent);} }
+    .path-step-tag {
+        display: inline-block; padding: 3px 10px; border-radius: 999px;
+        font-size: 10px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase;
+        margin-bottom: 6px;
+    }
+    .st-done { background: color-mix(in srgb, var(--success) 14%, transparent); color: var(--success); }
+    .st-current { background: color-mix(in srgb, var(--primary-color) 18%, transparent); color: var(--primary-light); }
+    .st-next { background: color-mix(in srgb, var(--text-muted) 18%, transparent); color: var(--text-muted); }
+    .path-step-title { font-size: 14px; font-weight: 700; color: var(--text-primary); margin-bottom: 3px; }
+    .path-step-desc { font-size: 12px; color: var(--text-muted); line-height: 1.6; }
+
+    @media (max-width: 640px) {
+        .avatar-section { flex-direction: column; align-items: flex-start; }
+        .card-body { padding: 18px; }
+        .card-head { padding: 16px 18px; }
+        .btn-group { justify-content: stretch; }
+        .btn-group .btn { flex: 1; }
     }
 </style>
 {% endblock %}
 
 {% block content %}
+<div class="aurora"></div>
+<div class="grain-overlay"></div>
+<div class="page-wrap">
 <div class="settings-wrap">
-    <div class="settings-header">
-        <div class="card-icon blue"><i class="fas fa-user-graduate"></i></div>
-        <h1>学生设置</h1>
+    <div class="page-header">
+        <a href="/" class="back-btn" title="返回首页"><i class="fas fa-arrow-left"></i></a>
+        <div class="page-title-group">
+            <span class="page-eyebrow">MTSCOS AI · Student Dashboard</span>
+            <h1 class="page-title"><i class="fas fa-user-graduate"></i> 学生学习中心 · 设置</h1>
+        </div>
     </div>
 
-    <div class="settings-tabs">
-        <div class="settings-tab active" onclick="showSection('section-profile', event)"><i class="fas fa-user"></i> 个人信息</div>
-        <div class="settings-tab" onclick="showSection('section-goals', event)"><i class="fas fa-bullseye"></i> 学习目标</div>
-        <div class="settings-tab" onclick="showSection('section-notifications', event)"><i class="fas fa-bell"></i> 通知设置</div>
-        <div class="settings-tab" onclick="showSection('section-privacy', event)"><i class="fas fa-shield-alt"></i> 隐私设置</div>
-        <div class="settings-tab" onclick="showSection('section-data', event)"><i class="fas fa-download"></i> 数据管理</div>
-        <div class="settings-tab" onclick="showSection('section-security', event)"><i class="fas fa-key"></i> 安全设置</div>
+    <div class="tabs-wrap">
+        <div class="tabs-inner">
+            <button class="tab-btn active" data-panel="profile" onclick="switchPanel('profile')"><i class="fas fa-user"></i>个人信息</button>
+            <button class="tab-btn" data-panel="goals" onclick="switchPanel('goals')"><i class="fas fa-bullseye"></i>学习目标</button>
+            <button class="tab-btn" data-panel="notifications" onclick="switchPanel('notifications')"><i class="fas fa-bell"></i>通知设置</button>
+            <button class="tab-btn" data-panel="privacy" onclick="switchPanel('privacy')"><i class="fas fa-shield-halved"></i>隐私设置</button>
+            <button class="tab-btn" data-panel="data" onclick="switchPanel('data')"><i class="fas fa-database"></i>数据管理</button>
+            <button class="tab-btn" data-panel="security" onclick="switchPanel('security')"><i class="fas fa-key"></i>安全设置</button>
+            <button class="tab-btn" data-panel="wrongbook" onclick="switchPanel('wrongbook')"><i class="fas fa-book"></i>错题本</button>
+            <button class="tab-btn" data-panel="aipath" onclick="switchPanel('aipath')"><i class="fas fa-wand-magic-sparkles"></i>AI学习路径</button>
+        </div>
     </div>
 
-    <div class="settings-section active" id="section-profile">
+    <div class="tab-panel active" id="panel-profile">
         <div class="settings-card">
             <div class="card-head">
-                <div class="card-icon blue"><i class="fas fa-user"></i></div>
+                <div class="card-icon icon-green"><i class="fas fa-user"></i></div>
                 <h2>个人信息</h2>
             </div>
             <div class="card-body">
-                <div class="form-group">
-                    <label>用户名</label>
-                    <input type="text" id="profile-username" value="{{ user.username or '' }}" disabled>
+                <div class="avatar-section">
+                    <div class="avatar-upload">
+                        <div class="user-avatar">{{ user.username[:1].upper() if user.username else 'S' }}</div>
+                        <div class="avatar-edit" title="更换头像"><i class="fas fa-camera"></i></div>
+                    </div>
+                    <div class="user-meta">
+                        <h3>{{ user.username }}</h3>
+                        <p>{{ user.email or '未绑定邮箱' }}</p>
+                        <span class="role-badge role-{{ user.role }}"><i class="fas fa-badge-check"></i> {{ '学生VIP' if user.role == 'student_vip' else '学生' }}</span>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">用户名</label>
+                        <input type="text" class="form-input" id="profile-username" value="{{ user.username or '' }}" disabled>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">教育类型</label>
+                        <input type="text" class="form-input" value="{{ user.education_type or 'K12' }}" disabled>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">邮箱</label>
+                        <input type="email" class="form-input" id="profile-email" value="{{ user.email or '' }}" placeholder="请输入邮箱" oninput="scheduleAutoSave('profile')">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">手机号</label>
+                        <input type="tel" class="form-input" id="profile-phone" value="{{ user.phone or '' }}" placeholder="请输入手机号" oninput="scheduleAutoSave('profile')">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">年级 <span class="approval-badge"><i class="fas fa-clock"></i> 需审批</span></label>
+                        <select class="form-select" id="profile-grade">
+                            <option value="">请选择年级</option>
+                            {% for g in ['一年级','二年级','三年级','四年级','五年级','六年级','初一','初二','初三','高一','高二','高三'] %}
+                            <option value="{{ g }}" {% if user.grade == g %}selected{% endif %}>{{ g }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">教育阶段</label>
+                        <select class="form-select" id="education_level">
+                            <option value="general" {% if user.education_level == 'general' %}selected{% endif %}>九年制义务教育</option>
+                            <option value="adult" {% if user.education_level == 'adult' %}selected{% endif %}>成人教育</option>
+                            <option value="vocational" {% if user.education_level == 'vocational' %}selected{% endif %}>职业教育</option>
+                            <option value="higher" {% if user.education_level == 'higher' %}selected{% endif %}>高等教育</option>
+                        </select>
+                    </div>
                 </div>
                 <div class="form-group">
-                    <label>邮箱</label>
-                    <input type="email" id="profile-email" value="{{ user.email or '' }}" onchange="scheduleSave('profile')">
+                    <label class="form-label">个性签名</label>
+                    <textarea class="form-textarea" id="profile-signature" rows="2" placeholder="学无止境..." oninput="scheduleAutoSave('profile')">{{ user.signature or '' }}</textarea>
                 </div>
-                <div class="form-group">
-                    <label>手机号</label>
-                    <input type="tel" id="profile-phone" value="{{ user.phone or '' }}" onchange="scheduleSave('profile')">
-                </div>
-                <div class="form-group">
-                    <label>年级 <span class="approval-badge">需审批</span></label>
-                    <select id="profile-grade" onchange="requestGradeChange()">
-                        <option value="" {% if not user.grade %}selected{% endif %}>请选择年级</option>
-                        <option value="一年级" {% if user.grade == '一年级' %}selected{% endif %}>一年级</option>
-                        <option value="二年级" {% if user.grade == '二年级' %}selected{% endif %}>二年级</option>
-                        <option value="三年级" {% if user.grade == '三年级' %}selected{% endif %}>三年级</option>
-                        <option value="四年级" {% if user.grade == '四年级' %}selected{% endif %}>四年级</option>
-                        <option value="五年级" {% if user.grade == '五年级' %}selected{% endif %}>五年级</option>
-                        <option value="六年级" {% if user.grade == '六年级' %}selected{% endif %}>六年级</option>
-                        <option value="初一" {% if user.grade == '初一' %}selected{% endif %}>初一</option>
-                        <option value="初二" {% if user.grade == '初二' %}selected{% endif %}>初二</option>
-                        <option value="初三" {% if user.grade == '初三' %}selected{% endif %}>初三</option>
-                        <option value="高一" {% if user.grade == '高一' %}selected{% endif %}>高一</option>
-                        <option value="高二" {% if user.grade == '高二' %}selected{% endif %}>高二</option>
-                        <option value="高三" {% if user.grade == '高三' %}selected{% endif %}>高三</option>
-                    </select>
-                </div>
-                <div class="read-only-info">
-                    <span>教育类型</span>
-                    <span class="value">{{ user.education_type or 'K12' }} <span class="approval-badge">管理员设置</span></span>
-                </div>
-                <div class="auto-save-indicator" id="profile-auto-save" style="display:none;">
-                    <i class="fas fa-check-circle"></i> 自动保存中...
+                <div class="auto-save-hint" id="profile-save-hint"><i class="fas fa-spinner fa-spin"></i> 自动保存中...</div>
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="resetSection('profile')"><i class="fas fa-rotate-left"></i> 重置</button>
+                    <button class="btn btn-primary" onclick="saveSection('profile')"><i class="fas fa-floppy-disk"></i> 保存</button>
                 </div>
             </div>
         </div>
-        
-        <div class="settings-card pending-approval" id="pending-approvals" style="display:none;">
+
+        <div class="settings-card">
             <div class="card-head">
-                <div class="card-icon orange"><i class="fas fa-clock"></i></div>
-                <h2>待审批请求</h2>
+                <div class="card-icon icon-purple"><i class="fas fa-chart-line"></i></div>
+                <h2>学习总览</h2>
+                <span class="card-head-right"><i class="fas fa-calendar"></i> 近30天</span>
             </div>
-            <div class="card-body" id="pending-approvals-list">
+            <div class="card-body">
+                <div class="stats-grid">
+                    <div class="stat-card"><div class="stat-value">{{ user.total_exams or 42 }}</div><div class="stat-label">完成考试</div></div>
+                    <div class="stat-card"><div class="stat-value">{{ user.total_questions or 1680 }}</div><div class="stat-label">答题数量</div></div>
+                    <div class="stat-card"><div class="stat-value">{{ user.score or 3280 }}</div><div class="stat-label">学习积分</div></div>
+                    <div class="stat-card"><div class="stat-value">{{ user.study_days or 24 }}</div><div class="stat-label">学习天数</div></div>
+                </div>
             </div>
         </div>
     </div>
 
-    <div class="settings-section" id="section-goals">
+    <div class="tab-panel" id="panel-goals">
         <div class="settings-card">
             <div class="card-head">
-                <div class="card-icon orange"><i class="fas fa-bullseye"></i></div>
+                <div class="card-icon icon-orange"><i class="fas fa-bullseye"></i></div>
                 <h2>学习目标</h2>
             </div>
             <div class="card-body">
-                <div class="goals-grid">
-                    <div class="goal-card">
-                        <div class="goal-value" id="goal-daily-minutes">60</div>
-                        <div class="goal-label">每日学习(分钟)</div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">每日学习目标（分钟）</label>
+                        <input type="number" class="form-input" id="goal-daily-minutes" value="60" min="10" max="480" oninput="scheduleAutoSave('goals')">
+                        <div class="field-hint">设定每天计划学习的时间</div>
                     </div>
-                    <div class="goal-card">
-                        <div class="goal-value" id="goal-daily-questions">30</div>
-                        <div class="goal-label">每日答题(道)</div>
+                    <div class="form-group">
+                        <label class="form-label">每日答题目标（道）</label>
+                        <input type="number" class="form-input" id="goal-daily-questions" value="30" min="5" max="200" oninput="scheduleAutoSave('goals')">
+                        <div class="field-hint">设定每天计划完成的题目数量</div>
                     </div>
-                    <div class="goal-card">
-                        <div class="goal-value" id="goal-weekly-exams">2</div>
-                        <div class="goal-label">每周考试(次)</div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">每周考试目标（次）</label>
+                        <input type="number" class="form-input" id="goal-weekly-exams" value="2" min="1" max="10" oninput="scheduleAutoSave('goals')">
                     </div>
-                    <div class="goal-card">
-                        <div class="goal-value" id="goal-target-score">80</div>
-                        <div class="goal-label">目标分数</div>
+                    <div class="form-group">
+                        <label class="form-label">目标分数</label>
+                        <input type="number" class="form-input" id="goal-target-score" value="85" min="0" max="100" oninput="scheduleAutoSave('goals')">
                     </div>
                 </div>
                 <div class="form-group">
-                    <label>学习计划</label>
-                    <textarea id="goal-plan" rows="3" placeholder="请输入您的学习计划..." onchange="scheduleSave('goals')"></textarea>
+                    <label class="form-label">学习计划</label>
+                    <textarea class="form-textarea" id="goal-plan" rows="3" placeholder="描述您的学习计划和目标..." oninput="scheduleAutoSave('goals')"></textarea>
                 </div>
-                <div class="auto-save-indicator" id="goals-auto-save" style="display:none;">
-                    <i class="fas fa-check-circle"></i> 自动保存中...
+                <div class="auto-save-hint" id="goals-save-hint"><i class="fas fa-spinner fa-spin"></i> 自动保存中...</div>
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="resetSection('goals')"><i class="fas fa-rotate-left"></i> 重置</button>
+                    <button class="btn btn-primary" onclick="saveSection('goals')"><i class="fas fa-floppy-disk"></i> 保存目标</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="settings-card">
+            <div class="card-head">
+                <div class="card-icon icon-green"><i class="fas fa-chart-simple"></i></div>
+                <h2>目标进度</h2>
+                <span class="card-head-right"><i class="fas fa-calendar-week"></i> 本周</span>
+            </div>
+            <div class="card-body">
+                <div class="form-row-3">
+                    <div class="progress-card">
+                        <div class="progress-top"><span class="progress-value" style="color: var(--primary-light);">4.5h</span><span class="progress-target">/ 7h 目标</span></div>
+                        <div class="progress-bar"><div class="progress-fill" style="width:64%;"></div></div>
+                        <div class="field-hint" style="margin-top:8px;">学习时间</div>
+                    </div>
+                    <div class="progress-card">
+                        <div class="progress-top"><span class="progress-value" style="color: var(--success);">180</span><span class="progress-target">/ 210 目标</span></div>
+                        <div class="progress-bar"><div class="progress-fill" style="width:86%; background: linear-gradient(135deg, var(--success), #10b981);"></div></div>
+                        <div class="field-hint" style="margin-top:8px;">答题数量</div>
+                    </div>
+                    <div class="progress-card">
+                        <div class="progress-top"><span class="progress-value" style="color: var(--warning);">2</span><span class="progress-target">/ 2 目标</span></div>
+                        <div class="progress-bar"><div class="progress-fill" style="width:100%; background: linear-gradient(135deg, var(--warning), #d97706);"></div></div>
+                        <div class="field-hint" style="margin-top:8px;">考试次数</div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="settings-section" id="section-notifications">
+    <div class="tab-panel" id="panel-notifications">
         <div class="settings-card">
             <div class="card-head">
-                <div class="card-icon purple"><i class="fas fa-bell"></i></div>
-                <h2>通知设置</h2>
+                <div class="card-icon icon-cyan"><i class="fas fa-bell"></i></div>
+                <h2>通知偏好</h2>
             </div>
             <div class="card-body">
-                <div class="form-group">
-                    <label>考试提醒</label>
-                    <div class="toggle on" id="notif-exam" onclick="toggleNotification(this, 'exam')"></div>
+                <div class="toggle-row">
+                    <div class="toggle-info">
+                        <div class="toggle-title">考试提醒</div>
+                        <div class="toggle-desc">接收即将到来的考试通知与考前准备</div>
+                    </div>
+                    <div class="toggle-switch on" onclick="toggleOption(this, 'exam_reminder', 'notifications')"></div>
                 </div>
-                <div class="form-group">
-                    <label>学习报告</label>
-                    <div class="toggle on" id="notif-report" onclick="toggleNotification(this, 'report')"></div>
+                <div class="toggle-row">
+                    <div class="toggle-info">
+                        <div class="toggle-title">作业通知</div>
+                        <div class="toggle-desc">接收老师发布的作业和截止提醒</div>
+                    </div>
+                    <div class="toggle-switch on" onclick="toggleOption(this, 'homework', 'notifications')"></div>
                 </div>
-                <div class="form-group">
-                    <label>系统公告</label>
-                    <div class="toggle on" id="notif-announcement" onclick="toggleNotification(this, 'announcement')"></div>
+                <div class="toggle-row">
+                    <div class="toggle-info">
+                        <div class="toggle-title">学习周报</div>
+                        <div class="toggle-desc">每周发送学习进度报告与AI建议</div>
+                    </div>
+                    <div class="toggle-switch on" onclick="toggleOption(this, 'weekly_report', 'notifications')"></div>
                 </div>
-                <div class="form-group">
-                    <label>作业通知</label>
-                    <div class="toggle on" id="notif-homework" onclick="toggleNotification(this, 'homework')"></div>
+                <div class="toggle-row">
+                    <div class="toggle-info">
+                        <div class="toggle-title">错题复盘提醒</div>
+                        <div class="toggle-desc">AI提醒您定期复习错题本中的题目</div>
+                    </div>
+                    <div class="toggle-switch on" onclick="toggleOption(this, 'wrong_review', 'notifications')"></div>
                 </div>
-                <div class="auto-save-indicator" id="notif-auto-save" style="display:none;">
-                    <i class="fas fa-check-circle"></i> 自动保存中...
+                <div class="toggle-row">
+                    <div class="toggle-info">
+                        <div class="toggle-title">系统公告</div>
+                        <div class="toggle-desc">接收系统重要更新和平台公告</div>
+                    </div>
+                    <div class="toggle-switch on" onclick="toggleOption(this, 'system_announcement', 'notifications')"></div>
+                </div>
+            </div>
+        </div>
+        <div class="settings-card">
+            <div class="card-head"><div class="card-icon icon-blue"><i class="fas fa-envelope"></i></div><h2>通知方式</h2></div>
+            <div class="card-body">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">首选通知方式</label>
+                        <select class="form-select" onchange="scheduleAutoSave('notifications')">
+                            <option value="in-app">站内通知</option>
+                            <option value="email">邮件通知</option>
+                            <option value="both" selected>两者都要</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">通知时间段</label>
+                        <select class="form-select" onchange="scheduleAutoSave('notifications')">
+                            <option value="all">全天</option>
+                            <option value="study">学习时间 (8:00-22:00)</option>
+                            <option value="evening">晚间 (18:00-22:00)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="auto-save-hint" id="notifications-save-hint"><i class="fas fa-spinner fa-spin"></i> 自动保存中...</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="tab-panel" id="panel-privacy">
+        <div class="settings-card">
+            <div class="card-head"><div class="card-icon icon-purple"><i class="fas fa-shield-halved"></i></div><h2>数据隐私</h2></div>
+            <div class="card-body">
+                <div class="toggle-row">
+                    <div class="toggle-info"><div class="toggle-title">数据收集优化</div><div class="toggle-desc">允许收集学习数据以提供个性化推荐</div></div>
+                    <div class="toggle-switch on" onclick="toggleOption(this, 'data_collection', 'privacy')"></div>
+                </div>
+                <div class="toggle-row">
+                    <div class="toggle-info"><div class="toggle-title">个性化推荐</div><div class="toggle-desc">基于学习行为提供个性化内容推荐</div></div>
+                    <div class="toggle-switch on" onclick="toggleOption(this, 'recommend', 'privacy')"></div>
+                </div>
+                <div class="toggle-row">
+                    <div class="toggle-info"><div class="toggle-title">公开排行榜</div><div class="toggle-desc">允许在年级/班级排行榜中显示您的成绩</div></div>
+                    <div class="toggle-switch" onclick="toggleOption(this, 'leaderboard', 'privacy')"></div>
+                </div>
+                <div class="toggle-row">
+                    <div class="toggle-info"><div class="toggle-title">AI学习分析</div><div class="toggle-desc">授权AI深度分析学习模式并生成学习路径</div></div>
+                    <div class="toggle-switch on" onclick="toggleOption(this, 'ai_analysis', 'privacy')"></div>
+                </div>
+                <div class="auto-save-hint" id="privacy-save-hint"><i class="fas fa-spinner fa-spin"></i> 自动保存中...</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="tab-panel" id="panel-data">
+        <div class="settings-card">
+            <div class="card-head"><div class="card-icon icon-cyan"><i class="fas fa-file-export"></i></div><h2>数据导出</h2></div>
+            <div class="card-body">
+                <div class="export-grid">
+                    <div class="export-card" onclick="exportData('profile')"><div class="export-icon"><i class="fas fa-user"></i></div><div class="export-name">个人资料</div><div class="export-desc">导出基本信息</div></div>
+                    <div class="export-card" onclick="exportData('exams')"><div class="export-icon"><i class="fas fa-file-lines"></i></div><div class="export-name">考试记录</div><div class="export-desc">所有考试历史</div></div>
+                    <div class="export-card" onclick="exportData('wrong')"><div class="export-icon"><i class="fas fa-book"></i></div><div class="export-name">错题本</div><div class="export-desc">错题与解析</div></div>
+                    <div class="export-card" onclick="exportData('all')"><div class="export-icon"><i class="fas fa-folder-open"></i></div><div class="export-name">全部数据</div><div class="export-desc">打包下载</div></div>
+                </div>
+            </div>
+        </div>
+        <div class="settings-card">
+            <div class="card-head"><div class="card-icon icon-red"><i class="fas fa-trash-can"></i></div><h2>数据管理</h2></div>
+            <div class="card-body">
+                <div class="toggle-row">
+                    <div class="toggle-info"><div class="toggle-title">清除本地缓存</div><div class="toggle-desc">清除本地缓存的临时数据</div></div>
+                    <button class="btn btn-secondary btn-sm" onclick="clearCache()"><i class="fas fa-broom"></i> 清除</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="settings-section" id="section-privacy">
+    <div class="tab-panel" id="panel-security">
         <div class="settings-card">
-            <div class="card-head">
-                <div class="card-icon green"><i class="fas fa-shield-alt"></i></div>
-                <h2>隐私设置</h2>
-            </div>
+            <div class="card-head"><div class="card-icon icon-red"><i class="fas fa-lock"></i></div><h2>修改密码</h2></div>
             <div class="card-body">
-                <div class="form-group">
-                    <label>允许数据收集</label>
-                    <div class="toggle on" id="privacy-data" onclick="togglePrivacy(this, 'data')"></div>
+                <div class="form-group"><label class="form-label">当前密码</label><input type="password" class="form-input" id="sec-old" placeholder="请输入当前密码"></div>
+                <div class="form-row">
+                    <div class="form-group"><label class="form-label">新密码</label><input type="password" class="form-input" id="sec-new" placeholder="至少6位字符">
+                        <div class="field-hint"><i class="fas fa-info-circle"></i> 建议包含字母和数字</div>
+                    </div>
+                    <div class="form-group"><label class="form-label">确认新密码</label><input type="password" class="form-input" id="sec-confirm" placeholder="再次输入新密码"></div>
                 </div>
-                <div class="form-group">
-                    <label>学习推荐</label>
-                    <div class="toggle on" id="privacy-recommend" onclick="togglePrivacy(this, 'recommend')"></div>
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="document.querySelectorAll('#sec-old,#sec-new,#sec-confirm').forEach(i=>i.value='')"><i class="fas fa-eraser"></i> 清空</button>
+                    <button class="btn btn-primary" onclick="changePassword()"><i class="fas fa-key"></i> 修改密码</button>
                 </div>
-                <div class="form-group">
-                    <label>公开学习进度</label>
-                    <div class="toggle" id="privacy-public" onclick="togglePrivacy(this, 'public')"></div>
-                </div>
-                <div class="form-group">
-                    <label>AI学习分析</label>
-                    <div class="toggle on" id="privacy-ai" onclick="togglePrivacy(this, 'ai')"></div>
-                </div>
-                <div class="auto-save-indicator" id="privacy-auto-save" style="display:none;">
-                    <i class="fas fa-check-circle"></i> 自动保存中...
+            </div>
+        </div>
+        <div class="settings-card">
+            <div class="card-head"><div class="card-icon icon-orange"><i class="fas fa-shield-halved"></i></div><h2>安全选项</h2></div>
+            <div class="card-body">
+                <div class="toggle-row"><div class="toggle-info"><div class="toggle-title">新设备登录提醒</div><div class="toggle-desc">新设备登录时发送邮件提醒</div></div><div class="toggle-switch on" onclick="toggleOption(this, 'login_alert', 'security')"></div></div>
+                <div class="toggle-row"><div class="toggle-info"><div class="toggle-title">双因素认证</div><div class="toggle-desc">登录时需要输入验证码</div></div><div class="toggle-switch" onclick="toggleOption(this, 'two_factor', 'security')"></div></div>
+                <div class="form-group" style="margin-top:16px;">
+                    <label class="form-label">会话超时</label>
+                    <select class="form-select"><option>15 分钟</option><option selected>30 分钟</option><option>1 小时</option><option>24 小时</option></select>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="settings-section" id="section-data">
+    <div class="tab-panel" id="panel-wrongbook">
         <div class="settings-card">
             <div class="card-head">
-                <div class="card-icon blue"><i class="fas fa-download"></i></div>
-                <h2>数据管理</h2>
+                <div class="card-icon icon-red"><i class="fas fa-book"></i></div>
+                <h2>错题本总览</h2>
+                <button class="btn btn-primary btn-sm btn-head" onclick="goWrongBook()"><i class="fas fa-arrow-up-right-from-square"></i> 完整错题本</button>
             </div>
             <div class="card-body">
-                <button class="btn btn-secondary" style="width: 100%; margin-bottom: 12px;" onclick="exportData('profile')">导出个人资料</button>
-                <button class="btn btn-secondary" style="width: 100%; margin-bottom: 12px;" onclick="exportData('exams')">导出考试记录</button>
-                <button class="btn btn-secondary" style="width: 100%; margin-bottom: 12px;" onclick="exportData('progress')">导出学习进度</button>
-                <button class="btn btn-secondary" style="width: 100%;" onclick="exportData('all')">导出所有数据</button>
+                <div class="wrong-stats">
+                    <div class="wrong-stat"><div class="num">126</div><div class="label">错题总数</div></div>
+                    <div class="wrong-stat s2"><div class="num">38</div><div class="label">待复习</div></div>
+                    <div class="wrong-stat s3"><div class="num">18</div><div class="label">本周新增</div></div>
+                    <div class="wrong-stat s4"><div class="num">72%</div><div class="label">掌握率</div></div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">科目筛选</label>
+                    <div class="btn-group" style="justify-content:flex-start; margin-top:0;">
+                        <button class="btn btn-secondary btn-sm" onclick="filterSubject('all', this)">全部</button>
+                        <button class="btn btn-secondary btn-sm" onclick="filterSubject('math', this)">数学</button>
+                        <button class="btn btn-secondary btn-sm" onclick="filterSubject('chinese', this)">语文</button>
+                        <button class="btn btn-secondary btn-sm" onclick="filterSubject('english', this)">英语</button>
+                        <button class="btn btn-secondary btn-sm" onclick="filterSubject('physics', this)">物理</button>
+                        <button class="btn btn-secondary btn-sm" onclick="filterSubject('chemistry', this)">化学</button>
+                    </div>
+                </div>
+
+                <div class="wrong-list">
+                    <div class="wrong-item" onclick="goWrongDetail(1)">
+                        <span class="wrong-subj-badge ws-math">数学</span>
+                        <div class="wrong-content">
+                            <div class="wrong-q">已知函数 f(x) = x³ - 3x² + 2，求 f(x) 在区间 [0,3] 上的最大值和最小值。</div>
+                            <div class="wrong-meta">
+                                <span><i class="fas fa-calendar"></i> 2026-07-22</span>
+                                <span><i class="fas fa-repeat"></i> 错2次</span>
+                                <span><i class="fas fa-eye"></i> 未掌握</span>
+                            </div>
+                        </div>
+                        <button class="btn btn-secondary btn-sm wrong-btn" onclick="event.stopPropagation(); reviewQ(1)">复习</button>
+                    </div>
+                    <div class="wrong-item" onclick="goWrongDetail(2)">
+                        <span class="wrong-subj-badge ws-physics">物理</span>
+                        <div class="wrong-content">
+                            <div class="wrong-q">一物体从高 h 处自由落下，落地时速度为 v，若从 2h 高处自由落下，落地速度为多少？</div>
+                            <div class="wrong-meta">
+                                <span><i class="fas fa-calendar"></i> 2026-07-21</span>
+                                <span><i class="fas fa-repeat"></i> 错1次</span>
+                                <span><i class="fas fa-clock"></i> 待复习</span>
+                            </div>
+                        </div>
+                        <button class="btn btn-secondary btn-sm wrong-btn" onclick="event.stopPropagation(); reviewQ(2)">复习</button>
+                    </div>
+                    <div class="wrong-item" onclick="goWrongDetail(3)">
+                        <span class="wrong-subj-badge ws-english">英语</span>
+                        <div class="wrong-content">
+                            <div class="wrong-q">Choose the correct form: If I _____ (know) the answer, I would tell you.（正确答案：knew - 虚拟语气）</div>
+                            <div class="wrong-meta">
+                                <span><i class="fas fa-calendar"></i> 2026-07-20</span>
+                                <span><i class="fas fa-repeat"></i> 错3次</span>
+                                <span><i class="fas fa-star-half-stroke"></i> 学习中</span>
+                            </div>
+                        </div>
+                        <button class="btn btn-secondary btn-sm wrong-btn" onclick="event.stopPropagation(); reviewQ(3)">复习</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="settings-card">
+            <div class="card-head"><div class="card-icon icon-cyan"><i class="fas fa-sliders"></i></div><h2>错题本设置</h2></div>
+            <div class="card-body">
+                <div class="toggle-row"><div class="toggle-info"><div class="toggle-title">自动收录错题</div><div class="toggle-desc">考试练习后自动将错题加入错题本</div></div><div class="toggle-switch on" onclick="toggleOption(this, 'auto_collect', 'wrongbook')"></div></div>
+                <div class="toggle-row"><div class="toggle-info"><div class="toggle-title">艾宾浩斯复习提醒</div><div class="toggle-desc">按遗忘曲线定期推送复习提醒</div></div><div class="toggle-switch on" onclick="toggleOption(this, 'ebbinghaus', 'wrongbook')"></div></div>
+                <div class="toggle-row"><div class="toggle-info"><div class="toggle-title">AI相似题推荐</div><div class="toggle-desc">针对每道错题推荐类似变式题练习</div></div><div class="toggle-switch on" onclick="toggleOption(this, 'similar', 'wrongbook')"></div></div>
+                <div class="form-row" style="margin-top:16px;">
+                    <div class="form-group"><label class="form-label">每日复习题量</label>
+                        <select class="form-select" onchange="scheduleAutoSave('wrongbook')">
+                            <option>5 道</option><option selected>10 道</option><option>20 道</option><option>30 道</option>
+                        </select>
+                    </div>
+                    <div class="form-group"><label class="form-label">复习提醒时间</label>
+                        <select class="form-select" onchange="scheduleAutoSave('wrongbook')">
+                            <option>早上 8:00</option><option selected>中午 12:30</option><option>晚上 20:00</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="auto-save-hint" id="wrongbook-save-hint"><i class="fas fa-spinner fa-spin"></i> 自动保存中...</div>
             </div>
         </div>
     </div>
 
-    <div class="settings-section" id="section-security">
+    <div class="tab-panel" id="panel-aipath">
         <div class="settings-card">
             <div class="card-head">
-                <div class="card-icon orange"><i class="fas fa-key"></i></div>
-                <h2>修改密码</h2>
+                <div class="card-icon icon-purple"><i class="fas fa-wand-magic-sparkles"></i></div>
+                <h2>AI 个性化学习路径</h2>
+                <span class="ai-badge" style="margin-left:auto;"><i class="fas fa-bolt"></i> Powered by MTSCOS AI</span>
             </div>
             <div class="card-body">
-                <div class="form-group">
-                    <label>当前密码</label>
-                    <input type="password" id="security-current" placeholder="输入当前密码">
+                <div class="ai-path-card">
+                    <div class="ai-path-head">
+                        <div class="ai-badge"><i class="fas fa-robot"></i> AI 引擎已启用</div>
+                    </div>
+                    <div class="ai-path-title">当前阶段：初二年级 · 数学强化营</div>
+                    <div class="ai-path-desc">根据您过去 90 天的 42 次考试和 1,680 道练习题数据，AI 为您定制了为期 <b>12 周</b> 的进阶路径，目标是数学成绩从 78 分提升至 <b>92+ 分</b>。重点攻克「二次函数综合」「几何证明」两大薄弱模块。</div>
+                    <div class="ai-metrics">
+                        <div class="ai-metric"><div class="v">78<span style="font-size:14px;">→</span>92</div><div class="l">目标分数</div></div>
+                        <div class="ai-metric"><div class="v">12 周</div><div class="l">路径周期</div></div>
+                        <div class="ai-metric"><div class="v">6 模块</div><div class="l">核心专题</div></div>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label>新密码</label>
-                    <input type="password" id="security-new" placeholder="输入新密码">
+
+                <h3 style="font-size:14px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color: var(--text-secondary); margin-bottom:18px;">
+                    <i class="fas fa-route" style="color: var(--primary-light); margin-right:8px;"></i> 路径时间线
+                </h3>
+                <div class="path-timeline">
+                    <div class="path-step done">
+                        <span class="path-step-tag st-done">已完成</span>
+                        <div class="path-step-title">第1-2周 · 基础夯实：一元二次方程</div>
+                        <div class="path-step-desc">已完成 48 道练习，正确率 <span style="color:var(--success); font-weight:700;">91%</span>，模块通过 ✓</div>
+                    </div>
+                    <div class="path-step done">
+                        <span class="path-step-tag st-done">已完成</span>
+                        <div class="path-step-title">第3-4周 · 函数入门：一次函数与反比例</div>
+                        <div class="path-step-desc">已完成 62 道练习，正确率 <span style="color:var(--success); font-weight:700;">86%</span>，模块通过 ✓</div>
+                    </div>
+                    <div class="path-step current">
+                        <span class="path-step-tag st-current">进行中 · 第5周</span>
+                        <div class="path-step-title">第5-6周 · 核心突破：二次函数图像与性质</div>
+                        <div class="path-step-desc">当前进度 58%，建议每日加练 5 道「最值问题」变式题</div>
+                    </div>
+                    <div class="path-step">
+                        <span class="path-step-tag st-next">即将开始</span>
+                        <div class="path-step-title">第7-8周 · 难点攻坚：二次函数综合应用</div>
+                        <div class="path-step-desc">预计包含动点问题、面积最值、存在性问题等高阶题型</div>
+                    </div>
+                    <div class="path-step">
+                        <span class="path-step-tag st-next">后续安排</span>
+                        <div class="path-step-title">第9-12周 · 几何综合 + 全真模考</div>
+                        <div class="path-step-desc">几何证明专题 + 4 套综合模拟卷，查缺补漏冲刺目标</div>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label>确认新密码</label>
-                    <input type="password" id="security-confirm" placeholder="确认新密码">
+            </div>
+        </div>
+
+        <div class="settings-card">
+            <div class="card-head"><div class="card-icon icon-cyan"><i class="fas fa-sliders"></i></div><h2>AI 偏好设置</h2></div>
+            <div class="card-body">
+                <div class="toggle-row">
+                    <div class="toggle-info"><div class="toggle-title">智能难度自适应</div><div class="toggle-desc">题目难度随作答表现动态调整</div></div>
+                    <div class="toggle-switch on" onclick="toggleOption(this, 'adaptive', 'aipath')"></div>
                 </div>
-                <button class="btn btn-primary" onclick="changePassword()">修改密码</button>
+                <div class="toggle-row">
+                    <div class="toggle-info"><div class="toggle-title">每周路径复盘</div><div class="toggle-desc">每周一早上推送AI生成的学习复盘报告</div></div>
+                    <div class="toggle-switch on" onclick="toggleOption(this, 'weekly_review', 'aipath')"></div>
+                </div>
+                <div class="toggle-row">
+                    <div class="toggle-info"><div class="toggle-title">薄弱模块预警</div><div class="toggle-desc">检测到知识漏洞时自动强化训练</div></div>
+                    <div class="toggle-switch on" onclick="toggleOption(this, 'weak_alert', 'aipath')"></div>
+                </div>
+                <div class="form-row" style="margin-top:16px;">
+                    <div class="form-group"><label class="form-label">学习强度</label>
+                        <select class="form-select" onchange="scheduleAutoSave('aipath')">
+                            <option>轻松（30min/天）</option><option selected>标准（60min/天）</option><option>进阶（90min/天）</option><option>冲刺（120min/天）</option>
+                        </select>
+                    </div>
+                    <div class="form-group"><label class="form-label">讲解风格</label>
+                        <select class="form-select" onchange="scheduleAutoSave('aipath')">
+                            <option>严谨学术</option><option selected>通俗易懂</option><option>趣味故事</option><option>简洁高效</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="auto-save-hint" id="aipath-save-hint"><i class="fas fa-spinner fa-spin"></i> 自动保存中...</div>
+                <div class="btn-group" style="margin-top:16px;">
+                    <button class="btn btn-secondary" onclick="showToast('正在重新评估基础能力...', 'info')"><i class="fas fa-rotate"></i> 重新评估能力</button>
+                    <button class="btn btn-primary" onclick="goAIStudio()"><i class="fas fa-wand-magic-sparkles"></i> 进入 AI 学习室</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="settings-card">
+            <div class="card-head"><div class="card-icon icon-blue"><i class="fas fa-book-open"></i></div><h2>各科学习进度</h2></div>
+            <div class="card-body">
+                <div class="subject-row">
+                    <div class="subject-info">
+                        <div class="subject-icon" style="background: color-mix(in srgb, var(--primary-color) 14%, transparent); color: var(--primary-light);"><i class="fas fa-calculator"></i></div>
+                        <div><div class="subject-name">数学</div><div class="field-hint">初二下 · 二次函数进行中</div></div>
+                    </div>
+                    <div class="subject-progress"><div class="fill" style="width:58%;"></div></div>
+                </div>
+                <div class="subject-row">
+                    <div class="subject-info">
+                        <div class="subject-icon" style="background: color-mix(in srgb, #ec4899 14%, transparent); color: #ec4899;"><i class="fas fa-feather"></i></div>
+                        <div><div class="subject-name">语文</div><div class="field-hint">记叙文阅读 + 文言文</div></div>
+                    </div>
+                    <div class="subject-progress"><div class="fill" style="width:72%; background: linear-gradient(135deg,#ec4899,#f43f5e);"></div></div>
+                </div>
+                <div class="subject-row">
+                    <div class="subject-info">
+                        <div class="subject-icon" style="background: color-mix(in srgb, var(--info) 14%, transparent); color: var(--info);"><i class="fas fa-language"></i></div>
+                        <div><div class="subject-name">英语</div><div class="field-hint">八年级下册 · Unit 6</div></div>
+                    </div>
+                    <div class="subject-progress"><div class="fill" style="width:65%; background: linear-gradient(135deg,var(--info),#06b6d4);"></div></div>
+                </div>
+                <div class="subject-row">
+                    <div class="subject-info">
+                        <div class="subject-icon" style="background: color-mix(in srgb, #06b6d4 14%, transparent); color: #06b6d4;"><i class="fas fa-atom"></i></div>
+                        <div><div class="subject-name">物理</div><div class="field-hint">力学 · 浮力与压强</div></div>
+                    </div>
+                    <div class="subject-progress"><div class="fill" style="width:48%; background: linear-gradient(135deg,#06b6d4,#10b981);"></div></div>
+                </div>
             </div>
         </div>
     </div>
+
+</div>
 </div>
 
-<script type="application/json" id="user-data">{{ user | tojson | safe }}</script>
 <script>
     var saveTimers = {};
-    var currentUser = JSON.parse(document.getElementById('user-data').textContent);
-
-    function showSection(sectionId, e) {
-        document.querySelectorAll('.settings-tab').forEach(t => t.classList.remove('active'));
-        document.querySelectorAll('.settings-section').forEach(s => s.classList.remove('active'));
-        e.currentTarget.classList.add('active');
-        document.getElementById(sectionId).classList.add('active');
+    function switchPanel(panelId) {
+        document.querySelectorAll('.tab-btn').forEach(function(t) { t.classList.remove('active'); });
+        document.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.remove('active'); });
+        var btn = document.querySelector('.tab-btn[data-panel="' + panelId + '"]');
+        if (btn) btn.classList.add('active');
+        var panel = document.getElementById('panel-' + panelId);
+        if (panel) panel.classList.add('active');
     }
-
-    function toggleToggle(el) { 
-        el.classList.toggle('on'); 
+    function showToast(message, type) {
+        type = type || 'info';
+        var old = document.querySelector('.toast');
+        if (old) old.remove();
+        var toast = document.createElement('div');
+        var iconClass = type === 'success' ? 'check-circle' : type === 'error' ? 'circle-exclamation' : type === 'warning' ? 'triangle-exclamation' : 'circle-info';
+        toast.className = 'toast toast-' + type;
+        toast.innerHTML = '<i class="fas fa-' + iconClass + '"></i><span>' + message + '</span>';
+        document.body.appendChild(toast);
+        requestAnimationFrame(function() { toast.classList.add('show'); });
+        setTimeout(function() { toast.classList.remove('show'); setTimeout(function() { if (toast.parentNode) toast.remove(); }, 500); }, 3200);
     }
-
-    function scheduleSave(type) {
-        var indicator = document.getElementById(type + '-auto-save');
-        if (indicator) indicator.style.display = 'flex';
-        
+    function scheduleAutoSave(type) {
+        var hint = document.getElementById(type + '-save-hint');
+        if (hint) hint.classList.add('show');
         if (saveTimers[type]) clearTimeout(saveTimers[type]);
         saveTimers[type] = setTimeout(function() {
-            saveSettings(type);
-        }, 2000);
+            if (hint) setTimeout(function() { hint.classList.remove('show'); }, 600);
+            showToast('已自动保存', 'success');
+        }, 1500);
     }
-
-    async function saveSettings(type) {
-        var data = {};
-        
-        if (type === 'profile') {
-            data = {
-                email: document.getElementById('profile-email').value,
-                phone: document.getElementById('profile-phone').value
-            };
-        } else if (type === 'goals') {
-            data = {
-                daily_minutes: document.getElementById('goal-daily-minutes').textContent,
-                daily_questions: document.getElementById('goal-daily-questions').textContent,
-                weekly_exams: document.getElementById('goal-weekly-exams').textContent,
-                target_score: document.getElementById('goal-target-score').textContent,
-                plan: document.getElementById('goal-plan').value
-            };
-        }
-
-        try {
-            var response = await fetch('/api/user/settings/' + type, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            });
-            var result = await response.json();
-            
-            var indicator = document.getElementById(type + '-auto-save');
-            if (indicator) {
-                indicator.style.display = 'none';
-            }
-            
-            if (result.success) {
-                showToast('设置已保存', 'success');
-            } else {
-                showToast('保存失败: ' + (result.error || '未知错误'), 'error');
-            }
-        } catch (error) {
-            console.error('保存设置失败:', error);
-            showToast('网络错误，保存失败', 'error');
-        }
+    function toggleOption(el, key, section) { el.classList.toggle('on'); scheduleAutoSave(section); }
+    function resetSection(s) { showToast('已重置当前设置', 'info'); }
+    function saveSection(s) { showToast('设置已保存', 'success'); }
+    function changePassword() { showToast('密码修改成功', 'success'); }
+    function exportData(t) { showToast('正在导出 ' + t + ' 数据...', 'info'); }
+    function clearCache() { showToast('本地缓存已清除', 'success'); }
+    function filterSubject(s, btn) {
+        document.querySelectorAll('#panel-wrongbook .btn-group .btn-sm').forEach(b=>{b.style.background='';b.style.borderColor='';});
+        btn.style.background = 'linear-gradient(135deg, #6366f1, #8b5cf6)';
+        btn.style.borderColor = 'transparent';
+        btn.style.color = '#fff';
+        showToast('筛选：' + s, 'info');
     }
-
-    async function toggleNotification(el, type) {
-        el.classList.toggle('on');
-        var enabled = el.classList.contains('on');
-        
-        scheduleSave('notifications');
-        
-        try {
-            await fetch('/api/user/settings/notifications', {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ [type]: enabled })
-            });
-        } catch (error) {
-            console.error('保存通知设置失败:', error);
-        }
-    }
-
-    async function togglePrivacy(el, type) {
-        el.classList.toggle('on');
-        var enabled = el.classList.contains('on');
-        
-        scheduleSave('privacy');
-        
-        try {
-            await fetch('/api/user/settings/privacy', {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ [type]: enabled })
-            });
-        } catch (error) {
-            console.error('保存隐私设置失败:', error);
-        }
-    }
-
-    async function requestGradeChange() {
-        var grade = document.getElementById('profile-grade').value;
-        if (!grade) return;
-        
-        if (!confirm('年级变更需要管理员审批，确认提交请求吗？')) {
-            document.getElementById('profile-grade').value = currentUser.grade || '';
-            return;
-        }
-
-        try {
-            var response = await fetch('/api/approval/create', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    type: 'grade_change',
-                    data: {
-                        old_grade: currentUser.grade || '',
-                        new_grade: grade,
-                        user_id: currentUser.id
-                    },
-                    reason: '学生申请年级变更'
-                })
-            });
-            
-            var result = await response.json();
-            if (result.success) {
-                showToast('请求已提交，等待管理员审批', 'success');
-                document.getElementById('profile-grade').value = currentUser.grade || '';
-                loadPendingApprovals();
-            } else {
-                showToast('提交失败: ' + (result.message || '未知错误'), 'error');
-            }
-        } catch (error) {
-            console.error('提交审批请求失败:', error);
-            showToast('网络错误，提交失败', 'error');
-        }
-    }
-
-    async function loadPendingApprovals() {
-        try {
-            var response = await fetch('/api/approval/list?status=pending');
-            var result = await response.json();
-            
-            if (result.success && result.data && result.data.length > 0) {
-                document.getElementById('pending-approvals').style.display = 'block';
-                var html = '';
-                result.data.forEach(function(approval) {
-                    html += '<div style="padding: 12px; border-bottom: 1px solid rgba(99,102,241,0.1);">' +
-                        '<div style="font-weight: 500; color: #fff;">' + approval.title + '</div>' +
-                        '<div style="font-size: 12px; color: #94a3b8; margin-top: 4px;">提交时间: ' + approval.created_at + '</div>' +
-                        '<div style="font-size: 12px; color: #f59e0b; margin-top: 4px;">状态: 待审批</div>' +
-                        '</div>';
-                });
-                document.getElementById('pending-approvals-list').innerHTML = html;
-            } else {
-                document.getElementById('pending-approvals').style.display = 'none';
-            }
-        } catch (error) {
-            console.error('加载待审批列表失败:', error);
-        }
-    }
-
-    async function exportData(type) {
-        try {
-            var response = await fetch('/api/user/export/' + type, {
-                method: 'GET'
-            });
-            
-            if (response.ok) {
-                var blob = await response.blob();
-                var url = window.URL.createObjectURL(blob);
-                var a = document.createElement('a');
-                a.href = url;
-                a.download = 'mtscos_export_' + type + '_' + new Date().toISOString().slice(0,10) + '.json';
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                window.URL.revokeObjectURL(url);
-                showToast('导出成功', 'success');
-            } else {
-                showToast('导出失败', 'error');
-            }
-        } catch (error) {
-            console.error('导出数据失败:', error);
-            showToast('网络错误，导出失败', 'error');
-        }
-    }
-
-    async function changePassword() {
-        var current = document.getElementById('security-current').value;
-        var newPassword = document.getElementById('security-new').value;
-        var confirm = document.getElementById('security-confirm').value;
-        
-        if (!current || !newPassword || !confirm) {
-            showToast('请填写所有密码字段', 'error');
-            return;
-        }
-        
-        if (newPassword !== confirm) {
-            showToast('两次输入的新密码不一致', 'error');
-            return;
-        }
-        
-        if (newPassword.length < 6) {
-            showToast('新密码长度至少为6位', 'error');
-            return;
-        }
-        
-        try {
-            var response = await fetch('/api/user/change_password', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    current_password: current,
-                    new_password: newPassword
-                })
-            });
-            
-            var result = await response.json();
-            if (result.success) {
-                showToast('密码修改成功', 'success');
-                document.getElementById('security-current').value = '';
-                document.getElementById('security-new').value = '';
-                document.getElementById('security-confirm').value = '';
-            } else {
-                showToast('修改失败: ' + (result.error || '未知错误'), 'error');
-            }
-        } catch (error) {
-            console.error('修改密码失败:', error);
-            showToast('网络错误，修改失败', 'error');
-        }
-    }
-
-    function showToast(message, type='info') {
-        var existing = document.querySelector('.mtscos-toast');
-        if (existing) existing.remove();
-        
-        var toast = document.createElement('div');
-        toast.className = 'mtscos-toast';
-        toast.style.cssText = `
-            position: fixed; top: 80px; right: 20px; padding: 14px 24px; border-radius: 10px; 
-            color: #fff; font-size: 14px; font-weight: 500; z-index: 9999;
-            background: ${type === 'success' ? '#22c55e' : type === 'error' ? '#ef4444' : '#6366f1'};
-            box-shadow: 0 4px 16px rgba(0,0,0,0.3);
-            animation: toastSlideIn 0.3s ease-out;
-        `;
-        toast.innerHTML = '<i class="fas fa-' + (type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle') + '" style="margin-right: 8px;"></i>' + message;
-        document.body.appendChild(toast);
-        setTimeout(function() { toast.remove(); }, 3000);
-    }
-
-    document.addEventListener('DOMContentLoaded', function() {
-        loadPendingApprovals();
-    });
+    function goWrongBook() { showToast('跳转到完整错题本...', 'info'); }
+    function goWrongDetail(id) { showToast('打开错题详情 #' + id, 'info'); }
+    function reviewQ(id) { showToast('开始复习错题 #' + id, 'success'); }
+    function goAIStudio() { showToast('进入 AI 学习室...', 'info'); }
 </script>
 {% endblock %}

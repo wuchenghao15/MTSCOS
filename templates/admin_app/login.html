@@ -1,85 +1,92 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>admin_app > login.html</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
-        .container {
-            background: white;
-            border-radius: 16px;
-            padding: 40px;
-            text-align: center;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            max-width: 500px;
-            width: 100%;
-        }
-        .icon {
-            font-size: 64px;
-            margin-bottom: 20px;
-        }
-        h1 {
-            color: #333;
-            font-size: 24px;
-            margin-bottom: 10px;
-        }
-        p {
-            color: #666;
-            margin-bottom: 20px;
-            font-size: 14px;
-        }
-        .path {
-            background: #f5f5f5;
-            padding: 10px 15px;
-            border-radius: 8px;
-            font-family: monospace;
-            font-size: 12px;
-            color: #888;
-            margin-bottom: 20px;
-        }
-        .btn {
-            display: inline-block;
-            padding: 12px 32px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            text-decoration: none;
-            border-radius: 8px;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            margin: 5px;
-        }
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
-        }
-        .btn-secondary {
-            background: #f0f0f0;
-            color: #666;
-        }
-        .btn-secondary:hover {
-            background: #e0e0e0;
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>管理员登录 · MTSCOS AI</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box;}
+    body{min-height:100vh;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Segoe UI",Roboto,sans-serif;background:
+      radial-gradient(1200px 600px at 10% -10%, rgba(99,102,241,0.25), transparent 60%),
+      radial-gradient(900px 500px at 110% 10%, rgba(6,182,212,0.22), transparent 60%),
+      linear-gradient(160deg, #0b1020 0%, #111827 100%);
+      color:#e5e7eb;display:flex;align-items:center;justify-content:center;padding:40px 20px;}
+    .aa-wrap{width:100%;max-width:1000px;display:grid;grid-template-columns:1.1fr 1fr;gap:0;border-radius:20px;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,0.55);min-height:560px;}
+    .aa-left{background:linear-gradient(135deg,#4338ca 0%,#6366f1 40%,#0891b2 100%);padding:48px 44px;color:#fff;position:relative;overflow:hidden;}
+    .aa-left:before{content:"";position:absolute;right:-80px;top:-80px;width:320px;height:320px;border-radius:50%;background:rgba(255,255,255,0.08);}
+    .aa-left:after{content:"";position:absolute;left:-60px;bottom:-100px;width:260px;height:260px;border-radius:50%;background:rgba(255,255,255,0.06);}
+    .aa-logo{display:inline-flex;align-items:center;gap:10px;margin-bottom:40px;}
+    .aa-logo-icon{width:44px;height:44px;border-radius:12px;background:rgba(255,255,255,0.2);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;font-size:22px;}
+    .aa-logo-name{font-weight:800;font-size:18px;letter-spacing:0.3px;}
+    .aa-left h1{font-size:30px;line-height:1.35;margin-bottom:14px;max-width:380px;}
+    .aa-left p{opacity:0.88;line-height:1.7;font-size:14px;max-width:380px;margin-bottom:26px;}
+    .aa-features{display:flex;flex-direction:column;gap:14px;position:relative;}
+    .aa-ft{display:flex;align-items:flex-start;gap:12px;}
+    .aa-ft i{width:30px;height:30px;border-radius:8px;background:rgba(255,255,255,0.18);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;}
+    .aa-ft div{font-size:13px;opacity:0.92;}
+    .aa-ft b{display:block;opacity:1;margin-bottom:2px;font-size:14px;}
+    .aa-right{background:#0f172a;padding:48px 44px;}
+    .aa-right h2{font-size:22px;margin-bottom:4px;color:#f9fafb;}
+    .aa-sub{color:#94a3b8;font-size:13px;margin-bottom:26px;}
+    .aa-msg{padding:10px 12px;border-radius:10px;font-size:13px;margin-bottom:14px;}
+    .aa-err{background:rgba(239,68,68,0.12);color:#fca5a5;border:1px solid rgba(239,68,68,0.22);}
+    .aa-ok{background:rgba(34,197,94,0.12);color:#86efac;border:1px solid rgba(34,197,94,0.22);}
+    .aa-row{margin-bottom:16px;}
+    .aa-row label{font-size:12px;color:#94a3b8;font-weight:600;margin-bottom:6px;display:block;}
+    .aa-in{display:flex;align-items:center;gap:10px;background:#111827;border:1px solid #1f2937;border-radius:10px;padding:11px 14px;}
+    .aa-in:focus-within{border-color:#6366f1;box-shadow:0 0 0 3px rgba(99,102,241,0.18);}
+    .aa-in i{color:#818cf8;}
+    .aa-in input{flex:1;background:transparent;border:none;outline:none;color:#f9fafb;font-size:14px;}
+    .aa-r2{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:#94a3b8;margin:2px 0 18px;}
+    .aa-r2 a{color:#818cf8;text-decoration:none;}
+    .aa-btn{display:block;width:100%;padding:12px;border:none;border-radius:10px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;font-size:14px;font-weight:800;cursor:pointer;box-shadow:0 10px 26px rgba(99,102,241,0.28);}
+    .aa-btn:hover{filter:brightness(1.06);}
+    .aa-foot{display:flex;justify-content:space-between;align-items:center;margin-top:18px;font-size:12px;color:#64748b;}
+    .aa-foot a{color:#818cf8;text-decoration:none;}
+    @media (max-width: 880px){
+      .aa-wrap{grid-template-columns:1fr;}
+      .aa-left{padding:36px 28px;min-height:auto;}
+    }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <div class="icon">📄</div>
-        <h1>admin_app > login.html</h1>
-        <p>页面开发中: admin_app/login.html</p>
-        <div class="path">/templates/admin_app/login.html</div>
-        <a href="/" class="btn">返回首页</a>
-        
+  <form method="post" action="/auth/login">
+    <input type="hidden" name="admin_app" value="1">
+    <div class="aa-wrap">
+      <div class="aa-left">
+        <div class="aa-logo"><div class="aa-logo-icon"><i class="fas fa-shield-halved"></i></div><div class="aa-logo-name">MTSCOS AI · 管理中心</div></div>
+        <h1>集中管控，全局洞察</h1>
+        <p>面向超管/管理员的一体化后台：权限审计、题库治理、学情画像、AI 员工调度、系统升级、日志回溯一站式完成。</p>
+        <div class="aa-features">
+          <div class="aa-ft"><i class="fas fa-user-shield"></i><div><b>权限与审计</b>五阶角色 · 操作全程可追溯 · 敏感行为双因子验证</div></div>
+          <div class="aa-ft"><i class="fas fa-database"></i><div><b>数据治理</b>多库（auth/exam/question/ai/…）一屏总览 · 备份回滚</div></div>
+          <div class="aa-ft"><i class="fas fa-robot"></i><div><b>AI 员工矩阵</b>14 集群 · 一万余员工 · 任务绩效 · 异常自动修复</div></div>
+          <div class="aa-ft"><i class="fas fa-flag"></i><div><b>公祭日自动切换</b>按日期强制主题 · 仅超管可覆盖</div></div>
+        </div>
+      </div>
+      <div class="aa-right">
+        <h2><i class="fas fa-lock" style="color:#818cf8;"></i> 管理员登录</h2>
+        <div class="aa-sub">请输入管理员账户 · 仅 admin / 校管理员 / 超管可进入</div>
+        {% if error %}<div class="aa-msg aa-err"><i class="fas fa-exclamation-circle"></i> {{ error }}</div>{% endif %}
+        {% if msg %}<div class="aa-msg aa-ok"><i class="fas fa-check-circle"></i> {{ msg }}</div>{% endif %}
+        <div class="aa-row"><label>管理员账户</label>
+          <div class="aa-in"><i class="fas fa-user"></i><input name="username" required placeholder="admin / 您的管理员账号" autocomplete="username" value="{{ request.form.username or '' }}"></div></div>
+        <div class="aa-row"><label>密码</label>
+          <div class="aa-in"><i class="fas fa-key"></i><input name="password" required placeholder="请输入密码" type="password" autocomplete="current-password"></div></div>
+        <div class="aa-row"><label>安全令牌（可选）</label>
+          <div class="aa-in"><i class="fas fa-shield"></i><input name="token" placeholder="如已启用 TOTP 请填 6 位动态码"></div></div>
+        <div class="aa-r2">
+          <label style="margin:0;"><input type="checkbox" name="remember" value="1" style="vertical-align:middle;margin-right:4px;"> 受信任设备 7 天</label>
+          <a href="/auth/forgot_password">忘记密码？</a>
+        </div>
+        <button type="submit" class="aa-btn"><i class="fas fa-right-to-bracket"></i> 进入管理中心</button>
+        <div class="aa-foot">
+          <a href="/"><i class="fas fa-house"></i> 返回首页</a>
+          <a href="/auth/login">普通用户登录 →</a>
+        </div>
+      </div>
     </div>
+  </form>
 </body>
 </html>
