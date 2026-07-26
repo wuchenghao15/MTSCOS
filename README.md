@@ -1,472 +1,430 @@
-# MTSCOS AI 智能考试系统
+<div align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="static/images/logo.svg">
+    <img alt="MTSCOS AI Logo" src="static/images/logo.svg" width="120" height="120">
+  </picture>
 
-[![Python Version](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/downloads/)
-[![Flask Version](https://img.shields.io/badge/flask-2.0%2B-green.svg)](https://flask.palletsprojects.com/)
-[![License](https://img.shields.io/badge/license-MIT-yellow.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-v17.10.0-orange.svg)](docs/CHANGELOG.md)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
-[![Documentation](https://img.shields.io/badge/docs-complete-green.svg)](SYSTEM_DOC.md)
-[![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)](https://github.com/wuchenghao15/MTSCOS-AI-Project/actions)
-[![Code Quality](https://img.shields.io/badge/code-quality-high-blue.svg)](SECURITY.md)
-[![Community](https://img.shields.io/badge/community-active-blue.svg)](https://github.com/wuchenghao15/MTSCOS-AI-Project/discussions)
+  <h1>MTSCOS AI — MT Architecture Intelligent Learning &amp; Assessment Platform</h1>
+  <p>
+    <b>Distributed, AI-driven, MT-Architecture (v2.0) powered Exam &amp; Adaptive Learning Platform.</b><br>
+    Auto-generates questions, composes papers, diagnoses weaknesses, personalizes learning paths,
+    audits RBAC+ABAC permissions, and orchestrates <b>41+ AI Agents / Employees</b> as self-healing staff —
+    end-to-end, K12 through Lifelong Education.
+  </p>
 
-> 版本: v17.10.0 (Project Structure Refactor & AI Collaboration Enhancement)
-> 更新日期: 2026-07-25
-
-[English](README_EN.md) | 中文
-
-MTSCOS AI 是一个基于 Flask 框架开发的分布式智能考试管理平台，提供完整的题库系统、考试管理、学习分析、AI智能引擎等功能，支持成人教育和K12全科目。
-
----
-
-## 📋 目录
-
-- [🌟 核心特性](#-核心特性)
-- [📁 项目结构](#-项目结构)
-- [🚀 快速开始](#-快速开始)
-  - [原生部署](#原生部署)
-  - [Docker部署](#docker部署)
-  - [快速Docker部署](#快速docker部署)
-- [📡 API接口](#-api接口)
-- [📊 数据库架构](#-数据库架构)
-- [🌐 管理后台页面](#-管理后台页面)
-- [📈 功能使用流程](#-功能使用流程)
-- [🧪 测试账号](#-测试账号)
-- [🤝 贡献指南](#-贡献指南)
-- [📄 许可证](#-许可证)
-- [📞 联系方式](#-联系方式)
+  <p>
+    <a href="README.zh-CN.md">
+      <img src="https://img.shields.io/badge/%E4%B8%AD%E6%96%87-%E8%AF%BB%E6%88%91-ff5722?style=for-the-badge&logo=readme&logoColor=white" alt="中文文档">
+    </a>
+    &nbsp;
+    <a href="#getting-started--quick-start">
+      <img src="https://img.shields.io/badge/Get%20Started-2ea44f?style=for-the-badge&logo=rocket&logoColor=white" alt="Get Started">
+    </a>
+    &nbsp;
+    <a href="https://github.com/wuchenghao15/MTSCOS-AI-Project/releases">
+      <img src="https://img.shields.io/badge/Releases-v17.22.0-purple?style=for-the-badge&logo=semver&logoColor=white" alt="Releases">
+    </a>
+  </p>
+</div>
 
 ---
 
-## 🌟 核心特性
+<div align="center">
 
-### 🏗️ 架构特性
-- **模块化启动系统**：8阶段配置加载 + 6阶段功能模块加载
-- **分布式数据库架构**：20+ 独立数据库，智能路由
-- **AI智能引擎矩阵**：41+ AI员工，6+ AI Agent，590+ 检索模型
-- **响应式前端布局**：支持桌面端和移动端，适配手机客户端
+<!-- ── GitHub Metrics ── -->
+[![GitHub stars](https://img.shields.io/github/stars/wuchenghao15/MTSCOS-AI-Project?style=for-the-badge&logo=github&color=ffd60a&labelColor=2b2b2b)](https://github.com/wuchenghao15/MTSCOS-AI-Project/stargazers)
+[![GitHub forks](https://img.shields.io/github/forks/wuchenghao15/MTSCOS-AI-Project?style=for-the-badge&logo=github&color=8ecae6&labelColor=2b2b2b)](https://github.com/wuchenghao15/MTSCOS-AI-Project/network/members)
+[![GitHub watchers](https://img.shields.io/github/watchers/wuchenghao15/MTSCOS-AI-Project?style=for-the-badge&logo=github&color=a2d2ff&labelColor=2b2b2b)](https://github.com/wuchenghao15/MTSCOS-AI-Project/watchers)
+[![GitHub contributors](https://img.shields.io/github/contributors/wuchenghao15/MTSCOS-AI-Project?style=for-the-badge&logo=github&color=06d6a0&labelColor=2b2b2b)](https://github.com/wuchenghao15/MTSCOS-AI-Project/graphs/contributors)
+[![Last Commit](https://img.shields.io/github/last-commit/wuchenghao15/MTSCOS-AI-Project/main?style=for-the-badge&logo=git&color=ef476f&labelColor=2b2b2b)](https://github.com/wuchenghao15/MTSCOS-AI-Project/commits/main)
+[![Commit Activity](https://img.shields.io/github/commit-activity/m/wuchenghao15/MTSCOS-AI-Project?style=for-the-badge&logo=git&color=118ab2&labelColor=2b2b2b)](https://github.com/wuchenghao15/MTSCOS-AI-Project/pulse)
 
-### 📚 题库系统
-- **37,000+ 题目**：覆盖成人教育和K12全科目（语文、数学、英语、物理、化学、生物、历史、地理、政治、科学、日语）
-- **7种题型**：单选题、多选题、判断题、填空题、简答题、论述题、听力题
-- **智能出题**：基于知识点/难度/题型批量出题
-- **AI题目生成器**：从文本内容自动生成考试题目
+<br>
 
-### 🎓 教育综合管理
-- **教学大纲管理**：大纲创建、章节管理、知识点管理、课程标准管理、版本控制（支持K12和成人教育）
-- **题库与大纲同步**：题目与知识点映射、批量映射、考试与大纲同步、基于知识点和大纲智能生成题目与考试
-- **学习与大纲追踪**：学生学习进度追踪、知识点掌握度记录、章节进度更新、学习建议生成、评估报告
-- **教育综合API**：教学大纲CRUD、题库同步、学习追踪的RESTful API接口
+<!-- ── Repo Health & Quality ── -->
+[![Version](https://img.shields.io/badge/version-v17.22.0_–_SuperAdmin_UX_Unified_Edition-f77f00?style=for-the-badge&logo=semver&logoColor=white)](docs/CHANGELOG.md)
+[![Python](https://img.shields.io/badge/python-3.9_%7C_3.10_%7C_3.11_%7C_3.12-3776AB?style=for-the-badge&logo=python&logoColor=ffd54f&labelColor=2b2b2b)](https://www.python.org/downloads/)
+[![Flask](https://img.shields.io/badge/flask-3.x-000000?style=for-the-badge&logo=flask&logoColor=white&labelColor=2b2b2b)](https://flask.palletsprojects.com/)
+[![SQLite](https://img.shields.io/badge/sqlite-3.x%2B-003B57?style=for-the-badge&logo=sqlite&logoColor=white&labelColor=2b2b2b)](https://www.sqlite.org/)
+[![License](https://img.shields.io/github/license/wuchenghao15/MTSCOS-AI-Project?style=for-the-badge&logo=opensourceinitiative&color=0ead69&labelColor=2b2b2b)](LICENSE)
+[![Code Size](https://img.shields.io/github/languages/code-size/wuchenghao15/MTSCOS-AI-Project?style=for-the-badge&color=9d4edd&labelColor=2b2b2b)](https://github.com/wuchenghao15/MTSCOS-AI-Project)
+[![Repo Size](https://img.shields.io/github/repo-size/wuchenghao15/MTSCOS-AI-Project?style=for-the-badge&color=2d00f7&labelColor=2b2b2b)](https://github.com/wuchenghao15/MTSCOS-AI-Project)
+[![Top Language](https://img.shields.io/github/languages/top/wuchenghao15/MTSCOS-AI-Project?style=for-the-badge&labelColor=2b2b2b)](https://github.com/wuchenghao15/MTSCOS-AI-Project)
 
-### 🔐 权限管理
-- **16+ 角色**：guest→student→parent→designer→teacher→exam_proctor→question_manager→ai_manager→cluster_manager→admin→hardware_admin
-- **细粒度权限**：50+权限规则覆盖，6级访问控制
-- **审计日志**：完整操作记录、实时审计
-- **权限矩阵**：支持自定义权限规则配置
+<br>
 
-### 🤖 AI集群与模型库
-- **15+ AI模型**：GPT-4、Claude-3、Qwen、Llama-3、Gemini、DeepSeek等
-- **性能监控**：延迟、吞吐量、准确率指标
-- **动态扩展**：节点自动扩展、负载均衡
-- **多模型配置**：支持模型切换和版本管理
+<!-- ── CI/CD, Security & Bot Status ── -->
+[![CI/CD Pipeline](https://img.shields.io/github/actions/workflow/status/wuchenghao15/MTSCOS-AI-Project/ci-cd.yml?branch=main&label=CI%2FCD&style=for-the-badge&logo=githubactions&color=118ab2&labelColor=2b2b2b)](https://github.com/wuchenghao15/MTSCOS-AI-Project/actions/workflows/ci-cd.yml)
+[![Dependabot](https://img.shields.io/badge/Dependabot-Active-025e4b?style=for-the-badge&logo=dependabot&logoColor=white&labelColor=2b2b2b)](.github/dependabot.yml)
+[![Security: Bandit + pip-audit + Trivy](https://img.shields.io/badge/Security-Bandit_%2B_pip_audit_%2B_Trivy-sandybrown?style=for-the-badge&logo=snyk&logoColor=white&labelColor=2b2b2b)](docs/SECURITY.md)
+[![CodeQL](https://img.shields.io/badge/CodeQL-Enabled-success?style=for-the-badge&logo=github&labelColor=2b2b2b)](.github/workflows/ci-cd.yml)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=for-the-badge&logo=github&labelColor=2b2b2b)](docs/CONTRIBUTING.md)
+[![Open Issues](https://img.shields.io/github/issues/wuchenghao15/MTSCOS-AI-Project?style=for-the-badge&logo=github&color=ffba08&labelColor=2b2b2b)](https://github.com/wuchenghao15/MTSCOS-AI-Project/issues)
+[![GitHub Discussions](https://img.shields.io/badge/Discussions-Join_us!-5865F2?style=for-the-badge&logo=github&labelColor=2b2b2b)](https://github.com/wuchenghao15/MTSCOS-AI-Project/discussions)
 
-### ✨ AI智能功能
-- **AI题目生成器**：从文本内容自动生成考试题目，支持6种题型、11个科目、3级难度，自动保存到题库
-- **AI学习路径推荐**：分析学生错题数据，生成个性化学习路径，包含薄弱分析和知识图谱
-- **AI试卷自动组卷**：根据科目、难度、题型智能组卷，自动计算分数分布和考试时长，知识覆盖率分析，质量评分
-- **AI智能答疑**：学生在线提问，AI自动解答，支持多科目、多题型，会话管理，知识库搜索
-- **智能错题本**：自动收集错题，艾宾浩斯遗忘曲线复习，薄弱知识点分析，掌握程度追踪
-- **学生成绩分析仪表盘**：多维度数据可视化分析，成绩分布直方图、各科平均分雷达图、学习时间趋势图、错题率分析
-- **智能学习助手**：个性化学习推荐、智能作业辅导、学习效果分析
-
-### 🔐 安全防护
-- **企业级防火墙**：10+安全规则（SQL注入/XSS/命令注入/SSRF/文件包含/路径遍历/敏感文件/暴力破解/扫描器防护/API限流）
-- **AI安全建议**：智能分析安全漏洞，生成优化建议和实施步骤
-- **安全漏洞管理系统**：漏洞特征库（9种漏洞类型、17种检测特征、13种修复方案）、攻击模拟引擎（SQL注入/XSS模拟）、代码安全扫描器（13条检测规则）、AI闭环学习（安全知识自动同步到脑库）
-- **代码安全扫描**：自动扫描Python/HTML代码，检测eval代码注入、命令注入、路径遍历、硬编码密钥等漏洞，扫描结果入库管理
-
-### 🚀 自我维护能力
-- **自动修复引擎**：8种修复能力（表结构修复/配置校正/缓存清理/连接池重建/配置回滚/数据恢复/索引重建/权限修复）
-- **预防式维护**：8项维护内容，预测准确率100%
-- **系统健康诊断**：8项核心检查（数据库/API响应/内存/CPU/磁盘/网络/缓存/错误日志）
-
-### 🌐 端口与集群管理
-- **21个端口配置**：HTTP/HTTPS、API、WebSocket、数据库等
-- **端口管理**：扫描、分配、预留、释放、自动修复
-- **负载均衡**：轮询、最小连接数、加权轮询、IP哈希
-- **健康检查**：心跳检测、自动故障转移、节点状态监控
-
-### 📊 系统监控
-- **实时监控**：CPU、内存、磁盘、网络
-- **慢查询检测**：自动识别和优化慢查询
-- **性能分析**：索引建议、查询统计
-- **性能监控API**：提供系统状态和性能指标接口
-
-### 🚀 自动化运维
-- **Git自动同步**：变更检测、自动提交、推送
-- **每日健康检查**：数据库清理、日志清理、备份
-- **自动升级**：版本检测、灰度发布、健康检查回滚
-- **版本管理**：系统历史版本记录、自动更新说明文档
+</div>
 
 ---
 
-## 📁 项目结构
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://cdn.jsdelivr.net/gh/thmsgbrt/mtscos-preview-assets@main/hero-dark.svg">
+  <img alt="Preview banner" src="https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/solar.png" width="100%">
+</picture>
+
+---
+
+## 🧠 Why MTSCOS AI
+
+K-12, adult-education and higher-ed educators waste **80% of their work-hours** on mechanical
+drudgery: composing papers, grading homework, tabulating exam results, diagnosing weak
+knowledge-points, writing study plans, and hunting for question-bank content.
+
+MTSCOS AI replaces all of that with **a self-staffing "AI school district"** — 41+ specialized
+"AI employees" each own a responsibility (question generation, paper composition, homework
+grading, diagnostics, learning planning, firewall & audit, layout adjusting, git ops etc.)
+orchestrated by the **MT Architecture v2.0 (Multi-Agent Twin-Track Collaborative Architecture)**.
+Plug in text → get graded exams + personalized learning paths, automatically.
+
+> 🧭 **MTSCOS** = **M**ulti-Agent **T**win-Track **S**elf-evolving **C**ollaborative **O**perating **S**ystem
+
+---
+
+## ✨ Highlights (what makes this repo different)
+
+| Pillar | Capability |
+| :---: | :--- |
+| 🏗️ **MT Architecture v2.0** | Dual-engine layered pipeline: *Plan Engine* (strategy) + *Worker Agents* (execution). 8-stage config loader + 6-stage module loader. See [docs/MT_ARCHITECTURE.md](docs/MT_ARCHITECTURE.md). |
+| 🤖 **41+ AI Employees / Agents** | Teacher AI, Student AI, Exam Expert, Homework Grader, Question Generator, Security Auditor, Git Manager, DevOps Agent, Layout Adjuster, Code Repair, Data Analyst, Brain Librarian, Translator… — self-healing, skill-evolvable. |
+| 🔗 **15+ LLM Models Unified** | GPT-4o / Claude-3.5 / Qwen2.5 / Llama-3 / Gemini / DeepSeek / Volcengine DashScope / 通义千问 — auto-routed by capability, load & latency SLA. |
+| 📚 **Dynamic Question Engine v2** | Real-time AI-generated + web-sourced multi-modal questions, avoids collision across attempts; no static q-bank lock-in. 7 question types × 11 subjects × 3 Bloom levels. |
+| 🧩 **Sharded DB Fabric** | 9+ split SQLite shards (`auth / exam / question / learning / user / system / admin / log / ai / question / other / math / physics …`) with transparent smart routing — out-of-box zero-config. |
+| 🔐 **Enterprise RBAC + ABAC** | 16 role levels guest→parent→designer→teacher→proctor→qm→ai_mgr→cluster_mgr→admin→super_admin + hardware-admin; 50+ permission rules + full immutable audit log, VIKEY hardware token support. |
+| 🛡️ **AI Firewall + AppSec** | WAF rules (SQLi/XSS/RCE/SSRF/LFI/traversal/scanner/brute), pip-audit, Trivy FS scan, Bandit code sweep, Dependabot pip+actions weekly, CodeQL. |
+| ♻️ **Self-Maintenance OS** | 8 auto-repair paths (schema fix / config correction / cache purge / connection-pool rebuild / rollback / data recovery / index rebuild / ACL repair); preventive health 8-plex diagnostics. |
+| 🔌 **Version Unified API** | 1 main version + 20 subsystem versions, batch-upgrade, rollback, lock-history; mirrored in DB (`system_versions` / `subsystem_versions`) for audit. |
+| 📱 **Responsive + Mobile Portal** | Desktop, tablet, mobile layouts; dedicated mobile login & exam pages; VIKEY token-auth + 6-digit challenge for super-admin login. |
+
+---
+
+## 🏗️ MT Architecture v2.0 (Quick View)
+
+```
+                    ┌─────────────────────────────────────────────┐
+                    │  MT ARCHITECTURE v2.0 — DUAL-ENGINE PIPELINE  │
+                    └─────────────────────────────────────────────┘
+                                             
+    ┌────────────┐   ┌────────────────────┐   ┌──────────────────────┐   ┌────────────┐
+    │  Request   │→  │   🧭 PLAN ENGINE   │→  │  ⚙️ WORKER AGENTS    │→  │  Response  │
+    │ Ingress    │   │ (Strategy/Orchestr.)│   │ (41+ AI Employees)   │   │  Egress    │
+    └──────┬─────┘   └─────────┬──────────┘   └──────────┬───────────┘   └──────┬─────┘
+           │                   │                       │                      │
+           ▼                   ▼                       ▼                      ▼
+   auth.db / admin.db   ai_collab / decision    exam_engine / q_engine   log.db / audit
+   user.db / session    capability router       homework / diagnosis    split_databases/*
+```
+
+- **Plan Engine** — intent recognition, decomposition, security ACL, route selection
+- **Worker Agents** — one agent = one role; pluggable skill evolution, task delegation, fault recovery
+- **Fabric** — sharded SQLite + shared in-memory pub/sub + cache; transparent failover
+- **MT Docs** → [docs/MT_ARCHITECTURE.md](docs/MT_ARCHITECTURE.md) · [docs/ARCHITECTURE_REPORT.md](docs/ARCHITECTURE_REPORT.md) · [docs/PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md)
+
+---
+
+## 🎯 Feature Matrix (Everything Included)
+
+### 📚 Question & Exam
+- **Unified Question Bank** — 11 subjects (Chinese / Math / English / Physics / Chem / Bio / Hist / Geog / Politics / Sci / Japanese), 7 formats (single/multi/judge/fill/short/essay/listening), 3 Bloom levels + difficulty + discrimination auto-validated
+- **Dynamic Question Engine** — real-time AI generation + web crawling; collision-avoidance random injection
+- **AI Paper Composer** — knowledge-coverage analysis, score distribution calculator, quality score + preview + save
+- **Proctoring** — browser-focus / copy-paste / tab-switch monitoring + anti-cheat flags
+
+### 🧑‍🎓 Learning & Tutoring
+- **Learning Path Engine (IRT + RL)** — IRT scoring + Q-value recommended sequence, Ebbinghaus review spiral, scaffolded teaching
+- **Weakness Diagnosis** — ability radar + knowledge-point heatmap + wrong-answer causal tree
+- **Smart Wrong Book** — auto-collects wrong answers; spaced repetition; mastery tracking
+- **AI Tutor** — per-subject coaching, writing grading (Chinese essay / English writing), step-by-step math solver
+- **Student Analytics Dashboard** — distributions / radar / time-trend / wrong-rate quadrant
+
+### 🏫 Management Portal (10 Personas)
+- Teacher Workbench / Exam Center / Question Bank Manager / Student Learning Portal / Parent Console /
+- Designer Console / AI Ops / Cluster Ops / Admin Dashboard / **Super Admin UX (hardened)** + VIKEY USB Token auth + 6-digit challenge
+
+### 🛡️ Security & Governance
+- RBAC (16 roles) + ABAC attribute filters; 6-level ACL matrix
+- Enterprise WAF (SQLi / XSS / RCE / SSRF / LFI / traversal / scanner / brute-force / rate-limit)
+- **VIKEY Hardware Token** — super-admin login USB token flow + challenge/response + session-token binding
+- **AI Firewall (new in v17.22)** — in-app firewall service + API
+- Immutable audit trail (operation / login / data-change / API call); dashboards + exports
+- Dependabot daily for pip + weekly for GitHub Actions; pip-audit / Trivy / Bandit / CodeQL on CI
+
+### ⚙️ Ops & Self-Healing
+- **Unified Version Manager** — main version + 20 subsystem versions; batch upgrade / rollback / lock / history
+- 8-plex auto repair (schema / config / cache / pool / rollback / recovery / index / ACL)
+- Full cluster monitoring (CPU / mem / disk / net / slow-query / indexes)
+- Git auto-sync + daily health + backups + hot-swap deploy
+- Decoupled startup: `startup_modules/` (core_init, db_config_loader, module_loader)
+
+---
+
+## 🚀 Getting Started / Quick Start
+
+### Environment Requirements
+
+| Dependency | Min Version | Optional / Required |
+| :--- | :---: | :---: |
+| Python | **3.9+** (3.10+ recommended for full CVEs patched) | ✔️ Required |
+| SQLite | 3.30+ | ✔️ Required |
+| pip | 20.0+ | ✔️ Required |
+| Git | latest | ✔️ Required |
+| Redis | 7.0+ | ⚪ Optional (gracefully degrades to memory cache) |
+| OpenAI / DashScope / etc. API key | any | ⚪ Optional (offline mode still runs all non-AI functions) |
+
+### Option 1 — Native Run (Mac / Linux / WSL — recommended for developers)
+
+```bash
+# 1. Clone
+git clone https://github.com/wuchenghao15/MTSCOS-AI-Project.git
+cd MTSCOS-AI-Project
+
+# 2. Virtual env + deps
+python3 -m venv venv
+source venv/bin/activate        # Win:  venv\Scripts\activate
+pip install -r requirements.txt  # pip 20.0+ required
+
+# 3. Launch the PRODUCTION entrypoint (recommended)
+python3 server_real_db.py --host 0.0.0.0 --port 8888
+
+# Alternative — Preview entrypoint
+# python3 server_preview.py --port 8888
+```
+
+Now open:
+- 🏠 **Homepage / Login** → <http://localhost:8888/>
+- 📊 **MT Architecture v2.0 Showcase** → <http://localhost:8888/mt_architecture>
+- 📖 **System Spec page** → <http://localhost:8888/system_spec>
+- 🛡️ **Super-Admin UX** → login with `wuchenghao15` *(the SA UX auto-hides "remember me / forgot password / create account" and requires VIKEY hardware token + 6-digit challenge for production login)*
+
+**CLI flags:**
+```
+--host      Bind address      (default 127.0.0.1)
+--port      HTTP port         (default 8888)
+--ssl       Enable HTTPS      (default False)
+--ssl-port  HTTPS port        (default 8443)
+--debug     Debug mode        (default False)
+```
+
+### Option 2 — Docker (production)
+
+```bash
+git clone https://github.com/wuchenghao15/MTSCOS-AI-Project.git && cd $_
+docker build -t mtscos-ai:v17.22.0 .
+docker run -d -p 8888:8888 --name mtscos-ai \
+  -v $(pwd)/split_databases:/app/split_databases:rw \
+  -v $(pwd)/data:/app/data:rw \
+  mtscos-ai:v17.22.0
+```
+
+Full container & k8s guidance → [docs/DEPLOYMENT_GUIDE.md](docs/DEPLOYMENT_GUIDE.md).
+
+### Option 3 — `app.py` (Legacy entrypoint)
+
+Still supported but **`server_real_db.py` is now the default production entrypoint**
+(sharded-db-aware, starts version manager + VIKEY driver + startup modules correctly).
+
+---
+
+## 🧪 Demo Credentials
+
+10 demo personas ship out-of-the-box — **shared password** `Test@2026`
+
+| Username | Role | Level |
+|---|---|---|
+| `test_student` | 学生 · Student | 1 |
+| `test_parent` | 家长 · Parent | 1 |
+| `test_designer` | 设计师 · Designer | 1 |
+| `test_teacher` | 教师 · Teacher | 2 |
+| `test_proctor` | 监考 · Proctor | 2 |
+| `test_qm` | 题库管理员 · Question Mgr | 3 |
+| `test_aim` | AI管理员 · AI Mgr | 3 |
+| `test_cm` | 集群管理员 · Cluster Mgr | 3 |
+| `test_admin` | 系统管理员 · Admin | 4 |
+| `test_hwadmin` | 硬件管理员 · Hardware Admin | 5 |
+| `wuchenghao15` | **🧑‍💻 SUPER ADMIN** | 9 — requires VIKEY hardware token |
+
+---
+
+## 🧩 REST API Highlights (all Blueprint-registered)
+
+Authentication is **Session Cookie + CSRF Token**; production deployments MUST front with TLS.
+Interactive Swagger-style OpenAPI lives at `/api/versions` when logged in as admin.
+
+| Group | Endpoint | Method | Purpose |
+|---|---|:---:|---|
+| **Auth** | `/api/auth/login` | POST | Login |
+| | `/api/auth/logout` | POST | Logout (clears vikey token too) |
+| | `/api/auth/check` | GET | Session alive check |
+| **AI Question** | `/api/ai/generate-questions` | POST | Gen questions from text |
+| | `/api/ai/generate-questions/stats` | GET | Generation stats |
+| **AI Learning Path** | `/api/ai/study-path/generate` | POST | Personalized learning path |
+| | `/api/ai/study-path/knowledge-graph` | GET | Knowledge graph |
+| **AI Paper Compose** | `/api/ai/exam-compose` | POST | Auto compose paper |
+| | `/api/ai/exam-compose/statistics` | GET | Compose coverage stats |
+| **Unified Version API** | `/api/version/list` | GET | Main + subsystem versions |
+| | `/api/version/upgrade` | POST | Batch-upgrade subsystems |
+| | `/api/version/rollback` | POST | Rollback subsystem |
+| **System** | `/api/system/status` | GET | Health, 8-plex diagnostics |
+| | `/api/system/version` | GET | Server version info |
+
+More → [docs/SYSTEM_DOC.md §7 — APIs](docs/SYSTEM_DOC.md)
+
+---
+
+## 🗃️ Database Fabric (Sharded SQLite by Domain)
+
+```
+split_databases/
+├── auth.db          users / roles / permissions / sessions / 2fa / vikey bindings
+├── user.db          user-profiles / parent-student links / groups / avatar
+├── system.db        config / system_versions / subsystem_versions / feature-flags
+├── admin.db         admin_ops / change-audit / super-admin audit log
+├── exam.db          exams / exam_users / exam_questions / results / proctor events
+├── question.db      question_bank / ai_generated / tags / blooms / difficulty
+├── learning.db      learning_records / knowledge_points / study_paths / wrong-book
+├── ai.db            ai_employees / clusters / llm model-pool / ai_results / brain_map
+├── log.db           system_logs / access / audit / error / slow_query
+├── math.db / physics.db / other.db   subject-domain extensions (reserve)
+└── proctor.db / learning.db ext.     proctoring events / learning analytics
+```
+
+Smart DB router → see [`smart_db_router_simple.py`](smart_db_router_simple.py)
+
+---
+
+## 🧭 Project Layout
 
 ```
 MTSCOS-AI-Project/
-├── app.py                      # 应用入口
-├── version_manager.py          # 版本管理器
-├── scheduler_control.py        # 调度引擎控制（含看门狗守护进程）
-├── auto_scheduler.py           # 自动调度器
-├── requirements.txt            # Python依赖
-├── Dockerfile                  # Docker构建配置
-├── docker-compose.yml          # Docker Compose完整配置
-├── docker-compose.quick.yml    # 快速Docker部署配置
-├── CHANGELOG.md                # 变更日志
-├── SYSTEM_DOC.md               # 系统说明书
-├── DEPLOYMENT_GUIDE.md         # 部署指南
-├── SECURITY.md                 # 安全文档
-├── CONTRIBUTING.md             # 贡献指南
-├── CODE_OF_CONDUCT.md          # 行为准则
-├── LICENSE                     # 许可证
-├── ai_engines/                 # AI引擎模块 (20+核心引擎)
-│   ├── ai_cluster_manager.py   # AI集群管理
-│   ├── ai_employee_manager.py  # AI员工管理
-│   ├── ai_question_bank.py     # 题库生成引擎
-│   └── ...
-├── app/                        # 应用模块
-│   ├── routes/                 # 路由模块 (API蓝图)
-│   ├── services/               # 服务模块
-│   ├── models/                 # 数据模型
-│   ├── api/                    # API蓝图模块
-│   ├── utils/                  # 工具模块
-│   ├── middlewares/            # 中间件
-│   └── __init__.py             # 应用初始化
-├── templates/                  # HTML模板 (100+个)
-├── static/                     # Flask静态文件
-├── data/                       # 数据目录
-├── logs/                       # 日志目录
-└── .github/                    # GitHub配置
-    ├── workflows/              # CI/CD工作流
-    └── ISSUE_TEMPLATE/         # 问题模板
+├── server_real_db.py         ✅ Production entrypoint (MT-arch-aware, starts shards)
+├── server_preview.py         🧪 Preview entrypoint
+├── app.py                    Legacy entrypoint
+├── smart_db_router_simple.py SQLite shard router
+├── requirements.txt          Runtime deps
+├── VERSION                   17.22.0
+├── Dockerfile                Container build
+├── .github/
+│   ├── workflows/ci-cd.yml   CI: bandit/pip-audit/trivy + CodeQL
+│   ├── dependabot.yml        pip + actions weekly (with protobuf/paho whitelist)
+│   ├── ISSUE_TEMPLATE/       Bug / question templates
+│   └── PULL_REQUEST_TEMPLATE.md
+├── core/services/
+│   ├── version_manager.py    Main + history / next-major-minor-patch helpers
+│   ├── ai_firewall.py        AppSec firewall service
+│   └── vikey_driver.py       VIKEY hardware-token USB driver
+├── startup_modules/          core_init / db_config_loader / module_loader
+├── ai_engines/               41+ AI employees / agents / mechanism_ai / layout-adjuster …
+├── app/
+│   ├── ai/                   Per-domain AI engines (exam/learning/diagnosis…)
+│   ├── middlewares/          access_control / security_middleware / CSRF…
+│   └── api/                  ai_firewall / ai_security_workforce / layout_ai / vikey / version
+├── templates/                100+ Jinja2 pages (index.html, mt_architecture.html, system_spec.html…)
+├── static/                   images/logo.svg + favicon / css / js/vikey/
+├── split_databases/          ☝️ 9+ domain SQLite shards (mount for persistence)
+├── docs/                     Full doc set → see “📚 Documentation Index” below
+└── data/                     backups / exports / uploads
 ```
 
----
-
-## 🚀 快速开始
-
-### 环境要求
-- Python 3.9+
-- SQLite 3.30+
-- Redis 7.0+（可选，系统支持内存缓存降级）
-- Git
-- pip 20.0+
+Extended tree → [docs/PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md)
 
 ---
 
-### 原生部署（推荐）
+## 🛣️ Roadmap
+
+| Milestone | Target | Status |
+|---|:---:|:---:|
+| **v17.22.x — SuperAdmin UX Unified Edition** | 2026-07-26 | ✅ **Released** — this version. SA UI auto-hide for remember-me/forgot/register; VIKEY integrated; main+20 subsystems version aligned; Dependabot+Trivy+Bandit on CI. |
+| **v17.23 — Question Expansion v3** | Aug 2026 | 🚧 In design — multimodal (image/audio) questions; anti-LLM watermark; OCR-in for handwritten grading. |
+| **v17.24 — Role-Twin AI School District** | Sep 2026 | 🚧 In design — every teacher/student has a private AI twin; twin-to-twin delegation graph; GPU offload for local-LLM. |
+| **v18.0 — MT Architecture v3** | Q4 2026 | 🔭 Planned — streaming event bus (Kafka-compatible pub/sub); hot-reload agents; multi-region sharding; Rust firewall proxy. |
+
+Live changelog → [docs/CHANGELOG.md](docs/CHANGELOG.md)
+
+---
+
+## 🤝 Contributing
+
+We welcome every contribution:
+- ⭐ ⭐ **Star this repo** ⭐ ⭐  — helps newcomers find us
+- 🐛 [Open a bug report](https://github.com/wuchenghao15/MTSCOS-AI-Project/issues/new?template=bug_report.md)
+- 💡 [Open a feature/discussion](https://github.com/wuchenghao15/MTSCOS-AI-Project/discussions)
+- 🌐 Translate docs / refine English
+- 🧩 Add subjects, question types, new AI employees
+
+### Quick Dev Loop
 
 ```bash
-# 克隆仓库
-git clone https://github.com/wuchenghao15/MTSCOS-AI-Project.git
-cd MTSCOS-AI-Project
-
-# 创建虚拟环境（推荐）
-python3 -m venv venv
-source venv/bin/activate
-
-# 安装依赖
-pip install -r requirements.txt
-
-# 启动服务
-python app.py --port 8888
+# Fork & clone
+gh repo fork wuchenghao15/MTSCOS-AI-Project --clone && cd MTSCOS-AI-Project
+# Branch
+git checkout -b feature/my-contribution
+# Dev server
+python3 server_preview.py --port 8888 --debug
+# Before PR
+python3 -m pytest tests/ -x  # if any
 ```
 
-**启动参数**
-
-| 参数 | 说明 | 默认值 |
-|------|------|--------|
-| --port | 服务端口 | 8888 |
-| --host | 绑定地址 | 0.0.0.0 |
-| --debug | 调试模式 | False |
-| --ssl | 启用SSL | False |
-| --ssl-port | SSL端口 | 8443 |
-
----
-
-### Docker部署
-
-**完整部署（含Redis）**
-
-```bash
-# 克隆仓库
-git clone https://github.com/wuchenghao15/MTSCOS-AI-Project.git
-cd MTSCOS-AI-Project
-
-# 构建并启动
-docker-compose up -d --build
-
-# 查看日志
-docker-compose logs -f
+Commit format (Conventional Commits 1.0):
+```
+feat(question): add image-based comprehension questions
+fix(security): patch SSRF in URL fetcher
+docs(readme): fix quickstart flags
 ```
 
-**快速部署（仅应用）**
-
-```bash
-# 快速启动（无Redis依赖）
-docker-compose -f docker-compose.quick.yml up -d
-
-# 查看日志
-docker-compose -f docker-compose.quick.yml logs -f
-```
-
-**Docker部署对比**
-
-| 特性 | docker-compose.yml | docker-compose.quick.yml |
-|------|-------------------|------------------------|
-| Redis | ✅ 包含 | ❌ 不包含 |
-| AI自学习 | ✅ 启用 | ❌ 禁用 |
-| Git自动同步 | ✅ 启用 | ❌ 禁用 |
-| 自动备份 | ✅ 启用 | ❌ 禁用 |
-| 部署速度 | 较慢（需构建） | 较快（直接运行） |
-| 适用场景 | 生产环境 | 开发/测试环境 |
+Full contributing rules → [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) ·
+Code of conduct → [docs/CODE_OF_CONDUCT.md](docs/CODE_OF_CONDUCT.md) ·
+Security disclosures → [docs/SECURITY.md](docs/SECURITY.md)
 
 ---
 
-### 访问地址
-- 系统首页: http://localhost:8888/
-- 登录页面: http://localhost:8888/login
-- 管理后台: http://localhost:8888/admin_app/login
-- 增强管理器仪表板: http://localhost:8888/enhancement
-- AI学习仪表盘: http://localhost:8888/ai_learning_dashboard
+## 📚 Documentation Index
+
+| Document | Purpose |
+|---|---|
+| 🇨🇳 [中文 README](README.zh-CN.md) | 面向中文用户的完整文档 |
+| 🏛️ [MT Architecture v2.0](docs/MT_ARCHITECTURE.md) | 40+ agents dual-engine pipeline explained |
+| 📋 [System Spec (§1–§9 hard rules)](docs/SYSTEM_DOC.md) | 系统完整说明书（中文） |
+| 🚀 [Deployment Guide](docs/DEPLOYMENT_GUIDE.md) | Prod / docker / k8s / TLS / HA |
+| 🚧 [Security](docs/SECURITY.md) | Vulnerability reporting / WAF / CI scanners |
+| ➕ [Contributing](docs/CONTRIBUTING.md) | Code style / commit format / PR flow |
+| 📦 [Project Structure](docs/PROJECT_STRUCTURE.md) | Full directory tree, what-goes-where |
+| 🗺️ [Changelog](docs/CHANGELOG.md) | Every version since v1.0 |
+| 🧠 [AI Engine Architecture](ai_engines/AI_ENGINE_ARCHITECTURE.md) | 41+ AI employees matrix |
+| 🏷️ [Releases](https://github.com/wuchenghao15/MTSCOS-AI-Project/releases) | Tagged releases on GitHub |
 
 ---
 
-## 📡 API接口
+## ⚖️ License
 
-### 认证接口
-| 接口 | 方法 | 说明 |
-|------|------|------|
-| /api/auth/login | POST | 用户登录 |
-| /api/auth/logout | POST | 用户登出 |
-| /api/auth/check | GET | 检查登录状态 |
+MIT License © 2026 wuchenghao15 / MTSCOS AI — see [`LICENSE`](LICENSE) for full text.
 
-### 系统管理接口
-| 接口 | 方法 | 说明 |
-|------|------|------|
-| /api/system/status | GET | 获取系统状态 |
-| /api/system/configs | GET | 获取系统配置 |
-| /api/system/modules | GET | 获取模块状态 |
-| /api/system/version | GET | 获取系统版本 |
-
-### AI题目生成接口
-| 接口 | 方法 | 说明 |
-|------|------|------|
-| /api/ai/generate-questions | POST | 从文本生成题目 |
-| /api/ai/generate-questions/save | POST | 保存生成的题目 |
-| /api/ai/generate-questions/stats | GET | 获取生成统计 |
-| /api/ai/detect-subject | POST | 自动检测科目 |
-| /api/ai/extract-key-points | POST | 提取关键点 |
-
-### AI学习路径接口
-| 接口 | 方法 | 说明 |
-|------|------|------|
-| /api/ai/study-path/generate | POST | 生成学习路径 |
-| /api/ai/study-path/analyze | POST | 分析薄弱环节 |
-| /api/ai/study-path/knowledge-graph | GET | 获取知识图谱 |
-| /api/ai/study-path/progress | POST | 获取学习进度 |
-
-### AI学习助手接口
-| 接口 | 方法 | 说明 |
-|------|------|------|
-| /api/learning_assistant/recommendations | GET | 获取学习推荐 |
-| /api/learning_assistant/generate_recommendations | POST | 生成学习推荐 |
-| /api/learning_assistant/homework/analyze | POST | 分析作业答案 |
-| /api/learning_assistant/report | GET | 获取学习报告 |
-
-### AI试卷组卷接口
-| 接口 | 方法 | 说明 |
-|------|------|------|
-| /api/ai/exam-compose | POST | 自动组卷 |
-| /api/ai/exam-compose/preview | POST | 预览试卷 |
-| /api/ai/exam-compose/save | POST | 保存试卷 |
-| /api/ai/exam-compose/statistics | GET | 获取组卷统计 |
-
-### 增强管理器接口
-| 接口 | 方法 | 说明 |
-|------|------|------|
-| /api/enhancement/status | GET | 增强管理器总览状态 |
-| /api/enhancement/database/health | GET | 数据库健康检查 |
-| /api/enhancement/cluster/monitor | GET | 集群状态监控 |
-| /api/enhancement/system/resources | GET | 系统资源多维度监控 |
-| /api/enhancement/git/sync | POST | Git一键同步 |
+- All **question-bank content** generated by the platform must be used responsibly (academic integrity).
+- **Educational users (non-commercial):** free, no attribution beyond the MIT notice.
+- **Commercial / institutional customers:** please open a GitHub discussion first or email `contact@mtscos.com`.
 
 ---
 
-## 📊 数据库架构
+<div align="center">
 
-### 主要数据库
-| 数据库 | 用途 | 核心表 |
-|--------|------|--------|
-| auth.db | 认证和用户管理 | users, roles, permissions, sessions |
-| exam.db | 考试管理 | exams, exam_questions, exam_results |
-| question.db | 题库管理 | questions, ai_generated_questions |
-| learning.db | 学习系统 | learning_records, study_paths, knowledge_points |
-| system.db | 系统配置 | configs, versions, logs |
-| ai.db | AI引擎数据 | ai_models, ai_clusters, ai_results |
-| admin.db | 管理后台 | admin_users, admin_logs |
-| log.db | 日志系统 | system_logs, audit_logs, error_logs |
-| api_management.db | API管理 | api_endpoints, api_stats |
-| routes_management.db | 路由管理 | routes, route_stats |
+### If this project saves you time → please ⭐ star it!
 
----
+[![Stargazers over time](https://starchart.cc/wuchenghao15/MTSCOS-AI-Project.svg?variant=adaptive)](https://starchart.cc/wuchenghao15/MTSCOS-AI-Project)
 
-## 🌐 管理后台页面
+<sub>
 
-| 页面路由 | 说明 | 权限要求 |
-|---------|------|---------|
-| /admin_app/login | 管理员登录 | 所有角色 |
-| /admin/ai-question-generator | AI题目生成器 | admin |
-| /admin/ai-study-path | AI学习路径推荐 | admin |
-| /admin/ai-exam-composer | AI试卷组卷 | admin |
-| /admin/student-analytics | 学生成绩分析仪表盘 | admin |
-| /admin/question-bank | 题库管理 | question_manager |
-| /admin/ai-cluster | AI集群管理 | ai_manager |
-| /admin/cluster-management | 集群管理 | cluster_manager |
-| /enhancement | 增强管理器仪表板 | admin |
+Made with :octocat: + 🤖 multi-agents in Beijing · **MTSCOS AI · MT Architecture v2.0** ·
+[Home](https://github.com/wuchenghao15/MTSCOS-AI-Project) ·
+[Discussions](https://github.com/wuchenghao15/MTSCOS-AI-Project/discussions) ·
+[Issues](https://github.com/wuchenghao15/MTSCOS-AI-Project/issues) ·
+[Contact](mailto:contact@mtscos.com)
 
----
-
-## 📈 功能使用流程
-
-### AI题目生成流程
-1. 输入文本内容 → 系统自动检测科目 → 提取关键点 → 生成题目 → 保存到题库
-
-### AI学习路径推荐流程
-1. 分析学生错题数据 → 识别薄弱环节 → 生成个性化学习路径 → 跟踪学习进度
-
-### AI试卷组卷流程
-1. 设置科目/题型/难度 → 智能选题 → 分析知识覆盖率 → 预览试卷 → 保存试卷
-
-### 学生成绩分析流程
-1. 选择科目/班级/时间范围 → 加载统计数据 → 可视化展示 → 导出分析报告
-
-### 智能学习助手流程
-1. 获取学习推荐 → 完成推荐学习 → 提交作业 → AI分析作业 → 生成学习报告
-
----
-
-## 🧪 测试账号
-
-系统已预置11个测试账号，供开发者和测试人员使用：
-
-| 用户名 | 角色 | 权限等级 |
-|--------|------|---------|
-| `test_student` | 学生 | 1 |
-| `test_parent` | 家长 | 1 |
-| `test_designer` | 设计师 | 1 |
-| `test_teacher` | 教师 | 2 |
-| `test_proctor` | 监考员 | 2 |
-| `test_qm` | 题库管理员 | 3 |
-| `test_aim` | AI管理员 | 3 |
-| `test_cm` | 集群管理员 | 3 |
-| `test_admin` | 系统管理员 | 4 |
-| `test_hwadmin` | 硬件管理员 | 5 |
-
-**统一密码**: `Test@2026`
-
----
-
-## 🤝 贡献指南
-
-欢迎加入 MTSCOS AI 项目！无论是代码贡献、文档完善、Bug报告还是功能建议，我们都非常欢迎。
-
-### 代码规范
-
-项目遵循以下规范文档，所有贡献必须严格遵守：
-
-- [设计规范](../.trae/rules/设计规范.md) - 统一UI设计标准和视觉风格
-- [开发规则](../.trae/rules/开发规则.md) - 统一开发标准和代码规范
-
-### 分支管理策略
-
-| 分支 | 用途 |
-|------|------|
-| `main` | 主分支，生产环境代码 |
-| `develop` | 开发分支，集成所有功能 |
-| `feature/xxx` | 功能分支，开发新功能 |
-| `bugfix/xxx` | Bug修复分支 |
-| `hotfix/xxx` | 紧急修复分支 |
-
-### 提交信息规范
-
-```
-<类型>(<范围>): <描述>
-
-<详细说明>
-```
-
-| 类型 | 说明 |
-|------|------|
-| `feat` | 新功能 |
-| `fix` | Bug修复 |
-| `docs` | 文档更新 |
-| `style` | 样式修改 |
-| `refactor` | 代码重构 |
-| `test` | 测试代码 |
-| `chore` | 构建/工具更新 |
-
-### 开发环境搭建
-
-1. **克隆仓库**
-```bash
-git clone https://github.com/wuchenghao15/MTSCOS-AI-Project.git
-cd MTSCOS-AI-Project
-```
-
-2. **安装依赖**
-```bash
-pip install -r requirements.txt
-```
-
-3. **启动开发服务器**
-```bash
-python app.py --port 8888
-```
-
-4. **运行测试**
-```bash
-python -m pytest
-```
-
-### 提交PR流程
-
-1. **Fork仓库** - 在GitHub上Fork本仓库到自己的账户
-2. **创建分支** - 基于 `develop` 分支创建新分支
-3. **开发功能** - 实现功能或修复Bug，遵循代码规范
-4. **提交代码** - 使用规范的提交信息
-5. **推送分支** - 推送到自己的Fork仓库
-6. **创建PR** - 在GitHub上创建Pull Request到 `develop` 分支
-7. **代码审查** - 等待项目维护者审查
-8. **合并分支** - PR通过审查后合并到 `develop`
-
----
-
-## 📄 许可证
-
-MIT License
-
----
-
-## 📞 联系方式
-
-- 项目地址: https://github.com/wuchenghao15/MTSCOS-AI-Project
-- 系统文档: [SYSTEM_DOC.md](SYSTEM_DOC.md)
-- 部署指南: [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)
-- 版本历史: [CHANGELOG.md](CHANGELOG.md)
-
----
-
-**MTSCOS AI** - 让考试更智能，让学习更高效 🚀
-
-⭐ 如果这个项目对你有帮助，请给个Star！
+</sub>
+</div>
