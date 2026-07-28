@@ -219,7 +219,7 @@ class MigrationFramework:
 
 ### 6. `ai_distributed_db_api.py` — API 蓝图
 
-```
+```text
 蓝图名: ai_distributed_db_api
 URL前缀: /api/ai-distributed-db
 

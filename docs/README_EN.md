@@ -1,76 +1,76 @@
 # MTSCOS AI Intelligent Exam System
 
 [![Python Version](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/downloads/)
-[![Flask Version](https://img.shields.io/badge/flask-2.0%2B-green.svg)](https://flask.palletsprojects.com/)
+[![Flask Version](https://img.shields.io/badge/flask-3.x-green.svg)](https://flask.palletsprojects.com/)
 [![License](https://img.shields.io/badge/license-MIT-yellow.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-v16.0.0-orange.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-v17.22.0-orange.svg)](CHANGELOG.md)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 [![Documentation](https://img.shields.io/badge/docs-complete-green.svg)](SYSTEM_DOC.md)
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)](https://github.com/wuchenghao15/MTSCOS-AI-Project/actions)
 [![Code Quality](https://img.shields.io/badge/code-quality-high-blue.svg)](SECURITY.md)
 [![Community](https://img.shields.io/badge/community-active-blue.svg)](https://github.com/wuchenghao15/MTSCOS-AI-Project/discussions)
 
-> Version: v16.0.0 (Security & Education Enhancement)
-> Update Date: 2026-07-22
+> Version: v17.22.0 (SuperAdmin UX Unified Edition)
+> Update Date: 2026-07-26
 
 [中文](README.md) | English
 
-MTSCOS AI is a distributed intelligent exam management platform based on Flask framework, providing complete question bank system, exam management, learning analysis, AI intelligent engine and other functions, supporting adult education and K12 subjects.
+MTSCOS AI is a distributed intelligent exam management platform based on the Flask framework, providing a complete question bank system, exam management, learning analytics, an AI engine matrix, and other capabilities. It supports adult education and K12 subjects and is orchestrated by the MTS Architecture v2.0 (Multi-Agent Twin-Track Self-evolving Collaborative Architecture).
 
 ---
 
-## 📋 Table of Contents
+## Table of Contents
 
-- [🌟 Core Features](#-core-features)
-- [📁 Project Structure](#-project-structure)
-- [🚀 Quick Start](#-quick-start)
+- [Core Features](#core-features)
+- [Project Structure](#project-structure)
+- [Quick Start](#quick-start)
   - [Native Deployment](#native-deployment)
   - [Docker Deployment](#docker-deployment)
   - [Quick Docker Deployment](#quick-docker-deployment)
-- [📡 API Interfaces](#-api-interfaces)
-- [📊 Database Architecture](#-database-architecture)
-- [🌐 Admin Pages](#-admin-pages)
-- [📈 Workflow](#-workflow)
-- [🧪 Test Accounts](#-test-accounts)
-- [🤝 Contributing](#-contributing)
-- [📄 License](#-license)
-- [📞 Contact](#-contact)
+- [API Interfaces](#api-interfaces)
+- [Database Architecture](#database-architecture)
+- [Admin Pages](#admin-pages)
+- [Workflow](#workflow)
+- [Test Accounts](#test-accounts)
+- [Contributing](#contributing)
+- [License](#license)
+- [Contact](#contact)
 
 ---
 
-## 🌟 Core Features
+## Core Features
 
-### 🏗️ Architecture Features
-- **Modular Startup System**: 8-phase configuration loading + 6-phase functional module loading
-- **Distributed Database Architecture**: 20+ independent databases with intelligent routing
-- **AI Engine Matrix**: 41+ AI employees, 6+ AI Agents, 590+ retrieval models
+### Architecture Features
+- **Modular Startup System**: 8-stage configuration loading + 6-stage functional module loading
+- **Sharded Database Fabric**: 9+ independent SQLite shards (87 tables, 0 empty) with intelligent routing
+- **AI Engine Matrix**: 550+ AI employees/engines and 47 Agents
 - **Responsive Frontend**: Desktop and mobile support, adapted for mobile clients
 
-### 📚 Question Bank System
+### Question Bank System
 - **37,000+ Questions**: Covering adult education and K12 subjects (Chinese, Math, English, Physics, Chemistry, Biology, History, Geography, Politics, Science, Japanese)
 - **7 Question Types**: Single choice, multiple choice, true/false, fill-in-the-blank, short answer, essay, listening
 - **Smart Question Generation**: Batch question generation based on knowledge points/difficulty/type
 - **AI Question Generator**: Automatic question generation from text content
 
-### 🎓 Education Management
+### Education Management
 - **Syllabus Management**: Create syllabi, manage chapters, knowledge points, curriculum standards, version control (K12 and adult education)
 - **Question Bank & Syllabus Sync**: Question-knowledge mapping, batch mapping, exam-syllabus sync, smart question/exam generation
 - **Learning & Syllabus Tracking**: Student progress tracking, knowledge mastery recording, chapter progress updating, learning recommendation generation, evaluation reports
 - **Education API**: RESTful API for syllabus CRUD, question bank sync, learning tracking
 
-### 🔐 Permission Management
+### Permission Management
 - **16+ Roles**: guest→student→parent→designer→teacher→exam_proctor→question_manager→ai_manager→cluster_manager→admin→hardware_admin
 - **Fine-grained Permissions**: 50+ permission rules, 6-level access control
 - **Audit Logs**: Complete operation records, real-time auditing
 - **Permission Matrix**: Custom permission rule configuration
 
-### 🤖 AI Cluster & Model Library
+### AI Cluster & Model Library
 - **15+ AI Models**: GPT-4, Claude-3, Qwen, Llama-3, Gemini, DeepSeek, etc.
 - **Performance Monitoring**: Latency, throughput, accuracy metrics
 - **Dynamic Scaling**: Auto node scaling, load balancing
 - **Multi-model Configuration**: Model switching and version management
 
-### ✨ AI Intelligent Functions
+### AI Intelligent Functions
 - **AI Question Generator**: Auto-generate questions from text, 6 types, 11 subjects, 3 difficulty levels, auto-save to question bank
 - **AI Study Path Recommendation**: Analyze wrong answers, generate personalized study paths, weakness analysis, knowledge graph
 - **AI Exam Composition**: Smart exam composition based on subject/difficulty/type, auto-score distribution, knowledge coverage analysis, quality scoring
@@ -79,30 +79,30 @@ MTSCOS AI is a distributed intelligent exam management platform based on Flask f
 - **Student Analytics Dashboard**: Multi-dimensional data visualization, score distribution histogram, subject average radar chart, learning time trend, error rate analysis
 - **Smart Learning Assistant**: Personalized learning recommendations, smart homework assistance, learning effect analysis
 
-### 🔐 Security Protection
+### Security Protection
 - **Enterprise Firewall**: 10+ security rules (SQL injection/XSS/Command injection/SSRF/File inclusion/Path traversal/Sensitive file/Brute force/Scanner protection/API rate limiting)
 - **AI Security Suggestions**: Smart vulnerability analysis, optimization recommendations and implementation steps
 - **Security Vulnerability Management**: Vulnerability signature database (9 types, 17 detection features, 13 fixes), attack simulation engine (SQL injection/XSS simulation), code security scanner (13 detection rules), AI closed-loop learning (auto-sync to knowledge base)
 - **Code Security Scan**: Auto-scan Python/HTML code, detect eval injection, command injection, path traversal, hardcoded secrets, scan results stored in database
 
-### 🚀 Self-Maintenance
+### Self-Maintenance
 - **Auto-repair Engine**: 8 repair capabilities (table structure repair/config correction/cache cleanup/connection pool rebuild/config rollback/data recovery/index rebuild/permission repair)
 - **Preventive Maintenance**: 8 maintenance items, 100% prediction accuracy
 - **System Health Diagnosis**: 8 core checks (database/API response/memory/CPU/disk/network/cache/error logs)
 
-### 🌐 Port & Cluster Management
+### Port & Cluster Management
 - **21 Port Configurations**: HTTP/HTTPS, API, WebSocket, database, etc.
 - **Port Management**: Scan, allocate, reserve, release, auto-repair
 - **Load Balancing**: Round-robin, least connections, weighted round-robin, IP hash
 - **Health Check**: Heartbeat detection, auto-failover, node status monitoring
 
-### 📊 System Monitoring
+### System Monitoring
 - **Real-time Monitoring**: CPU, memory, disk, network
 - **Slow Query Detection**: Auto-identify and optimize slow queries
 - **Performance Analysis**: Index suggestions, query statistics
 - **Performance Monitoring API**: System status and metrics API
 
-### 🚀 Automated Operations
+### Automated Operations
 - **Git Auto-sync**: Change detection, auto-commit, push
 - **Daily Health Check**: Database cleanup, log cleanup, backup
 - **Auto-upgrade**: Version detection, canary release, health check rollback
@@ -110,11 +110,13 @@ MTSCOS AI is a distributed intelligent exam management platform based on Flask f
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
-```
+```text
 MTSCOS-AI-Project/
-├── app.py                      # Application entry
+├── server_real_db.py           # Production entrypoint (sharded-db-aware)
+├── server_preview.py           # Preview entrypoint
+├── app.py                      # Legacy entrypoint
 ├── version_manager.py          # Version manager
 ├── scheduler_control.py        # Scheduler control (with watchdog daemon)
 ├── auto_scheduler.py           # Auto scheduler
@@ -129,7 +131,7 @@ MTSCOS-AI-Project/
 ├── CONTRIBUTING.md             # Contribution guide
 ├── CODE_OF_CONDUCT.md          # Code of conduct
 ├── LICENSE                     # License
-├── ai_engines/                 # AI engine modules (20+ core engines)
+├── ai_engines/                 # AI engine modules (550+ employees/engines, 47 agents)
 │   ├── ai_cluster_manager.py   # AI cluster management
 │   ├── ai_employee_manager.py  # AI employee management
 │   ├── ai_question_bank.py     # Question bank generation engine
@@ -153,7 +155,7 @@ MTSCOS-AI-Project/
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Environment Requirements
 - Python 3.9+
@@ -178,8 +180,8 @@ source venv/bin/activate
 # Install dependencies
 pip install -r requirements.txt
 
-# Start service
-python app.py --port 8888
+# Start service (production entrypoint recommended)
+python3 server_real_db.py --host 0.0.0.0 --port 8888
 ```
 
 **Startup Parameters**
@@ -242,7 +244,7 @@ docker-compose -f docker-compose.quick.yml logs -f
 
 ---
 
-## 📡 API Interfaces
+## API Interfaces
 
 ### Authentication
 | Interface | Method | Description |
@@ -303,7 +305,7 @@ docker-compose -f docker-compose.quick.yml logs -f
 
 ---
 
-## 📊 Database Architecture
+## Database Architecture
 
 ### Main Databases
 | Database | Purpose | Core Tables |
@@ -321,7 +323,7 @@ docker-compose -f docker-compose.quick.yml logs -f
 
 ---
 
-## 🌐 Admin Pages
+## Admin Pages
 
 | Route | Description | Permission |
 |-------|-------------|------------|
@@ -337,7 +339,7 @@ docker-compose -f docker-compose.quick.yml logs -f
 
 ---
 
-## 📈 Workflow
+## Workflow
 
 ### AI Question Generation
 1. Input text → Auto-detect subject → Extract key points → Generate questions → Save to question bank
@@ -356,7 +358,7 @@ docker-compose -f docker-compose.quick.yml logs -f
 
 ---
 
-## 🧪 Test Accounts
+## Test Accounts
 
 11 test accounts are pre-configured for developers and testers:
 
@@ -372,18 +374,19 @@ docker-compose -f docker-compose.quick.yml logs -f
 | `test_cm` | Cluster Manager | 3 |
 | `test_admin` | System Admin | 4 |
 | `test_hwadmin` | Hardware Admin | 5 |
+| `wuchenghao15` | Super Admin | 9 (requires VIKEY token) |
 
 **Default Password**: `Test@2026`
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 Welcome to MTSCOS AI Project! We welcome code contributions, documentation improvements, bug reports, and feature suggestions.
 
 ### Code Standards
 
-The project follows these standards, all contributions must comply:
+The project follows these standards; all contributions must comply:
 
 - [Design Standards](../.trae/rules/设计规范.md) - Unified UI design standards and visual style
 - [Development Rules](../.trae/rules/开发规则.md) - Unified development standards and code conventions
@@ -400,7 +403,7 @@ The project follows these standards, all contributions must comply:
 
 ### Commit Message Format
 
-```
+```text
 <type>(<scope>): <description>
 
 <detailed description>
@@ -419,22 +422,26 @@ The project follows these standards, all contributions must comply:
 ### Development Setup
 
 1. **Clone Repository**
+
 ```bash
 git clone https://github.com/wuchenghao15/MTSCOS-AI-Project.git
 cd MTSCOS-AI-Project
 ```
 
 2. **Install Dependencies**
+
 ```bash
 pip install -r requirements.txt
 ```
 
 3. **Start Development Server**
+
 ```bash
-python app.py --port 8888
+python3 server_preview.py --port 8888 --debug
 ```
 
 4. **Run Tests**
+
 ```bash
 python -m pytest
 ```
@@ -452,13 +459,13 @@ python -m pytest
 
 ---
 
-## 📄 License
+## License
 
 MIT License
 
 ---
 
-## 📞 Contact
+## Contact
 
 - Project: https://github.com/wuchenghao15/MTSCOS-AI-Project
 - System Doc: [SYSTEM_DOC.md](SYSTEM_DOC.md)
@@ -467,6 +474,6 @@ MIT License
 
 ---
 
-**MTSCOS AI** - Make exams smarter, make learning more efficient 🚀
+**MTSCOS AI** - Make exams smarter, make learning more efficient
 
-⭐ If this project helps you, please give it a Star!
+If this project helps you, please give it a Star!
