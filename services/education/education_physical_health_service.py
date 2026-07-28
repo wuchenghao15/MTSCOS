@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 教育体育健康服务 (v15.25.0) ==================================== 提供体育课程管理、体育活动组织、体质健康监测、运动训练指导、 体育竞赛管理、体育设施管理、体育安全保障和健康教育等综合管理服务。  核心能力：体育课程、体育活动、体质监测、运动训练、体育竞赛、 设施管理、安全保障、健康教育  差异化支持：成人教育、K12教育 """
@@ -9,7 +10,7 @@ import threading
 from datetime import datetime
 from typing import Any, Dict, List
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

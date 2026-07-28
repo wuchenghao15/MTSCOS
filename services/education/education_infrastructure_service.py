@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 教育信息化建设服务 (v15.29.0) ==================================== 提供教育信息化规划、基础设施建设、网络建设、数据中心建设、系统集成、云服务、安全建设、运维服务等综合管理服务。  核心能力： 1. 信息化规划 - 规划编制、方案设计、预算编制、评估验收 2. 基础设施 - 设施建设、设备采购、部署安装、运维管理 3. 网络建设 - 网络规划、布线施工、设备配置、性能优化 4. 数据中心 - 机房建设、服务器部署、存储配置、灾备方案、运维监控 5. 系统集成 - 应用集成、数据集成、流程集成、门户集成 6. 云服务 - IaaS/PaaS/SaaS/DaaS/FaaS/BaaS/MaaS/XaaS 7. 安全建设 - 安全评估、防护部署、合规检查、应急响应 8. 运维服务 - IT运维、网络运维、系统运维、数据运维 9. 统计分析 - 建设进度、资源使用、成本统计 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

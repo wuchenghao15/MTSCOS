@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 教育数字孪生服务 (v15.21.0) ==================================== 提供教育领域数字孪生建模、虚拟仿真、实时同步、预测分析、优化决策、可视化展示、交互操作、智能控制等综合服务。  核心能力： 1. 数字孪生建模 - 校园/教室/实验室/学生/教师/教学/管理/设施孪生 2. 虚拟仿真 - 实时/离线/混合/事件/过程/系统/优化/决策仿真 3. 实时同步 - 实时/定时/事件触发/增量/全量/双向/异步/延迟同步 4. 预测分析 - 趋势/预测/优化/风险/决策/效能/对比/综合分析 5. 可视化展示 - 3D/2D/仪表盘/热力图/流程图/时序图/对比图/全息投影 6. 交互操作 - 漫游/操作/查询/编辑/协作/控制/反馈/沉浸式交互 7. 智能控制 - 智能/自动/手动/远程/协同/优化/应急/自适应控制 8. 预警管理 - 实时监测、预警触发、处置跟踪  支持教育类型：成人教育、K12教育 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

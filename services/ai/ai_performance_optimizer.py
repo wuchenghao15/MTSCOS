@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 """
 MTSCOS AI 性能优化服务 (v14.8.0)
@@ -27,7 +28,7 @@ from typing import Any, Dict, List, Optional, Tuple, Callable
 from collections import defaultdict, deque
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

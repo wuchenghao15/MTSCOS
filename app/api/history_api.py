@@ -2,15 +2,19 @@
 """项目历史馆API路由"""
 
 import os
+import sys
 import json
 import sqlite3
 from datetime import datetime
 from flask import Blueprint, jsonify, render_template
 
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+from core.db_path import get_db_path
+
 history_api = Blueprint('history', __name__)
 
 def get_db_connection():
-    db_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'Database', 'app.db')
+    db_path = get_db_path('app.db')
     return sqlite3.connect(db_path)
 
 @history_api.route('/api/history/stats')

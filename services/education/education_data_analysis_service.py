@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 教育数据分析服务 (v15.12.0) ==================================== 提供教育大数据分析、学习分析、教学分析、决策支持等综合数据服务。  核心能力： 1. 数据分析任务 - 任务创建、执行、监控、结果管理 2. 数据管道 - 数据源接入、数据清洗、数据转换、数据加载 3. 学习分析 - 学习行为、学习成效、学习路径、学习资源分析 4. 教学分析 - 教学质量、教师绩效、课程评估、教学改进 5. 预测分析 - 成绩预测、辍学预警、学习路径、资源推荐 6. 预警系统 - 预警规则、预警触发、预警处理、预警统计 7. 数据可视化 - 图表、仪表盘、报表生成 8. 报告管理 - 报告生成、报告调度、报告分发、报告归档 9. 数据质量管理 - 数据质量检查、数据质量报告、数据质量改进 10. 统计分析 - 综合统计与决策支持 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

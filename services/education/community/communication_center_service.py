@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 """ MTSCOS AI 通讯中心服务 ====================== 整合站内通知、邮件系统、短信系统、交流系统，提供统一的通讯管理。  核心模块： 1. 站内通知 - 通知发送、阅读、归档、批量操作、通知模板 2. 邮件系统 - 邮件发送、模板管理、邮件队列、发送记录 3. 短信系统 - 短信发送、模板管理、发送记录、验证码 4. 交流系统 - 用户间消息、群组交流、会话管理 """
 import os
@@ -13,7 +14,7 @@ from email.mime.multipart import MIMEMultipart
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s')
 logger = logging.getLogger('CommunicationCenterService')

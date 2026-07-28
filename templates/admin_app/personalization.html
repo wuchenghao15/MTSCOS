@@ -5,7 +5,7 @@
 <div class="pers-page">
     <div class="pers-header">
         <div>
-            <h1>🎨 个性化布局设置</h1>
+            <h1><i class="fas fa-palette"></i> 个性化布局设置</h1>
             <p>定制你的工作台外观、布局、通知与模块，让系统更贴合你的使用习惯</p>
         </div>
         <div class="pers-header-actions">
@@ -17,11 +17,11 @@
     </div>
 
     <div class="pers-tabs">
-        <button class="pers-tab active" data-tab="theme" onclick="switchTab('theme')">🎨 主题设置</button>
+        <button class="pers-tab active" data-tab="theme" onclick="switchTab('theme')"><i class="fas fa-palette"></i> 主题设置</button>
         <button class="pers-tab" data-tab="layout" onclick="switchTab('layout')">📐 布局设置</button>
-        <button class="pers-tab" data-tab="notification" onclick="switchTab('notification')">🔔 通知设置</button>
+        <button class="pers-tab" data-tab="notification" onclick="switchTab('notification')"><i class="fas fa-bell"></i> 通知设置</button>
         <button class="pers-tab" data-tab="module" onclick="switchTab('module')">🧩 模块管理</button>
-        <button class="pers-tab" data-tab="advanced" onclick="switchTab('advanced')">⚙️ 高级设置</button>
+        <button class="pers-tab" data-tab="advanced" onclick="switchTab('advanced')"><i class="fas fa-cog"></i> 高级设置</button>
     </div>
 
     <!-- 主题设置 -->
@@ -225,7 +225,7 @@
                     </div>
                 </div>
                 <div class="form-actions">
-                    <button class="btn-primary" onclick="testNotification()">🔔 测试通知</button>
+                    <button class="btn-primary" onclick="testNotification()"><i class="fas fa-bell"></i> 测试通知</button>
                 </div>
             </div>
         </div>
@@ -286,7 +286,7 @@
                 <div class="form-actions">
                     <button class="btn-primary" onclick="exportPrefs()">⬇ 导出偏好为 JSON</button>
                     <button class="btn-secondary" onclick="document.getElementById('import-file').click()">⬆ 从文件导入</button>
-                    <button class="btn-secondary" onclick="showImportModal()">📋 从文本导入</button>
+                    <button class="btn-secondary" onclick="showImportModal()"><i class="fas fa-list-check"></i> 从文本导入</button>
                 </div>
                 <div class="import-text-area" id="import-text-area" style="display:none;">
                     <textarea id="import-text" placeholder='粘贴 JSON 偏好内容，如 {"theme":"dark",...}'></textarea>
@@ -776,15 +776,15 @@ async function loadModules() {
 
 function getDefaultModules() {
     return [
-        { id: 'dashboard', name: '仪表盘', icon: '📊', desc: '系统总览与统计' },
-        { id: 'courses', name: '课程管理', icon: '📚', desc: '课程内容与进度' },
-        { id: 'exams', name: '考试中心', icon: '📝', desc: '考试安排与成绩' },
+        { id: 'dashboard', name: '仪表盘', icon: '<i class="fas fa-chart-bar"></i>', desc: '系统总览与统计' },
+        { id: 'courses', name: '课程管理', icon: '<i class="fas fa-book-open"></i>', desc: '课程内容与进度' },
+        { id: 'exams', name: '考试中心', icon: '<i class="fas fa-file-alt"></i>', desc: '考试安排与成绩' },
         { id: 'assignments', name: '作业管理', icon: '✏️', desc: '作业发布与批改' },
-        { id: 'users', name: '用户管理', icon: '👥', desc: '用户账号与权限' },
-        { id: 'analytics', name: '数据分析', icon: '📈', desc: '学习行为分析' },
-        { id: 'resources', name: '资源管理', icon: '🗂️', desc: '教学资源库' },
+        { id: 'users', name: '用户管理', icon: '<i class="fas fa-users"></i>', desc: '用户账号与权限' },
+        { id: 'analytics', name: '数据分析', icon: '<i class="fas fa-chart-line"></i>', desc: '学习行为分析' },
+        { id: 'resources', name: '资源管理', icon: '<i class="fas fa-folder-tree"></i>', desc: '教学资源库' },
         { id: 'communication', name: '通讯中心', icon: '💬', desc: '通知与消息' },
-        { id: 'ai_tutor', name: 'AI 助教', icon: '🤖', desc: '智能辅导助手' },
+        { id: 'ai_tutor', name: 'AI 助教', icon: '<i class="fas fa-robot"></i>', desc: '智能辅导助手' },
         { id: 'knowledge_graph', name: '知识图谱', icon: '🧠', desc: '知识结构可视化' }
     ];
 }

@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 教育质量保障服务 (v15.20.0) ==================================== 提供质量标准、质量监控、质量评估、质量改进、认证认可、 质量文化、质量审计、质量报告等综合管理服务。  核心能力： 1. 质量标准 - 标准管理、标准项配置、标准版本控制 2. 质量监控 - 监控计划、监控记录、预警管理 3. 质量评估 - 评估方案、评分管理、结果分析 4. 质量改进 - 改进计划、改进措施、效果验证 5. 认证认可 - 认证申请、认证记录、证书管理 6. 质量文化 - 文化建设、培训管理、激励机制 7. 质量审计 - 审计计划、审计发现、整改跟踪 8. 质量报告 - 报告生成、报告发布、报告归档 9. 标杆管理 - 数据采集、对比分析、差距评估 10. 统计分析 - 综合统计、趋势分析 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

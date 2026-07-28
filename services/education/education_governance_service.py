@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 教育治理与领导力服务 (v15.20.0) ==================================== 提供教育治理、学校领导、战略规划、组织管理、决策支持、绩效评估、领导力发展、治理评估等综合管理服务。  核心能力： 1. 教育治理 - 治理结构、权力配置、制度建设、监督机制 2. 领导力 - 领导班子、角色配置、职责分工、能力评估 3. 战略规划 - 规划制定、目标分解、实施跟踪、评估调整 4. 组织管理 - 组织结构、部门设置、岗位配置、人员编制 5. 决策支持 - 决策流程、数据分析、风险评估、方案优化、决策执行 6. 绩效评估 - 指标体系、评估实施、结果分析、反馈改进 7. 领导力发展 - 培训规划、能力提升、轮岗锻炼、考核评价 8. 治理评估 - 治理水平、合规性、效能评估、改进建议 9. 合规检查 - 制度合规、政策落实、风险排查、整改跟踪 10. 统计分析 - 治理数据统计与分析 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

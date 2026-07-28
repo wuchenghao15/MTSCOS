@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 教育在线学习服务 (v15.30.0) ==================================== 提供在线课程管理、学习平台管理、学习数据分析等综合学习服务。  核心能力： 1. 在线课程 - 课程管理、选课记录、学习进度、课程评价 2. 学习平台 - 平台管理、接入记录、平台统计、平台配置 3. 学习数据 - 数据采集、行为分析、效果评估、预测分析 4. 学习社区 - 讨论区、问答区、学习小组、知识分享、学习竞赛 5. 学习认证 - 证书管理、认证发放、证书查询、证书验证 6. 学习资源 - 资源管理、资源发布、资源共享、资源推荐 7. 学习支持 - 在线答疑、学习辅导、技术支持、就业指导 8. 学习评估 - 在线测验、作业评估、项目评估、综合评估 9. 统计分析 - 学习数据综合统计 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

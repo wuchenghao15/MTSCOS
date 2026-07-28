@@ -5,79 +5,110 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}管理控制台 - MTSCOS AI{% endblock %}</title>
     <link rel="stylesheet" href="/assets/css/mtscos-design-system.css">
-    <link rel="stylesheet" href="/assets/font-awesome/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     {% if csrf_token %}
     <meta name="csrf-token" content="{{ csrf_token() }}">
     {% endif %}
     {% block extra_css %}{% endblock %}
     <style>
         :root {
-            --primary-color: #6366f1;
-            --primary-dark: #4f46e5;
-            --primary-light: #818cf8;
-            --success-color: #22c55e;
-            --success-light: #4ade80;
-            --warning-color: #f59e0b;
-            --warning-light: #fbbf24;
-            --danger-color: #ef4444;
-            --danger-light: #f87171;
-            --info-color: #0ea5e9;
-            --info-light: #38bdf8;
-            --purple-color: #a855f7;
-            --purple-light: #c084fc;
-            --text-primary: #1e293b;
-            --text-secondary: #64748b;
+            --accent: #4f46e5;
+            --accent-soft: rgba(79, 70, 229, 0.12);
+            --accent-hover: rgba(79, 70, 229, 0.22);
+            --accent-text: #6366f1;
+            --accent-text-bright: #818cf8;
+            --accent-secondary: #06b6d4;
+            --accent-secondary-soft: rgba(6, 182, 212, 0.12);
+            --success: #22c55e;
+            --success-soft: rgba(34, 197, 94, 0.12);
+            --warning: #f59e0b;
+            --warning-soft: rgba(245, 158, 11, 0.12);
+            --danger: #ef4444;
+            --danger-soft: rgba(239, 68, 68, 0.12);
+            --danger-text: #f87171;
+            --info: #0ea5e9;
+            --info-soft: rgba(14, 165, 233, 0.12);
+            --space-1: 4px;
+            --space-2: 8px;
+            --space-3: 12px;
+            --space-4: 16px;
+            --space-6: 24px;
+            --space-8: 32px;
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-full: 9999px;
+            --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+            --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+            --glass-blur: 12px;
+            --glass-blur-strong: 16px;
+            --glass-bg: rgba(15, 23, 42, 0.8);
+            --glass-bg-strong: rgba(15, 23, 42, 0.9);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --glass-border-strong: rgba(255, 255, 255, 0.12);
+            --text-primary: #f8fafc;
+            --text-secondary: #cbd5e1;
             --text-muted: #94a3b8;
-            --border-color: #e2e8f0;
-            --border-light: #f1f5f9;
-            --bg-primary: #ffffff;
-            --bg-secondary: #f8fafc;
-            --bg-sidebar: #0f172a;
-            --bg-sidebar-hover: #1e293b;
-            --bg-sidebar-active: #6366f1;
-            --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
-            --shadow-md: 0 4px 6px rgba(0,0,0,0.07);
-            --shadow-lg: 0 10px 15px rgba(0,0,0,0.1);
-            --radius-sm: 6px;
-            --radius-md: 10px;
-            --radius-lg: 16px;
+            --text-faint: #64748b;
+            --bg-page: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+            --bg-sidebar: rgba(15, 23, 42, 0.85);
+            --bg-card: rgba(15, 23, 42, 0.7);
+            --bg-card-alt: rgba(15, 23, 42, 0.6);
+            --border-subtle: rgba(79, 70, 229, 0.1);
+            --border-strong: rgba(79, 70, 229, 0.18);
+            --logo-accent: linear-gradient(135deg, #4f46e5, #06b6d4);
+            --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            --font-mono: "SF Mono", Monaco, Menlo, Consolas, "Courier New", monospace;
             --transition-fast: 0.15s;
-            --transition-normal: 0.25s;
-            --transition-slow: 0.4s;
-            --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            --transition-normal: 0.2s;
+            --transition-slow: 0.3s;
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
-            font-family: var(--font-family);
-            background: var(--bg-secondary);
+            font-family: var(--font-sans);
+            background: var(--bg-page);
+            background-attachment: fixed;
             min-height: 100vh;
             color: var(--text-primary);
             display: flex;
             line-height: 1.6;
+            overflow-x: hidden;
+            margin: 0;
+            padding: 0;
+        }
+
+        .layout-container {
+            display: flex;
+            width: 100%;
+            height: 100vh;
+            overflow: hidden;
         }
 
         .sidebar {
-            width: 20%;
-            min-width: 220px;
-            max-width: 280px;
+            width: 220px;
+            flex-shrink: 0;
+            flex-grow: 0;
+            flex-basis: 220px;
             background: var(--bg-sidebar);
-            min-height: 100vh;
-            position: fixed;
-            left: 0;
-            top: 0;
-            padding: 20px 0;
+            backdrop-filter: blur(var(--glass-blur-strong));
+            -webkit-backdrop-filter: blur(var(--glass-blur-strong));
+            height: 100vh;
+            padding: var(--space-6) 0;
             z-index: 1000;
             overflow-y: auto;
             overflow-x: hidden;
+            border-right: 1px solid var(--glass-border);
             transition: all var(--transition-normal);
+            position: relative;
         }
 
         body.sidebar-collapsed .sidebar {
-            width: 64px !important;
-            min-width: 64px !important;
-            max-width: 64px !important;
+            width: 64px;
+            flex-basis: 64px;
+            min-width: 64px;
+            max-width: 64px;
         }
 
         body.sidebar-collapsed .sidebar-logo h2 span,
@@ -114,29 +145,29 @@
         }
 
         .sidebar-logo {
-            padding: 0 20px 20px;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-            margin-bottom: 20px;
+            padding: 0 var(--space-6) var(--space-6);
+            border-bottom: 1px solid var(--glass-border);
+            margin-bottom: var(--space-6);
         }
 
         .sidebar-logo h2 {
-            color: white;
+            color: var(--text-primary);
             font-size: 18px;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: var(--space-3);
             font-weight: 700;
         }
 
         .sidebar-logo .logo-icon {
             width: 36px;
             height: 36px;
-            background: linear-gradient(135deg, var(--primary-color), var(--purple-color));
+            background: var(--logo-accent);
             border-radius: var(--radius-md);
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+            box-shadow: var(--shadow-md);
         }
 
         .sidebar-nav {
@@ -146,27 +177,26 @@
         .nav-item {
             display: flex;
             align-items: center;
-            gap: 12px;
-            padding: 12px 16px;
-            color: rgba(255,255,255,0.7);
+            gap: var(--space-3);
+            padding: var(--space-3) var(--space-4);
+            color: var(--text-secondary);
             text-decoration: none;
             border-radius: var(--radius-md);
-            transition: all var(--transition-fast);
-            margin-bottom: 4px;
+            transition: background var(--transition-fast), color var(--transition-fast);
+            margin-bottom: var(--space-1);
             font-size: 14px;
             font-weight: 500;
         }
 
         .nav-item:hover {
-            background: var(--bg-sidebar-hover);
-            color: white;
-            transform: translateX(4px);
+            background: var(--accent-soft);
+            color: var(--text-primary);
         }
 
         .nav-item.active {
-            background: var(--bg-sidebar-active);
+            background: var(--accent);
             color: white;
-            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+            box-shadow: var(--shadow-md);
         }
 
         .nav-item .nav-icon {
@@ -177,14 +207,14 @@
         }
 
         .nav-section {
-            padding: 8px 16px;
-            color: rgba(255,255,255,0.4);
+            padding: var(--space-2) var(--space-4);
+            color: var(--text-faint);
             font-size: 11px;
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.8px;
-            margin-top: 20px;
-            margin-bottom: 8px;
+            margin-top: var(--space-6);
+            margin-bottom: var(--space-2);
         }
 
         .sidebar-footer {
@@ -192,29 +222,31 @@
             bottom: 0;
             left: 0;
             right: 0;
-            padding: 20px 16px;
-            border-top: 1px solid rgba(255,255,255,0.1);
+            padding: var(--space-6) var(--space-4);
+            border-top: 1px solid var(--glass-border);
             background: var(--bg-sidebar);
         }
 
         .sidebar-footer .user-card {
             display: flex;
             align-items: center;
-            gap: 12px;
-            padding: 12px;
-            background: var(--bg-sidebar-hover);
+            gap: var(--space-3);
+            padding: var(--space-3);
+            background: var(--bg-card);
             border-radius: var(--radius-md);
+            border: 1px solid var(--border-subtle);
             transition: all var(--transition-fast);
         }
 
         .sidebar-footer .user-card:hover {
-            background: rgba(99, 102, 241, 0.2);
+            background: var(--accent-soft);
+            border-color: var(--border-strong);
         }
 
         .sidebar-footer .avatar {
             width: 36px;
             height: 36px;
-            background: linear-gradient(135deg, var(--primary-color), var(--purple-color));
+            background: var(--logo-accent);
             border-radius: 50%;
             display: flex;
             align-items: center;
@@ -222,7 +254,7 @@
             color: white;
             font-weight: 700;
             font-size: 14px;
-            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+            box-shadow: var(--shadow-sm);
         }
 
         .sidebar-footer .user-info {
@@ -231,7 +263,7 @@
         }
 
         .sidebar-footer .user-name {
-            color: white;
+            color: var(--text-primary);
             font-size: 13px;
             font-weight: 600;
             white-space: nowrap;
@@ -240,7 +272,7 @@
         }
 
         .sidebar-footer .user-role {
-            color: rgba(255,255,255,0.5);
+            color: var(--text-muted);
             font-size: 11px;
         }
 
@@ -250,36 +282,38 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            color: rgba(255,255,255,0.5);
+            color: var(--text-muted);
             transition: all var(--transition-fast);
             border-radius: var(--radius-sm);
         }
 
         .sidebar-footer .logout-btn:hover {
-            color: var(--danger-light);
-            background: rgba(239, 68, 68, 0.15);
+            color: var(--danger-text);
+            background: var(--danger-soft);
         }
 
         .main-content {
             flex: 1;
-            margin-left: 20%;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
-            transition: margin-left var(--transition-normal);
+            background: var(--bg-page);
+            transition: all var(--transition-normal);
+            box-sizing: border-box;
+            overflow: hidden;
         }
         body.sidebar-collapsed .main-content {
-            margin-left: 64px !important;
+            flex: 1;
         }
 
         .sidebar-toggle {
             position: absolute;
-            top: 16px;
+            top: var(--space-4);
             right: -12px;
             width: 26px;
             height: 26px;
             border-radius: 50%;
-            background: linear-gradient(135deg, var(--primary-color), var(--purple-color));
+            background: var(--accent);
             color: white;
             border: 2px solid var(--bg-sidebar);
             display: flex;
@@ -287,7 +321,7 @@
             justify-content: center;
             cursor: pointer;
             font-size: 11px;
-            box-shadow: 0 3px 10px rgba(99,102,241,0.4);
+            box-shadow: var(--shadow-md);
             z-index: 1001;
             transition: transform var(--transition-fast);
         }
@@ -303,8 +337,11 @@
         }
 
         .header {
-            background: var(--bg-primary);
-            padding: 16px 30px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(var(--glass-blur-strong));
+            -webkit-backdrop-filter: blur(var(--glass-blur-strong));
+            padding: var(--space-4) var(--space-6);
+            border-bottom: 1px solid var(--glass-border);
             box-shadow: var(--shadow-sm);
             display: flex;
             justify-content: space-between;
@@ -325,24 +362,24 @@
             color: var(--text-primary);
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: var(--space-3);
             font-weight: 700;
         }
 
         .header-left h1 i {
-            color: var(--primary-color);
+            color: var(--accent);
         }
 
         .header-left .breadcrumb {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: var(--space-2);
             font-size: 13px;
             color: var(--text-secondary);
         }
 
         .header-left .breadcrumb a {
-            color: var(--primary-color);
+            color: var(--accent-text);
             text-decoration: none;
             font-weight: 500;
         }
@@ -372,53 +409,77 @@
             font-size: 12px;
         }
 
-        .action-btn {
+        .lunar-calendar {
             display: flex;
             align-items: center;
             gap: 6px;
-            padding: 8px 16px;
+            color: var(--accent-text);
+            font-size: 12px;
+            padding: 4px 10px;
+            background: var(--accent-soft);
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border-subtle);
+            white-space: nowrap;
+        }
+        .lunar-calendar i {
+            color: var(--warning);
+            font-size: 11px;
+        }
+        .lunar-calendar.special-day {
+            background: var(--warning-soft);
+            border-color: var(--warning);
+            animation: pulse-glow 2s infinite;
+        }
+        @keyframes pulse-glow {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .action-btn {
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+            padding: var(--space-2) var(--space-4);
             border: none;
             border-radius: var(--radius-md);
             cursor: pointer;
             font-size: 13px;
             font-weight: 600;
-            transition: all var(--transition-fast);
+            transition: background var(--transition-fast), color var(--transition-fast);
             white-space: nowrap;
+            font-family: var(--font-sans);
         }
 
         .action-btn-primary {
-            background: var(--primary-color);
+            background: var(--accent);
             color: white;
-            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+            box-shadow: var(--shadow-md);
         }
 
         .action-btn-primary:hover {
-            background: var(--primary-dark);
-            box-shadow: 0 6px 16px rgba(99, 102, 241, 0.4);
-            transform: translateY(-1px);
+            background: #4338ca;
         }
 
         .action-btn-secondary {
-            background: var(--bg-secondary);
-            color: var(--text-primary);
-            border: 1px solid var(--border-color);
+            background: var(--accent-soft);
+            color: var(--accent-text);
+            border: 1px solid var(--border-subtle);
         }
 
         .action-btn-secondary:hover {
-            background: var(--border-color);
-            border-color: var(--primary-color);
-            color: var(--primary-color);
+            background: var(--accent-hover);
+            border-color: var(--border-strong);
+            color: var(--accent-text-bright);
         }
 
         .action-btn-danger {
-            background: var(--danger-color);
+            background: var(--danger);
             color: white;
-            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+            box-shadow: var(--shadow-md);
         }
 
         .action-btn-danger:hover {
             background: #dc2626;
-            box-shadow: 0 6px 16px rgba(239, 68, 68, 0.4);
         }
 
         .action-btn-icon {
@@ -443,48 +504,30 @@
         }
 
         .stat-card {
-            background: var(--bg-primary);
-            border-radius: var(--radius-lg);
-            padding: 24px;
-            box-shadow: var(--shadow-sm);
+            background: var(--bg-card);
+            backdrop-filter: blur(var(--glass-blur));
+            -webkit-backdrop-filter: blur(var(--glass-blur));
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: var(--space-6);
+            box-shadow: var(--shadow-md);
             display: flex;
             align-items: center;
-            gap: 20px;
-            transition: all var(--transition-normal);
+            gap: var(--space-6);
+            transition: all var(--transition-fast);
             border-left: 4px solid transparent;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .stat-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            right: 0;
-            width: 80px;
-            height: 80px;
-            opacity: 0.05;
-            border-radius: 50%;
         }
 
         .stat-card:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-lg);
+            border-color: var(--border-strong);
         }
 
-        .stat-card.users { border-left-color: var(--primary-color); }
-        .stat-card.exams { border-left-color: var(--success-color); }
-        .stat-card.courses { border-left-color: var(--warning-color); }
-        .stat-card.questions { border-left-color: var(--info-color); }
-        .stat-card.notifications { border-left-color: var(--danger-color); }
-        .stat-card.backups { border-left-color: var(--purple-color); }
-
-        .stat-card.users::before { background: var(--primary-color); }
-        .stat-card.exams::before { background: var(--success-color); }
-        .stat-card.courses::before { background: var(--warning-color); }
-        .stat-card.questions::before { background: var(--info-color); }
-        .stat-card.notifications::before { background: var(--danger-color); }
-        .stat-card.backups::before { background: var(--purple-color); }
+        .stat-card.users { border-left-color: var(--accent); }
+        .stat-card.exams { border-left-color: var(--success); }
+        .stat-card.courses { border-left-color: var(--warning); }
+        .stat-card.questions { border-left-color: var(--info); }
+        .stat-card.notifications { border-left-color: var(--danger); }
+        .stat-card.backups { border-left-color: #a855f7; }
 
         .stat-icon {
             width: 56px;
@@ -497,12 +540,12 @@
             flex-shrink: 0;
         }
 
-        .stat-icon.users { background: rgba(99, 102, 241, 0.1); color: var(--primary-color); }
-        .stat-icon.exams { background: rgba(34, 197, 94, 0.1); color: var(--success-color); }
-        .stat-icon.courses { background: rgba(245, 158, 11, 0.1); color: var(--warning-color); }
-        .stat-icon.questions { background: rgba(14, 165, 233, 0.1); color: var(--info-color); }
-        .stat-icon.notifications { background: rgba(239, 68, 68, 0.1); color: var(--danger-color); }
-        .stat-icon.backups { background: rgba(168, 85, 247, 0.1); color: var(--purple-color); }
+        .stat-icon.users { background: var(--accent-soft); color: var(--accent); }
+        .stat-icon.exams { background: var(--success-soft); color: var(--success); }
+        .stat-icon.courses { background: var(--warning-soft); color: var(--warning); }
+        .stat-icon.questions { background: var(--info-soft); color: var(--info); }
+        .stat-icon.notifications { background: var(--danger-soft); color: var(--danger); }
+        .stat-icon.backups { background: rgba(168, 85, 247, 0.12); color: #a855f7; }
 
         .stat-info { flex: 1; }
 
@@ -544,24 +587,27 @@
         }
 
         .card {
-            background: var(--bg-primary);
-            border-radius: var(--radius-lg);
-            padding: 24px;
-            box-shadow: var(--shadow-sm);
-            transition: all var(--transition-normal);
+            background: var(--bg-card);
+            backdrop-filter: blur(var(--glass-blur));
+            -webkit-backdrop-filter: blur(var(--glass-blur));
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: var(--space-6);
+            box-shadow: var(--shadow-md);
+            transition: all var(--transition-fast);
         }
 
         .card:hover {
-            box-shadow: var(--shadow-md);
+            border-color: var(--border-strong);
         }
 
         .card-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 20px;
-            padding-bottom: 16px;
-            border-bottom: 1px solid var(--border-color);
+            margin-bottom: var(--space-6);
+            padding-bottom: var(--space-4);
+            border-bottom: 1px solid var(--border-subtle);
         }
 
         .card-title {
@@ -570,18 +616,18 @@
             color: var(--text-primary);
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: var(--space-3);
         }
 
         .card-title .icon {
             width: 28px;
             height: 28px;
-            background: rgba(99, 102, 241, 0.1);
+            background: var(--accent-soft);
             border-radius: var(--radius-sm);
             display: flex;
             align-items: center;
             justify-content: center;
-            color: var(--primary-color);
+            color: var(--accent);
             font-size: 14px;
         }
 
@@ -596,70 +642,72 @@
         }
 
         .data-table th, .data-table td {
-            padding: 12px 14px;
+            padding: var(--space-3) var(--space-4);
             text-align: left;
-            border-bottom: 1px solid var(--border-light);
+            border-bottom: 1px solid var(--border-subtle);
             font-size: 13px;
         }
 
         .data-table th {
-            background: var(--bg-secondary);
+            background: var(--bg-card-alt);
             color: var(--text-secondary);
             font-weight: 600;
             font-size: 12px;
             text-transform: uppercase;
             letter-spacing: 0.3px;
+            position: sticky;
+            top: 0;
         }
 
         .data-table td { color: var(--text-primary); }
 
-        .data-table tr:hover { background: var(--bg-secondary); }
+        .data-table tr:hover { background: var(--accent-soft); }
 
         .data-table tr:last-child td { border-bottom: none; }
 
         .empty-state {
             text-align: center;
-            padding: 40px;
-            color: var(--text-secondary);
+            padding: var(--space-8);
+            color: var(--text-muted);
             font-size: 14px;
         }
 
         .empty-state i {
             font-size: 48px;
-            color: var(--border-color);
-            margin-bottom: 16px;
+            color: var(--border-subtle);
+            margin-bottom: var(--space-4);
             display: block;
         }
 
         .status-tag {
-            padding: 3px 10px;
-            border-radius: 20px;
+            padding: var(--space-1) var(--space-3);
+            border-radius: var(--radius-full);
             font-size: 11px;
             font-weight: 600;
             display: inline-block;
         }
 
-        .status-published { background: rgba(34, 197, 94, 0.1); color: var(--success-color); }
-        .status-active { background: rgba(14, 165, 233, 0.1); color: var(--info-color); }
-        .status-draft { background: rgba(100, 116, 139, 0.1); color: var(--text-secondary); }
-        .status-pending { background: rgba(245, 158, 11, 0.1); color: var(--warning-color); }
-        .status-completed { background: rgba(34, 197, 94, 0.1); color: var(--success-color); }
-        .status-failed { background: rgba(239, 68, 68, 0.1); color: var(--danger-color); }
+        .status-published { background: var(--success-soft); color: var(--success); }
+        .status-active { background: var(--info-soft); color: var(--info); }
+        .status-draft { background: var(--bg-card-alt); color: var(--text-muted); }
+        .status-pending { background: var(--warning-soft); color: var(--warning); }
+        .status-completed { background: var(--success-soft); color: var(--success); }
+        .status-failed { background: var(--danger-soft); color: var(--danger); }
 
         .role-tag {
-            padding: 3px 10px;
-            border-radius: 20px;
+            padding: var(--space-1) var(--space-3);
+            border-radius: var(--radius-full);
             font-size: 11px;
             font-weight: 600;
         }
 
-        .role-tag.admin { background: rgba(124, 58, 237, 0.1); color: #7c3aed; }
-        .role-tag.teacher { background: rgba(34, 197, 94, 0.1); color: var(--success-color); }
-        .role-tag.student { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
-        .role-tag.user { background: rgba(100, 116, 139, 0.1); color: var(--text-secondary); }
+        .role-tag.admin { background: rgba(124, 58, 237, 0.12); color: #7c3aed; }
+        .role-tag.teacher { background: var(--success-soft); color: var(--success); }
+        .role-tag.student { background: rgba(59, 130, 246, 0.12); color: #3b82f6; }
+        .role-tag.user { background: var(--bg-card-alt); color: var(--text-muted); }
 
         .form-group {
-            margin-bottom: 20px;
+            margin-bottom: var(--space-6);
         }
 
         .form-label {
@@ -667,84 +715,99 @@
             font-size: 13px;
             font-weight: 600;
             color: var(--text-primary);
-            margin-bottom: 8px;
+            margin-bottom: var(--space-2);
         }
 
         .form-input {
             width: 100%;
-            padding: 10px 14px;
-            border: 1px solid var(--border-color);
+            padding: var(--space-3) var(--space-4);
+            border: 1px solid var(--border-subtle);
             border-radius: var(--radius-md);
             font-size: 14px;
             color: var(--text-primary);
-            background: var(--bg-primary);
-            transition: all var(--transition-fast);
+            background: var(--bg-card-alt);
+            transition: border-color var(--transition-fast);
+            font-family: var(--font-sans);
         }
 
         .form-input:focus {
             outline: none;
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-soft);
+        }
+
+        .form-input::placeholder {
+            color: var(--text-faint);
         }
 
         .form-select {
             width: 100%;
-            padding: 10px 14px;
-            border: 1px solid var(--border-color);
+            padding: var(--space-3) var(--space-4);
+            border: 1px solid var(--border-subtle);
             border-radius: var(--radius-md);
             font-size: 14px;
             color: var(--text-primary);
-            background: var(--bg-primary);
-            transition: all var(--transition-fast);
+            background: var(--bg-card-alt);
+            transition: border-color var(--transition-fast);
             cursor: pointer;
+            font-family: var(--font-sans);
         }
 
         .form-select:focus {
             outline: none;
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-soft);
         }
 
         .search-bar {
             display: flex;
-            gap: 8px;
+            gap: var(--space-2);
         }
 
         .search-bar input {
             flex: 1;
-            padding: 10px 14px;
-            border: 1px solid var(--border-color);
+            padding: var(--space-3) var(--space-4);
+            border: 1px solid var(--border-subtle);
             border-radius: var(--radius-md);
             font-size: 13px;
+            background: var(--bg-card-alt);
+            color: var(--text-primary);
+            font-family: var(--font-sans);
+        }
+
+        .search-bar input:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-soft);
         }
 
         .btn-group {
             display: flex;
-            gap: 6px;
+            gap: var(--space-2);
         }
 
         .btn-sm {
-            padding: 5px 12px;
+            padding: var(--space-1) var(--space-3);
             font-size: 12px;
         }
 
         .progress-bar {
             height: 8px;
-            background: var(--bg-secondary);
-            border-radius: 4px;
+            background: var(--bg-card-alt);
+            border-radius: var(--radius-full);
             overflow: hidden;
         }
 
         .progress-fill {
             height: 100%;
-            border-radius: 4px;
-            transition: width var(--transition-slow);
+            border-radius: var(--radius-full);
+            transition: width var(--transition-normal);
         }
 
-        .progress-fill.primary { background: var(--primary-color); }
-        .progress-fill.success { background: var(--success-color); }
-        .progress-fill.warning { background: var(--warning-color); }
-        .progress-fill.danger { background: var(--danger-color); }
+        .progress-fill.primary { background: var(--accent); }
+        .progress-fill.success { background: var(--success); }
+        .progress-fill.warning { background: var(--warning); }
+        .progress-fill.danger { background: var(--danger); }
 
         @media (max-width: 1024px) {
             .grid-2 { grid-template-columns: 1fr; }
@@ -764,110 +827,59 @@
     </style>
 </head>
 <body>
-    <aside class="sidebar">
-        <div class="sidebar-logo-wrap">
-            <div class="sidebar-toggle" id="sidebar-toggle" title="收起/展开侧边栏">
-                <i class="fas fa-chevron-left"></i>
-            </div>
-            <div class="sidebar-logo">
-                <h2>
-                    <div class="logo-icon"><i class="fas fa-shield-alt"></i></div>
-                    <span>MTSCOS AI</span>
-                </h2>
-            </div>
-        </div>
-
-        <nav class="sidebar-nav">
-            <div class="nav-section">主菜单</div>
-            <a href="/" class="nav-item {% if current_page == 'home' %}active{% endif %}" title="返回首页">
-                <i class="fas fa-home nav-icon"></i>
-                <span>首页</span>
-            </a>
-            <a href="/admin_app/dashboard" class="nav-item {% if current_page == 'dashboard' %}active{% endif %}" title="管理首页">
-                <i class="fas fa-chart-line nav-icon"></i>
-                <span>管理首页</span>
-            </a>
-            <a href="/admin_center" class="nav-item {% if current_page == 'admin_center' %}active{% endif %}" title="管理中心">
-                <i class="fas fa-building nav-icon"></i>
-                <span>管理中心</span>
-            </a>
-
-            <div class="nav-section">用户管理</div>
-            <a href="/admin_app/users" class="nav-item {% if current_page == 'users' %}active{% endif %}" title="用户列表">
-                <i class="fas fa-users nav-icon"></i>
-                <span>用户管理</span>
-            </a>
-            <a href="/admin_app/roles" class="nav-item {% if current_page == 'roles' %}active{% endif %}" title="角色权限">
-                <i class="fas fa-key nav-icon"></i>
-                <span>角色权限</span>
-            </a>
-            <a href="/approval_management" class="nav-item {% if current_page == 'approval' %}active{% endif %}" title="审批管理">
-                <i class="fas fa-check-circle nav-icon"></i>
-                <span>审批管理</span>
-            </a>
-
-            <div class="nav-section">内容管理</div>
-            <a href="/admin_app/exams" class="nav-item {% if current_page == 'exams' %}active{% endif %}" title="考试管理">
-                <i class="fas fa-file-alt nav-icon"></i>
-                <span>考试管理</span>
-            </a>
-            <a href="/admin_app/courses" class="nav-item {% if current_page == 'courses' %}active{% endif %}" title="课程管理">
-                <i class="fas fa-book-open nav-icon"></i>
-                <span>课程管理</span>
-            </a>
-            <a href="/admin_app/questions" class="nav-item {% if current_page == 'questions' %}active{% endif %}" title="题目管理">
-                <i class="fas fa-question-circle nav-icon"></i>
-                <span>题目管理</span>
-            </a>
-
-            <div class="nav-section">系统管理</div>
-            <a href="/settings" class="nav-item {% if current_page == 'settings' %}active{% endif %}" title="系统设置">
-                <i class="fas fa-cog nav-icon"></i>
-                <span>系统设置</span>
-            </a>
-            <a href="/backup_manager" class="nav-item {% if current_page == 'backup' %}active{% endif %}" title="备份管理">
-                <i class="fas fa-database nav-icon"></i>
-                <span>备份管理</span>
-            </a>
-            <a href="/system_status_dashboard" class="nav-item {% if current_page == 'system_status' %}active{% endif %}" title="系统状态">
-                <i class="fas fa-server nav-icon"></i>
-                <span>系统状态</span>
-            </a>
-            <a href="/system_upgrade_center" class="nav-item {% if current_page == 'upgrade' %}active{% endif %}" title="系统升级">
-                <i class="fas fa-arrow-up-circle nav-icon"></i>
-                <span>系统升级</span>
-            </a>
-
-            <div class="nav-section">AI功能</div>
-            <a href="/ai_learning_diagnosis" class="nav-item {% if current_page == 'ai_diagnosis' %}active{% endif %}" title="AI学习诊断">
-                <i class="fas fa-stethoscope nav-icon"></i>
-                <span>学习诊断</span>
-            </a>
-            <a href="/ai_auto_expand" class="nav-item {% if current_page == 'ai_expand' %}active{% endif %}" title="AI自动扩展">
-                <i class="fas fa-expand-arrows-alt nav-icon"></i>
-                <span>自动扩展</span>
-            </a>
-            <a href="/github_sync" class="nav-item {% if current_page == 'github' %}active{% endif %}" title="GitHub同步">
-                <i class="fab fa-github nav-icon"></i>
-                <span>GitHub同步</span>
-            </a>
-        </nav>
-
-        <div class="sidebar-footer">
-            <div class="user-card">
-                <div class="avatar">{{ user.username[:1].upper() }}</div>
-                <div class="user-info">
-                    <div class="user-name">{{ user.username }}</div>
-                    <div class="user-role">{{ get_role_name(user.role) }}</div>
+    <div class="layout-container">
+        <aside class="sidebar">
+            <div class="sidebar-logo-wrap">
+                <div class="sidebar-toggle" id="sidebar-toggle" title="收起/展开侧边栏">
+                    <i class="fas fa-chevron-left"></i>
                 </div>
-                <a href="/auth/logout" class="logout-btn" title="退出登录">
-                    <i class="fas fa-sign-out-alt"></i>
-                </a>
+                <div class="sidebar-logo">
+                    <h2>
+                        <div class="logo-icon"><i class="fas fa-shield-alt"></i></div>
+                        <span>MTSCOS AI</span>
+                    </h2>
+                </div>
             </div>
-        </div>
-    </aside>
 
-    <div class="main-content">
+            <nav class="sidebar-nav">
+                <div class="nav-section">主菜单</div>
+                <a href="/" class="nav-item {% if current_page == 'home' %}active{% endif %}" title="返回首页">
+                    <i class="fas fa-home nav-icon"></i>
+                    <span>首页</span>
+                </a>
+                <a href="/admin_app/dashboard" class="nav-item {% if current_page == 'dashboard' %}active{% endif %}" title="管理首页">
+                    <i class="fas fa-chart-line nav-icon"></i>
+                    <span>管理首页</span>
+                </a>
+                <a href="/admin_center" class="nav-item {% if current_page == 'admin_center' %}active{% endif %}" title="管理中心">
+                    <i class="fas fa-building nav-icon"></i>
+                    <span>管理中心</span>
+                </a>
+
+                <div class="nav-section">功能菜单</div>
+                {% for menu in sidebar_menus %}
+                <a href="{{ menu.url }}" class="nav-item {% if current_page in menu.url %}active{% endif %}" title="{{ menu.label }}">
+                    <span class="nav-icon" style="width:20px;text-align:center;font-size:16px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;">{{ menu.icon|safe }}</span>
+                    <span>{{ menu.label }}</span>
+                </a>
+                {% endfor %}
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="user-card">
+                    <div class="avatar">{{ user.username[:1].upper() }}</div>
+                    <div class="user-info">
+                        <div class="user-name">{{ user.username }}</div>
+                        <div class="user-role">{{ get_role_name(user.role) }}</div>
+                    </div>
+                    <a href="/auth/logout" class="logout-btn" title="退出登录">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </a>
+                </div>
+            </div>
+        </aside>
+
+        <div class="main-content">
         <header class="header">
             <div class="header-left">
                 <h1>
@@ -885,6 +897,16 @@
                 <div class="system-time" id="system-time">
                     <i class="fas fa-clock"></i>
                     <span>加载中...</span>
+                </div>
+                {% if lunar_display %}
+                <div class="lunar-calendar{% if is_special_day %} special-day{% endif %}">
+                    <i class="fas fa-moon"></i>
+                    <span>{{ lunar_display }}</span>
+                </div>
+                {% endif %}
+                <div class="vikey-status" id="vikey-status" style="display:flex;align-items:center;gap:8px;padding:8px 16px;background:rgba(79,70,229,0.1);border-radius:8px;border:1px solid rgba(79,70,229,0.2);">
+                    <i class="fas fa-key" style="color:#4f46e5;"></i>
+                    <span style="font-size:12px;color:#cbd5e1;">检测中...</span>
                 </div>
                 {% block header_actions %}
                 <button class="action-btn action-btn-secondary" onclick="window.history.back()">
@@ -906,6 +928,7 @@
         <div class="content">
             {% block content %}{% endblock %}
         </div>
+        </div>
     </div>
 
     <script>
@@ -917,134 +940,9 @@
         });
 
         (function initSidebarToggle() {
-            try { localStorage.setItem('mtscos_layout_ai_disabled', '1'); } catch(e) {}
             var LS_KEY = 'mtscos_sidebar_collapsed_v1';
-            var SB_STYLE_ID = 'mtscos_sidebar_collapse_style_override';
-            var SB_ID = 'mtscos_sb_superadmin';
-            var MC_ID = 'mtscos_mc_superadmin';
             var bodyEl = document.body;
-            var _saMOStarted = false;
 
-            function ensureIds() {
-                var sb = document.querySelector('.sidebar');
-                if (sb && !sb.id) sb.id = SB_ID;
-                var mc = document.querySelector('.main-content');
-                if (mc && !mc.id) mc.id = MC_ID;
-            }
-            function ensureStrongRules() {
-                ensureIds();
-                var sid = 'mtscos_sa_strong_rules';
-                var s = document.getElementById(sid);
-                if (!s) { s = document.createElement('style'); s.id = sid; }
-                var css = '';
-                css += '#' + SB_ID + '{position:relative !important;left:auto !important;right:auto !important;top:auto !important;bottom:auto !important;width:220px !important;min-width:220px !important;max-width:220px !important;}';
-                css += 'body.sidebar-collapsed #' + SB_ID + '{width:64px !important;min-width:64px !important;max-width:64px !important;}';
-                css += '#' + MC_ID + '{margin-left:220px !important;}';
-                css += 'body.sidebar-collapsed #' + MC_ID + '{margin-left:64px !important;}';
-                s.textContent = css;
-                var host = document.body || document.documentElement;
-                if (s.parentNode !== host || s !== host.lastElementChild) { host.appendChild(s); }
-            }
-            function startSaMO() {
-                if (_saMOStarted) return;
-                ensureIds();
-                var sb = document.getElementById(SB_ID);
-                var mc = document.getElementById(MC_ID);
-                if (!sb) return;
-                _saMOStarted = true;
-                var mo = new MutationObserver(function(muts) {
-                    var changed = false;
-                    muts.forEach(function(m) { if (m.type === 'attributes' && m.attributeName === 'style') changed = true; });
-                    if (changed) {
-                        ensureStrongRules(); ensureOverrideStyle();
-                    }
-                });
-                mo.observe(sb, { attributes: true, attributeFilter: ['style'] });
-                if (mc) {
-                    var mo2 = new MutationObserver(function(muts) {
-                        var changed = false;
-                        muts.forEach(function(m) { if (m.type === 'attributes' && m.attributeName === 'style') changed = true; });
-                        if (changed) {
-                            ensureStrongRules(); ensureOverrideStyle();
-                        }
-                    });
-                    mo2.observe(mc, { attributes: true, attributeFilter: ['style'] });
-                }
-            }
-            function ensureOverrideStyle() {
-                var s = document.getElementById(SB_STYLE_ID);
-                if (!s) {
-                    s = document.createElement('style');
-                    s.id = SB_STYLE_ID;
-                    s.textContent = 'body.sidebar-collapsed .sidebar{width:64px !important;min-width:64px !important;max-width:64px !important;}body.sidebar-collapsed .sidebar-logo h2 span,body.sidebar-collapsed .nav-item span,body.sidebar-collapsed .nav-section,body.sidebar-collapsed .sidebar-footer .user-info,body.sidebar-collapsed .sidebar-toggle-label{display:none !important;}body.sidebar-collapsed .main-content{margin-left:64px !important;}';
-                }
-                var host = document.body || document.documentElement;
-                if (s.parentNode !== host || s !== host.lastElementChild) {
-                    host.appendChild(s);
-                }
-            }
-            function applyInlineSizes(collapsed) {
-                try {
-                    var sb = document.getElementById(SB_ID);
-                    var mc = document.getElementById(MC_ID);
-                    if (sb) sb.removeAttribute('style');
-                    if (mc) mc.removeAttribute('style');
-                } catch(e) {}
-                ensureStrongRules();
-            }
-            function _saForceSize(el, w, hackMarginLeft) {
-                try {
-                    if (!el) return;
-                    if (hackMarginLeft) {
-                        if (el.attributeStyleMap) el.attributeStyleMap.set('margin-left', w);
-                        el.style.setProperty('margin-left', w, 'important');
-                    } else {
-                        if (el.attributeStyleMap) {
-                            el.attributeStyleMap.set('position', 'relative');
-                            el.attributeStyleMap.set('width', w);
-                            el.attributeStyleMap.set('min-width', w);
-                            el.attributeStyleMap.set('max-width', w);
-                            el.attributeStyleMap.set('left', 'auto');
-                            el.attributeStyleMap.set('right', 'auto');
-                            el.attributeStyleMap.set('top', 'auto');
-                            el.attributeStyleMap.set('bottom', 'auto');
-                            el.attributeStyleMap.set('flex-grow', '0');
-                            el.attributeStyleMap.set('flex-shrink', '0');
-                            el.attributeStyleMap.set('flex-basis', w);
-                        }
-                        el.style.setProperty('position', 'relative', 'important');
-                        el.style.setProperty('width', w, 'important');
-                        el.style.setProperty('min-width', w, 'important');
-                        el.style.setProperty('max-width', w, 'important');
-                        el.style.setProperty('left', 'auto', 'important');
-                        el.style.setProperty('right', 'auto', 'important');
-                        el.style.setProperty('top', 'auto', 'important');
-                        el.style.setProperty('bottom', 'auto', 'important');
-                        el.style.setProperty('flex-grow', '0', 'important');
-                        el.style.setProperty('flex-shrink', '0', 'important');
-                        el.style.setProperty('flex-basis', w, 'important');
-                    }
-                } catch(e) {}
-            }
-            function enforceNow() {
-                ensureIds();
-                var c = bodyEl.classList.contains('sidebar-collapsed');
-                var w = c ? '64px' : '220px';
-                var sb = document.getElementById(SB_ID);
-                var mc = document.getElementById(MC_ID);
-                _saForceSize(sb, w, false);
-                _saForceSize(mc, w, true);
-                if (!enforceNow._last || enforceNow._last !== w) { enforceNow._last = w; _saReflow(sb, mc); }
-            }
-            function _saReflow(sb, mc) {
-                try {
-                    if (sb) { var d = sb.style.cssText; sb.style.display = 'none'; void sb.offsetHeight; sb.style.cssText = d; }
-                    if (mc) { var d2 = mc.style.cssText; mc.style.display = 'none'; void mc.offsetHeight; mc.style.cssText = d2; }
-                } catch(e) {}
-            }
-            function startSaLoop() {
-                setInterval(enforceNow, 100);
-            }
             function bindToggle() {
                 var btn = document.getElementById('sidebar-toggle');
                 if (btn && !btn.dataset.toggleBound) {
@@ -1056,25 +954,20 @@
                         try {
                             localStorage.setItem(LS_KEY, c ? '1' : '0');
                         } catch(e) {}
-                        enforceNow();
                     });
                 }
                 return !!btn;
             }
+
             try {
-                ensureIds();
-                ensureStrongRules();
-                ensureOverrideStyle();
                 if (localStorage.getItem(LS_KEY) === '1') {
                     bodyEl.classList.add('sidebar-collapsed');
                 }
-                startSaMO();
-                startSaLoop();
             } catch(e) {}
+
             if (!bindToggle()) {
-                document.addEventListener('DOMContentLoaded', function() { bindToggle(); startSaMO(); startSaLoop(); });
+                document.addEventListener('DOMContentLoaded', bindToggle);
             }
-            setInterval(function() { bindToggle(); ensureStrongRules(); ensureOverrideStyle(); startSaMO(); }, 1500);
         })();
         
         function updateSystemTime() {
@@ -1108,6 +1001,185 @@
                 
                 return originalFetch(url, options);
             };
+        })();
+
+        (function initVikeyMonitor() {
+            var _vikeyMonitorInterval = null;
+            var _vikeyLockModal = null;
+            var _vikeyLockCountdownEl = null;
+            var _vikeyStatusEl = null;
+            var _isLocked = false;
+            var _snapshotData = null;
+            var _requiredSerial = '';
+
+            function _saveSnapshot() {
+                try {
+                    _snapshotData = {
+                        url: window.location.href,
+                        scrollX: window.scrollX,
+                        scrollY: window.scrollY,
+                        localStorage: JSON.stringify(localStorage),
+                        timestamp: Date.now()
+                    };
+                    fetch('/api/vikey/snapshot/save', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({})
+                    }).catch(function() {});
+                } catch(e) {}
+            }
+
+            function _restoreSnapshot() {
+                try {
+                    if (_snapshotData) {
+                        window.scrollTo(_snapshotData.scrollX, _snapshotData.scrollY);
+                        fetch('/api/vikey/snapshot/restore', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                url: _snapshotData.url
+                            })
+                        }).catch(function() {});
+                        _snapshotData = null;
+                    }
+                } catch(e) {}
+            }
+
+            function _releaseSnapshot() {
+                try {
+                    _snapshotData = null;
+                    fetch('/api/vikey/snapshot/release', {
+                        method: 'POST'
+                    }).catch(function() {});
+                } catch(e) {}
+            }
+
+            function _updateVikeyStatus(status, serial) {
+                if (!_vikeyStatusEl) {
+                    _vikeyStatusEl = document.getElementById('vikey-status');
+                }
+                if (!_vikeyStatusEl) return;
+
+                if (status === 'ok') {
+                    _vikeyStatusEl.style.background = 'rgba(34, 197, 94, 0.1)';
+                    _vikeyStatusEl.style.borderColor = 'rgba(34, 197, 94, 0.3)';
+                    _vikeyStatusEl.innerHTML = '<i class="fas fa-key" style="color:#22c55e;"></i><span style="font-size:12px;color:#22c55e;">已插入VIKEY USB硬件加密狗</span>';
+                } else {
+                    _vikeyStatusEl.style.background = 'rgba(239, 68, 68, 0.1)';
+                    _vikeyStatusEl.style.borderColor = 'rgba(239, 68, 68, 0.3)';
+                    _vikeyStatusEl.innerHTML = '<i class="fas fa-key" style="color:#ef4444;"></i><span style="font-size:12px;color:#ef4444;">VIKEY USB加密狗状态异常</span>';
+                }
+            }
+
+            function _showLockModal(data) {
+                if (_vikeyLockModal && _vikeyLockModal.parentNode) return;
+                var remaining = Math.ceil(data.remaining_seconds || 0);
+                var timeoutReached = data.timeout_reached || false;
+                _requiredSerial = data.required_serial || '';
+
+                _vikeyLockModal = document.createElement('div');
+                _vikeyLockModal.className = 'vikey-lock-modal';
+                _vikeyLockModal.innerHTML = '\
+                    <div class="vikey-lock-overlay"></div>\
+                    <div class="vikey-lock-content">\
+                        <div class="vikey-lock-icon">🔒</div>\
+                        <h2>' + (timeoutReached ? '系统已锁定' : '系统临时锁定') + '</h2>\
+                        <p>' + (timeoutReached ? '加密狗拔出超时，已自动退出系统' : '检测到加密狗被拔出，请重新插入') + '</p>\
+                        <div class="vikey-lock-details">\
+                            <div>需要插入: <b>' + (_requiredSerial || '未知') + '</b></div>\
+                            ' + (remaining > 0 ? '<div>剩余时间: <b id="vikey-lock-countdown">' + remaining + '</b> 秒</div>' : '') + '\
+                        </div>\
+                        ' + (timeoutReached ? '<button class="vikey-lock-btn" onclick="window.location.href=\'/\'">返回登录</button>' : '') + '\
+                    </div>\
+                ';
+                document.body.appendChild(_vikeyLockModal);
+
+                if (!timeoutReached && remaining > 0) {
+                    _vikeyLockCountdownEl = document.getElementById('vikey-lock-countdown');
+                    var countdown = setInterval(function() {
+                        if (_vikeyLockCountdownEl) {
+                            remaining--;
+                            _vikeyLockCountdownEl.textContent = remaining;
+                            if (remaining <= 0) {
+                                clearInterval(countdown);
+                                window.location.href = '/';
+                            }
+                        } else {
+                            clearInterval(countdown);
+                        }
+                    }, 1000);
+                }
+            }
+
+            function _hideLockModal() {
+                if (_vikeyLockModal && _vikeyLockModal.parentNode) {
+                    _vikeyLockModal.parentNode.removeChild(_vikeyLockModal);
+                    _vikeyLockModal = null;
+                    _vikeyLockCountdownEl = null;
+                }
+                _isLocked = false;
+                _restoreSnapshot();
+            }
+
+            async function _checkVikeyState() {
+                try {
+                    var r = await fetch('/api/vikey/detect', { credentials: 'include' });
+                    var d = await r.json();
+                    var data = d.data || d;
+                    var devices = data.devices || [];
+                    var presentCount = parseInt(data.present_count || 0, 10);
+
+                    var matchDev = null;
+                    for (var i = 0; i < devices.length; i++) {
+                        var dev = devices[i];
+                        var isBound = (dev.binding_status || dev.status || '') === 'bound';
+                        var isSuper = (dev.username || '').toLowerCase() === 'wuchenghao15';
+                        if (isBound && isSuper) {
+                            matchDev = dev;
+                            break;
+                        }
+                    }
+
+                    if (matchDev && matchDev.present) {
+                        _updateVikeyStatus('ok', matchDev.serial);
+                        if (_isLocked) {
+                            _hideLockModal();
+                        }
+                        return true;
+                    } else {
+                        _updateVikeyStatus('error');
+                        if (!_isLocked) {
+                            _isLocked = true;
+                            _saveSnapshot();
+                            var lockR = await fetch('/api/vikey/lock_state', { credentials: 'include' });
+                            var lockD = await lockR.json();
+                            var lockData = lockD.data || lockD;
+                            _showLockModal(lockData);
+                        }
+                        return false;
+                    }
+                } catch (e) {
+                    _updateVikeyStatus('error');
+                    if (!_isLocked) {
+                        _isLocked = true;
+                        _saveSnapshot();
+                        _showLockModal({ locked: true, remaining_seconds: 300, timeout_reached: false });
+                    }
+                    return false;
+                }
+            }
+
+            function _startVikeyMonitor() {
+                if (_vikeyMonitorInterval) clearInterval(_vikeyMonitorInterval);
+                _vikeyMonitorInterval = setInterval(_checkVikeyState, 2000);
+                _checkVikeyState();
+            }
+
+            window.addEventListener('beforeunload', function() {
+                if (_vikeyMonitorInterval) clearInterval(_vikeyMonitorInterval);
+            });
+
+            _startVikeyMonitor();
         })();
     </script>
     {% block extra_js %}{% endblock %}

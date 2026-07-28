@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 教育艺术教育服务 (v15.25.0) ==================================== 提供音乐教育、美术教育、舞蹈教育、戏剧教育、影视教育、书法教育、艺术欣赏和艺术创作等综合管理服务。  核心能力： 1. 音乐教育 - 声乐/器乐/合唱/合奏/音乐理论/音乐欣赏/音乐创作/音乐表演 2. 美术教育 - 绘画/书法/雕塑/摄影/设计/工艺美术/艺术史/艺术鉴赏 3. 舞蹈教育 - 民族舞/现代舞/芭蕾舞/街舞/爵士舞/舞蹈创编/舞蹈表演/舞蹈欣赏 4. 戏剧教育 - 话剧/戏曲/音乐剧/儿童剧/表演艺术/舞台设计/戏剧创作/戏剧欣赏 5. 影视教育 - 电影制作/影视表演/影视编导/影视后期/动画制作/摄影摄像/影视鉴赏/数字媒体 6. 书法教育 - 楷书/行书/草书/隶书/篆书/篆刻/硬笔书法/书法鉴赏 7. 艺术欣赏 - 音乐欣赏/美术欣赏/舞蹈欣赏/戏剧欣赏/影视欣赏/书法欣赏/艺术评论/文化遗产 8. 艺术创作 - 音乐创作/美术创作/舞蹈创编/戏剧创作/影视创作/书法创作/艺术设计/综合艺术  差异化支持：成人教育 / K12教育 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

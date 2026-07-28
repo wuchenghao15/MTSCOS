@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 教育智慧校园服务 (v15.30.0) ==================================== 提供智慧校园建设、智能设备管理、物联网应用、智能安防、智能能源、智慧图书馆、智慧教室、智慧后勤等综合管理服务。  核心能力： 1. 智慧校园 - 校园配置、模块管理、数据统计、系统集成 2. 智能设备 - 设备管理、设备监控、设备维护、设备调度 3. 物联网 - 感知控制、智能分析、预警联动、决策支持 4. 智能安防 - 视频监控、门禁控制、消防报警、入侵检测、访客管理 5. 智能能源 - 能耗监测、节能控制、能源分析、绿色校园 6. 智慧图书馆 - 智能书架、自助借还、座位预约、图书检索 7. 智慧教室 - 智能黑板、录播系统、环境监测、课堂分析 8. 智慧后勤 - 智能食堂、宿舍管理、维修服务、采购配送 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

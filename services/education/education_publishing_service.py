@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 教育出版服务 (v15.27.0) ============================= 提供教材出版、数字出版、版权管理、发行管理、营销管理、数据分析、合作管理和质量控制等综合服务。  核心能力： 1. 教材出版管理 - 教材策划、编辑、排版、印刷 2. 数字出版管理 - 电子书、有声书、互动书、在线课程 3. 版权管理 - 著作权、邻接权、许可权、维权 4. 出版发行管理 - 渠道管理、库存管理、发货管理 5. 出版营销管理 - 线上线下营销、社交媒体营销 6. 出版数据分析 - 销量分析、读者分析、市场分析 7. 出版合作管理 - 作者合作、出版社合作、国际合作 8. 出版质量控制 - 内容审核、编辑校对、印刷质检  支持成人教育与K12教育差异化管理。 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

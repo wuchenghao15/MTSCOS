@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 实验室与实验管理服务 (v15.6.0) ==================================== 提供实验室管理、实验课程、设备管理和安全监管等综合服务。  核心能力： 1. 实验室管理 - 实验室信息、开放预约、使用统计 2. 实验课程 - 实验项目管理、实验预约、成绩记录 3. 设备管理 - 设备台账、借用归还、维护保养 4. 耗材管理 - 实验耗材、入库出库、库存预警 5. 安全管理 - 安全培训、事故记录、检查整改 6. 实验报告 - 报告提交、批改评分、模板管理 7. 成人实验 - 成人教育实验实践管理 8. K12实验 - 中小学科学实验管理 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

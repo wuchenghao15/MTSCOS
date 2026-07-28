@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 教育区块链服务 (v15.15.0) ==================================== 提供证书存证、学分认证、数据溯源、数字身份、智能合约、去中心化存储、区块链查询、跨链互操作等综合服务。  核心能力： 1. 证书存证 - 毕业证书、学位证书、资格证书等存证与查询 2. 学分认证 - 学习记录、成绩记录、学分认证与转换 3. 数据溯源 - 教育数据来源追踪、完整性验证 4. 数字身份 - 学生、教师、学校、机构身份管理 5. 智能合约 - 证书合约、学分合约、认证合约等 6. 去中心化存储 - 链上存储、链下存储、IPFS存储 7. 区块链查询 - 交易记录、区块信息、合约状态查询 8. 跨链互操作 - 跨链验证、跨链转移、跨链查询、跨链合约 9. 验证审计 - 验证日志、审计追踪、合规检查 10. 链上治理 - 节点管理、链配置、共识机制  支持教育类型：成人教育 / K12教育 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

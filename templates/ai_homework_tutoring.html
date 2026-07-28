@@ -446,11 +446,11 @@
             </div>
 
             <div class="btn-group">
-                <button class="btn btn-primary" onclick="getHint(1)">💡 初级提示</button>
-                <button class="btn btn-primary" onclick="getHint(2)">💡 中级提示</button>
-                <button class="btn btn-primary" onclick="getHint(3)">💡 高级提示</button>
-                <button class="btn btn-primary" onclick="getGuide()">📋 解题引导</button>
-                <button class="btn btn-primary" onclick="getExplanation()">📝 详细解答</button>
+                <button class="btn btn-primary" onclick="getHint(1)"><i class="fas fa-lightbulb"></i> 初级提示</button>
+                <button class="btn btn-primary" onclick="getHint(2)"><i class="fas fa-lightbulb"></i> 中级提示</button>
+                <button class="btn btn-primary" onclick="getHint(3)"><i class="fas fa-lightbulb"></i> 高级提示</button>
+                <button class="btn btn-primary" onclick="getGuide()"><i class="fas fa-list-check"></i> 解题引导</button>
+                <button class="btn btn-primary" onclick="getExplanation()"><i class="fas fa-file-alt"></i> 详细解答</button>
                 <button class="btn btn-secondary" onclick="askQuestion()">❓ 提问</button>
             </div>
         </div>
@@ -735,7 +735,7 @@
     function displayHintResult(data) {
         const resultSection = document.getElementById('result-section');
         resultSection.classList.add('show');
-        document.getElementById('result-title').textContent = '💡 解题提示';
+        document.getElementById('result-title').textContent = '<i class="fas fa-lightbulb"></i> 解题提示';
         document.getElementById('result-time').textContent = new Date().toLocaleString();
         document.getElementById('result-content').innerHTML = `
             <div class="hint-card">
@@ -749,7 +749,7 @@
     function displayGuideResult(data) {
         const resultSection = document.getElementById('result-section');
         resultSection.classList.add('show');
-        document.getElementById('result-title').textContent = '📋 解题引导';
+        document.getElementById('result-title').textContent = '<i class="fas fa-list-check"></i> 解题引导';
         document.getElementById('result-time').textContent = new Date().toLocaleString();
         
         const steps = data.guide.steps.map(step => `
@@ -774,7 +774,7 @@
     function displayExplanationResult(data) {
         const resultSection = document.getElementById('result-section');
         resultSection.classList.add('show');
-        document.getElementById('result-title').textContent = '📝 详细解答';
+        document.getElementById('result-title').textContent = '<i class="fas fa-file-alt"></i> 详细解答';
         document.getElementById('result-time').textContent = new Date().toLocaleString();
         
         const evalHtml = data.explanation.evaluation ? `

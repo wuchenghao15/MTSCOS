@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 社区服务与志愿管理服务 (v15.7.0) ==================================== 提供志愿活动、社区合作、服务时长和社会实践等综合管理服务。  核心能力： 1. 志愿活动 - 活动发布、报名管理、签到签退 2. 社区合作 - 社区结对、服务基地、合作项目 3. 服务时长 - 时长记录、统计排名、证书管理 4. 社会实践 - 实践项目、调研报告、成果展示 5. 公益捐赠 - 物资募集、捐赠记录、公示管理 6. 志愿团队 - 团队组建、分工管理、绩效评估 7. 成人志愿 - 成人教育社会责任管理 8. K12实践 - 学生社会实践与劳动教育 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

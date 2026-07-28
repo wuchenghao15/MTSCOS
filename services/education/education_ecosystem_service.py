@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 教育生态系统服务 (v15.22.0) ==================================== 提供生态合作伙伴管理、资源共享、服务集成、数据互通、标准规范、 价值共创、风险防控和可持续发展等综合管理服务。  核心能力： 1. 生态合作伙伴 - 合作伙伴管理、关系维护、准入审核、合作协议 2. 生态资源共享 - 资源注册、权限管理、共享记录、资源检索 3. 生态服务集成 - 服务注册、服务调用、服务监控、服务评价 4. 生态数据互通 - 数据交换、数据标准、数据映射、数据质量、数据安全 5. 生态标准规范 - 标准制定、标准发布、标准认证、合规检查 6. 生态价值共创 - 价值评估、贡献记录、收益分配、合作共赢 7. 生态风险防控 - 风险识别、风险评估、风险预警、风险处置 8. 生态可持续发展 - 可持续评估、指标监控、改进措施、报告生成 9. 生态监控预警 - 监控数据采集、预警规则、预警触发、历史记录 10. 生态统计分析 - 综合统计报表  差异化支持： - 成人教育 - K12教育 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

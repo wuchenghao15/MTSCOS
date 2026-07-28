@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 教育法律事务服务 (v15.18.0) ==================================== 提供教育领域法律事务、合同管理、知识产权、纠纷处理等综合法律服务。  核心能力： 1. 法律事务 - 文件管理、法律审查、法律意见、法律研究 2. 合同管理 - 合同起草、版本管理、审批流程、合同归档 3. 知识产权 - 知识产权登记、专利管理、商标管理、版权保护 4. 纠纷处理 - 案件登记、案件管理、诉讼代理、仲裁代理 5. 法律顾问 - 法律咨询、法律意见、合规指导、风险提示 6. 法律合规 - 合规审查、合规检查、合规培训、合规报告 7. 法律培训 - 培训管理、培训安排、培训记录、培训评估 8. 法律风险管理 - 风险识别、风险评估、风险控制、风险预警 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

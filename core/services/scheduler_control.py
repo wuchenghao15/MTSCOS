@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 """
 MTSCOS AI 调度引擎控制脚本 - 增强版
@@ -21,7 +22,7 @@ import signal
 import threading
 from datetime import datetime, timedelta
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 PID_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.scheduler_pid')
 HEARTBEAT_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.scheduler_heartbeat')
 WATCHDOG_PID_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.watchdog_pid')

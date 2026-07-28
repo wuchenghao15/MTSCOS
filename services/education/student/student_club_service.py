@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 学生社团管理服务 (v15.10.0) ===================================== 提供学生社团的创建审核、成员招新、活动组织、经费管理、评价考核等综合管理服务。 支持成人教育兴趣社团与K12学生社团的差异化需求。  核心能力： 1. 社团管理 - 社团创建、分类、审核、状态管理 2. 成员管理 - 招新、入退社、职位、出勤 3. 活动管理 - 社团活动、场地预约、活动记录 4. 经费管理 - 经费预算、收支记录、财务报告 5. 社团评价 - 社团评级、成员评价、活动评价 6. 成果展示 - 社团作品、比赛获奖、展示活动 7. 指导教师 - 指导教师分配、考核 8. K12学生社团与成人兴趣社团差异化 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

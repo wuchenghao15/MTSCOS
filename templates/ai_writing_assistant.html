@@ -346,16 +346,16 @@
 {% block content %}
 <div class="writing-container">
     <div class="writing-header">
-        <h1>🎯 AI智能写作助手</h1>
+        <h1><i class="fas fa-target"></i> AI智能写作助手</h1>
         <p>智能生成、重写、总结、语法检查，全方位提升您的写作能力</p>
     </div>
 
     <div class="tabs">
-        <button class="tab active" onclick="switchTab('write')">📝 新建写作</button>
+        <button class="tab active" onclick="switchTab('write')"><i class="fas fa-file-alt"></i> 新建写作</button>
         <button class="tab" onclick="switchTab('rewrite')">🔄 智能重写</button>
-        <button class="tab" onclick="switchTab('summarize')">📋 内容总结</button>
+        <button class="tab" onclick="switchTab('summarize')"><i class="fas fa-list-check"></i> 内容总结</button>
         <button class="tab" onclick="switchTab('grammar')">✅ 语法检查</button>
-        <button class="tab" onclick="switchTab('templates')">📚 写作模板</button>
+        <button class="tab" onclick="switchTab('templates')"><i class="fas fa-book-open"></i> 写作模板</button>
         <button class="tab" onclick="switchTab('history')">📜 写作历史</button>
     </div>
 
@@ -416,7 +416,7 @@
         <div class="btn-group">
             <button class="btn btn-primary" onclick="generateContent()">
                 <span class="loading" id="loading-generate" style="display:none"></span>
-                🎨 智能生成
+                <i class="fas fa-palette"></i> 智能生成
             </button>
             <button class="btn btn-success" onclick="saveTask()">💾 保存草稿</button>
             <button class="btn btn-secondary" onclick="clearContent()">🗑️ 清空内容</button>
@@ -473,7 +473,7 @@
         <div class="btn-group">
             <button class="btn btn-primary" onclick="rewriteContent()">
                 <span class="loading" id="loading-rewrite" style="display:none"></span>
-                ✨ 智能重写
+                <i class="fas fa-sparkles"></i> 智能重写
             </button>
         </div>
         <div class="form-group full" style="margin-top:20px">
@@ -514,7 +514,7 @@
         <div class="btn-group">
             <button class="btn btn-primary" onclick="summarizeContent()">
                 <span class="loading" id="loading-summarize" style="display:none"></span>
-                📊 生成总结
+                <i class="fas fa-chart-bar"></i> 生成总结
             </button>
         </div>
         <div class="form-group full" style="margin-top:20px">
@@ -555,7 +555,7 @@
     </div>
 
     <div id="tab-templates" class="templates-section" style="display:none">
-        <h3>📚 写作模板</h3>
+        <h3><i class="fas fa-book-open"></i> 写作模板</h3>
         <div class="templates-grid" id="templates-list">
             <div class="template-card" onclick="loadTemplate('essay')">
                 <div class="template-name">议论文模板</div>
@@ -796,7 +796,7 @@
         const container = document.getElementById('grammar-errors');
         
         if (errors.length === 0) {
-            container.innerHTML = '<p style="color:#11998e; text-align:center; padding:20px">🎉 没有发现语法错误！</p>';
+            container.innerHTML = '<p style="color:#11998e; text-align:center; padding:20px"><i class="fas fa-party-horn"></i> 没有发现语法错误！</p>';
             return;
         }
 
@@ -805,7 +805,7 @@
                 <div class="error-info">
                     <div class="error-type">${error.error_type}</div>
                     <div class="error-message">${error.error_message}</div>
-                    <div class="suggestion">💡 ${error.suggestion}</div>
+                    <div class="suggestion"><i class="fas fa-lightbulb"></i> ${error.suggestion}</div>
                 </div>
                 <span style="color:#888; font-size:12px">${error.severity}</span>
             </div>

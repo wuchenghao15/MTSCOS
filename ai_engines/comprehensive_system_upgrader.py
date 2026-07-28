@@ -627,6 +627,49 @@ class ComprehensiveSystemUpgrader:
             },
         }
 
+    def check_and_upgrade(self) -> dict:
+        """检查并执行系统升级"""
+        try:
+            logger.info("[系统升级] 检查系统升级...")
+            
+            current_version = self._get_current_version()
+            next_version = self._get_next_version()
+            
+            if current_version == next_version:
+                return {
+                    'success': True,
+                    'upgraded': False,
+                    'message': '当前已是最新版本',
+                    'current_version': current_version,
+                    'next_version': next_version,
+                }
+            
+            logger.info(f"[系统升级] 检测到新版本: {current_version} -> {next_version}")
+            
+            report = self.start_comprehensive_upgrade()
+            
+            return {
+                'success': True,
+                'upgraded': True,
+                'current_version': current_version,
+                'next_version': next_version,
+                'report': {
+                    'status': report.overall_status,
+                    'success_tasks': report.success_tasks,
+                    'failed_tasks': report.failed_tasks,
+                    'total_tasks': report.total_tasks,
+                    'duration': report.total_duration,
+                    'summary': report.summary,
+                },
+            }
+        except Exception as e:
+            logger.error(f"[系统升级] 检查升级失败: {e}")
+            return {
+                'success': False,
+                'upgraded': False,
+                'error': str(e),
+            }
+
     def start_comprehensive_upgrade(self, phases: List[str] = None) -> UpgradeReport:
         """启动全面系统升级"""
         if self._is_running:

@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 校园通知与消息服务 (v15.3.0) ==================================== 提供校园通知发布、站内消息、家校沟通和消息推送等综合服务。  核心能力： 1. 通知管理 - 校园通知发布、置顶、过期管理 2. 站内消息 - 用户间消息发送、群发、已读追踪 3. 家校沟通 - 教师与家长沟通渠道 4. 消息推送 - 多渠道推送（站内/邮件/短信） 5. 消息模板 - 预设消息模板快速发送 6. 消息分类 - 按类型/优先级/对象分类 7. 成人通知 - 成人教育专属通知 8. K12通知 - 九年制义务教育通知 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

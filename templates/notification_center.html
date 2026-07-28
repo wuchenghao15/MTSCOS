@@ -5,12 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>通知中心 - MTSCOS AI</title>
     <link rel="stylesheet" href="/assets/css/mtscos-design-system.css">
-    <link rel="stylesheet" href="/assets/font-awesome/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: var(--font-family);
-            background: var(--bg-secondary);
+            font-family: var(--font-sans);
+            background: var(--bg-page);
             color: var(--text-primary);
             min-height: 100vh;
             padding: 24px;
@@ -19,102 +19,123 @@
 
         .topbar {
             display: flex; align-items: center; justify-content: space-between;
-            background: var(--bg-primary); border: 1px solid var(--border-color);
-            border-radius: var(--radius-lg); padding: 18px 24px;
-            box-shadow: var(--shadow-sm); margin-bottom: 20px;
+            background: var(--bg-card);
+            backdrop-filter: blur(var(--glass-blur));
+            -webkit-backdrop-filter: blur(var(--glass-blur));
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-md);
+            padding: 16px 20px;
+            box-shadow: var(--shadow-md);
+            margin-bottom: 16px;
         }
-        .topbar-left { display: flex; align-items: center; gap: 14px; }
+        .topbar-left { display: flex; align-items: center; gap: 12px; }
         .brand-badge {
-            width: 48px; height: 48px; border-radius: var(--radius-md);
-            background: var(--warning-color); color: #fff;
-            display: flex; align-items: center; justify-content: center; font-size: 22px;
+            width: 40px; height: 40px; border-radius: var(--radius-sm);
+            background: var(--accent);
+            color: #fff;
+            display: flex; align-items: center; justify-content: center; font-size: 18px;
         }
-        .brand-text h1 { font-size: 20px; font-weight: 700; }
-        .brand-text .sub { font-size: 13px; color: var(--text-secondary); margin-top: 2px; }
-        .topbar-right { display: flex; align-items: center; gap: 10px; }
+        .brand-text h1 { font-size: 18px; font-weight: 700; color: var(--text-primary); }
+        .brand-text .sub { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+        .topbar-right { display: flex; align-items: center; gap: 8px; }
         .icon-btn {
-            width: 40px; height: 40px; border-radius: var(--radius-md);
-            background: var(--bg-secondary); border: 1px solid var(--border-color);
-            color: var(--text-primary); display: flex; align-items: center; justify-content: center;
-            text-decoration: none; font-size: 17px;
+            width: 36px; height: 36px; border-radius: var(--radius-sm);
+            background: var(--bg-card-alt);
+            border: 1px solid var(--border-strong);
+            color: var(--text-primary);
+            display: flex; align-items: center; justify-content: center;
+            text-decoration: none; font-size: 15px;
+            transition: all 0.2s;
         }
-        .icon-btn:hover { background: var(--warning-color); color: #fff; }
+        .icon-btn:hover { background: var(--accent-soft); border-color: var(--accent); }
 
         /* 筛选标签 */
         .tabs {
-            display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap;
+            display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap;
         }
         .tab {
             display: inline-flex; align-items: center; gap: 6px;
-            padding: 8px 16px; border-radius: 999px; font-size: 13px;
-            background: var(--bg-primary); border: 1px solid var(--border-color);
-            color: var(--text-secondary); cursor: pointer; text-decoration: none;
+            padding: 6px 14px; border-radius: var(--radius-full); font-size: 13px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-strong);
+            color: var(--text-secondary);
+            cursor: pointer; text-decoration: none;
+            transition: all 0.2s;
         }
-        .tab.active, .tab:hover { background: var(--warning-color); color: #fff; border-color: transparent; }
+        .tab.active, .tab:hover { background: var(--accent-soft); color: var(--accent-text); border-color: var(--accent); }
 
         .toolbar {
             display: flex; align-items: center; justify-content: space-between;
-            margin-bottom: 16px;
+            margin-bottom: 12px;
         }
-        .count-info { font-size: 14px; color: var(--text-secondary); }
+        .count-info { font-size: 14px; color: var(--text-muted); }
         .count-info b { color: var(--text-primary); }
         .link-btn {
-            font-size: 13px; color: var(--primary-color); text-decoration: none;
+            font-size: 13px; color: var(--accent-text); text-decoration: none;
             display: inline-flex; align-items: center; gap: 6px;
         }
         .link-btn:hover { text-decoration: underline; }
 
         /* 通知列表 */
         .panel {
-            background: var(--bg-primary); border: 1px solid var(--border-color);
-            border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); overflow: hidden;
+            background: var(--bg-card);
+            backdrop-filter: blur(var(--glass-blur));
+            -webkit-backdrop-filter: blur(var(--glass-blur));
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-md);
+            overflow: hidden;
         }
         .notif-item {
-            display: flex; gap: 14px; padding: 18px 20px; border-bottom: 1px solid var(--border-color);
+            display: flex; gap: 14px; padding: 14px 18px; border-bottom: 1px solid var(--border-subtle);
             position: relative;
+            transition: background 0.2s;
         }
         .notif-item:last-child { border-bottom: none; }
-        .notif-item.unread { background: rgba(249,115,22,0.04); }
+        .notif-item.unread { background: var(--accent-soft); }
         .notif-item.unread::before {
             content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
-            background: var(--warning-color);
+            background: var(--accent);
         }
         .notif-ic {
-            width: 44px; height: 44px; border-radius: var(--radius-md); flex-shrink: 0;
-            display: flex; align-items: center; justify-content: center; font-size: 18px;
+            width: 40px; height: 40px; border-radius: var(--radius-sm); flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center; font-size: 16px;
         }
-        .ic-system { background: rgba(59,130,246,0.12); color: var(--primary-color); }
-        .ic-wrong { background: rgba(239,68,68,0.12); color: var(--danger-color); }
-        .ic-reward { background: rgba(168,85,247,0.12); color: var(--secondary-color); }
-        .ic-welcome { background: rgba(34,197,94,0.12); color: var(--success-color); }
-        .ic-homework { background: rgba(249,115,22,0.12); color: var(--warning-color); }
+        .ic-system { background: var(--accent-soft); color: var(--accent-text); }
+        .ic-wrong { background: var(--danger-soft); color: var(--danger); }
+        .ic-reward { background: var(--accent-soft); color: var(--accent-text); }
+        .ic-welcome { background: var(--success-soft); color: var(--success); }
+        .ic-homework { background: var(--warning-soft); color: var(--warning); }
         .notif-main { flex: 1; min-width: 0; }
         .notif-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 4px; }
-        .notif-title { font-size: 15px; font-weight: 600; }
-        .notif-time { font-size: 12px; color: var(--text-secondary); white-space: nowrap; }
+        .notif-title { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+        .notif-time { font-size: 12px; color: var(--text-muted); white-space: nowrap; }
         .notif-content { font-size: 13px; color: var(--text-secondary); line-height: 1.6; }
         .notif-tags { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
         .chip {
-            font-size: 11px; padding: 2px 9px; border-radius: 999px;
-            background: var(--bg-secondary); color: var(--text-secondary);
+            font-size: 11px; padding: 2px 9px; border-radius: var(--radius-full);
+            background: var(--bg-card-alt); color: var(--text-secondary);
+            font-weight: 500;
         }
-        .chip.unread { background: rgba(239,68,68,0.12); color: var(--danger-color); }
-        .chip.priority { background: rgba(249,115,22,0.12); color: var(--warning-color); }
+        .chip.unread { background: var(--danger-soft); color: var(--danger); }
+        .chip.priority { background: var(--warning-soft); color: var(--warning); }
 
         .empty {
-            text-align: center; padding: 70px 20px; color: var(--text-secondary);
+            text-align: center; padding: 60px 20px; color: var(--text-muted);
         }
-        .empty i { font-size: 56px; margin-bottom: 16px; display: block; color: var(--border-color); }
-        .empty h3 { font-size: 18px; color: var(--text-primary); margin-bottom: 6px; }
+        .empty i { font-size: 40px; margin-bottom: 12px; display: block; color: var(--border-strong); }
+        .empty h3 { font-size: 16px; color: var(--text-secondary); margin-bottom: 6px; font-weight: 600; }
         .empty p { font-size: 13px; }
 
         .btn {
             display: inline-flex; align-items: center; gap: 6px;
-            padding: 10px 22px; border-radius: var(--radius-md); text-decoration: none;
+            padding: 8px 20px; border-radius: var(--radius-sm); text-decoration: none;
             font-weight: 600; font-size: 13px; border: none; cursor: pointer;
-            background: var(--primary-color); color: #fff;
+            background: var(--accent); color: #fff;
+            transition: background 0.2s;
+            font-family: var(--font-sans);
         }
-        .btn:hover { background: var(--primary-dark); }
+        .btn:hover { background: #4338ca; }
 
         @media (max-width: 620px) {
             .topbar { flex-direction: column; gap: 12px; align-items: flex-start; }

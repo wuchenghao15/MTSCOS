@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 科研与项目管理服务 (v15.6.0) ==================================== 提供科研项目、学术论文、专利成果和创新竞赛等综合管理服务。  核心能力： 1. 科研项目 - 项目立项、进度追踪、经费管理 2. 学术论文 - 论文管理、发表记录、引用追踪 3. 专利成果 - 专利申请、知识产权管理 4. 创新竞赛 - 学科竞赛、创新创业、获奖管理 5. 科研团队 - 团队组建、角色分工、协作管理 6. 成果统计 - 科研产出、影响力分析 7. 成人科研 - 成人教育研究实践管理 8. K12科创 - 学生科技创新项目管理 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

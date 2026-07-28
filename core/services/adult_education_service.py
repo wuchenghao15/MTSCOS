@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 成人教育综合服务 (v15.1.0) ==================================== 针对成人教育用户的学习特点，提供职业导向学习、碎片化学习计划、 学分证书管理和学习进度追踪等综合服务。  核心能力： 1. 职业导向学习推荐 - 基于职业目标推荐科目和学习路径 2. 碎片化学习计划 - 适配工作日晚上/周末的灵活学习时间 3. 学分管理 - 学习活动累计学分 4. 证书发放 - 达标后自动发放学习证书 5. 成人学情分析 - 针对成人学习模式的分析 6. 学习目标管理 - 短期/中期/长期目标设定与追踪 7. 班级社群 - 成人学习班级和同伴互助 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

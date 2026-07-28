@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 教育督导管理服务 (v15.12.0) ==================================== 提供教育督导、教育监察、办学行为规范、督导评估、整改追踪等综合管理服务。  核心能力： 1. 督导计划 - 计划制定、审核、发布、查询 2. 督导任务 - 任务分配、执行、反馈、归档 3. 督导队伍 - 成员管理、资质审核、培训记录 4. 督导执行 - 现场检查、记录录入、评分评估、问题反馈 5. 教育监察 - 监察立项、调查取证、结果认定、通报处理 6. 违规处理 - 违规登记、等级评定、处罚决定、申诉处理 7. 整改追踪 - 整改任务、进度跟踪、复核验收、销号管理 8. 师德师风 - 考核评价、问题查处、培训提升、档案管理 9. 合规检查 - 办学资质、课程设置、财务规范、安全制度 10. 投诉处理 - 投诉受理、调查核实、处理回复、满意度评价 11. 报告管理 - 报告生成、审核发布、归档保存、统计分析 12. 统计分析 - 数据汇总、趋势分析、报表生成  差异化支持：成人教育 / K12教育 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

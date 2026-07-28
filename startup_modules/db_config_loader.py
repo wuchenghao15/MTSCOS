@@ -10,7 +10,7 @@ import json
 import sqlite3
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DB_DIR = os.path.join(BASE_DIR, 'split_databases')
+DB_DIR = os.path.join(BASE_DIR, 'Database')
 
 class ConfigLoader:
     def __init__(self):

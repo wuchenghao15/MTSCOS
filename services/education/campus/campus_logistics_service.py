@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 校园后勤服务 (v15.4.0) ==================================== 提供校园设施管理、报修维修、宿舍管理和物资管理等综合服务。  核心能力： 1. 设施管理 - 教室/实验室/运动场管理 2. 报修维修 - 在线报修、维修派工、进度追踪 3. 宿舍管理 - 宿舍分配、住宿管理 4. 物资管理 - 物资库存、领用、采购 5. 校车管理 - 校车路线、乘车登记 6. 食堂管理 - 菜单管理、用餐统计 7. 安保管理 - 来访登记、巡更记录 8. 成人后勤 - 成人教育后勤保障 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

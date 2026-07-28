@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 教育政策研究服务 (v15.13.0) ==================================== 提供教育政策研究、政策解读、政策评估、政策咨询、政策监测等综合管理服务。  核心能力： 1. 政策管理 - 政策录入、版本管理、状态跟踪、检索查询 2. 政策解读 - 深度解读、政策问答、要点提炼、案例分析 3. 政策研究 - 政策分析、比较研究、趋势预测、政策建议 4. 政策评估 - 目标评估、效果评估、影响评估、可持续性评估 5. 政策咨询 - 咨询受理、专家答疑、方案建议、跟进反馈 6. 政策监测 - 动态监测、预警提示、变更跟踪、影响分析 7. 政策数据库 - 政策存储、标签管理、关联分析、知识图谱 8. 影响分析 - 社会影响、经济影响、教育质量、公平性分析 9. 研究报告 - 报告生成、数据分析、可视化、导出分享 10. 统计分析 - 数据统计、趋势分析、报表生成  支持教育类型：成人教育 / K12教育 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

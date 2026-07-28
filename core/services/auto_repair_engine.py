@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 """ MTSCOS AI 自动修复引擎 扫描项目异常和错误，自动匹配修复方案并执行修复， 上报修复方案和案例到数据库和日志，投喂脑库供AI学习 """
 import os
@@ -11,8 +12,8 @@ import random
 import logging
 from datetime import datetime, timedelta
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DATABASE_PATH = _mtscos_get_db_path('app.db')
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 logging.basicConfig(
     level=logging.INFO,

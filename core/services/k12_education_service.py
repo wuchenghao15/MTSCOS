@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS K12教育综合服务 (v15.1.0) =================================== 针对九年制义务教育（K12）学生的学科资源管理、分层教学、家校互动、 错题本和薄弱点分析等综合服务。  核心能力： 1. 学科资源管理 - 9大学科资源体系（语数英/物化生/政史地） 2. 分层教学 - 按学习能力A/B/C分层，差异化教学 3. 家校互动 - 家长端查看学习情况、教师端反馈 4. 错题本管理 - 智能错题归集和薄弱知识点分析 5. 学习报告 - 周报/月报/学期报告自动生成 6. 知识点体系 - 按年级和学科的知识点树状结构 7. 学习进度追踪 - 按知识点的掌握度追踪 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

@@ -64,7 +64,7 @@
     <div class="header">
         <h1>🧠 AI智能中心</h1>
         <div class="actions">
-            <a href="/admin/ai-scheduler" class="btn btn-primary">📊 调度仪表盘</a>
+            <a href="/admin/ai-scheduler" class="btn btn-primary"><i class="fas fa-chart-bar"></i> 调度仪表盘</a>
             <a href="/admin" class="btn btn-secondary">返回管理</a>
         </div>
     </div>
@@ -73,13 +73,13 @@
         <div class="stat-card"><div class="icon">⏳</div><div class="value" id="stat-pending">-</div><div class="label">待执行任务</div></div>
         <div class="stat-card"><div class="icon">🔄</div><div class="value" id="stat-running">-</div><div class="label">运行中任务</div></div>
         <div class="stat-card"><div class="icon">✅</div><div class="value" id="stat-completed">-</div><div class="label">今日完成</div></div>
-        <div class="stat-card"><div class="icon">🤖</div><div class="value" id="stat-proactive">-</div><div class="label">主动行为</div></div>
-        <div class="stat-card"><div class="icon">👥</div><div class="value" id="stat-employees">-</div><div class="label">活跃AI员工</div></div>
+        <div class="stat-card"><div class="icon"><i class="fas fa-robot"></i></div><div class="value" id="stat-proactive">-</div><div class="label">主动行为</div></div>
+        <div class="stat-card"><div class="icon"><i class="fas fa-users"></i></div><div class="value" id="stat-employees">-</div><div class="label">活跃AI员工</div></div>
         <div class="stat-card"><div class="icon">🔗</div><div class="value" id="stat-integrations">-</div><div class="label">系统集成</div></div>
     </div>
 
     <div class="action-bar">
-        <button class="btn btn-primary" onclick="autoDispatch()">⚡ 自动调度</button>
+        <button class="btn btn-primary" onclick="autoDispatch()"><i class="fas fa-bolt"></i> 自动调度</button>
         <button class="btn btn-primary" onclick="proactiveScan()">🔍 主动扫描</button>
         <button class="btn btn-secondary" onclick="loadAll()">🔄 刷新数据</button>
     </div>
@@ -87,7 +87,7 @@
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
         <div class="section">
             <div class="section-title">
-                <span>📋 待执行任务</span>
+                <span><i class="fas fa-list-check"></i> 待执行任务</span>
                 <a href="/admin/ai-scheduler" style="font-size:13px;color:var(--primary);text-decoration:none;">查看全部 →</a>
             </div>
             <div class="task-list" id="task-list">
@@ -97,7 +97,7 @@
 
         <div class="section">
             <div class="section-title">
-                <span>🤖 AI主动行为</span>
+                <span><i class="fas fa-robot"></i> AI主动行为</span>
                 <a href="/admin/ai-scheduler" style="font-size:13px;color:var(--primary);text-decoration:none;">查看全部 →</a>
             </div>
             <div class="task-list" id="action-list">
@@ -107,25 +107,25 @@
     </div>
 
     <div class="section">
-        <div class="section-title">🎯 AI功能模块</div>
+        <div class="section-title"><i class="fas fa-target"></i> AI功能模块</div>
         <div class="feature-grid">
             <a href="/admin/ai-scheduler" class="feature-card">
-                <div class="feat-icon">📊</div>
+                <div class="feat-icon"><i class="fas fa-chart-bar"></i></div>
                 <div class="feat-name">AI调度中心</div>
                 <div class="feat-desc">动态任务调度、员工分配、自动调度</div>
             </a>
             <a href="/admin/ai-tutor" class="feature-card">
-                <div class="feat-icon">👨‍🏫</div>
+                <div class="feat-icon"><i class="fas fa-chalkboard-user"></i></div>
                 <div class="feat-name">AI辅导助手</div>
                 <div class="feat-desc">智能辅导、个性化学习建议</div>
             </a>
             <a href="/admin/ai-question-generator" class="feature-card">
-                <div class="feat-icon">📝</div>
+                <div class="feat-icon"><i class="fas fa-file-alt"></i></div>
                 <div class="feat-name">AI题目生成</div>
                 <div class="feat-desc">智能出题、知识点覆盖</div>
             </a>
             <a href="/admin/ai-exam-composer" class="feature-card">
-                <div class="feat-icon">📋</div>
+                <div class="feat-icon"><i class="fas fa-list-check"></i></div>
                 <div class="feat-name">AI考试编排</div>
                 <div class="feat-desc">智能组卷、难度控制</div>
             </a>
@@ -160,7 +160,7 @@
                 <div class="feat-desc">大纲、题库同步、学习追踪</div>
             </a>
             <a href="/admin/personalization" class="feature-card">
-                <div class="feat-icon">⚙️</div>
+                <div class="feat-icon"><i class="fas fa-cog"></i></div>
                 <div class="feat-name">个性化设置</div>
                 <div class="feat-desc">主题、布局、模块管理</div>
             </a>

@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 教师发展与培训服务 (v15.8.0) ==================================== 提供教师档案、培训管理、教研管理、评聘管理、师德考核、教学竞赛、 导师制结对等综合管理服务，支持成人教育和K12教育的差异化需求。  核心能力： 1. 教师档案 - 基本信息管理、资质证书、教学履历 2. 培训管理 - 培训计划、课程、报名、记录、学分 3. 教研管理 - 教研活动、课题研究、成果管理 4. 评聘管理 - 职称评定、岗位聘任、晋升管理 5. 师德考核 - 师德评价、违规记录、考核结果 6. 教学竞赛 - 竞赛组织、报名、评审、获奖 7. 导师制 - 老带新结对、培养计划、考核 8. 成人教育教师与K12教师差异化发展 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 教育科研管理服务 (v15.26.0) ==================================== 提供科研项目、团队、经费、成果、平台、合作、评价和信息等综合管理服务。  核心能力： 1. 科研项目 - 项目申报、立项管理、进度跟踪、结题验收 2. 科研团队 - 团队组建、成员管理、角色分配、绩效评估 3. 科研经费 - 经费预算、支出管理、报销审批、决算报告 4. 科研成果 - 成果登记、专利申报、论文发表、成果转化 5. 科研平台 - 平台建设、资源管理、开放共享、考核评估 6. 科研合作 - 合作洽谈、协议签署、联合研究、成果共享 7. 科研评价 - 评价指标、专家评审、结果公示、反馈改进 8. 科研信息 - 信息发布、数据统计、报表生成、决策支持  差异化支持：成人教育 / K12教育 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

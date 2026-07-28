@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 教育边缘计算服务 (v15.21.0) ==================================== 提供边缘节点管理、边缘计算任务、边缘数据处理、边缘AI推理、 边缘网络、边缘安全、边缘存储和边缘协同等综合服务。  核心能力： 1. 边缘节点管理 - 节点注册、配置管理、状态监控、节点调度 2. 边缘计算任务 - 任务创建、任务分配、任务执行、任务监控 3. 边缘数据处理 - 数据采集、数据预处理、数据存储、数据同步 4. 边缘AI推理 - 推理任务、模型管理、推理执行、结果分析 5. 边缘网络管理 - 网络配置、连接管理、带宽控制、网络优化 6. 边缘安全管理 - 安全策略、访问控制、安全审计、入侵检测 7. 边缘存储管理 - 存储配置、数据存储、缓存管理、数据备份 8. 边缘协同管理 - 协同任务、资源共享、分布式处理、智能调度  教育类型支持：成人教育(adult)、K12教育(k12) """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

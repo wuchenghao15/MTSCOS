@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 班级与学籍管理服务 (v15.2.0) ==================================== 提供班级创建、学生学籍管理、年级班级统计和转学管理等综合服务。  核心能力： 1. 班级管理 - 创建/编辑/归档班级，班主任和科任老师配置 2. 学籍管理 - 学生入学、分班、调班、转学 3. 班级统计 - 人数、成绩、出勤统计 4. 年级管理 - 年级设置、升级管理 5. 成人班级 - 成人教育专属班级管理 6. K12班级 - 九年制义务教育班级管理 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

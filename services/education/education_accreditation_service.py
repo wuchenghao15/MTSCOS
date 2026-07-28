@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 教育评估与认证服务 (v15.12.0) ==================================== 提供学校认证、专业评估、课程认证、教师认证、质量保证、国际认证等综合管理服务。  核心能力： 1. 认证项目管理 - 项目创建、状态管理、流程配置、进度追踪 2. 认证标准 - 标准制定、维度管理、指标体系、版本控制 3. 学校认证 - 认证申请、资格审查、实地考察、评审决策、证书颁发 4. 专业认证 - 专业评估、达标审核、持续改进、周期复审 5. 课程认证 - 课程评估、质量认证、等级评定、有效期管理 6. 教师认证 - 资格认证、能力评估、培训记录、证书管理 7. 评估流程 - 申请受理、材料审核、专家评审、现场考察、结果公示 8. 证书管理 - 证书颁发、查询验证、有效期管理、补发换发 9. 国际认证 - 国际标准对接、国际机构合作、认证互认、国际化评估 10. 质量保证 - 质量管理体系、质量监控、质量改进、内审机制 11. 统计分析 - 认证数据统计、趋势分析、报表生成 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

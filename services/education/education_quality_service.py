@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 教育质量督导评估服务 (v15.10.0) ====================================== 提供教育质量督导、办学水平评估、质量监测和整改追踪等综合管理服务， 支持成人教育和K12教育的差异化评估需求。  核心能力： 1. 教学督导 - 督导计划、听课评课、督导报告 2. 办学水平评估 - 评估指标体系、自评、专家组评估 3. 质量监测 - 教学质量监测、数据采集、质量报告 4. 整改追踪 - 问题发现、整改通知、整改落实 5. 督导队伍 - 督导员管理、培训、考核 6. 评估指标 - 指标体系管理、权重配置 7. 质量报告 - 定期报告、专项报告 8. 成人教育质量与K12教育质量差异化评估 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

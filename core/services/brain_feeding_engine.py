@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 """ MTSCOS AI 脑库数据投喂引擎 定时升级和学习AI，壮大AI能力和调度能力及AI集统筹能力，完善AI神经元网络  核心功能： 1. 数据投喂 - 定时向脑库注入知识数据 2. 网络学习 - AI从网络自动采集知识到脑库 3. AI学习 - 员工从脑库获取知识进行学习 4. AI升级 - 根据学习成果升级AI员工能力 5. 神经网络 - 管理神经元节点和连接，自动扩展和训练 6. 集群统筹 - 协调AI集群任务分配和执行 7. 统计报告 - 记录投喂和学习统计 """
 import os
@@ -11,7 +12,7 @@ from datetime import datetime, timedelta
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app'))
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,
@@ -59,6 +60,22 @@ KNOWLEDGE_POOL = [
     {'type': 'system', 'domain': 'AI架构', 'topic': 'AI脑库知识管理', 'content': '知识采集、验证、检索、增强的完整闭环，支持标签和优先级'},
     {'type': 'system', 'domain': 'AI架构', 'topic': '神经元网络架构', 'content': '节点分层、连接权重、信号传递、自动扩展的神经网络模型'},
     {'type': 'system', 'domain': 'AI架构', 'topic': 'AI阵列管理', 'content': '阵列滚动升级、故障转移、灰度发布的完整管理机制'},
+    {'type': 'ui_design', 'domain': 'UI/UX设计规范', 'topic': '设计原则-去AI味', 'content': '去AI味、克制专业、统一规范。去除极光动效、颗粒纹理、发光效果、过度渐变等AI生成特征'},
+    {'type': 'ui_design', 'domain': 'UI/UX设计规范', 'topic': '主色系统规范', 'content': '主色使用深靛蓝#4f46e5，辅助色使用青色#06b6d4，功能色包括success(#22c55e)、warning(#f59e0b)、danger(#ef4444)'},
+    {'type': 'ui_design', 'domain': 'UI/UX设计规范', 'topic': '间距体系规范', 'content': '间距以4px为基准，定义space-1(4px)、space-2(8px)、space-3(12px)、space-4(16px)、space-6(24px)、space-8(32px)'},
+    {'type': 'ui_design', 'domain': 'UI/UX设计规范', 'topic': '圆角体系规范', 'content': '克制使用圆角，定义radius-sm(8px)、radius-md(12px)、radius-full(9999px)，避免过度圆角'},
+    {'type': 'ui_design', 'domain': 'UI/UX设计规范', 'topic': '阴影体系规范', 'content': '柔和无发光阴影，shadow-sm(0 1px 3px)、shadow-md(0 4px 12px)、shadow-lg(0 8px 24px)，避免glow效果'},
+    {'type': 'ui_design', 'domain': 'UI/UX设计规范', 'topic': '玻璃拟态规范', 'content': '适度模糊效果，glass-blur(12px)、glass-blur-strong(16px)，背景色rgba(15,23,42,0.8)，边框rgba(255,255,255,0.08)'},
+    {'type': 'ui_design', 'domain': 'UI/UX设计规范', 'topic': '卡片组件规范', 'content': '卡片使用background:var(--bg-card);backdrop-filter:blur(var(--glass-blur));border:1px solid var(--border-subtle);border-radius:var(--radius-md);box-shadow:var(--shadow-md)'},
+    {'type': 'ui_design', 'domain': 'UI/UX设计规范', 'topic': '按钮组件规范', 'content': '主按钮使用var(--accent)背景+白色文字；次按钮使用var(--accent-soft)背景+var(--accent-text)文字；危险按钮使用var(--danger)背景+白色文字'},
+    {'type': 'ui_design', 'domain': 'UI/UX设计规范', 'topic': '输入框组件规范', 'content': '输入框使用background:var(--bg-card-alt);border:1px solid var(--border-subtle);focus时border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)'},
+    {'type': 'ui_design', 'domain': 'UI/UX设计规范', 'topic': '布局比例规范', 'content': '首页布局Header(10vh):Main(70vh):Footer(20vh)≡1:7:2；后台布局Sidebar(20%):Main(80%)≡2:8；侧边栏可切换为1:9图标模式'},
+    {'type': 'ui_design', 'domain': 'UI/UX设计规范', 'topic': '滚动策略规范', 'content': '内容区域内部滚动，隐藏滚动条；页面无全局滚动；侧边栏折叠状态通过localStorage持久化'},
+    {'type': 'ui_design', 'domain': 'UI/UX设计规范', 'topic': '响应式断点规范', 'content': '响应式断点为768px(移动端)、1024px(平板)、1280px(桌面)，使用媒体查询适配不同屏幕尺寸'},
+    {'type': 'ui_design', 'domain': 'UI/UX设计规范', 'topic': '禁用装饰清单', 'content': '禁止使用极光动效、颗粒纹理、发光效果、渐变文字、脉冲动画、浮动动画、弹跳动画、Emoji装饰、过度渐变背景、阴影发光效果'},
+    {'type': 'ui_design', 'domain': 'UI/UX设计规范', 'topic': '字体栈规范', 'content': '使用系统字体栈：-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'},
+    {'type': 'ui_design', 'domain': 'UI/UX设计规范', 'topic': '文本色规范', 'content': '文本色分为primary(#f8fafc)、secondary(#cbd5e1)、muted(#94a3b8)、faint(#64748b)，按重要性递减使用'},
+    {'type': 'ui_design', 'domain': 'UI/UX设计规范', 'topic': '背景规范', 'content': '页面背景使用linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%)；卡片背景使用rgba(15,23,42,0.7)；次要背景使用rgba(15,23,42,0.6)'},
 ]
 
 

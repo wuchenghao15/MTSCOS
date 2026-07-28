@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 教育金融服务 (v15.30.0) ============================== 提供教育贷款、教育理财、教育保险、教育支付、教育结算、教育融资、教育投资、资金管理等综合金融服务。  核心能力： 1. 教育贷款 - 贷款申请、审批、还款管理、逾期处理 2. 教育理财 - 理财产品、购买管理、收益计算、赎回管理 3. 教育保险 - 保险产品、投保管理、理赔处理、保单管理 4. 教育支付 - 支付下单、支付处理、退款管理、账单查询 5. 教育结算 - 结算处理、对账管理、清算管理、分账管理 6. 教育融资 - 融资申请、融资审批、融资放款、还款管理 7. 教育投资 - 投资组合、投资策略、风险评估、收益分析 8. 资金管理 - 预算管理、现金流管理、成本控制、财务报告 9. 统计分析 - 综合统计报表  差异化支持：成人教育 / K12教育 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

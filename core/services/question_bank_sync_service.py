@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ 题库与教学大纲同步服务 实现题目与知识点的映射、同步和智能出题功能 """
@@ -11,7 +12,7 @@ import threading
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 教育元宇宙服务 (v15.16.0) ================================ 提供虚拟校园、沉浸式学习、VR/AR教育、虚拟实验、数字孪生、元宇宙社交、虚拟活动、数字藏品等综合管理服务。  核心能力： 1. 虚拟空间 - 虚拟校园/教室/实验室/图书馆/博物馆/运动场/会议室/演播室 2. 沉浸内容 - 虚拟课程/实验/场景/人物/物品/活动/展览/竞赛 3. 虚拟实验 - 实验管理/会话管理/数据采集/结果分析 4. VR/AR设备 - 设备管理/使用记录/状态监控/维护管理 5. 元宇宙社交 - 虚拟社交/会议/协作/展示/互动/角色扮演 6. 虚拟活动 - 课堂/讲座/会议/展览/比赛/庆典/研学/招聘 7. 数字藏品 - 虚拟证书/徽章/奖杯/纪念品/艺术品/道具 8. 数字孪生 - 孪生建模/数据同步/仿真分析/决策支持 9. 用户头像 - 头像创建/自定义/换装/社交展示 10. 统计分析 - 综合数据统计与报表生成  支持教育类型：成人教育、K12教育 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 教育运营保障服务 (v15.18.0) ==================================== 提供服务级别管理、故障管理、性能监控、容量管理、变更管理、配置管理、发布管理和服务连续性等综合运营保障服务。  核心能力： 1. 服务级别管理 - SLA定义、服务等级协议、服务水平监控 2. 故障管理 - 事件登记、故障处理、恢复跟踪 3. 性能监控 - 指标采集、告警管理、性能分析 4. 容量管理 - 资源预测、容量评估、扩展策略 5. 变更管理 - 变更请求、审批流程、变更实施 6. 配置管理 - 配置项管理、配置追踪、配置审计 7. 发布管理 - 版本发布、部署管理、回滚机制 8. 服务连续性 - 业务影响分析、灾难恢复、冗余设计 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

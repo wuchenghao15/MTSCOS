@@ -391,10 +391,10 @@
     </div>
 
     <div class="tabs">
-        <button class="tab active" onclick="switchTab('diagnose')">🎯 学习诊断</button>
-        <button class="tab" onclick="switchTab('analytics')">📊 学习分析</button>
-        <button class="tab" onclick="switchTab('recommendations')">💡 改进建议</button>
-        <button class="tab" onclick="switchTab('tasks')">📋 提升任务</button>
+        <button class="tab active" onclick="switchTab('diagnose')"><i class="fas fa-target"></i> 学习诊断</button>
+        <button class="tab" onclick="switchTab('analytics')"><i class="fas fa-chart-bar"></i> 学习分析</button>
+        <button class="tab" onclick="switchTab('recommendations')"><i class="fas fa-lightbulb"></i> 改进建议</button>
+        <button class="tab" onclick="switchTab('tasks')"><i class="fas fa-list-check"></i> 提升任务</button>
         <button class="tab" onclick="switchTab('history')">📜 诊断历史</button>
     </div>
 
@@ -426,7 +426,7 @@
                 <span class="loading" id="loading-diagnose" style="display:none"></span>
                 开始诊断
             </button>
-            <button class="btn btn-success" onclick="generateReport()">📄 生成报告</button>
+            <button class="btn btn-success" onclick="generateReport()"><i class="fas fa-file"></i> 生成报告</button>
         </div>
 
         <div id="diagnosis-result" style="display:none; margin-top:30px">

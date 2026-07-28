@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 教育数据治理服务 (v15.20.0) ==================================== 提供数据治理、数据标准、数据质量、数据安全、数据生命周期、元数据管理、数据目录和数据合规等综合管理服务。  核心能力： 1. 数据治理 - 治理框架、政策制定、流程管理、组织架构 2. 数据标准 - 分类标准、编码标准、命名规范、数据字典 3. 数据质量 - 质量规则、质量检查、质量报告、质量改进 4. 数据安全 - 安全等级、访问控制、数据脱敏、加密管理 5. 数据生命周期 - 数据采集、存储、处理、归档、销毁 6. 元数据管理 - 业务元数据、技术元数据、数据血缘、元数据目录 7. 数据目录 - 数据搜索、发现、预览、申请授权 8. 数据合规 - GDPR合规、数据安全法、个人信息保护、数据跨境 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

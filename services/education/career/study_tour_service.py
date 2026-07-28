@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 研学旅行服务 (v15.10.0) ==================================== 提供研学基地、研学线路、研学活动、课程任务、安全管理、成果评价、师资队伍等 综合管理服务。本模块同时支持成人教育（游学研修）与 K12 教育（研学旅行）的差异化需求。  核心能力： 1. 研学基地 - 基地管理、资质认证、课程资源 2. 研学线路 - 线路设计、主题分类、行程安排 3. 研学活动 - 活动组织、报名管理、行程执行 4. 课程任务 - 研学课程、学习任务、探究课题 5. 安全管理 - 安全预案、保险、应急处理、安全检查 6. 成果评价 - 研学成果、学习报告、评价反馈 7. 师资队伍 - 研学导师、培训、资质 8. K12研学旅行与成人游学研修差异化 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

@@ -12,7 +12,7 @@ from flask import Flask, render_template, send_from_directory, request
 from flask_cors import CORS
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DB_DIR = os.path.join(BASE_DIR, 'split_databases')
+DB_DIR = os.path.join(BASE_DIR, 'Database')
 
 def core_initialization(config=None):
     if not config:

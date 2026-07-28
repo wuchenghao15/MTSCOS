@@ -96,3 +96,13 @@ cluster/
 uploads/
 *.pid
 wuchenghao15/
+
+# 调试/破解/诊断临时脚本（不提交到 GitHub）
+_crack_*
+_dbg_*
+_debug_*
+_diagnose_*
+_test_password_*
+_test_login_*
+_crack_pw_*.py
+_tmp/

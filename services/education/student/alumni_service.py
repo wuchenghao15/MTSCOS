@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 校友服务 (v15.5.0) ==================================== 提供校友档案管理、校友活动、校友联络和捐赠管理等综合服务。  核心能力： 1. 校友档案 - 校友信息、毕业信息、职业发展 2. 校友活动 - 活动组织、报名参与 3. 校友联络 - 校友通讯录、班级联络 4. 捐赠管理 - 捐赠登记、捐赠公示 5. 校友分会 - 地区分会、行业分会 6. 就业服务 - 校友招聘、实习推荐 7. 成教校友 - 成人教育校友管理 8. K12校友 - 九年制毕业校友管理 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

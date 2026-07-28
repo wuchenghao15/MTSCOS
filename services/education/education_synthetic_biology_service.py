@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 教育合成生物学服务 (v15.19.0) ==================================== 提供合成生物学课程、基因编辑实验、DNA合成、生物电路设计等综合教育服务。  核心能力： 1. 合成生物学课程 - 课程管理、选课、实验安排、成绩记录 2. 基因编辑 - CRISPR实验设计、编辑记录、结果分析 3. DNA合成 - 序列设计、合成订单、质量检测 4. 电路设计 - 生物电路建模、模拟仿真、实验验证 5. 生物信息学 - 序列分析、结构预测、功能注释 6. 实验室安全 - 安全规范、风险评估、检查记录 7. 生物教育 - 教学计划、课程安排、学习评估 8. 创新项目 - 项目立项、进度跟踪、成果提交 9. 设备管理 - 设备登记、使用记录、维护保养 10. 统计分析 - 综合数据统计与报告 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

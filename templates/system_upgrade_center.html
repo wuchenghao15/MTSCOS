@@ -5,27 +5,45 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MTSCOS 系统升级中心</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         :root {
-            --primary: #667eea;
-            --primary-dark: #764ba2;
-            --success: #10b981;
+            --accent: #4f46e5;
+            --accent-soft: rgba(79, 70, 229, 0.12);
+            --accent-hover: rgba(79, 70, 229, 0.22);
+            --accent-text: #6366f1;
+            --accent-secondary: #06b6d4;
+            --accent-secondary-soft: rgba(6, 182, 212, 0.12);
+            --success: #22c55e;
+            --success-soft: rgba(34, 197, 94, 0.12);
             --warning: #f59e0b;
+            --warning-soft: rgba(245, 158, 11, 0.12);
             --danger: #ef4444;
-            --info: #3b82f6;
-            --gray-100: #f3f4f6;
-            --gray-200: #e5e7eb;
-            --gray-300: #d1d5db;
-            --gray-400: #9ca3af;
-            --gray-500: #6b7280;
-            --gray-600: #4b5563;
-            --gray-700: #374151;
-            --gray-800: #1f2937;
-            --gray-900: #111827;
+            --danger-soft: rgba(239, 68, 68, 0.12);
+            --text-primary: #f8fafc;
+            --text-secondary: #cbd5e1;
+            --text-muted: #94a3b8;
+            --text-faint: #64748b;
+            --bg-page: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+            --bg-card: rgba(15, 23, 42, 0.7);
+            --bg-card-alt: rgba(15, 23, 42, 0.6);
+            --glass-blur: 12px;
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --border-subtle: rgba(79, 70, 229, 0.1);
+            --border-strong: rgba(79, 70, 229, 0.18);
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-full: 9999px;
+            --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+            --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+            --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            --font-mono: "SF Mono", Monaco, Menlo, Consolas, "Courier New", monospace;
         }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: linear-gradient(135deg, var(--gray-100) 0%, var(--gray-200) 100%);
+            font-family: var(--font-sans);
+            background: var(--bg-page);
+            background-attachment: fixed;
+            color: var(--text-primary);
             min-height: 100vh;
             padding: 20px;
         }
@@ -34,12 +52,15 @@
             margin: 0 auto;
         }
         .header {
-            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
-            color: white;
+            background: var(--bg-card);
+            backdrop-filter: blur(var(--glass-blur));
+            -webkit-backdrop-filter: blur(var(--glass-blur));
+            border: 1px solid var(--glass-border);
+            color: var(--text-primary);
             padding: 30px;
-            border-radius: 16px;
+            border-radius: var(--radius-md);
             margin-bottom: 24px;
-            box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3);
+            box-shadow: var(--shadow-md);
             display: flex;
             align-items: center;
             gap: 20px;
@@ -52,7 +73,7 @@
         .header-logo svg {
             width: 100%;
             height: 100%;
-            border-radius: 15px;
+            border-radius: var(--radius-sm);
         }
         .header-content {
             flex: 1;
@@ -60,19 +81,23 @@
         .header h1 {
             font-size: 28px;
             margin-bottom: 4px;
+            font-weight: 700;
         }
         .header p {
-            opacity: 0.9;
+            color: var(--text-secondary);
             font-size: 14px;
             margin-bottom: 4px;
         }
         .version-badge {
             display: inline-block;
-            background: rgba(255,255,255,0.2);
+            background: var(--accent-soft);
+            border: 1px solid var(--border-subtle);
             padding: 4px 12px;
-            border-radius: 20px;
+            border-radius: var(--radius-full);
             font-size: 12px;
             margin-top: 10px;
+            color: var(--accent-text);
+            font-weight: 600;
         }
         .grid {
             display: grid;
@@ -81,27 +106,32 @@
             margin-bottom: 24px;
         }
         .card {
-            background: white;
-            border-radius: 12px;
+            background: var(--bg-card);
+            backdrop-filter: blur(var(--glass-blur));
+            -webkit-backdrop-filter: blur(var(--glass-blur));
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-md);
             padding: 24px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            box-shadow: var(--shadow-md);
+            transition: background 0.2s, border-color 0.2s;
         }
         .card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+            background: var(--accent-soft);
+            border-color: var(--border-strong);
         }
         .card-icon {
             font-size: 40px;
             margin-bottom: 16px;
+            color: var(--accent-text);
         }
         .card h3 {
-            color: var(--gray-800);
+            color: var(--text-primary);
             font-size: 18px;
             margin-bottom: 8px;
+            font-weight: 600;
         }
         .card p {
-            color: var(--gray-500);
+            color: var(--text-secondary);
             font-size: 14px;
             line-height: 1.6;
             margin-bottom: 16px;
@@ -109,32 +139,41 @@
         .btn {
             display: inline-block;
             padding: 10px 20px;
-            border-radius: 8px;
+            border-radius: var(--radius-sm);
             font-size: 14px;
             font-weight: 600;
             text-decoration: none;
-            transition: all 0.3s ease;
+            transition: background 0.2s;
             cursor: pointer;
-            border: none;
+            border: 1px solid var(--border-subtle);
+            background: var(--accent-soft);
+            color: var(--accent-text);
+            font-family: var(--font-sans);
+        }
+        .btn:hover {
+            background: var(--accent-hover);
+            border-color: var(--border-strong);
         }
         .btn-primary {
-            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            background: var(--accent);
             color: white;
+            border-color: transparent;
         }
         .btn-primary:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+            background: #4338ca;
         }
         .btn-success {
             background: var(--success);
             color: white;
+            border-color: transparent;
         }
         .btn-success:hover {
-            background: #059669;
+            background: #16a34a;
         }
         .btn-warning {
             background: var(--warning);
             color: white;
+            border-color: transparent;
         }
         .btn-warning:hover {
             background: #d97706;
@@ -142,18 +181,19 @@
         .btn-danger {
             background: var(--danger);
             color: white;
+            border-color: transparent;
         }
         .btn-danger:hover {
             background: #dc2626;
         }
         .btn-outline {
             background: transparent;
-            border: 2px solid var(--primary);
-            color: var(--primary);
+            border: 1px solid var(--border-subtle);
+            color: var(--text-secondary);
         }
         .btn-outline:hover {
-            background: var(--primary);
-            color: white;
+            background: var(--accent-soft);
+            color: var(--accent-text);
         }
         .stats-row {
             display: grid;
@@ -162,49 +202,56 @@
             margin-bottom: 24px;
         }
         .stat-card {
-            background: white;
-            border-radius: 12px;
+            background: var(--bg-card);
+            backdrop-filter: blur(var(--glass-blur));
+            -webkit-backdrop-filter: blur(var(--glass-blur));
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-md);
             padding: 20px;
             text-align: center;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            box-shadow: var(--shadow-md);
         }
         .stat-value {
             font-size: 32px;
-            font-weight: bold;
-            color: var(--primary);
+            font-weight: 700;
+            color: var(--text-primary);
             margin-bottom: 4px;
         }
         .stat-label {
             font-size: 13px;
-            color: var(--gray-500);
+            color: var(--text-secondary);
         }
         .section {
-            background: white;
-            border-radius: 12px;
+            background: var(--bg-card);
+            backdrop-filter: blur(var(--glass-blur));
+            -webkit-backdrop-filter: blur(var(--glass-blur));
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-md);
             padding: 24px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            box-shadow: var(--shadow-md);
             margin-bottom: 24px;
         }
         .section-title {
             font-size: 20px;
-            color: var(--gray-800);
+            color: var(--text-primary);
             margin-bottom: 20px;
             padding-bottom: 10px;
-            border-bottom: 2px solid var(--gray-100);
+            border-bottom: 1px solid var(--border-subtle);
+            font-weight: 600;
         }
         .progress-bar {
             width: 100%;
             height: 8px;
-            background: var(--gray-200);
+            background: var(--bg-card-alt);
             border-radius: 4px;
             overflow: hidden;
             margin: 16px 0;
         }
         .progress-fill {
             height: 100%;
-            background: linear-gradient(90deg, var(--primary) 0%, var(--primary-dark) 100%);
+            background: var(--accent);
             border-radius: 4px;
-            transition: width 0.5s ease;
+            transition: width 0.2s;
         }
         .table {
             width: 100%;
@@ -214,38 +261,38 @@
         .table th, .table td {
             padding: 12px;
             text-align: left;
-            border-bottom: 1px solid var(--gray-100);
+            border-bottom: 1px solid var(--border-subtle);
         }
         .table th {
-            background: var(--gray-50);
-            color: var(--gray-600);
+            background: var(--bg-card-alt);
+            color: var(--text-secondary);
             font-weight: 600;
         }
-        .table tr:hover {
-            background: var(--gray-50);
+        .table tr:hover td {
+            background: var(--accent-soft);
         }
         .badge {
             display: inline-block;
             padding: 4px 10px;
-            border-radius: 12px;
+            border-radius: var(--radius-full);
             font-size: 12px;
-            font-weight: 500;
+            font-weight: 600;
         }
         .badge-success {
-            background: rgba(16, 185, 129, 0.1);
+            background: var(--success-soft);
             color: var(--success);
         }
         .badge-warning {
-            background: rgba(245, 158, 11, 0.1);
+            background: var(--warning-soft);
             color: var(--warning);
         }
         .badge-danger {
-            background: rgba(239, 68, 68, 0.1);
+            background: var(--danger-soft);
             color: var(--danger);
         }
         .badge-info {
-            background: rgba(59, 130, 246, 0.1);
-            color: var(--info);
+            background: var(--accent-secondary-soft);
+            color: var(--accent-secondary);
         }
         .modal-overlay {
             display: none;
@@ -254,7 +301,7 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(0,0,0,0.5);
+            background: rgba(0,0,0,0.7);
             align-items: center;
             justify-content: center;
             z-index: 1000;
@@ -263,25 +310,24 @@
             display: flex;
         }
         .modal {
-            background: white;
-            border-radius: 16px;
+            background: var(--bg-card);
+            backdrop-filter: blur(var(--glass-blur));
+            -webkit-backdrop-filter: blur(var(--glass-blur));
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-md);
             padding: 32px;
             max-width: 500px;
             width: 90%;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            animation: fadeInUp 0.3s ease;
-        }
-        @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
+            box-shadow: var(--shadow-lg);
         }
         .modal h3 {
             font-size: 20px;
             margin-bottom: 16px;
-            color: var(--gray-800);
+            color: var(--text-primary);
+            font-weight: 600;
         }
         .modal p {
-            color: var(--gray-500);
+            color: var(--text-secondary);
             margin-bottom: 24px;
             line-height: 1.6;
         }
@@ -291,25 +337,26 @@
             justify-content: flex-end;
         }
         .log-container {
-            background: var(--gray-900);
-            color: #e5e7eb;
+            background: var(--bg-card-alt);
+            color: var(--text-secondary);
             padding: 16px;
-            border-radius: 8px;
-            font-family: 'Monaco', 'Consolas', monospace;
+            border-radius: var(--radius-sm);
+            font-family: var(--font-mono);
             font-size: 13px;
             max-height: 300px;
             overflow-y: auto;
             margin-top: 16px;
+            border: 1px solid var(--border-subtle);
         }
         .log-line {
             margin-bottom: 4px;
         }
         .log-time {
-            color: var(--gray-500);
+            color: var(--text-muted);
             margin-right: 8px;
         }
         .log-info {
-            color: var(--info);
+            color: var(--accent-secondary);
         }
         .log-success {
             color: var(--success);
@@ -322,41 +369,47 @@
         }
         .update-item {
             padding: 16px;
-            border-radius: 8px;
+            border-radius: var(--radius-sm);
             margin-bottom: 12px;
-            border-left: 4px solid var(--primary);
-            background: var(--gray-50);
+            border-left: 4px solid var(--accent);
+            background: var(--bg-card-alt);
         }
         .update-item h4 {
-            color: var(--gray-800);
+            color: var(--text-primary);
             margin-bottom: 8px;
+            font-weight: 600;
         }
         .update-item ul {
             list-style: none;
             padding-left: 0;
         }
         .update-item li {
-            color: var(--gray-600);
+            color: var(--text-secondary);
             font-size: 14px;
             padding: 4px 0;
             padding-left: 20px;
             position: relative;
         }
         .update-item li::before {
-            content: '✓';
+            content: '';
             position: absolute;
             left: 0;
-            color: var(--success);
+            top: 10px;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--success);
         }
         .feature-tag {
             display: inline-block;
             padding: 2px 8px;
-            background: rgba(102, 126, 234, 0.1);
-            color: var(--primary);
-            border-radius: 4px;
+            background: var(--accent-soft);
+            color: var(--accent-text);
+            border-radius: var(--radius-sm);
             font-size: 12px;
             margin-right: 8px;
             margin-bottom: 8px;
+            font-weight: 500;
         }
         @media (max-width: 768px) {
             .header h1 {
@@ -424,13 +477,13 @@
                 <button class="btn btn-success" onclick="performUpgrade()">执行升级</button>
             </div>
             <div class="card">
-                <div class="card-icon">📋</div>
+                <div class="card-icon"><i class="fas fa-list-check"></i></div>
                 <h3>升级历史</h3>
                 <p>查看所有升级记录，包括升级时间、版本变更和状态。</p>
                 <button class="btn btn-outline" onclick="showHistory()">查看历史</button>
             </div>
             <div class="card">
-                <div class="card-icon">🔧</div>
+                <div class="card-icon"><i class="fas fa-wrench"></i></div>
                 <h3>系统维护</h3>
                 <p>执行系统维护任务，包括数据库优化、缓存清理等。</p>
                 <button class="btn btn-warning" onclick="runMaintenance()">运行维护</button>
@@ -443,7 +496,7 @@
         </div>
 
         <div class="section" id="upgrade-progress-section" style="display:none;">
-            <div class="section-title">⚙️ 升级进度</div>
+            <div class="section-title"><i class="fas fa-cog"></i> 升级进度</div>
             <div class="progress-bar">
                 <div class="progress-fill" id="upgrade-progress" style="width: 0%"></div>
             </div>
@@ -452,7 +505,7 @@
         </div>
 
         <div class="section">
-            <div class="section-title">📝 更新日志</div>
+            <div class="section-title"><i class="fas fa-file-alt"></i> 更新日志</div>
             <div id="changelog-content">
                 {% for entry in changelog_entries %}
                 <div class="update-item">
@@ -472,7 +525,7 @@
         </div>
 
         <div class="section">
-            <div class="section-title">📊 升级历史记录</div>
+            <div class="section-title"><i class="fas fa-chart-bar"></i> 升级历史记录</div>
             <table class="table" id="history-table">
                 <thead>
                     <tr>

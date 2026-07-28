@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 教育脑机接口服务 (v15.19.0) ==================================== 提供脑机接口基础、EEG采集、脑信号分析、思维控制、神经反馈、BCI应用、脑机交互和教育应用等综合管理服务。  核心能力： 1. 脑机接口 - 接口管理、连接控制、设备配置、信号校准 2. EEG采集 - 信号采集、数据存储、质量检测、实时传输 3. 脑信号分析 - 时频分析、特征提取、模式识别、智能诊断 4. 思维控制 - 思维解码、意图识别、动作控制、状态监测 5. 神经反馈 - 实时反馈、训练计划、效果评估、自适应调节 6. BCI应用 - 应用管理、场景配置、个性化设置、数据同步 7. 设备管理 - 设备注册、状态监控、维护记录、固件升级 8. 教育应用 - 课程管理、学习分析、认知训练、能力评估 9. 研究管理 - 项目管理、数据采集、实验设计、成果追踪 10. 统计分析 - 综合统计、趋势分析、对比报告、数据可视化 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

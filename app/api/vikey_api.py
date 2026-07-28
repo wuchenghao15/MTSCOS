@@ -166,6 +166,39 @@ def detect():
     return _ok(mgr.detect())
 
 
+@vikey_api.route('/status', methods=['GET'])
+def status():
+    """获取VIKEY设备状态（轻量级，用于前端实时监控）"""
+    from core.services.vikey_driver import VikeyGetStatus
+    result = VikeyGetStatus()
+    return _ok(result)
+
+
+@vikey_api.route('/simulate_plug', methods=['POST'])
+def simulate_plug():
+    """
+    模拟设备插拔（仅模拟模式下有效）
+    Body: { serial, present }
+    """
+    body = request.get_json(silent=True) or {}
+    serial = (body.get('serial') or '').strip()
+    present = bool(body.get('present', True))
+    
+    if not serial:
+        return _fail('缺少 serial', 400)
+    
+    try:
+        from core.services.vikey_driver import _SIM_DEVICES, _SIM_DEVICES_LOCK
+        with _SIM_DEVICES_LOCK:
+            if serial in _SIM_DEVICES:
+                _SIM_DEVICES[serial]['present'] = present
+                return _ok({'serial': serial, 'present': present, 'message': '模拟插拔成功'})
+            else:
+                return _fail(f'设备不存在: {serial}', 404)
+    except Exception as e:
+        return _fail(f'模拟插拔失败: {e}', 500)
+
+
 @vikey_api.route('/challenge', methods=['GET'])
 def challenge():
     """生成随机挑战串 + 6位数字随机码（登录前匿名获取即可）。挑战码 60 秒后自动过期，每 1 分钟自动刷新。"""
@@ -683,3 +716,276 @@ def stats():
         'recent_ops_by_type': op_counts,
         'driver_version': VIKEY_DRIVER_VERSION,
     })
+
+
+# ==========================================================
+#  AI增强接口 - VIKEY安全专家
+# ==========================================================
+@vikey_api.route('/ai/health_check', methods=['GET'])
+@_auth_required(need_admin=False)
+def ai_health_check():
+    """
+    AI增强：VIKEY设备健康检查
+    返回所有设备的健康状态、存储使用、PIN重试次数等信息
+    """
+    try:
+        from ai_engines.ai_vikey_security_employee import AI_VIKEY_Security_Employee
+        
+        employee = AI_VIKEY_Security_Employee("api_health_check", "API健康检查员工")
+        result = employee.process({'type': 'health_check'})
+        
+        if result.get('success'):
+            return _ok(result.get('data', {}), message=result.get('message', ''))
+        else:
+            return _fail(result.get('message', '健康检查失败'), 500)
+    except Exception as e:
+        return _fail(f'AI健康检查失败: {e}', 500)
+
+
+@vikey_api.route('/ai/security_audit', methods=['GET'])
+@_auth_required(need_admin=True)
+def ai_security_audit():
+    """
+    AI增强：VIKEY安全审计
+    分析认证日志，检测异常行为模式
+    """
+    serial = (request.args.get('serial') or '').strip()
+    time_range = (request.args.get('time_range') or '24h').strip()
+    
+    try:
+        from ai_engines.ai_vikey_security_employee import AI_VIKEY_Security_Employee
+        
+        employee = AI_VIKEY_Security_Employee("api_security_audit", "API安全审计员工")
+        result = employee.process({
+            'type': 'audit_logs',
+            'serial': serial,
+            'time_range': time_range,
+        })
+        
+        if result.get('success'):
+            return _ok(result, message=result.get('message', ''))
+        else:
+            return _fail(result.get('message', '安全审计失败'), 500)
+    except Exception as e:
+        return _fail(f'AI安全审计失败: {e}', 500)
+
+
+@vikey_api.route('/ai/anomaly_detection', methods=['GET'])
+@_auth_required(need_admin=True)
+def ai_anomaly_detection():
+    """
+    AI增强：VIKEY异常检测
+    实时检测安全威胁并预警（暴力破解、设备缺失、PIN重试不足等）
+    """
+    try:
+        from ai_engines.ai_vikey_security_employee import AI_VIKEY_Security_Employee
+        
+        employee = AI_VIKEY_Security_Employee("api_anomaly_detection", "API异常检测员工")
+        result = employee.process({'type': 'anomaly_detection'})
+        
+        if result.get('success'):
+            return _ok(result, message=result.get('message', ''))
+        else:
+            return _fail(result.get('message', '异常检测失败'), 500)
+    except Exception as e:
+        return _fail(f'AI异常检测失败: {e}', 500)
+
+
+@vikey_api.route('/ai/key_rotation', methods=['POST'])
+@_auth_required(need_hw_admin=True)
+def ai_key_rotation():
+    """
+    AI增强：VIKEY密钥轮换
+    自动生成新密钥，支持单密钥轮换和批量轮换
+    Body: { serial, key_id?, algo?="SM2" }
+    """
+    body = request.get_json(silent=True) or {}
+    serial = (body.get('serial') or '').strip()
+    key_id = (body.get('key_id') or '').strip()
+    algo = (body.get('algo') or 'SM2').upper()
+    
+    if not serial:
+        return _fail('缺少设备序列号', 400)
+    
+    try:
+        from ai_engines.ai_vikey_security_employee import AI_VIKEY_Security_Employee
+        
+        employee = AI_VIKEY_Security_Employee("api_key_rotation", "API密钥轮换员工")
+        result = employee.process({
+            'type': 'key_rotation',
+            'serial': serial,
+            'key_id': key_id,
+            'algo': algo,
+        })
+        
+        if result.get('success'):
+            return _ok(result, message=result.get('message', ''))
+        else:
+            return _fail(result.get('message', '密钥轮换失败'), 500)
+    except Exception as e:
+        return _fail(f'AI密钥轮换失败: {e}', 500)
+
+
+@vikey_api.route('/ai/generate_report', methods=['GET'])
+@_auth_required(need_admin=True)
+def ai_generate_report():
+    """
+    AI增强：生成VIKEY安全报告
+    包含设备概览、绑定管理、操作统计、安全策略、安全预警等完整报告
+    """
+    report_type = (request.args.get('report_type') or 'daily').strip()
+    
+    try:
+        from ai_engines.ai_vikey_security_employee import AI_VIKEY_Security_Employee
+        
+        employee = AI_VIKEY_Security_Employee("api_report_generator", "API报告生成员工")
+        result = employee.process({'type': 'generate_report', 'report_type': report_type})
+        
+        if result.get('success'):
+            return _ok(result.get('report', {}), message=result.get('message', ''))
+        else:
+            return _fail(result.get('message', '生成报告失败'), 500)
+    except Exception as e:
+        return _fail(f'AI生成报告失败: {e}', 500)
+
+
+@vikey_api.route('/ai/policy', methods=['GET'])
+@_auth_required(need_admin=True)
+def ai_get_policy():
+    """
+    AI增强：获取VIKEY安全策略
+    返回当前生效的所有安全策略配置
+    """
+    try:
+        from ai_engines.ai_vikey_security_employee import AI_VIKEY_Security_Employee
+        
+        employee = AI_VIKEY_Security_Employee("api_policy_get", "API策略查询员工")
+        result = employee.process({'type': 'get_policy'})
+        
+        if result.get('success'):
+            return _ok(result.get('policy', {}), message=result.get('message', ''))
+        else:
+            return _fail(result.get('message', '获取策略失败'), 500)
+    except Exception as e:
+        return _fail(f'AI获取策略失败: {e}', 500)
+
+
+@vikey_api.route('/ai/policy', methods=['PUT'])
+@_auth_required(need_hw_admin=True)
+def ai_update_policy():
+    """
+    AI增强：更新VIKEY安全策略
+    Body: { policy: { key: value, ... } }
+    """
+    body = request.get_json(silent=True) or {}
+    policy_updates = body.get('policy', {})
+    
+    if not policy_updates:
+        return _fail('缺少策略更新内容', 400)
+    
+    try:
+        from ai_engines.ai_vikey_security_employee import AI_VIKEY_Security_Employee
+        
+        employee = AI_VIKEY_Security_Employee("api_policy_update", "API策略更新员工")
+        result = employee.process({'type': 'update_policy', 'policy': policy_updates})
+        
+        if result.get('success'):
+            return _ok(result.get('policy', {}), message=result.get('message', ''))
+        else:
+            return _fail(result.get('message', '更新策略失败'), 500)
+    except Exception as e:
+        return _fail(f'AI更新策略失败: {e}', 500)
+
+
+@vikey_api.route('/ai/certificate_check', methods=['GET'])
+@_auth_required(need_admin=False)
+def ai_certificate_check():
+    """
+    AI增强：VIKEY证书检查
+    返回所有设备的证书信息、过期状态检查
+    """
+    serial = (request.args.get('serial') or '').strip()
+    
+    try:
+        from ai_engines.ai_vikey_security_employee import AI_VIKEY_Security_Employee
+        
+        employee = AI_VIKEY_Security_Employee("api_cert_check", "API证书检查员工")
+        result = employee.process({'type': 'certificate_check', 'serial': serial})
+        
+        if result.get('success'):
+            return _ok(result, message=result.get('message', ''))
+        else:
+            return _fail(result.get('message', '证书检查失败'), 500)
+    except Exception as e:
+        return _fail(f'AI证书检查失败: {e}', 500)
+
+
+@vikey_api.route('/ai/binding_audit', methods=['GET'])
+@_auth_required(need_admin=True)
+def ai_binding_audit():
+    """
+    AI增强：VIKEY绑定审计
+    检查用户绑定数量是否符合策略限制
+    """
+    try:
+        from ai_engines.ai_vikey_security_employee import AI_VIKEY_Security_Employee
+        
+        employee = AI_VIKEY_Security_Employee("api_binding_audit", "API绑定审计员工")
+        result = employee.process({'type': 'binding_audit'})
+        
+        if result.get('success'):
+            return _ok(result.get('audit', {}), message=result.get('message', ''))
+        else:
+            return _fail(result.get('message', '绑定审计失败'), 500)
+    except Exception as e:
+        return _fail(f'AI绑定审计失败: {e}', 500)
+
+
+@vikey_api.route('/ai/auto_repair', methods=['POST'])
+@_auth_required(need_hw_admin=True)
+def ai_auto_repair():
+    """
+    AI增强：VIKEY自动修复
+    自动检测并修复设备问题（重置状态、检查密钥等）
+    Body: { serial?, repair_type?="all" }
+    """
+    body = request.get_json(silent=True) or {}
+    serial = (body.get('serial') or '').strip()
+    repair_type = (body.get('repair_type') or 'all').strip()
+    
+    try:
+        from ai_engines.ai_vikey_security_employee import AI_VIKEY_Security_Employee
+        
+        employee = AI_VIKEY_Security_Employee("api_auto_repair", "API自动修复员工")
+        result = employee.process({'type': 'auto_repair', 'serial': serial, 'repair_type': repair_type})
+        
+        if result.get('success'):
+            return _ok(result, message=result.get('message', ''))
+        else:
+            return _fail(result.get('message', '自动修复失败'), 500)
+    except Exception as e:
+        return _fail(f'AI自动修复失败: {e}', 500)
+
+
+@vikey_api.route('/ai/alerts', methods=['GET'])
+@_auth_required(need_admin=True)
+def ai_get_alerts():
+    """
+    AI增强：获取VIKEY安全预警列表
+    ?limit=20&level=critical|warning
+    """
+    limit = int(request.args.get('limit') or 20)
+    level = (request.args.get('level') or '').strip()
+    
+    try:
+        from ai_engines.ai_vikey_security_employee import AI_VIKEY_Security_Employee
+        
+        employee = AI_VIKEY_Security_Employee("api_alerts", "API预警查询员工")
+        result = employee.process({'type': 'get_alerts', 'limit': limit, 'level': level})
+        
+        if result.get('success'):
+            return _ok(result, message=result.get('message', ''))
+        else:
+            return _fail(result.get('message', '获取预警失败'), 500)
+    except Exception as e:
+        return _fail(f'AI获取预警失败: {e}', 500)

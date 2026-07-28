@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 教育信息化服务 (v15.12.0) ================================ 提供智慧校园、数字化转型、信息化基础设施等综合管理服务。  核心能力： 1. 智慧校园 - 教务/学工/财务/后勤/人事/科研/图书馆/校园卡/门禁/监控/能源/停车/班车/迎新/离校 2. 数字化转型 - 数字化规划、流程再造、数据治理 3. 信息化基础设施 - 服务器/存储/网络/数据库/中间件/安全设备 4. 教育软件系统 - 各类教育管理系统集成 5. 数据中心 - 机房/机柜/供电/空调/消防/监控 6. 网络安全 - 安全等级L1-L5，安全设备管理 7. 移动校园 - 课表/成绩/考勤/通知/缴费/请假/活动 8. 物联网 - 温湿度/门禁/监控/能源/照明/空调/传感器 9. 智慧教室 - 互动白板/录播/直播/点名/分组/答题器 """
@@ -9,7 +10,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

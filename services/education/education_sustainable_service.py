@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 教育可持续发展服务 (v15.16.0) ==================================== 提供绿色教育、低碳校园、教育公平、可持续发展教育等综合管理服务。  核心能力： 1. 可持续项目 - 项目管理、活动跟踪、进度监控 2. 碳排放追踪 - 数据采集、碳核算、目标管理 3. 绿色举措 - 节能减排、垃圾分类、绿色建筑 4. 环保教育 - 课程管理、实践活动、环境意识 5. 教育公平 - 公平评估、资源分配、特殊群体支持 6. 社会责任 - 公益教育、教育扶贫、社区服务 7. 教育均衡 - 城乡均衡、师资均衡、资源均衡 8. 合作伙伴 - 合作管理、项目协同、资源共享 9. 碳减排 - 减排目标、实施方案、成效评估 10. 认证管理 - 可持续认证、绿色校园认证 11. 统计分析 - 综合数据统计与报表 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

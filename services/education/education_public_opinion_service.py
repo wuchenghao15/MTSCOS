@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 教育舆情管理服务 (v15.14.0) ==================================== 提供舆情监测、舆情分析、危机公关、媒体关系、舆论引导、舆情报告、舆情预警和品牌声誉等综合管理服务。  核心能力： 1. 舆情监测 - 关键词管理、渠道配置、舆情采集、预警设置 2. 舆情分析 - 情感分析、话题追踪、传播路径、热度分析、趋势预测 3. 危机公关 - 危机识别、危机评估、危机响应、危机复盘 4. 媒体关系 - 媒体档案、媒体互动、媒体邀约、新闻发布 5. 舆论引导 - 引导策略、引导计划、执行跟踪、效果评估 6. 舆情报告 - 日报周报、专题报告、危机报告、自定义报告 7. 声誉管理 - 品牌监测、声誉评估、趋势分析 8. 投诉处理 - 投诉登记、投诉分流、处理跟踪、满意度评价 9. 数据统计 - 综合统计报表  差异化支持： - 成人教育舆情管理 - K12教育舆情管理 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

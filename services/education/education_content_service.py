@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 教育内容管理服务 (v15.27.0) ================================= 提供教育内容的创作、审核、发布、版本、分类、标签、检索和推荐等综合管理服务。  核心能力： 1. 内容创作管理 - 在线创作、编辑、协作、AI辅助 2. 内容审核管理 - 多级审核、状态跟踪、修改反馈 3. 内容发布管理 - 多渠道发布、定时发布、状态管理 4. 内容版本管理 - 版本控制、历史记录、回退恢复 5. 内容分类管理 - 学科分类、学段分类、资源类型 6. 内容标签管理 - 知识点标签、难度标签、教学目标 7. 内容检索管理 - 全文搜索、筛选过滤、排序分页 8. 内容推荐管理 - 个性化推荐、智能推荐、热门推荐  差异化支持： - 成人教育 - 职业培训、继续教育、学历提升 - K12教育 - 基础教育、学科辅导、素质教育 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

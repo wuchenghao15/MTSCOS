@@ -3,8 +3,9 @@ import sqlite3
 import os
 import re
 import inspect
+from core.db_path import resolve_project_root as _rr
 
-DB_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'split_databases')
+DB_DIR = os.path.join(_rr(), 'Database')
 
 DATABASES = {
     'auth': os.path.join(DB_DIR, 'auth.db'),

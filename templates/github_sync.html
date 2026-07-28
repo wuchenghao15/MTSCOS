@@ -131,10 +131,16 @@
     </div>
     <div style="background: #0f172a; border-radius: var(--radius-md); padding: 16px; font-family: monospace; font-size: 12px; color: #e2e8f0; max-height: 300px; overflow-y: auto;">
         {% if sync_logs %}
+        <style>
+        .log-error { color: #ef4444; }
+        .log-warning { color: #f59e0b; }
+        .log-info { color: #22c55e; }
+        .log-other { color: #94a3b8; }
+        </style>
         {% for log in sync_logs %}
         <div style="margin-bottom: 8px;">
             <span style="color: #64748b;">{{ log.timestamp[:19] if log.timestamp else '' }}</span>
-            <span style="color: {% if log.level == 'ERROR' %}#ef4444{% elif log.level == 'WARNING' %}#f59e0b{% elif log.level == 'INFO' %}#22c55e{% else %}#94a3b8{% endif %};"> [{{ log.level }}]</span>
+            <span class="log-{{ log.level|lower if log.level and log.level.lower() in ['error','warning','info'] else 'other' }}"> [{{ log.level }}]</span>
             <span style="margin-left: 8px;">{{ log.message }}</span>
         </div>
         {% endfor %}

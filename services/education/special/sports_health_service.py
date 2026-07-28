@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 体育健康管理服务 (v15.6.0) ==================================== 提供体育课程、体质健康、运动赛事和健康档案等综合服务。  核心能力： 1. 体育课程 - 课程管理、考勤记录、成绩评定 2. 体质健康 - 体质测试、健康档案、数据分析 3. 运动赛事 - 赛事组织、报名管理、成绩记录 4. 健康监测 - 日常健康、视力口腔、体检管理 5. 运动处方 - 个性化运动建议、健康干预 6. 体育设施 - 场地管理、预约使用 7. 成人健身 - 成人教育健身管理 8. K12体测 - 学生体质健康标准 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

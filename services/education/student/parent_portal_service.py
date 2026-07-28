@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 家长端服务 (v15.4.0) ==================================== 提供家长查看孩子学习情况、成绩、行为、考勤和家校沟通等综合服务。  核心能力： 1. 家长账户 - 家长注册、绑定子女、多子女管理 2. 学习概览 - 孩子学习数据汇总展示 3. 成绩查询 - 考试成绩、排名、趋势查看 4. 行为查看 - 行为记录、奖惩、品德评定 5. 考勤查看 - 出勤记录、请假管理 6. 家校沟通 - 与教师消息沟通 7. 学习建议 - AI生成的学习建议 8. 成人学员 - 成人教育自我服务端 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 教育质量监测服务 (v15.13.0) ==================================== 提供教育质量监测、标准制定、数据采集、质量分析、预警机制、 质量报告、趋势监测、质量改进等综合管理服务。  核心能力： 1. 标准管理 - 监测标准制定、标准版本管理、标准发布 2. 指标管理 - 质量指标定义、指标权重配置、指标阈值设置 3. 数据采集 - 多源数据采集、数据校验、数据整合 4. 质量分析 - 综合分析、专项分析、对比分析、趋势分析 5. 预警机制 - 阈值预警、趋势预警、智能预警、预警处置 6. 趋势监测 - 趋势追踪、变化分析、预测预警 7. 报告管理 - 报告生成、报告发布、报告归档 8. 改进计划 - 问题诊断、改进方案、实施跟踪、效果评估 9. 对标分析 - 校际对标、区域对标、行业对标 10. 统计服务 - 数据统计、报表生成  差异化支持： - 成人教育：职业技能、继续教育、学历提升 - K12教育：义务教育、高中教育、综合素质评价 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

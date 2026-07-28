@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 毕业与证书管理服务 (v15.5.0) ==================================== 提供毕业审核、证书管理、结业认证和毕业统计等综合服务。  核心能力： 1. 毕业审核 - 毕业条件检查、批量审核 2. 证书管理 - 毕业证书、结业证书、资格证书 3. 成绩复核 - 最终成绩汇总、GPA计算 4. 毕业统计 - 毕业率、就业率统计 5. 证书模板 - 证书模板配置 6. 证书验证 - 在线证书验证 7. 成人结业 - 成人教育结业管理 8. K12毕业 - 九年制毕业升学管理 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

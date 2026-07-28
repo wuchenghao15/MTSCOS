@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 家校社协同育人服务 (v15.10.0) ==================================== 提供家校沟通、家庭教育指导、家长学校、社区协同、家访管理、协同活动、 家庭教育档案等综合管理服务。同时支持成人教育和K12教育的差异化需求。  核心能力： 1. 家校沟通 - 家长教师沟通、消息、家长会 2. 家庭教育指导 - 家庭教育课程、讲座、咨询服务 3. 家长学校 - 家长培训、家长委员会、家长志愿者 4. 社区协同 - 社区教育资源、社区活动、共建项目 5. 家访管理 - 家访计划、家访记录、家访跟进 6. 协同活动 - 家校社联合活动、开放日、亲子活动 7. 家庭教育档案 - 家庭情况、教育需求、沟通历史 8. K12家校协同与成人教育家庭支持差异化 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

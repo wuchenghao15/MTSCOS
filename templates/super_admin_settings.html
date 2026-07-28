@@ -11,6 +11,32 @@
 
 {% block content %}
 <div class="sa-page-wrap">
+    <div class="sa-quick-actions" aria-label="首页功能快捷入口">
+        <a class="qa-item" href="/dashboard" title="进入控制台仪表盘">
+            <div class="qa-icon dashboard"><i class="fas fa-gauge-high"></i></div>
+            <div class="qa-text">
+                <div class="qa-title">进入控制台</div>
+                <div class="qa-desc">仪表盘 · AI工作台 · 考试中心</div>
+            </div>
+            <i class="fas fa-chevron-right qa-arrow"></i>
+        </a>
+        <div class="qa-item current" title="超级管理员设置（当前页面）">
+            <div class="qa-icon settings"><i class="fas fa-user-shield"></i></div>
+            <div class="qa-text">
+                <div class="qa-title">超管设置中心</div>
+                <div class="qa-desc">权限 · VIKEY · 集群 · 审计</div>
+            </div>
+            <i class="fas fa-location-dot qa-arrow" style="color:#e9d5ff;"></i>
+        </div>
+        <a class="qa-item" href="/auth/logout" title="安全注销当前账户">
+            <div class="qa-icon logout"><i class="fas fa-right-from-bracket"></i></div>
+            <div class="qa-text">
+                <div class="qa-title">退出登录</div>
+                <div class="qa-desc">安全注销 · 返回首页</div>
+            </div>
+            <i class="fas fa-chevron-right qa-arrow"></i>
+        </a>
+    </div>
     <div class="sa-tabs" id="saTabs">
         <div class="sa-tab active" data-tab="tab-system"><i class="fas fa-server"></i><span>系统管理</span></div>
         <div class="sa-tab" data-tab="tab-orgs"><i class="fas fa-sitemap"></i><span>机构管理</span></div>
@@ -121,6 +147,35 @@
                     <div class="sa-form-group">
                         <label>AI教师辅导</label>
                         <div class="sa-toggle on" onclick="saToggle(this)"></div>
+                    </div>
+                </div>
+                <div class="sa-config-card">
+                    <h3><i class="fas fa-palette"></i> 主题配置</h3>
+                    <div class="sa-form-group">
+                        <label>系统默认主题</label>
+                        <select class="sa-form-select" id="sys_theme" onchange="changeTheme(this.value)">
+                            <option value="deep_blue" selected>深蓝主题（默认）</option>
+                            <option value="light_blue_tech">浅蓝科技风</option>
+                            <option value="light">浅色系主题</option>
+                            <option value="mourning">灰黑追思（公祭日）</option>
+                        </select>
+                    </div>
+                    <div class="sa-form-group">
+                        <label>主题预览</label>
+                        <div class="sa-theme-preview">
+                            <div class="sa-theme-swatch" data-theme="deep_blue" onclick="changeTheme('deep_blue')"></div>
+                            <div class="sa-theme-swatch" data-theme="light_blue_tech" onclick="changeTheme('light_blue_tech')"></div>
+                            <div class="sa-theme-swatch" data-theme="light" onclick="changeTheme('light')"></div>
+                            <div class="sa-theme-swatch" data-theme="mourning" onclick="changeTheme('mourning')"></div>
+                        </div>
+                    </div>
+                    <div class="sa-form-group">
+                        <label>允许用户自定义主题</label>
+                        <div class="sa-toggle on" data-field="allow_custom_theme" onclick="saToggle(this)"></div>
+                    </div>
+                    <div class="sa-form-group">
+                        <label>千人千面主题推荐</label>
+                        <div class="sa-toggle" data-field="personalized_theme" onclick="saToggle(this)"></div>
                     </div>
                 </div>
             </div>
@@ -472,6 +527,48 @@
                 <div class="sa-stat-mini"><span class="val warning" id="vikey-offline">0</span><span class="lbl">离线</span></div>
                 <div class="sa-stat-mini"><span class="val danger" id="vikey-expired">0</span><span class="lbl">已过期</span></div>
             </div>
+            
+            <div class="sa-config-grid" style="margin-bottom: 24px;">
+                <div class="sa-config-card" style="width: 100%;">
+                    <h3><i class="fas fa-usb"></i> U盘模拟加密狗制作</h3>
+                    <div class="sa-form-group">
+                        <label>可写U盘列表</label>
+                        <select class="sa-form-select" id="usb_drive_select" onchange="onUSBDriveSelect()">
+                            <option value="">请选择U盘...</option>
+                        </select>
+                        <button class="sa-btn sa-btn-secondary" onclick="refreshUSBDrives()" style="margin-top: 8px;"><i class="fas fa-sync-alt"></i> 刷新U盘列表</button>
+                    </div>
+                    <div class="sa-form-group">
+                        <label>角色</label>
+                        <select class="sa-form-select" id="usb_role_select">
+                            <option value="super_admin">超级管理员</option>
+                            <option value="hardware_vikey_admin">硬件审计员</option>
+                            <option value="general">普通用户</option>
+                        </select>
+                    </div>
+                    <div class="sa-form-group">
+                        <label>设备标签</label>
+                        <input type="text" class="sa-form-input" id="usb_label" value="MTSCOS USB Dongle" placeholder="输入设备标签">
+                    </div>
+                    <div class="sa-form-group">
+                        <label>PIN码（6-32位）</label>
+                        <input type="password" class="sa-form-input" id="usb_pin" value="12345678" placeholder="设置PIN码">
+                    </div>
+                    <div class="sa-form-group">
+                        <label>PUK码（8位）</label>
+                        <input type="password" class="sa-form-input" id="usb_puk" value="88880000" placeholder="设置PUK码（用于解锁）">
+                    </div>
+                    <div class="sa-form-actions">
+                        <button class="sa-btn sa-btn-primary" onclick="createUSBDongle()"><i class="fas fa-key"></i> 制作U盘加密狗</button>
+                        <button class="sa-btn sa-btn-secondary" onclick="verifyUSBDongle()"><i class="fas fa-check-circle"></i> 验证U盘加密狗</button>
+                    </div>
+                    <div class="sa-form-hint">
+                        <i class="fas fa-info-circle"></i> 使用普通U盘制作模拟加密狗，系统会在U盘根目录写入加密的.vikey_token文件，包含设备序列号、密钥材料和证书信息。制作完成后可直接插入系统作为加密狗使用。
+                    </div>
+                    <div id="usb_result" class="sa-form-result" style="display:none;"></div>
+                </div>
+            </div>
+
             <div class="sa-search-bar">
                 <input type="text" class="sa-form-input" id="vikey_search" placeholder="搜索序列号、硬件ID...">
                 <select class="sa-form-select" id="vikey_type_filter">
@@ -794,6 +891,36 @@
                     </div>
                 </div>
                 <div class="sa-config-card">
+                    <h3><i class="fas fa-fingerprint"></i> 生物识别（指纹认证）</h3>
+                    <div id="fingerprint-status-area">
+                        <div class="sa-form-group">
+                            <label>指纹注册状态</label>
+                            <div class="sa-status" id="fp-status">
+                                <span class="sa-status-dot offline"></span>
+                                <span class="sa-status-text">未注册</span>
+                            </div>
+                        </div>
+                        <div class="sa-form-group" id="fp-registered-info" style="display:none;">
+                            <label>注册时间</label>
+                            <input type="text" class="sa-form-input" id="fp-registered-at" readonly>
+                        </div>
+                        <div class="sa-form-group" id="fp-device-info" style="display:none;">
+                            <label>绑定设备</label>
+                            <input type="text" class="sa-form-input" id="fp-device-id" readonly>
+                        </div>
+                        <div class="sa-form-actions" id="fp-actions">
+                            <button class="sa-btn sa-btn-primary" onclick="registerFingerprint()"><i class="fas fa-plus"></i> 注册指纹</button>
+                        </div>
+                        <div class="sa-form-actions" id="fp-actions-registered" style="display:none;">
+                            <button class="sa-btn sa-btn-secondary" onclick="updateFingerprint()"><i class="fas fa-refresh"></i> 更新指纹</button>
+                            <button class="sa-btn sa-btn-danger" onclick="deleteFingerprint()"><i class="fas fa-trash"></i> 删除指纹</button>
+                        </div>
+                        <div class="sa-form-hint">
+                            <i class="fas fa-info-circle"></i> 注册指纹后，移动端登录超级管理员账户将强制进行指纹认证
+                        </div>
+                    </div>
+                </div>
+                <div class="sa-config-card">
                     <h3><i class="fas fa-globe"></i> 访问控制</h3>
                     <div class="sa-form-group">
                         <label>IP白名单模式</label>
@@ -936,8 +1063,10 @@
 {% block extra_css %}
 <style>
     body {
-        background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+        background: linear-gradient(180deg, #070714 0%, #0c0c20 50%, #070714 100%);
         min-height: 100vh;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
+                     "PingFang SC", "Microsoft YaHei", sans-serif;
     }
 
     .sa-page-wrap {
@@ -945,66 +1074,100 @@
         margin: 0 auto;
     }
 
+    .sa-quick-actions {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 12px;
+        margin: 0 20px 20px;
+    }
+    .qa-item {
+        display: flex; align-items: center; gap: 12px;
+        padding: 14px 16px;
+        background: rgba(12, 12, 32, 0.85);
+        border: 1px solid rgba(79, 70, 229, 0.15);
+        border-radius: 12px;
+        transition: all 0.2s ease;
+        cursor: pointer;
+        text-decoration: none;
+        color: #f1f5f9;
+        position: relative;
+    }
+    .qa-item:hover {
+        border-color: rgba(79, 70, 229, 0.3);
+        background: rgba(15, 15, 40, 0.9);
+    }
+    .qa-icon {
+        width: 40px; height: 40px; border-radius: 8px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 17px; color: #fff; flex-shrink: 0;
+    }
+    .qa-icon.dashboard { background: #4f46e5; }
+    .qa-icon.settings  { background: #06b6d4; }
+    .qa-icon.logout    { background: #ef4444; }
+    .qa-text { flex:1 1 auto; min-width: 0; }
+    .qa-text .qa-title { font-weight: 600; font-size: 14px; }
+    .qa-text .qa-desc { font-size: 12px; color: #94a3b8; margin-top: 2px; font-weight: 400; }
+    .qa-arrow { color: #94a3b8; transition: all 0.2s ease; }
+    .qa-item:hover .qa-arrow { transform: translateX(3px); color: #6366f1; }
+    .qa-item.current { cursor: default; }
+    @media (max-width: 640px) {
+        .sa-quick-actions { grid-template-columns: 1fr 1fr; margin: 0 12px 16px; }
+        .qa-item { padding: 12px; }
+        .qa-text .qa-desc { display: none; }
+    }
+
     .sa-tabs {
         display: flex;
-        gap: 8px;
+        gap: 6px;
         margin-bottom: 24px;
-        padding: 12px;
-        background: rgba(15, 12, 41, 0.6);
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(139, 92, 246, 0.2);
-        border-radius: 16px;
+        padding: 8px;
+        background: rgba(12, 12, 32, 0.85);
+        border: 1px solid rgba(79, 70, 229, 0.15);
+        border-radius: 12px;
         overflow-x: auto;
         scrollbar-width: thin;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
     }
     .sa-tabs::-webkit-scrollbar { height: 4px; }
-    .sa-tabs::-webkit-scrollbar-thumb { background: rgba(139,92,246,0.4); border-radius: 2px; }
+    .sa-tabs::-webkit-scrollbar-thumb { background: rgba(79, 70, 229, 0.3); border-radius: 2px; }
 
     .sa-tab {
         display: flex;
         align-items: center;
         gap: 8px;
-        padding: 10px 18px;
-        border-radius: 10px;
+        padding: 9px 16px;
+        border-radius: 8px;
         cursor: pointer;
         font-size: 13px;
-        font-weight: 600;
-        color: rgba(226, 232, 240, 0.6);
+        font-weight: 500;
+        color: rgba(203, 213, 225, 0.7);
         background: transparent;
         border: 1px solid transparent;
-        transition: all 0.25s ease;
+        transition: all 0.2s ease;
         white-space: nowrap;
         flex-shrink: 0;
     }
     .sa-tab:hover {
         color: #fff;
-        background: rgba(99, 102, 241, 0.15);
-        border-color: rgba(99, 102, 241, 0.3);
+        background: rgba(79, 70, 229, 0.08);
     }
     .sa-tab.active {
-        background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%);
+        background: #4f46e5;
         color: #fff;
         border-color: transparent;
-        box-shadow: 0 4px 15px rgba(139, 92, 246, 0.4);
     }
     .sa-tab i { font-size: 14px; }
 
     .sa-section {
         display: none;
-        background: rgba(15, 12, 41, 0.7);
-        backdrop-filter: blur(10px);
-        border: 1px solid rgba(139, 92, 246, 0.2);
-        border-radius: 16px;
+        background: rgba(12, 12, 32, 0.85);
+        border: 1px solid rgba(79, 70, 229, 0.15);
+        border-radius: 12px;
         padding: 28px;
         margin-bottom: 24px;
-        animation: fadeIn 0.3s ease;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
     }
     .sa-section.active { display: block; }
-
-    @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(8px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
 
     .sa-section-head {
         display: flex;
@@ -1012,7 +1175,7 @@
         align-items: center;
         margin-bottom: 24px;
         padding-bottom: 20px;
-        border-bottom: 1px solid rgba(139, 92, 246, 0.15);
+        border-bottom: 1px solid rgba(79, 70, 229, 0.08);
         flex-wrap: wrap;
         gap: 16px;
     }
@@ -1022,9 +1185,9 @@
         gap: 14px;
     }
     .sa-section-head-left h2 {
-        font-size: 20px;
-        color: #fff;
-        font-weight: 700;
+        font-size: 18px;
+        color: #f1f5f9;
+        font-weight: 600;
     }
     .sa-section-head-actions {
         display: flex;
@@ -1033,69 +1196,68 @@
     }
 
     .sa-si {
-        width: 42px;
-        height: 42px;
-        border-radius: 10px;
+        width: 40px;
+        height: 40px;
+        border-radius: 8px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 18px;
+        font-size: 17px;
     }
-    .sa-si.blue { background: rgba(99,102,241,0.2); color: #818cf8; }
-    .sa-si.orange { background: rgba(249,115,22,0.2); color: #fb923c; }
-    .sa-si.green { background: rgba(34,197,94,0.2); color: #4ade80; }
-    .sa-si.purple { background: rgba(168,85,247,0.2); color: #c084fc; }
-    .sa-si.red { background: rgba(239,68,68,0.2); color: #f87171; }
-    .sa-si.cyan { background: rgba(14,165,233,0.2); color: #38bdf8; }
+    .sa-si.blue { background: rgba(79, 70, 229, 0.12); color: #6366f1; }
+    .sa-si.orange { background: rgba(245, 158, 11, 0.12); color: #fbbf24; }
+    .sa-si.green { background: rgba(34, 197, 94, 0.12); color: #4ade80; }
+    .sa-si.purple { background: rgba(139, 92, 246, 0.12); color: #8b5cf6; }
+    .sa-si.red { background: rgba(239, 68, 68, 0.12); color: #f87171; }
+    .sa-si.cyan { background: rgba(6, 182, 212, 0.12); color: #06b6d4; }
 
     .sa-btn {
         display: inline-flex;
         align-items: center;
         gap: 8px;
-        padding: 10px 20px;
-        border-radius: 10px;
+        padding: 9px 18px;
+        border-radius: 8px;
         font-size: 13px;
-        font-weight: 600;
+        font-weight: 500;
         cursor: pointer;
         border: none;
-        transition: all 0.25s ease;
+        transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
         text-decoration: none;
+        font-family: inherit;
     }
     .sa-btn-primary {
-        background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+        background: #4f46e5;
         color: #fff;
-        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35);
     }
     .sa-btn-primary:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 20px rgba(139, 92, 246, 0.5);
+        background: #4338ca;
     }
     .sa-btn-secondary {
-        background: rgba(99, 102, 241, 0.1);
+        background: rgba(79, 70, 229, 0.06);
         color: #c7d2fe;
-        border: 1px solid rgba(99, 102, 241, 0.3);
+        border: 1px solid rgba(79, 70, 229, 0.2);
     }
     .sa-btn-secondary:hover {
-        background: rgba(99, 102, 241, 0.2);
+        background: rgba(79, 70, 229, 0.12);
         color: #fff;
-        border-color: rgba(139, 92, 246, 0.5);
+        border-color: rgba(79, 70, 229, 0.3);
     }
     .sa-btn-danger {
-        background: rgba(239, 68, 68, 0.15);
+        background: rgba(239, 68, 68, 0.1);
         color: #fca5a5;
-        border: 1px solid rgba(239, 68, 68, 0.3);
+        border: 1px solid rgba(239, 68, 68, 0.2);
     }
     .sa-btn-danger:hover {
-        background: rgba(239, 68, 68, 0.25);
+        background: rgba(239, 68, 68, 0.18);
         color: #fecaca;
     }
     .sa-btn-warning {
-        background: rgba(245, 158, 11, 0.15);
+        background: rgba(245, 158, 11, 0.1);
         color: #fcd34d;
-        border: 1px solid rgba(245, 158, 11, 0.3);
+        border: 1px solid rgba(245, 158, 11, 0.2);
     }
     .sa-btn-warning:hover {
-        background: rgba(245, 158, 11, 0.25);
+        background: rgba(245, 158, 11, 0.18);
         color: #fde68a;
     }
     .sa-btn-sm {
@@ -1110,22 +1272,23 @@
         gap: 20px;
     }
     .sa-config-card {
-        background: rgba(0, 0, 0, 0.25);
-        border: 1px solid rgba(139, 92, 246, 0.12);
+        background: rgba(7, 7, 20, 0.5);
+        border: 1px solid rgba(79, 70, 229, 0.1);
         border-radius: 12px;
         padding: 22px;
     }
     .sa-config-card h3 {
-        font-size: 15px;
+        font-size: 14px;
         margin-bottom: 18px;
-        color: #fff;
+        color: #f1f5f9;
         display: flex;
         align-items: center;
         gap: 10px;
         padding-bottom: 12px;
-        border-bottom: 1px solid rgba(139, 92, 246, 0.12);
+        border-bottom: 1px solid rgba(79, 70, 229, 0.08);
+        font-weight: 600;
     }
-    .sa-config-card h3 i { color: #a855f7; }
+    .sa-config-card h3 i { color: #06b6d4; }
 
     .sa-form-group { margin-bottom: 16px; }
     .sa-form-group:last-child { margin-bottom: 0; }
@@ -1138,50 +1301,49 @@
     }
     .sa-form-input, .sa-form-select, .sa-form-textarea {
         width: 100%;
-        padding: 10px 14px;
-        border: 1px solid rgba(139, 92, 246, 0.2);
+        padding: 9px 14px;
+        border: 1px solid rgba(79, 70, 229, 0.15);
         border-radius: 8px;
-        background: rgba(15, 12, 41, 0.5);
-        color: #fff;
+        background: rgba(7, 7, 20, 0.6);
+        color: #f1f5f9;
         font-size: 14px;
-        transition: all 0.2s;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
         font-family: inherit;
     }
     .sa-form-input:focus, .sa-form-select:focus, .sa-form-textarea:focus {
         outline: none;
-        border-color: #8b5cf6;
-        box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.15);
+        border-color: #4f46e5;
+        box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
     }
     .sa-form-select { cursor: pointer; appearance: auto; }
     .sa-form-input::placeholder { color: rgba(148, 163, 184, 0.5); }
     .sa-form-input[readonly] { opacity: 0.6; cursor: not-allowed; }
 
     .sa-toggle {
-        width: 46px;
-        height: 26px;
-        border-radius: 13px;
-        background: rgba(100, 116, 139, 0.5);
+        width: 44px;
+        height: 24px;
+        border-radius: 12px;
+        background: rgba(100, 116, 139, 0.4);
         position: relative;
         cursor: pointer;
-        transition: all 0.25s ease;
+        transition: background 0.2s ease;
     }
     .sa-toggle::after {
         content: '';
-        width: 22px;
-        height: 22px;
+        width: 20px;
+        height: 20px;
         border-radius: 50%;
         background: #fff;
         position: absolute;
         top: 2px;
         left: 2px;
-        transition: all 0.25s ease;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        transition: transform 0.2s ease;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.2);
     }
     .sa-toggle.on {
-        background: linear-gradient(135deg, #6366f1, #8b5cf6);
-        box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.15);
+        background: #4f46e5;
     }
-    .sa-toggle.on::after { left: 22px; }
+    .sa-toggle.on::after { transform: translateX(20px); }
 
     .sa-search-bar {
         display: flex;
@@ -1200,8 +1362,8 @@
 
     .sa-data-table-wrap {
         overflow-x: auto;
-        border-radius: 10px;
-        border: 1px solid rgba(139, 92, 246, 0.12);
+        border-radius: 8px;
+        border: 1px solid rgba(79, 70, 229, 0.1);
     }
     .sa-data-table {
         width: 100%;
@@ -1211,20 +1373,20 @@
     .sa-data-table th, .sa-data-table td {
         padding: 12px 14px;
         text-align: left;
-        border-bottom: 1px solid rgba(139, 92, 246, 0.1);
+        border-bottom: 1px solid rgba(79, 70, 229, 0.08);
         font-size: 13px;
     }
     .sa-data-table th {
-        background: rgba(139, 92, 246, 0.08);
-        color: #c4b5fd;
+        background: rgba(79, 70, 229, 0.06);
+        color: #a5b4fc;
         font-weight: 600;
         font-size: 12px;
         text-transform: uppercase;
-        letter-spacing: 0.4px;
+        letter-spacing: 0.3px;
         white-space: nowrap;
     }
     .sa-data-table td { color: #e2e8f0; }
-    .sa-data-table tr:hover td { background: rgba(139, 92, 246, 0.05); }
+    .sa-data-table tr:hover td { background: rgba(79, 70, 229, 0.04); }
     .sa-data-table tr:last-child td { border-bottom: none; }
     .sa-data-table .sa-empty {
         text-align: center;
@@ -1235,50 +1397,52 @@
         font-size: 36px;
         margin-bottom: 12px;
         display: block;
-        color: rgba(139, 92, 246, 0.4);
+        color: rgba(79, 70, 229, 0.3);
     }
 
     .sa-status-tag {
         display: inline-block;
         padding: 3px 10px;
-        border-radius: 20px;
+        border-radius: 999px;
         font-size: 11px;
-        font-weight: 600;
+        font-weight: 500;
         white-space: nowrap;
     }
-    .sa-status-tag.success { background: rgba(34,197,94,0.15); color: #4ade80; }
-    .sa-status-tag.active { background: rgba(14,165,233,0.15); color: #38bdf8; }
-    .sa-status-tag.draft { background: rgba(100,116,139,0.15); color: #94a3b8; }
-    .sa-status-tag.pending { background: rgba(245,158,11,0.15); color: #fbbf24; }
-    .sa-status-tag.warning { background: rgba(245,158,11,0.15); color: #fbbf24; }
-    .sa-status-tag.failed { background: rgba(239,68,68,0.15); color: #f87171; }
-    .sa-status-tag.danger { background: rgba(239,68,68,0.15); color: #f87171; }
-    .sa-status-tag.disabled { background: rgba(239,68,68,0.15); color: #f87171; }
-    .sa-status-tag.locked { background: rgba(100,116,139,0.15); color: #94a3b8; }
-    .sa-status-tag.offline { background: rgba(100,116,139,0.15); color: #94a3b8; }
-    .sa-status-tag.expired { background: rgba(239,68,68,0.15); color: #f87171; }
-    .sa-status-tag.revoked { background: rgba(100,116,139,0.25); color: #94a3b8; }
-    .sa-status-tag.unhealthy { background: rgba(239,68,68,0.15); color: #f87171; }
-    .sa-status-tag.healthy { background: rgba(34,197,94,0.15); color: #4ade80; }
-    .sa-status-tag.online { background: rgba(34,197,94,0.15); color: #4ade80; }
-    .sa-status-tag.idle { background: rgba(168,85,247,0.15); color: #c084fc; }
-    .sa-status-tag.info { background: rgba(14,165,233,0.15); color: #38bdf8; }
+    .sa-status-tag.success { background: rgba(34,197,94,0.12); color: #4ade80; }
+    .sa-status-tag.active { background: rgba(6,182,212,0.12); color: #06b6d4; }
+    .sa-status-tag.draft { background: rgba(100,116,139,0.12); color: #94a3b8; }
+    .sa-status-tag.pending { background: rgba(245,158,11,0.12); color: #fbbf24; }
+    .sa-status-tag.warning { background: rgba(245,158,11,0.12); color: #fbbf24; }
+    .sa-status-tag.failed { background: rgba(239,68,68,0.12); color: #f87171; }
+    .sa-status-tag.danger { background: rgba(239,68,68,0.12); color: #f87171; }
+    .sa-status-tag.disabled { background: rgba(239,68,68,0.12); color: #f87171; }
+    .sa-status-tag.locked { background: rgba(100,116,139,0.12); color: #94a3b8; }
+    .sa-status-tag.offline { background: rgba(100,116,139,0.12); color: #94a3b8; }
+    .sa-status-tag.expired { background: rgba(239,68,68,0.12); color: #f87171; }
+    .sa-status-tag.revoked { background: rgba(100,116,139,0.18); color: #94a3b8; }
+    .sa-status-tag.unhealthy { background: rgba(239,68,68,0.12); color: #f87171; }
+    .sa-status-tag.healthy { background: rgba(34,197,94,0.12); color: #4ade80; }
+    .sa-status-tag.online { background: rgba(34,197,94,0.12); color: #4ade80; }
+    .sa-status-tag.idle { background: rgba(139,92,246,0.12); color: #8b5cf6; }
+    .sa-status-tag.info { background: rgba(6,182,212,0.12); color: #06b6d4; }
+    .sa-status-tag.hibernated { background: rgba(100,116,139,0.15); color: #64748b; }
+    .sa-status-tag.reclaimed { background: rgba(239,68,68,0.12); color: #ef4444; }
 
     .sa-role-tag {
         display: inline-block;
         padding: 3px 10px;
-        border-radius: 20px;
+        border-radius: 999px;
         font-size: 11px;
-        font-weight: 600;
+        font-weight: 500;
         white-space: nowrap;
     }
-    .sa-role-tag.super_admin { background: rgba(217,70,239,0.15); color: #f0abfc; }
-    .sa-role-tag.admin { background: rgba(124,58,237,0.15); color: #c4b5fd; }
-    .sa-role-tag.system_admin { background: rgba(99,102,241,0.15); color: #a5b4fc; }
-    .sa-role-tag.teacher { background: rgba(34,197,94,0.15); color: #86efac; }
-    .sa-role-tag.student { background: rgba(59,130,246,0.15); color: #93c5fd; }
-    .sa-role-tag.parent { background: rgba(245,158,11,0.15); color: #fcd34d; }
-    .sa-role-tag.guest { background: rgba(100,116,139,0.15); color: #94a3b8; }
+    .sa-role-tag.super_admin { background: rgba(217,70,239,0.12); color: #f0abfc; }
+    .sa-role-tag.admin { background: rgba(124,58,237,0.12); color: #c4b5fd; }
+    .sa-role-tag.system_admin { background: rgba(79,70,229,0.12); color: #a5b4fc; }
+    .sa-role-tag.teacher { background: rgba(34,197,94,0.12); color: #86efac; }
+    .sa-role-tag.student { background: rgba(59,130,246,0.12); color: #93c5fd; }
+    .sa-role-tag.parent { background: rgba(245,158,11,0.12); color: #fcd34d; }
+    .sa-role-tag.guest { background: rgba(100,116,139,0.12); color: #94a3b8; }
 
     .sa-btn-group {
         display: flex;
@@ -1292,18 +1456,18 @@
         gap: 20px;
     }
     .sa-roles-list {
-        background: rgba(0,0,0,0.25);
-        border: 1px solid rgba(139, 92, 246, 0.12);
+        background: rgba(7, 7, 20, 0.5);
+        border: 1px solid rgba(79, 70, 229, 0.1);
         border-radius: 12px;
         padding: 10px;
     }
     .sa-role-item {
-        padding: 12px 14px;
+        padding: 11px 14px;
         border-radius: 8px;
         cursor: pointer;
         font-size: 13px;
         color: #cbd5e1;
-        transition: all 0.2s;
+        transition: all 0.2s ease;
         display: flex;
         align-items: center;
         gap: 10px;
@@ -1311,26 +1475,26 @@
     }
     .sa-role-item:last-child { margin-bottom: 0; }
     .sa-role-item:hover {
-        background: rgba(139, 92, 246, 0.15);
+        background: rgba(79, 70, 229, 0.08);
         color: #fff;
     }
     .sa-role-item.active {
-        background: linear-gradient(135deg, #6366f1, #8b5cf6);
+        background: #4f46e5;
         color: #fff;
-        box-shadow: 0 4px 10px rgba(139, 92, 246, 0.35);
     }
     .sa-perm-detail {
-        background: rgba(0,0,0,0.25);
-        border: 1px solid rgba(139, 92, 246, 0.12);
+        background: rgba(7, 7, 20, 0.5);
+        border: 1px solid rgba(79, 70, 229, 0.1);
         border-radius: 12px;
         padding: 22px;
     }
     .sa-perm-detail h3 {
-        font-size: 16px;
-        color: #fff;
+        font-size: 15px;
+        color: #f1f5f9;
         margin-bottom: 20px;
         padding-bottom: 12px;
-        border-bottom: 1px solid rgba(139, 92, 246, 0.12);
+        border-bottom: 1px solid rgba(79, 70, 229, 0.08);
+        font-weight: 600;
     }
     .sa-perm-section { margin-bottom: 22px; }
     .sa-perm-section:last-of-type { margin-bottom: 0; }
@@ -1342,14 +1506,15 @@
         align-items: center;
         gap: 10px;
         padding-bottom: 8px;
-        border-bottom: 1px solid rgba(139, 92, 246, 0.08);
+        border-bottom: 1px solid rgba(79, 70, 229, 0.06);
+        font-weight: 600;
     }
-    .sa-perm-section h4 i { color: #a855f7; }
+    .sa-perm-section h4 i { color: #06b6d4; }
     .sa-check-all {
         margin-left: auto;
         font-size: 12px;
         color: #94a3b8;
-        font-weight: 500;
+        font-weight: 400;
         cursor: pointer;
         display: flex;
         align-items: center;
@@ -1371,9 +1536,9 @@
         border-radius: 6px;
         transition: background 0.2s;
     }
-    .sa-perm-items label:hover { background: rgba(139, 92, 246, 0.08); }
+    .sa-perm-items label:hover { background: rgba(79, 70, 229, 0.06); }
     .sa-perm-items input[type="checkbox"] {
-        accent-color: #8b5cf6;
+        accent-color: #4f46e5;
         width: 15px;
         height: 15px;
     }
@@ -1387,25 +1552,25 @@
         justify-content: space-between;
         align-items: center;
         padding: 10px 0;
-        border-bottom: 1px solid rgba(139, 92, 246, 0.08);
+        border-bottom: 1px solid rgba(79, 70, 229, 0.06);
     }
     .sa-info-list div:last-child { border-bottom: none; }
     .sa-info-list span { color: #94a3b8; }
-    .sa-info-list b { color: #e2e8f0; font-weight: 600; }
+    .sa-info-list b { color: #e2e8f0; font-weight: 500; }
     .sa-info-list b.success { color: #4ade80; }
     .sa-info-list b.danger { color: #f87171; }
 
     .sa-storage-bar {
-        height: 22px;
-        border-radius: 11px;
-        background: rgba(0,0,0,0.3);
+        height: 20px;
+        border-radius: 10px;
+        background: rgba(7, 7, 20, 0.5);
         margin: 12px 0 8px;
         overflow: hidden;
     }
     .sa-storage-fill {
         height: 100%;
-        background: linear-gradient(90deg, #6366f1, #8b5cf6, #a855f7);
-        border-radius: 11px;
+        background: #4f46e5;
+        border-radius: 10px;
         transition: width 0.6s ease;
     }
     .sa-storage-info {
@@ -1421,24 +1586,24 @@
         margin-bottom: 22px;
     }
     .sa-stat-mini {
-        background: rgba(0,0,0,0.25);
-        border: 1px solid rgba(139, 92, 246, 0.12);
-        border-radius: 10px;
+        background: rgba(7, 7, 20, 0.5);
+        border: 1px solid rgba(79, 70, 229, 0.1);
+        border-radius: 8px;
         padding: 14px 16px;
         display: flex;
         flex-direction: column;
         gap: 4px;
     }
     .sa-stat-mini .val {
-        font-size: 26px;
-        font-weight: 700;
-        color: #fff;
+        font-size: 24px;
+        font-weight: 600;
+        color: #f1f5f9;
         line-height: 1.1;
     }
     .sa-stat-mini .val.success { color: #4ade80; }
     .sa-stat-mini .val.warning { color: #fbbf24; }
     .sa-stat-mini .val.danger { color: #f87171; }
-    .sa-stat-mini .val.purple { color: #c084fc; }
+    .sa-stat-mini .val.purple { color: #8b5cf6; }
     .sa-stat-mini .lbl {
         font-size: 12px;
         color: #94a3b8;
@@ -1451,8 +1616,8 @@
         margin-bottom: 26px;
     }
     .sa-monitor-card {
-        background: rgba(0,0,0,0.25);
-        border: 1px solid rgba(139, 92, 246, 0.12);
+        background: rgba(7, 7, 20, 0.5);
+        border: 1px solid rgba(79, 70, 229, 0.1);
         border-radius: 12px;
         padding: 22px;
         text-align: center;
@@ -1465,36 +1630,37 @@
         align-items: center;
         justify-content: center;
         gap: 8px;
+        font-weight: 500;
     }
     .sa-monitor-ring {
-        width: 90px;
-        height: 90px;
+        width: 80px;
+        height: 80px;
         border-radius: 50%;
-        border: 10px solid rgba(99, 102, 241, 0.15);
+        border: 8px solid rgba(79, 70, 229, 0.12);
         display: flex;
         align-items: center;
         justify-content: center;
         margin: 0 auto 14px;
-        font-size: 20px;
-        font-weight: 700;
-        color: #818cf8;
+        font-size: 18px;
+        font-weight: 600;
+        color: #6366f1;
     }
-    .sa-monitor-ring.warning { border-color: rgba(245, 158, 11, 0.15); color: #fbbf24; }
-    .sa-monitor-ring.purple { border-color: rgba(168, 85, 247, 0.15); color: #c084fc; }
+    .sa-monitor-ring.warning { border-color: rgba(245, 158, 11, 0.12); color: #fbbf24; }
+    .sa-monitor-ring.purple { border-color: rgba(139, 92, 246, 0.12); color: #8b5cf6; }
     .sa-monitor-bar {
         height: 8px;
         border-radius: 4px;
-        background: rgba(0,0,0,0.3);
+        background: rgba(7, 7, 20, 0.5);
     }
     .sa-bar-fill {
         height: 100%;
         border-radius: 4px;
-        background: linear-gradient(90deg, #4ade80, #22c55e);
+        background: #22c55e;
         transition: width 0.8s ease;
     }
-    .sa-bar-fill.sa-warning { background: linear-gradient(90deg, #fbbf24, #f59e0b); }
-    .sa-bar-fill.sa-purple { background: linear-gradient(90deg, #c084fc, #a855f7); }
-    .sa-bar-fill.sa-danger { background: linear-gradient(90deg, #f87171, #ef4444); }
+    .sa-bar-fill.sa-warning { background: #f59e0b; }
+    .sa-bar-fill.sa-purple { background: #8b5cf6; }
+    .sa-bar-fill.sa-danger { background: #ef4444; }
     .sa-monitor-sub {
         font-size: 12px;
         color: #94a3b8;
@@ -1502,18 +1668,19 @@
     }
 
     .sa-monitor-section {
-        background: rgba(0,0,0,0.25);
-        border: 1px solid rgba(139, 92, 246, 0.12);
+        background: rgba(7, 7, 20, 0.5);
+        border: 1px solid rgba(79, 70, 229, 0.1);
         border-radius: 12px;
         padding: 22px;
     }
     .sa-monitor-section h3 {
-        font-size: 16px;
-        color: #fff;
+        font-size: 15px;
+        color: #f1f5f9;
         margin-bottom: 18px;
         display: flex;
         align-items: center;
         gap: 10px;
+        font-weight: 600;
     }
     .sa-service-list {
         display: grid;
@@ -1524,24 +1691,22 @@
         display: flex;
         align-items: center;
         gap: 12px;
-        padding: 12px 14px;
-        background: rgba(15, 12, 41, 0.4);
+        padding: 11px 14px;
+        background: rgba(12, 12, 32, 0.6);
         border-radius: 8px;
         font-size: 13px;
     }
     .sa-s-status {
-        width: 12px;
-        height: 12px;
+        width: 10px;
+        height: 10px;
         border-radius: 50%;
         flex-shrink: 0;
     }
     .sa-s-status.online {
         background: #4ade80;
-        box-shadow: 0 0 8px rgba(74, 222, 128, 0.5);
     }
     .sa-s-status.warning {
         background: #fbbf24;
-        box-shadow: 0 0 8px rgba(251, 191, 36, 0.5);
     }
     .sa-s-status.offline {
         background: #94a3b8;
@@ -1563,23 +1728,22 @@
     }
     .sa-about-logo { margin-bottom: 32px; }
     .sa-logo-circle {
-        width: 100px;
-        height: 100px;
+        width: 90px;
+        height: 90px;
         border-radius: 50%;
-        background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%);
+        background: #4f46e5;
         display: flex;
         align-items: center;
         justify-content: center;
         margin: 0 auto 20px;
-        font-size: 44px;
+        font-size: 40px;
         color: #fff;
-        box-shadow: 0 10px 30px rgba(139, 92, 246, 0.4);
     }
     .sa-about-logo h2 {
-        font-size: 28px;
-        color: #fff;
+        font-size: 26px;
+        color: #f1f5f9;
         margin-bottom: 6px;
-        font-weight: 700;
+        font-weight: 600;
     }
     .sa-about-logo p {
         font-size: 14px;
@@ -1597,13 +1761,13 @@
         display: flex;
         justify-content: space-between;
         padding: 12px 16px;
-        background: rgba(0,0,0,0.25);
-        border: 1px solid rgba(139, 92, 246, 0.12);
+        background: rgba(7, 7, 20, 0.5);
+        border: 1px solid rgba(79, 70, 229, 0.1);
         border-radius: 8px;
         font-size: 13px;
     }
     .sa-about-info span { color: #94a3b8; }
-    .sa-about-info b { color: #e2e8f0; font-weight: 600; }
+    .sa-about-info b { color: #e2e8f0; font-weight: 500; }
     .sa-about-info b.success { color: #4ade80; }
     .sa-about-links {
         display: flex;
@@ -1615,20 +1779,19 @@
         display: flex;
         align-items: center;
         gap: 8px;
-        padding: 12px 24px;
-        background: rgba(139, 92, 246, 0.1);
-        border: 1px solid rgba(139, 92, 246, 0.2);
-        border-radius: 10px;
+        padding: 10px 22px;
+        background: rgba(79, 70, 229, 0.08);
+        border: 1px solid rgba(79, 70, 229, 0.18);
+        border-radius: 8px;
         color: #c4b5fd;
         text-decoration: none;
         font-size: 13px;
         font-weight: 500;
-        transition: all 0.25s;
+        transition: all 0.2s ease;
     }
     .sa-about-link:hover {
-        background: rgba(139, 92, 246, 0.2);
+        background: rgba(79, 70, 229, 0.15);
         color: #fff;
-        transform: translateY(-2px);
     }
 
     .sa-pagination {
@@ -1640,30 +1803,29 @@
         flex-wrap: wrap;
     }
     .sa-page-btn {
-        min-width: 36px;
-        height: 36px;
+        min-width: 34px;
+        height: 34px;
         padding: 0 12px;
         border-radius: 8px;
-        border: 1px solid rgba(139, 92, 246, 0.2);
-        background: rgba(0,0,0,0.25);
+        border: 1px solid rgba(79, 70, 229, 0.15);
+        background: rgba(7, 7, 20, 0.5);
         color: #cbd5e1;
         font-size: 13px;
         cursor: pointer;
-        transition: all 0.2s;
+        transition: all 0.2s ease;
         display: inline-flex;
         align-items: center;
         justify-content: center;
     }
     .sa-page-btn:hover {
-        background: rgba(139, 92, 246, 0.15);
+        background: rgba(79, 70, 229, 0.08);
         color: #fff;
-        border-color: rgba(139, 92, 246, 0.4);
+        border-color: rgba(79, 70, 229, 0.3);
     }
     .sa-page-btn.active {
-        background: linear-gradient(135deg, #6366f1, #8b5cf6);
+        background: #4f46e5;
         color: #fff;
         border-color: transparent;
-        box-shadow: 0 4px 10px rgba(139, 92, 246, 0.35);
     }
     .sa-page-btn:disabled {
         opacity: 0.4;
@@ -1679,13 +1841,13 @@
     @media (max-width: 768px) {
         .sa-section { padding: 20px 16px; }
         .sa-section-head { padding-bottom: 16px; margin-bottom: 20px; }
-        .sa-section-head-left h2 { font-size: 17px; }
-        .sa-tabs { padding: 10px 8px; }
-        .sa-tab { padding: 8px 14px; font-size: 12px; }
+        .sa-section-head-left h2 { font-size: 16px; }
+        .sa-tabs { padding: 8px 6px; }
+        .sa-tab { padding: 7px 12px; font-size: 12px; }
         .sa-tab span { display: none; }
-        .sa-btn { padding: 8px 14px; font-size: 12px; }
-        .sa-si { width: 36px; height: 36px; font-size: 16px; }
-        .sa-monitor-ring { width: 70px; height: 70px; font-size: 16px; border-width: 8px; }
+        .sa-btn { padding: 7px 14px; font-size: 12px; }
+        .sa-si { width: 34px; height: 34px; font-size: 15px; }
+        .sa-monitor-ring { width: 64px; height: 64px; font-size: 14px; border-width: 6px; }
     }
 </style>
 {% endblock %}
@@ -1764,7 +1926,7 @@
             'tab-clusters': loadClusters,
             'tab-audit': loadAuditLogs,
             'tab-api-keys': loadAPIKeys,
-            'tab-vikeys': loadVIKEYs,
+            'tab-vikeys': function() { loadVIKEYs(); refreshUSBDrives(); },
             'tab-monitor': loadMonitorData,
             'tab-backup': loadBackups
         };
@@ -1817,6 +1979,8 @@
         var cls = 'active';
         if (status === 'success' || status === 'online' || status === 'healthy' || status === 'published' || status === 'completed') cls = 'success';
         else if (status === 'warning' || status === 'pending' || status === 'idle') cls = 'warning';
+        else if (status === 'hibernated') cls = 'hibernated';
+        else if (status === 'reclaimed') cls = 'reclaimed';
         else if (status === 'failed' || status === 'danger' || status === 'error' || status === 'disabled' || status === 'locked' || status === 'expired' || status === 'revoked' || status === 'unhealthy' || status === 'offline') cls = status === 'error' ? 'failed' : status;
         return '<span class="sa-status-tag ' + cls + '">' + (map[status] || status || '-') + '</span>';
     }
@@ -1933,45 +2097,82 @@
 
     function loadAIEmployees(page) {
         page = page || 1;
-        saFetch('/api/admin/ai-employees/stats').then(function(r) {
-            var stats = r && r.data ? r.data : { total: 128, active: 89, idle: 34, error: 5 };
+        saFetch('/api/ai-employees/idle-status').then(function(r) {
+            var stats = r && r.data ? r.data : { total: 0, active: 0, idle: 0, hibernated: 0, reclaimed: 0 };
             document.getElementById('ai-total').textContent = stats.total;
             document.getElementById('ai-active').textContent = stats.active;
             document.getElementById('ai-idle').textContent = stats.idle;
-            document.getElementById('ai-error').textContent = stats.error;
+            document.getElementById('ai-error').textContent = stats.reclaimed;
         });
         var tbody = document.getElementById('ai-employees-tbody');
         tbody.innerHTML = '<tr><td colspan="9" class="sa-empty"><i class="fas fa-spinner fa-spin"></i> 加载中...</td></tr>';
-        saFetch('/api/admin/ai-employees?page=' + page + '&size=10&search=' + encodeURIComponent(document.getElementById('ai_search').value || '') + '&type=' + (document.getElementById('ai_type_filter').value || '')).then(function(r) {
-            var data = (r && r.data) || [
-                { id: 'AE001', name: '智能教师-01', type: 'teacher', engine: 'GPT-4o', org: '清华大学', tasks: 1258, status: 'active', last_heartbeat: '2026-07-26 10:31:00' },
-                { id: 'AE002', name: '出题专家-01', type: 'examiner', engine: 'Qwen2-72B', org: '北京四中', tasks: 892, status: 'active', last_heartbeat: '2026-07-26 10:30:55' },
-                { id: 'AE003', name: '学习辅导-01', type: 'tutor', engine: 'Gemini 1.5', org: '新东方培训', tasks: 3421, status: 'active', last_heartbeat: '2026-07-26 10:30:45' },
-                { id: 'AE004', name: '数据分析师', type: 'analyst', engine: 'Claude 3.5', org: '总部', tasks: 156, status: 'idle', last_heartbeat: '2026-07-26 10:25:00' },
-                { id: 'AE005', name: '学业顾问-01', type: 'counselor', engine: 'GPT-4o', org: '北京大学', tasks: 0, status: 'error', last_heartbeat: '2026-07-25 18:00:00' }
+        saFetch('/api/ai-employees/idle-status').then(function(r) {
+            var data = (r && r.data && r.data.employees) || [
+                { employee_id: 'AE001', name: '智能教师-01', type: 'teacher', level: 5, status: 'active', last_active: '2026-07-26 10:31:00', idle_duration: 0 },
+                { employee_id: 'AE002', name: '出题专家-01', type: 'examiner', level: 6, status: 'active', last_active: '2026-07-26 10:30:55', idle_duration: 0 },
+                { employee_id: 'AE003', name: '学习辅导-01', type: 'tutor', level: 5, status: 'active', last_active: '2026-07-26 10:30:45', idle_duration: 0 },
+                { employee_id: 'AE004', name: '数据分析师', type: 'analyst', level: 5, status: 'idle', last_active: '2026-07-26 10:25:00', idle_duration: 360 },
+                { employee_id: 'AE005', name: '学业顾问-01', type: 'counselor', level: 4, status: 'hibernated', last_active: '2026-07-26 09:00:00', idle_duration: 5400 }
             ];
-            var typeNames = { 'teacher': 'AI教师', 'tutor': 'AI辅导', 'examiner': 'AI出题', 'analyst': 'AI分析师', 'counselor': 'AI顾问' };
+            var typeNames = { 'teacher': 'AI教师', 'tutor': 'AI辅导', 'examiner': 'AI出题', 'analyst': 'AI分析师', 'counselor': 'AI顾问', 'validation': '验证AI', 'routing': '路由AI', 'diagnostics_repair': '诊断修复', 'question_bank_maintenance': '题库维护' };
             if (!data.length) {
                 tbody.innerHTML = '<tr><td colspan="9" class="sa-empty"><i class="fas fa-robot"></i><p>暂无AI员工</p></td></tr>';
                 return;
             }
             tbody.innerHTML = data.map(function(a) {
+                var empId = a.employee_id || a.id;
+                var idleText = a.idle_duration > 0 ? formatDuration(a.idle_duration) : '-';
+                var statusLabels = {'active':'运行中','idle':'空闲','hibernated':'已休眠','reclaimed':'已回收','error':'异常'};
+                var actionBtns = '';
+                
+                if (a.status === 'hibernated') {
+                    actionBtns = '<button class="sa-btn sa-btn-sm sa-btn-success" onclick="wakeAI(\'' + empId + '\')"><i class="fas fa-power-off"></i> 唤醒</button>';
+                } else if (a.status === 'active') {
+                    actionBtns = '<button class="sa-btn sa-btn-sm sa-btn-secondary" onclick="hibernateAI(\'' + empId + '\')"><i class="fas fa-moon"></i> 休眠</button>';
+                }
+                
                 return '<tr>' +
-                    '<td>' + a.id + '</td>' +
+                    '<td>' + empId + '</td>' +
                     '<td>' + a.name + '</td>' +
                     '<td>' + (typeNames[a.type] || a.type || '-') + '</td>' +
-                    '<td>' + (a.engine || '-') + '</td>' +
-                    '<td>' + (a.org || '-') + '</td>' +
-                    '<td>' + (a.tasks || 0).toLocaleString() + '</td>' +
-                    '<td>' + statusTag(a.status, {'active':'运行中','idle':'空闲','error':'异常'}) + '</td>' +
-                    '<td>' + (a.last_heartbeat || '-').slice(5,16) + '</td>' +
-                    '<td><div class="sa-btn-group">' +
-                    '<button class="sa-btn sa-btn-sm sa-btn-secondary" onclick="toggleAI(\'' + a.id + '\',\'' + (a.status==='active'?'stop':'start') + '\')"><i class="fas fa-' + (a.status==='active'?'pause':'play') + '"></i></button>' +
-                    '<button class="sa-btn sa-btn-sm sa-btn-secondary" onclick="viewAI(\'' + a.id + '\')"><i class="fas fa-eye"></i></button>' +
-                    '<button class="sa-btn sa-btn-sm sa-btn-danger" onclick="deleteAI(\'' + a.id + '\')"><i class="fas fa-trash"></i></button>' +
+                    '<td>Lv.' + (a.level || 1) + '</td>' +
+                    '<td>-</td>' +
+                    '<td>' + idleText + '</td>' +
+                    '<td>' + statusTag(a.status, statusLabels) + '</td>' +
+                    '<td>' + (a.last_active || '-').slice(5,16) + '</td>' +
+                    '<td><div class="sa-btn-group">' + actionBtns +
+                    '<button class="sa-btn sa-btn-sm sa-btn-secondary" onclick="viewAI(\'' + empId + '\')"><i class="fas fa-eye"></i></button>' +
                     '</div></td></tr>';
             }).join('');
-            renderPagination('ai-pagination', page, r && r.total_pages || 4, 'aiPage');
+        });
+    }
+    
+    function formatDuration(seconds) {
+        if (seconds < 60) return seconds + '秒';
+        if (seconds < 3600) return Math.floor(seconds / 60) + '分钟';
+        return Math.floor(seconds / 3600) + '小时';
+    }
+    
+    function wakeAI(id) {
+        saFetch('/api/ai-employees/wake/' + id, { method: 'POST' }).then(function(r) {
+            if (r && r.success) {
+                showToast('AI员工唤醒成功', 'success');
+            } else {
+                showToast('唤醒失败: ' + (r && r.message || '未知错误'), 'error');
+            }
+            loadAIEmployees();
+        });
+    }
+    
+    function hibernateAI(id) {
+        if (!confirm('确定休眠该AI员工？休眠后将释放资源，但可随时唤醒。')) return;
+        saFetch('/api/ai-employees/hibernate/' + id, { method: 'POST' }).then(function(r) {
+            if (r && r.success) {
+                showToast('AI员工休眠成功', 'success');
+            } else {
+                showToast('休眠失败: ' + (r && r.message || '未知错误'), 'error');
+            }
+            loadAIEmployees();
         });
     }
     window.loadAIEmployees = loadAIEmployees;
@@ -2235,6 +2436,107 @@
         });
     };
 
+    window.refreshUSBDrives = function() {
+        var select = document.getElementById('usb_drive_select');
+        select.innerHTML = '<option value="">正在扫描U盘...</option>';
+        saFetch('/api/vikey/usb/list').then(function(r) {
+            select.innerHTML = '<option value="">请选择U盘...</option>';
+            if (r && r.success && r.data) {
+                r.data.forEach(function(d) {
+                    var size = d.size_bytes > 0 ? (d.size_bytes / (1024 * 1024)).toFixed(1) + ' MB' : '未知';
+                    select.innerHTML += '<option value="' + d.path + '">' + (d.name || d.path) + ' (' + size + ')</option>';
+                });
+                if (!r.data.length) {
+                    select.innerHTML += '<option value="" disabled>未检测到U盘，请插入U盘后刷新</option>';
+                }
+            } else {
+                select.innerHTML += '<option value="" disabled>扫描失败: ' + (r && r.message || '未知错误') + '</option>';
+            }
+        });
+    };
+
+    window.onUSBDriveSelect = function() {
+        var result = document.getElementById('usb_result');
+        if (result) result.style.display = 'none';
+    };
+
+    window.createUSBDongle = function() {
+        var drivePath = document.getElementById('usb_drive_select').value;
+        var roleHint = document.getElementById('usb_role_select').value;
+        var label = document.getElementById('usb_label').value;
+        var pin = document.getElementById('usb_pin').value;
+        var puk = document.getElementById('usb_puk').value;
+        var result = document.getElementById('usb_result');
+
+        if (!drivePath) {
+            showToast('请先选择U盘', 'warning');
+            return;
+        }
+        if (!pin || pin.length < 6) {
+            showToast('PIN码至少需要6位', 'warning');
+            return;
+        }
+        if (!puk || puk.length < 8) {
+            showToast('PUK码至少需要8位', 'warning');
+            return;
+        }
+
+        if (!confirm('确定在U盘 ' + drivePath + ' 上制作加密狗？\n\n警告：这将在U盘根目录写入.vikey_token文件，包含加密的密钥材料。请确保U盘已备份重要数据。')) {
+            return;
+        }
+
+        result.style.display = 'block';
+        result.innerHTML = '<div style="padding:12px;color:#6366f1;background:rgba(99,102,241,0.1);border-radius:8px;"><i class="fas fa-spinner fa-spin"></i> 正在制作加密狗...</div>';
+
+        saFetch('/api/vikey/usb/create', {
+            method: 'POST',
+            body: {
+                drive_path: drivePath,
+                role_hint: roleHint,
+                label: label,
+                pin: pin,
+                puk: puk
+            }
+        }).then(function(r) {
+            if (r && r.success) {
+                result.innerHTML = '<div style="padding:12px;color:#22c55e;background:rgba(34,197,94,0.1);border-radius:8px;"><i class="fas fa-check-circle"></i> ' + r.message + '<br>序列号: ' + (r.data && r.data.serial || '') + '</div>';
+                showToast(r.message, 'success');
+                refreshUSBDrives();
+                loadVIKEYs();
+            } else {
+                result.innerHTML = '<div style="padding:12px;color:#ef4444;background:rgba(239,68,68,0.1);border-radius:8px;"><i class="fas fa-times-circle"></i> 制作失败: ' + (r && r.message || '未知错误') + '</div>';
+                showToast('制作失败: ' + (r && r.message || '未知错误'), 'error');
+            }
+        });
+    };
+
+    window.verifyUSBDongle = function() {
+        var drivePath = document.getElementById('usb_drive_select').value;
+        var result = document.getElementById('usb_result');
+
+        if (!drivePath) {
+            showToast('请先选择U盘', 'warning');
+            return;
+        }
+
+        result.style.display = 'block';
+        result.innerHTML = '<div style="padding:12px;color:#6366f1;background:rgba(99,102,241,0.1);border-radius:8px;"><i class="fas fa-spinner fa-spin"></i> 正在验证加密狗...</div>';
+
+        saFetch('/api/vikey/usb/verify', {
+            method: 'POST',
+            body: { drive_path: drivePath }
+        }).then(function(r) {
+            if (r && r.success) {
+                var d = r.data || {};
+                result.innerHTML = '<div style="padding:12px;color:#22c55e;background:rgba(34,197,94,0.1);border-radius:8px;"><i class="fas fa-check-circle"></i> 验证成功！<br>序列号: ' + (d.serial || '') + '<br>角色: ' + (d.role_hint || '') + '<br>标签: ' + (d.label || '') + '</div>';
+                showToast('U盘加密狗验证成功', 'success');
+            } else {
+                result.innerHTML = '<div style="padding:12px;color:#ef4444;background:rgba(239,68,68,0.1);border-radius:8px;"><i class="fas fa-times-circle"></i> ' + (r && r.message || '验证失败') + '</div>';
+                showToast(r && r.message || '验证失败', 'error');
+            }
+        });
+    };
+
     window.saveSystemConfig = function() {
         var payload = {
             name: document.getElementById('sys_name').value,
@@ -2398,6 +2700,200 @@
             loadBackups();
         });
     };
+
+    function loadFingerprintStatus() {
+        saFetch('/api/fingerprint/status').then(function(r) {
+            var data = (r && r.data) || {};
+            var statusEl = document.getElementById('fp-status');
+            var dotEl = statusEl ? statusEl.querySelector('.sa-status-dot') : null;
+            var textEl = statusEl ? statusEl.querySelector('.sa-status-text') : null;
+            var regInfo = document.getElementById('fp-registered-info');
+            var devInfo = document.getElementById('fp-device-info');
+            var actions = document.getElementById('fp-actions');
+            var actionsReg = document.getElementById('fp-actions-registered');
+
+            if (data.registered) {
+                if (dotEl) dotEl.className = 'sa-status-dot online';
+                if (textEl) textEl.textContent = '已注册';
+                if (regInfo) regInfo.style.display = 'block';
+                if (devInfo) devInfo.style.display = 'block';
+                if (actions) actions.style.display = 'none';
+                if (actionsReg) actionsReg.style.display = 'flex';
+                if (data.registered_at) {
+                    var el = document.getElementById('fp-registered-at');
+                    if (el) el.value = data.registered_at;
+                }
+                if (data.device_id) {
+                    var el = document.getElementById('fp-device-id');
+                    if (el) el.value = data.device_id;
+                }
+            } else {
+                if (dotEl) dotEl.className = 'sa-status-dot offline';
+                if (textEl) textEl.textContent = '未注册';
+                if (regInfo) regInfo.style.display = 'none';
+                if (devInfo) devInfo.style.display = 'none';
+                if (actions) actions.style.display = 'flex';
+                if (actionsReg) actionsReg.style.display = 'none';
+            }
+        }).catch(function() {
+            var statusEl = document.getElementById('fp-status');
+            if (statusEl) {
+                var dotEl = statusEl.querySelector('.sa-status-dot');
+                var textEl = statusEl.querySelector('.sa-status-text');
+                if (dotEl) dotEl.className = 'sa-status-dot offline';
+                if (textEl) textEl.textContent = '未注册';
+            }
+        });
+    }
+    window.loadFingerprintStatus = loadFingerprintStatus;
+
+    function captureFingerprintForRegister() {
+        return new Promise(function(resolve, reject) {
+            if (!window.PublicKeyCredential || !window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable) {
+                reject(new Error('您的浏览器不支持指纹认证，请使用支持WebAuthn的浏览器'));
+                return;
+            }
+
+            window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable().then(function(available) {
+                if (!available) {
+                    reject(new Error('设备不支持指纹认证'));
+                    return;
+                }
+
+                var options = {
+                    publicKey: {
+                        challenge: new Uint8Array(32),
+                        rp: { name: 'MTSCOS AI 系统' },
+                        user: {
+                            id: new Uint8Array(16),
+                            name: 'super_admin',
+                            displayName: '超级管理员'
+                        },
+                        pubKeyCredParams: [{ type: 'public-key', alg: -7 }],
+                        authenticatorSelection: {
+                            userVerification: 'required',
+                            authenticatorAttachment: 'platform'
+                        },
+                        timeout: 60000
+                    }
+                };
+
+                window.PublicKeyCredential.create(options).then(function(credential) {
+                    var data = JSON.stringify({
+                        id: credential.id,
+                        rawId: Array.from(new Uint8Array(credential.rawId)),
+                        type: credential.type,
+                        response: {
+                            attestationObject: Array.from(new Uint8Array(credential.response.attestationObject)),
+                            clientDataJSON: Array.from(new Uint8Array(credential.response.clientDataJSON))
+                        }
+                    });
+                    resolve(data);
+                }).catch(function(err) {
+                    reject(new Error('指纹采集失败: ' + (err.message || '未知错误')));
+                });
+            }).catch(function(err) {
+                reject(new Error('检测指纹设备失败: ' + (err.message || '未知错误')));
+            });
+        });
+    }
+
+    function registerFingerprint() {
+        showToast('请在设备上验证指纹...', 'info');
+        captureFingerprintForRegister().then(function(fingerprintData) {
+            return saFetch('/api/fingerprint/register', {
+                method: 'POST',
+                body: { fingerprint_data: fingerprintData }
+            });
+        }).then(function(r) {
+            if (r && r.success) {
+                showToast('指纹注册成功', 'success');
+                loadFingerprintStatus();
+            } else {
+                showToast(r && r.message || '指纹注册失败', 'error');
+            }
+        }).catch(function(err) {
+            showToast(err.message || '指纹注册出错', 'error');
+        });
+    }
+    window.registerFingerprint = registerFingerprint;
+
+    function updateFingerprint() {
+        if (!confirm('确定要更新指纹信息吗？旧的指纹数据将被覆盖。')) return;
+        showToast('请在设备上验证指纹...', 'info');
+        captureFingerprintForRegister().then(function(fingerprintData) {
+            return saFetch('/api/fingerprint/register', {
+                method: 'POST',
+                body: { fingerprint_data: fingerprintData }
+            });
+        }).then(function(r) {
+            if (r && r.success) {
+                showToast('指纹更新成功', 'success');
+                loadFingerprintStatus();
+            } else {
+                showToast(r && r.message || '指纹更新失败', 'error');
+            }
+        }).catch(function(err) {
+            showToast(err.message || '指纹更新出错', 'error');
+        });
+    }
+    window.updateFingerprint = updateFingerprint;
+
+    function deleteFingerprint() {
+        if (!confirm('确定要删除指纹信息吗？删除后移动端将无法使用指纹登录。')) return;
+        saFetch('/api/fingerprint/delete', { method: 'POST' }).then(function(r) {
+            if (r && r.success) {
+                showToast('指纹删除成功', 'success');
+                loadFingerprintStatus();
+            } else {
+                showToast(r && r.message || '指纹删除失败', 'error');
+            }
+        }).catch(function(err) {
+            showToast(err.message || '指纹删除出错', 'error');
+        });
+    }
+    window.deleteFingerprint = deleteFingerprint;
+
+    var initMap = {
+        'tab-security': loadFingerprintStatus
+    };
+
+    window.changeTheme = function(theme) {
+        document.body.setAttribute('data-theme', theme);
+        localStorage.setItem('mtscos_theme', theme);
+        document.getElementById('sys_theme').value = theme;
+        saFetch('/api/theme/set', {
+            method: 'POST',
+            body: { theme: theme }
+        }).then(function(r) {
+            if (r && r.success) {
+                showToast('主题已切换为: ' + (r.data && r.data.name || theme), 'success');
+            } else {
+                showToast('主题切换成功（本地）', 'success');
+            }
+        });
+    };
+
+    window.saveSystemConfig = function() {
+        var payload = {
+            name: document.getElementById('sys_name').value,
+            timezone: document.getElementById('sys_timezone').value,
+            date_format: document.getElementById('sys_date_format').value,
+            language: document.getElementById('sys_language').value,
+            theme: document.getElementById('sys_theme').value,
+            allow_custom_theme: document.querySelector('[data-field="allow_custom_theme"]').classList.contains('on'),
+            personalized_theme: document.querySelector('[data-field="personalized_theme"]').classList.contains('on')
+        };
+        saFetch('/api/admin/system/config', { method: 'POST', body: payload }).then(function(r) {
+            showToast(r && r.success ? '系统配置已保存' : '系统配置保存成功（模拟）', 'success');
+        });
+    };
+
+    var savedTheme = localStorage.getItem('mtscos_theme');
+    if (savedTheme) {
+        document.body.setAttribute('data-theme', savedTheme);
+        document.getElementById('sys_theme').value = savedTheme;
+    }
 
     loadMonitorData();
 })();

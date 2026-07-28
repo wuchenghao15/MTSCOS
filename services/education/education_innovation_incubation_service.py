@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 教育创新孵化服务 (v15.13.0) ==================================== 提供教育创新项目孵化、教育科技、教育创业、创新大赛、孵化器管理、 导师指导、投融资对接、知识产权转化等综合管理服务。  核心能力： 1. 创新项目 - 项目申报、评审、立项、管理 2. 孵化管理 - 场地管理、入驻管理、孵化记录 3. 导师指导 - 导师管理、配对、指导记录 4. 创新大赛 - 赛事组织、报名、评审、颁奖 5. 投融资对接 - 投资机构、融资轮次、投资交易 6. 知识产权 - 专利申请、商标注册、成果转化 7. 项目加速 - 加速计划、资源对接、路演安排 8. 毕业管理 - 毕业评估、成果验收、校友跟踪 9. 奖励激励 - 奖励政策、评审发放、绩效评估 10. 统计分析 - 孵化成效、投资回报、创新指数  差异化支持： - 成人教育：职业技能创新、企业培训、终身学习 - K12教育：素质教育、创客教育、学科创新 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

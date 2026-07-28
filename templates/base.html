@@ -8,39 +8,130 @@
     <meta name="keywords" content="AI, education, exam system">
     <title>{% block title %}MTSCOS AI{% endblock %}</title>
     <link rel="stylesheet" href="/assets/css/mtscos-design-system.css">
-    <link rel="stylesheet" href="/assets/font-awesome/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="/assets/tailwind.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
     {% if csrf_token %}
     <meta name="csrf-token" content="{{ csrf_token() }}">
     {% endif %}
     {% block head %}{% endblock %}
     <style>
+        /* ========== DESIGN TOKENS 设计令牌系统 ========== */
         :root {
-            --glass-blur: 20px;
-            --glass-bg: rgba(15, 23, 42, 0.85);
-            --glass-border: rgba(99, 102, 241, 0.2);
-            --glass-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            /* 主色系统 - 深靛蓝 */
+            --accent: var(--theme-primary, #4f46e5);
+            --accent-soft: var(--theme-primary-soft, rgba(79, 70, 229, 0.12));
+            --accent-hover: var(--theme-primary-hover, rgba(79, 70, 229, 0.22));
+            --accent-text: var(--theme-primary-text, #6366f1);
+            --accent-text-bright: var(--theme-primary-text-bright, #818cf8);
+
+            /* 辅色 - 青 */
+            --accent-secondary: var(--theme-secondary, #06b6d4);
+            --accent-secondary-soft: var(--theme-secondary-soft, rgba(6, 182, 212, 0.12));
+            --accent-secondary-text: var(--theme-secondary-text, #0891b2);
+
+            /* 功能色 */
+            --success: var(--theme-success, #22c55e);
+            --success-soft: var(--theme-success-soft, rgba(34, 197, 94, 0.12));
+            --warning: var(--theme-warning, #f59e0b);
+            --warning-soft: var(--theme-warning-soft, rgba(245, 158, 11, 0.12));
+            --danger: var(--theme-danger, #ef4444);
+            --danger-soft: var(--theme-danger-soft, rgba(239, 68, 68, 0.12));
+            --danger-text: var(--theme-danger-text, #f87171);
+
+            /* 间距体系 4/8/12/16/24/32 */
+            --space-1: var(--theme-space-1, 4px);
+            --space-2: var(--theme-space-2, 8px);
+            --space-3: var(--theme-space-3, 12px);
+            --space-4: var(--theme-space-4, 16px);
+            --space-6: var(--theme-space-6, 24px);
+            --space-8: var(--theme-space-8, 32px);
+
+            /* 圆角体系 - 克制 */
+            --radius-sm: var(--theme-radius-sm, 8px);
+            --radius-md: var(--theme-radius-md, 12px);
+            --radius-full: var(--theme-radius-full, 9999px);
+
+            /* 阴影体系 - 柔和无发光 */
+            --shadow-sm: var(--theme-shadow-sm, 0 1px 3px rgba(0, 0, 0, 0.08));
+            --shadow-md: var(--theme-shadow-md, 0 4px 12px rgba(0, 0, 0, 0.1));
+            --shadow-lg: var(--theme-shadow-lg, 0 8px 24px rgba(0, 0, 0, 0.12));
+
+            /* 玻璃拟态 - 适度模糊 12-16px */
+            --glass-blur: var(--theme-glass-blur, 12px);
+            --glass-blur-strong: var(--theme-glass-blur-strong, 16px);
+            --glass-bg: var(--theme-bg-glass, rgba(15, 23, 42, 0.8));
+            --glass-bg-strong: var(--theme-bg-glass-strong, rgba(15, 23, 42, 0.9));
+            --glass-border: var(--theme-border-glass, rgba(255, 255, 255, 0.08));
+            --glass-border-strong: var(--theme-border-glass-strong, rgba(255, 255, 255, 0.12));
+            --glass-shadow: var(--shadow-md);
+
+            /* 文本色 */
+            --text-primary: var(--theme-text-primary, #f8fafc);
+            --text-secondary: var(--theme-text-secondary, #cbd5e1);
+            --text-muted: var(--theme-text-muted, #94a3b8);
+            --text-faint: var(--theme-text-faint, #64748b);
+
+            /* 背景 */
+            --bg-page: var(--theme-bg-page, linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%));
+            --bg-sidebar: var(--theme-bg-sidebar, rgba(15, 23, 42, 0.85));
+            --bg-card: var(--theme-bg-card, rgba(15, 23, 42, 0.7));
+            --bg-card-alt: var(--theme-bg-card-alt, rgba(15, 23, 42, 0.6));
+
+            /* 边框 */
+            --border-subtle: var(--theme-border-subtle, rgba(79, 70, 229, 0.1));
+            --border-strong: var(--theme-border-strong, rgba(79, 70, 229, 0.18));
+
+            /* Logo 渐变 - 收敛 */
+            --logo-accent: var(--theme-logo-gradient, linear-gradient(135deg, #4f46e5, #06b6d4));
+
+            /* 字体 - 系统字体栈 */
+            --font-sans: var(--theme-font-sans, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif);
+            --font-mono: var(--theme-font-mono, "SF Mono", Monaco, Menlo, Consolas, "Courier New", monospace);
+        }
+
+        /* ========== BASE STYLES ========== */
+        * {
+            box-sizing: border-box;
+        }
+        html, body {
+            margin: 0 !important;
+            padding: 0 !important;
+            font-family: var(--font-sans);
         }
         body {
             user-select: none;
             -webkit-user-select: none;
             -moz-user-select: none;
             -ms-user-select: none;
-            background: linear-gradient(135deg, #0a0a1a 0%, #12123a 50%, #0a0a1a 100%);
+            background: var(--bg-page);
             background-attachment: fixed;
             min-height: 100vh;
+            color: var(--text-primary);
+            overflow: hidden;
         }
+        body::before,
+        body.with-global-header::before {
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        body.with-global-header {
+            padding-top: 0;
+            margin: 0;
+        }
+
+        /* ========== GLOBAL HEADER ========== */
         .mtscos-global-header {
-            height: 48px;
+            height: 40px;
             background: var(--glass-bg);
-            backdrop-filter: blur(var(--glass-blur));
-            -webkit-backdrop-filter: blur(var(--glass-blur));
+            backdrop-filter: blur(var(--glass-blur-strong));
+            -webkit-backdrop-filter: blur(var(--glass-blur-strong));
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 0 20px;
+            padding: 0 var(--space-4, 16px);
             border-bottom: 1px solid var(--glass-border);
-            box-shadow: var(--glass-shadow);
+            box-shadow: var(--shadow-sm);
             flex-shrink: 0;
             position: sticky;
             top: 0 !important;
@@ -53,80 +144,307 @@
         .mtscos-header-left {
             display: flex;
             align-items: center;
-            gap: 16px;
+            gap: var(--space-3);
         }
         .mtscos-header-title {
-            color: white;
-            font-size: 15px;
+            color: var(--text-primary);
+            font-size: 13px;
             font-weight: 600;
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: var(--space-1);
         }
         .mtscos-header-title i {
-            color: #6366f1;
+            color: var(--accent);
+            font-size: 12px;
         }
         .mtscos-header-center {
             flex: 1;
             display: flex;
             justify-content: center;
+            align-items: center;
+            gap: var(--space-3);
         }
         .mtscos-system-logo-container {
             display: flex;
             align-items: center;
-            gap: 8px;
-            margin-bottom: 4px;
+            gap: var(--space-1);
         }
         .mtscos-system-logo-img {
-            width: 28px;
-            height: 28px;
+            width: 20px;
+            height: 20px;
             border-radius: 50%;
             object-fit: cover;
             display: none;
         }
         .mtscos-system-logo-text {
-            font-size: 14px;
+            font-size: 12px;
             font-weight: 600;
-            color: #6366f1;
+            color: var(--accent);
         }
         .mtscos-system-time {
-            color: #94a3b8;
-            font-size: 13px;
-            font-family: 'Courier New', monospace;
+            color: var(--text-muted);
+            font-size: 11px;
+            font-family: var(--font-mono);
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 4px;
         }
         .mtscos-system-time i {
-            color: #22c55e;
+            color: var(--success);
+            font-size: 9px;
+        }
+        .mtscos-lunar-calendar {
+            color: var(--accent-text);
+            font-size: 11px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 8px;
+            background: var(--accent-soft);
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border-subtle);
+            white-space: nowrap;
+        }
+        .mtscos-lunar-calendar i {
+            color: var(--warning);
             font-size: 10px;
+        }
+        .mtscos-lunar-calendar.special-day {
+            background: var(--warning-soft);
+            border-color: var(--warning);
+            animation: pulse-glow 2s infinite;
+        }
+        @keyframes pulse-glow {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        .mtscos-vikey-status {
+            position: relative;
+            display: inline-flex; align-items: center; gap: 4px;
+            font-size: 11px;
+            padding: 3px 8px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border-subtle);
+            white-space: nowrap;
+            background: var(--danger-soft);
+            color: var(--danger);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .mtscos-vikey-status:hover {
+            background: rgba(239, 68, 68, 0.15);
+            border-color: rgba(239, 68, 68, 0.35);
+        }
+        .mtscos-vikey-status i {
+            font-size: 10px;
+        }
+        .mtscos-vikey-status.vikey-present {
+            background: var(--success-soft);
+            color: var(--success);
+            border-color: var(--success);
+        }
+        .mtscos-vikey-status.vikey-present:hover {
+            background: rgba(34, 197, 94, 0.18);
+            border-color: rgba(34, 197, 94, 0.4);
+        }
+        .mtscos-vikey-status.vikey-super-admin {
+            background: var(--accent-soft);
+            color: var(--accent-text);
+            border-color: var(--accent);
+            animation: vikey-pulse 3s infinite;
+        }
+        .mtscos-vikey-status.vikey-warning {
+            background: var(--warning-soft);
+            color: var(--warning);
+            border-color: var(--warning);
+        }
+        @keyframes vikey-pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.4); }
+            50% { box-shadow: 0 0 0 4px rgba(99, 102, 241, 0); }
+        }
+        .mtscos-vikey-status .vikey-pulse-dot {
+            width: 5px; height: 5px; border-radius: 50%;
+            background: currentColor;
+            animation: vikey-dot-pulse 2s ease-in-out infinite;
+        }
+        @keyframes vikey-dot-pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(0.8); }
+        }
+        .vikey-tooltip {
+            position: absolute;
+            top: calc(100% + 8px);
+            right: 0;
+            width: 320px;
+            background: rgba(12, 12, 32, 0.98);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: 16px;
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-8px);
+            transition: all 0.2s ease;
+            z-index: 100;
+            backdrop-filter: blur(var(--glass-blur));
+            -webkit-backdrop-filter: blur(var(--glass-blur));
+        }
+        .mtscos-vikey-status:hover .vikey-tooltip,
+        .mtscos-vikey-status:focus-within .vikey-tooltip {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+        .vikey-tooltip-header {
+            display: flex; align-items: center; gap: 8px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border-subtle);
+            margin-bottom: 12px;
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+        .vikey-tooltip-header i { color: var(--accent-text-bright); font-size: 14px; }
+        .vikey-tooltip-content { display: flex; flex-direction: column; gap: 8px; }
+        .vikey-info-row {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 6px 0;
+            font-size: 12px;
+        }
+        .vikey-info-label { color: var(--text-muted); font-weight: 600; }
+        .vikey-info-value { color: var(--text-primary); font-weight: 500; }
+        .vikey-info-value.vikey-success { color: var(--success); }
+        .vikey-info-value.vikey-error { color: var(--danger-text); }
+        .vikey-info-value.vikey-warning { color: var(--warning); }
+        .vikey-tooltip-actions {
+            display: flex; gap: 8px;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid var(--border-subtle);
+        }
+        .vikey-action-btn {
+            flex: 1;
+            padding: 8px 12px;
+            border: none;
+            border-radius: var(--radius-sm);
+            background: var(--accent-soft);
+            color: var(--accent-text-bright);
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            display: flex; align-items: center; justify-content: center; gap: 4px;
+        }
+        .vikey-action-btn:hover {
+            background: var(--accent-hover);
+            color: var(--text-primary);
         }
         .mtscos-header-right {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: var(--space-3);
         }
         .mtscos-user-info {
             display: flex;
             align-items: center;
-            gap: 8px;
-            color: white;
+            gap: var(--space-2);
+            color: var(--text-primary);
             font-size: 13px;
+            padding: 6px var(--space-3);
+            background: var(--accent-soft);
+            backdrop-filter: blur(var(--glass-blur));
+            -webkit-backdrop-filter: blur(var(--glass-blur));
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+        }
+        .mtscos-user-avatar {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: var(--logo-accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            font-weight: 600;
+            color: white;
+            object-fit: cover;
+        }
+
+        /* ========== BUTTONS ========== */
+        .mtscos-logout-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            background: var(--danger-soft);
+            color: var(--danger-text);
+            border: none;
+            border-radius: var(--radius-sm);
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s;
+            font-family: var(--font-sans);
+        }
+        .mtscos-logout-btn:hover {
+            background: rgba(239, 68, 68, 0.22);
+            color: var(--danger);
+        }
+        .mtscos-back-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            background: var(--accent-soft);
+            color: var(--accent-text);
+            border: none;
+            border-radius: var(--radius-sm);
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s;
+            text-decoration: none;
+            font-family: var(--font-sans);
+        }
+        .mtscos-back-btn:hover {
+            background: var(--accent-hover);
+            color: var(--accent-text-bright);
+        }
+        .mtscos-sidebar-toggle {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
             padding: 6px 12px;
-            background: rgba(99, 102, 241, 0.12);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid rgba(99, 102, 241, 0.2);
-            border-radius: 8px;
+            background: var(--accent-soft);
+            color: var(--accent-text);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            font-size: 13px;
+            cursor: pointer;
+            transition: background 0.2s;
+            font-family: var(--font-sans);
         }
-        .mtscos-glass-card {
-            background: rgba(15, 15, 35, 0.75);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(99, 102, 241, 0.15);
-            border-radius: 16px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        .mtscos-sidebar-toggle:hover {
+            background: var(--accent-hover);
         }
+        .mtscos-theme-mourning-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            background: rgba(113, 113, 122, 0.18);
+            color: #a1a1aa;
+            border: 1px solid rgba(113, 113, 122, 0.35);
+            border-radius: var(--radius-full);
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        /* ========== GLASS CARDS - 统一毛玻璃样式 ========== */
+        .mtscos-glass-card,
         .glass-effect,
         .card,
         .panel,
@@ -141,69 +459,16 @@
         .popup-content,
         .list-container,
         .table-container {
-            background: rgba(15, 15, 35, 0.7);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid rgba(99, 102, 241, 0.12);
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+            background: var(--bg-card);
+            backdrop-filter: blur(var(--glass-blur));
+            -webkit-backdrop-filter: blur(var(--glass-blur));
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-md);
+            color: var(--text-primary);
         }
-        .mtscos-user-avatar {
-            width: 28px;
-            height: 28px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #6366f1, #8b5cf6);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 13px;
-            font-weight: 600;
-            color: white;
-            object-fit: cover;
-        }
-        .mtscos-logout-btn {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            padding: 6px 14px;
-            background: rgba(239, 68, 68, 0.15);
-            color: #f87171;
-            border: none;
-            border-radius: 8px;
-            font-size: 13px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        .mtscos-logout-btn:hover {
-            background: rgba(239, 68, 68, 0.25);
-            color: #ef4444;
-        }
-        .mtscos-back-btn {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            padding: 6px 14px;
-            background: rgba(99, 102, 241, 0.15);
-            color: #818cf8;
-            border: none;
-            border-radius: 8px;
-            font-size: 13px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.2s;
-            text-decoration: none;
-        }
-        .mtscos-back-btn:hover {
-            background: rgba(99, 102, 241, 0.25);
-            color: #a5b4fc;
-        }
-        body.with-global-header {
-            padding-top: 0;
-        }
-        body.with-global-header::before,
-        body::before { margin: 0 !important; padding: 0 !important; }
-        html, body { margin: 0 !important; padding: 0 !important; }
+
+        /* ========== LOCK OVERLAY ========== */
         .mtscos-lock-overlay {
             display: none;
             position: fixed;
@@ -211,13 +476,13 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0,0,0,0.75);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(var(--glass-blur));
+            -webkit-backdrop-filter: blur(var(--glass-blur));
             z-index: 9999;
             align-items: center;
             justify-content: center;
-            color: white;
+            color: var(--text-primary);
             font-size: 18px;
         }
         .mtscos-lock-overlay.show {
@@ -225,52 +490,51 @@
         }
         .lock-container {
             text-align: center;
-            background: rgba(15, 15, 35, 0.85);
-            backdrop-filter: blur(24px);
-            -webkit-backdrop-filter: blur(24px);
-            border: 1px solid rgba(99, 102, 241, 0.2);
-            border-radius: 20px;
-            border-radius: 20px;
-            padding: 40px;
+            background: var(--glass-bg-strong);
+            backdrop-filter: blur(var(--glass-blur-strong));
+            -webkit-backdrop-filter: blur(var(--glass-blur-strong));
+            border: 1px solid var(--border-strong);
+            border-radius: var(--radius-md);
+            padding: var(--space-8);
             max-width: 400px;
             width: 90%;
-            box-shadow: 0 0 60px rgba(99, 102, 241, 0.2);
+            box-shadow: var(--shadow-lg);
+            color: var(--text-primary);
         }
         .lock-icon {
-            font-size: 64px;
-            margin-bottom: 20px;
+            font-size: 48px;
+            margin-bottom: var(--space-4);
+            color: var(--accent);
             animation: pulse 2s ease-in-out infinite;
         }
         @keyframes pulse {
             0%, 100% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.1); opacity: 0.8; }
+            50% { transform: scale(1.05); opacity: 0.85; }
         }
         .lock-title {
-            font-size: 24px;
+            font-size: 22px;
             font-weight: 700;
-            margin-bottom: 10px;
-            background: linear-gradient(135deg, #6366f1, #8b5cf6);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            margin-bottom: var(--space-2);
+            color: var(--text-primary);
         }
         .lock-desc {
             font-size: 14px;
-            color: #94a3b8;
-            margin-bottom: 25px;
+            color: var(--text-muted);
+            margin-bottom: var(--space-6);
+            line-height: 1.5;
         }
         .lock-countdown {
-            font-size: 20px;
-            color: #60a5fa;
-            margin-bottom: 20px;
+            font-size: 18px;
+            color: var(--accent-text);
+            margin-bottom: var(--space-4);
             font-weight: 600;
         }
         .lock-divider {
             display: flex;
             align-items: center;
-            gap: 15px;
-            margin: 20px 0;
-            color: #64748b;
+            gap: var(--space-3);
+            margin: var(--space-4) 0;
+            color: var(--text-faint);
             font-size: 12px;
         }
         .lock-divider::before,
@@ -278,61 +542,60 @@
             content: '';
             flex: 1;
             height: 1px;
-            background: rgba(99, 102, 241, 0.2);
+            background: var(--border-strong);
         }
         .lock-input-group {
-            margin-bottom: 15px;
+            margin-bottom: var(--space-3);
         }
         .lock-input {
             width: 100%;
-            padding: 12px 16px;
-            border: 1px solid rgba(99, 102, 241, 0.3);
-            border-radius: 10px;
-            background: rgba(0,0,0,0.3);
-            color: white;
+            padding: var(--space-3) var(--space-4);
+            border: 1px solid var(--border-strong);
+            border-radius: var(--radius-sm);
+            background: var(--bg-card-alt);
+            color: var(--text-primary);
             font-size: 14px;
-            transition: all 0.3s;
+            transition: border-color 0.2s;
             box-sizing: border-box;
+            font-family: var(--font-sans);
         }
         .lock-input:focus {
             outline: none;
-            border-color: #6366f1;
-            box-shadow: 0 0 20px rgba(99, 102, 241, 0.2);
+            border-color: var(--accent);
         }
         .lock-input::placeholder {
-            color: #64748b;
+            color: var(--text-faint);
         }
         .lock-btn {
             width: 100%;
-            padding: 12px;
+            padding: var(--space-3);
             border: none;
-            border-radius: 10px;
-            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            border-radius: var(--radius-sm);
+            background: var(--accent);
             color: white;
             font-size: 14px;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: background 0.2s;
+            font-family: var(--font-sans);
         }
         .lock-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 30px rgba(99, 102, 241, 0.4);
+            background: #4338ca;
         }
         .lock-btn:disabled {
             opacity: 0.5;
             cursor: not-allowed;
-            transform: none;
         }
         .lock-error {
-            color: #f87171;
+            color: var(--danger-text);
             font-size: 12px;
-            margin-top: 10px;
+            margin-top: var(--space-2);
             min-height: 16px;
         }
         .lock-smart-tip {
             font-size: 12px;
-            color: #10b981;
-            margin-top: 15px;
+            color: var(--success);
+            margin-top: var(--space-3);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -342,44 +605,52 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 10px;
-            margin-bottom: 15px;
-            padding: 10px;
-            background: rgba(99, 102, 241, 0.1);
-            border-radius: 10px;
+            gap: var(--space-2);
+            margin-bottom: var(--space-3);
+            padding: var(--space-2);
+            background: var(--accent-soft);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
         }
         .lock-avatar {
             width: 36px;
             height: 36px;
             border-radius: 50%;
-            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            background: var(--logo-accent);
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 16px;
             font-weight: 600;
+            color: white;
         }
         .lock-username {
             font-size: 14px;
             font-weight: 600;
+            color: var(--text-primary);
         }
         .lock-role {
             font-size: 11px;
-            color: #94a3b8;
+            color: var(--text-muted);
         }
+
+        /* ========== TIMEOUT WARNING ========== */
         .mtscos-timeout-warning {
             position: fixed;
-            top: 20px;
-            right: 20px;
-            background: linear-gradient(135deg, #f59e0b, #d97706);
+            top: var(--space-4);
+            right: var(--space-4);
+            background: var(--warning);
             color: white;
-            padding: 12px 20px;
-            border-radius: 10px;
+            padding: var(--space-3) var(--space-4);
+            border-radius: var(--radius-sm);
             z-index: 9998;
             display: none;
             font-size: 14px;
-            box-shadow: 0 4px 20px rgba(245, 158, 11, 0.3);
+            box-shadow: var(--shadow-md);
             animation: slideIn 0.3s ease;
+        }
+        .mtscos-timeout-warning i {
+            margin-right: 6px;
         }
         @keyframes slideIn {
             from { transform: translateX(100%); opacity: 0; }
@@ -388,19 +659,21 @@
         .mtscos-permission-denied {
             display: none;
         }
+
+        /* ========== LAYOUT ========== */
         .mtscos-layout {
             display: flex;
             min-height: 100vh;
         }
-        /* 全局硬约束：20% / 10%（除主页外所有页面 2:8，mini 时 1:9）
-           注意：加 [data-theme] 前缀把特异性提升到 0-2-0，覆盖 L721 的老主题层 [data-theme] .mtscos-sidebar 不透明背景 */
+
+        /* ========== SIDEBAR - 20% / 10% 布局 ========== */
         [data-theme] .mtscos-sidebar,
         .mtscos-sidebar {
             width: 20%;
-            background: rgba(15, 15, 35, 0.55);
-            backdrop-filter: blur(32px) saturate(180%);
-            -webkit-backdrop-filter: blur(32px) saturate(180%);
-            border-right: 1px solid rgba(255,255,255,0.16);
+            background: var(--bg-sidebar);
+            backdrop-filter: blur(var(--glass-blur-strong));
+            -webkit-backdrop-filter: blur(var(--glass-blur-strong));
+            border-right: 1px solid var(--border-strong);
             display: flex;
             flex-direction: column;
             position: fixed;
@@ -409,8 +682,8 @@
             bottom: 0;
             z-index: 9998;
             overflow: hidden;
-            box-shadow: 2px 0 32px rgba(0,0,0,0.14);
-            transition: width .28s cubic-bezier(.4,0,.2,1);
+            box-shadow: var(--shadow-sm);
+            transition: width .28s cubic-bezier(.4, 0, .2, 1);
             will-change: width;
         }
         [data-theme] .mtscos-main,
@@ -421,20 +694,21 @@
             flex-direction: column;
             min-height: 100vh;
             overflow: hidden;
-            transition: margin-left .28s cubic-bezier(.4,0,.2,1);
+            transition: margin-left .28s cubic-bezier(.4, 0, .2, 1);
             will-change: margin-left;
         }
-        /* Mini 态宽度 10% / 智能回放 hover 展开 20%（均加 !important 保证优先级最高） */
+
+        /* Mini 态：10% 宽度 */
         [data-theme] body.sidebar-mini .mtscos-sidebar,
         body.sidebar-mini .mtscos-sidebar { width: 10% !important; }
         [data-theme] body.sidebar-mini .mtscos-main,
-        body.sidebar-mini .mtscos-main    { margin-left: 10% !important; }
+        body.sidebar-mini .mtscos-main { margin-left: 10% !important; }
         [data-theme] body.sidebar-mini.sidebar-hovered .mtscos-sidebar,
         body.sidebar-mini.sidebar-hovered .mtscos-sidebar { width: 20% !important; }
         [data-theme] body.sidebar-mini.sidebar-hovered .mtscos-main,
-        body.sidebar-mini.sidebar-hovered .mtscos-main    { margin-left: 20% !important; }
+        body.sidebar-mini.sidebar-hovered .mtscos-main { margin-left: 20% !important; }
 
-        /* Mini 态：文字隐藏（只保留图标），0-2-0 特异性 + 位置靠后 覆盖任何老规则 */
+        /* Mini 态：文字隐藏（只保留图标） */
         [data-theme] body.sidebar-mini .mtscos-sidebar-logo-text,
         [data-theme] body.sidebar-mini .mtscos-nav-item > span,
         [data-theme] body.sidebar-mini .mtscos-sidebar-user-info,
@@ -451,7 +725,7 @@
             margin: 0 !important;
             padding: 0 !important;
         }
-        /* Mini + Hover：智能回放文字（延迟 120ms 避免抖动） */
+        /* Mini + Hover：文字回放 */
         [data-theme] body.sidebar-mini.sidebar-hovered .mtscos-sidebar-logo-text,
         [data-theme] body.sidebar-mini.sidebar-hovered .mtscos-nav-item > span,
         [data-theme] body.sidebar-mini.sidebar-hovered .mtscos-sidebar-user-info,
@@ -468,77 +742,77 @@
             padding: unset !important;
             transition: opacity .16s ease-out .12s !important;
         }
-        /* Mini 态图标居中 / Hover 回放左对齐 */
+        /* Mini 态图标居中 / Hover 左对齐 */
         [data-theme] body.sidebar-mini .mtscos-sidebar-logo,
-        body.sidebar-mini .mtscos-sidebar-logo   { justify-content: center !important; }
+        body.sidebar-mini .mtscos-sidebar-logo { justify-content: center !important; }
         [data-theme] body.sidebar-mini .mtscos-nav-item,
-        body.sidebar-mini .mtscos-nav-item       { justify-content: center !important; padding: 12px 8px !important; }
+        body.sidebar-mini .mtscos-nav-item { justify-content: center !important; padding: 12px 8px !important; }
         [data-theme] body.sidebar-mini .mtscos-sidebar-user,
-        body.sidebar-mini .mtscos-sidebar-user   { justify-content: center !important; }
+        body.sidebar-mini .mtscos-sidebar-user { justify-content: center !important; }
         [data-theme] body.sidebar-mini .mtscos-sidebar-logout,
         body.sidebar-mini .mtscos-sidebar-logout { justify-content: center !important; }
         [data-theme] body.sidebar-mini.sidebar-hovered .mtscos-sidebar-logo,
-        body.sidebar-mini.sidebar-hovered .mtscos-sidebar-logo   { justify-content: flex-start !important; }
+        body.sidebar-mini.sidebar-hovered .mtscos-sidebar-logo { justify-content: flex-start !important; }
         [data-theme] body.sidebar-mini.sidebar-hovered .mtscos-nav-item,
-        body.sidebar-mini.sidebar-hovered .mtscos-nav-item       { justify-content: flex-start !important; padding: 10px 14px !important; }
+        body.sidebar-mini.sidebar-hovered .mtscos-nav-item { justify-content: flex-start !important; padding: 10px 14px !important; }
         [data-theme] body.sidebar-mini.sidebar-hovered .mtscos-sidebar-user,
-        body.sidebar-mini.sidebar-hovered .mtscos-sidebar-user   { justify-content: flex-start !important; }
+        body.sidebar-mini.sidebar-hovered .mtscos-sidebar-user { justify-content: flex-start !important; }
         [data-theme] body.sidebar-mini.sidebar-hovered .mtscos-sidebar-logout,
         body.sidebar-mini.sidebar-hovered .mtscos-sidebar-logout { justify-content: center !important; }
 
+        /* ========== SIDEBAR CONTENT ========== */
         .mtscos-sidebar-header {
-            padding: 20px 16px;
-            border-bottom: 1px solid rgba(99, 102, 241, 0.15);
+            padding: var(--space-4);
+            border-bottom: 1px solid var(--border-strong);
         }
         .mtscos-sidebar-logo {
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: var(--space-2);
         }
         .mtscos-sidebar-logo-icon {
             width: 36px;
             height: 36px;
-            border-radius: 10px;
-            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            border-radius: var(--radius-sm);
+            background: var(--logo-accent);
             display: flex;
             align-items: center;
             justify-content: center;
             color: white;
             font-size: 18px;
-            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
         }
         .mtscos-sidebar-logo-text {
             font-size: 15px;
             font-weight: 700;
-            color: white;
-            letter-spacing: 0.5px;
+            color: var(--text-primary);
+            letter-spacing: 0.3px;
         }
         .mtscos-sidebar-nav {
             flex: 1;
-            padding: 16px 8px;
+            padding: var(--space-3) var(--space-2);
             display: flex;
             flex-direction: column;
-            gap: 4px;
+            gap: var(--space-1);
         }
         .mtscos-nav-item {
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: var(--space-2);
             padding: 10px 14px;
-            border-radius: 8px;
-            color: #94a3b8;
+            border-radius: var(--radius-sm);
+            color: var(--text-muted);
             text-decoration: none;
             font-size: 13px;
             font-weight: 500;
-            transition: all 0.2s;
+            transition: background 0.2s, color 0.2s;
         }
         .mtscos-nav-item:hover {
-            background: rgba(99, 102, 241, 0.15);
-            color: #c7d2fe;
+            background: var(--accent-soft);
+            color: var(--text-secondary);
         }
         .mtscos-nav-item.active {
-            background: rgba(99, 102, 241, 0.25);
-            color: #818cf8;
+            background: var(--accent-hover);
+            color: var(--accent-text);
         }
         .mtscos-nav-item i {
             width: 18px;
@@ -546,23 +820,24 @@
             font-size: 15px;
         }
         .mtscos-sidebar-footer {
-            padding: 16px;
-            border-top: 1px solid rgba(99, 102, 241, 0.15);
+            padding: var(--space-4);
+            border-top: 1px solid var(--border-strong);
         }
         .mtscos-sidebar-user {
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: var(--space-2);
             padding: 10px 12px;
-            background: rgba(30, 30, 60, 0.6);
-            border-radius: 8px;
-            margin-bottom: 10px;
+            background: var(--accent-soft);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            margin-bottom: var(--space-2);
         }
         .mtscos-sidebar-avatar {
             width: 32px;
             height: 32px;
             border-radius: 50%;
-            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            background: var(--logo-accent);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -577,52 +852,49 @@
         .mtscos-sidebar-username {
             font-size: 13px;
             font-weight: 600;
-            color: white;
+            color: var(--text-primary);
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }
         .mtscos-sidebar-role {
             font-size: 11px;
-            color: #64748b;
+            color: var(--text-faint);
         }
         .mtscos-sidebar-logout {
             width: 100%;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 8px;
+            gap: var(--space-2);
             padding: 10px;
             border: none;
-            border-radius: 8px;
-            background: rgba(239, 68, 68, 0.15);
-            color: #f87171;
+            border-radius: var(--radius-sm);
+            background: var(--danger-soft);
+            color: var(--danger-text);
             font-size: 13px;
             font-weight: 500;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: background 0.2s;
+            font-family: var(--font-sans);
         }
         .mtscos-sidebar-logout:hover {
-            background: rgba(239, 68, 68, 0.25);
-            color: #ef4444;
+            background: rgba(239, 68, 68, 0.22);
+            color: var(--danger);
         }
-        /* .mtscos-main 规则已合并到上面的「全局硬约束」块（L415 附近），避免重复定义导致宽度被覆盖 */
 
+        /* ========== CONTENT ========== */
         .mtscos-content-scroll {
             flex: 1;
             overflow-y: auto;
             overflow-x: hidden;
-            padding: 20px;
-            padding-top: 24px;
+            padding: var(--space-5, 20px);
+            padding-top: var(--space-6);
             scrollbar-width: none;
             -ms-overflow-style: none;
         }
         .mtscos-content-scroll::-webkit-scrollbar {
             display: none;
-        }
-        body.with-global-header {
-            padding-top: 0;
-            margin: 0;
         }
         body.no-sidebar .mtscos-sidebar {
             display: none;
@@ -630,136 +902,142 @@
         body.no-sidebar .mtscos-main {
             margin-left: 0;
         }
-        body {
-            overflow: hidden;
-        }
-        /* ========== THEME CSS VARIABLES ========== */
+
+        /* ========== THEMES 主题变量 ========== */
         [data-theme="deep_blue"] {
-            --glass-bg: rgba(15, 23, 42, 0.85);
-            --glass-border: rgba(99, 102, 241, 0.2);
-            --glass-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-            --accent: #6366f1;
-            --accent-soft: rgba(99, 102, 241, 0.15);
-            --accent-hover: rgba(99, 102, 241, 0.28);
-            --accent-text: #818cf8;
-            --accent-text-bright: #a5b4fc;
-            --bg-page: linear-gradient(135deg, #0a0a1a 0%, #12123a 50%, #0a0a1a 100%);
-            --bg-sidebar: rgba(15, 15, 35, 0.95);
-            --bg-card: rgba(15, 15, 35, 0.75);
-            --bg-card-alt: rgba(15, 15, 35, 0.7);
+            --accent: #4f46e5;
+            --accent-soft: rgba(79, 70, 229, 0.12);
+            --accent-hover: rgba(79, 70, 229, 0.22);
+            --accent-text: #6366f1;
+            --accent-text-bright: #818cf8;
+            --accent-secondary: #06b6d4;
+            --bg-page: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+            --bg-sidebar: rgba(15, 23, 42, 0.85);
+            --bg-card: rgba(15, 23, 42, 0.7);
+            --bg-card-alt: rgba(15, 23, 42, 0.6);
             --text-primary: #f8fafc;
             --text-secondary: #cbd5e1;
             --text-muted: #94a3b8;
             --text-faint: #64748b;
-            --border-subtle: rgba(99, 102, 241, 0.12);
-            --border-strong: rgba(99, 102, 241, 0.22);
-            --danger: #ef4444;
-            --danger-soft: rgba(239, 68, 68, 0.15);
-            --danger-text: #f87171;
-            --success: #22c55e;
-            --warning: #f59e0b;
-            --logo-accent: linear-gradient(135deg, #6366f1, #8b5cf6);
+            --border-subtle: rgba(79, 70, 229, 0.1);
+            --border-strong: rgba(79, 70, 229, 0.18);
+            --glass-bg: rgba(15, 23, 42, 0.8);
+            --glass-bg-strong: rgba(15, 23, 42, 0.9);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --glass-border-strong: rgba(255, 255, 255, 0.12);
+            --logo-accent: linear-gradient(135deg, #4f46e5, #06b6d4);
         }
         [data-theme="light_blue_tech"] {
-            --glass-bg: rgba(239, 246, 255, 0.85);
-            --glass-border: rgba(56, 189, 248, 0.28);
-            --glass-shadow: 0 4px 20px rgba(14, 165, 233, 0.18);
-            --accent: #0ea5e9;
-            --accent-soft: rgba(14, 165, 233, 0.14);
-            --accent-hover: rgba(14, 165, 233, 0.24);
-            --accent-text: #0284c7;
-            --accent-text-bright: #38bdf8;
-            --bg-page: linear-gradient(135deg, #e0f2fe 0%, #f0f9ff 40%, #ecfeff 100%);
-            --bg-sidebar: rgba(240, 249, 255, 0.95);
-            --bg-card: rgba(255, 255, 255, 0.82);
-            --bg-card-alt: rgba(248, 250, 252, 0.78);
+            --accent: #0284c7;
+            --accent-soft: rgba(14, 165, 233, 0.12);
+            --accent-hover: rgba(14, 165, 233, 0.22);
+            --accent-text: #0369a1;
+            --accent-text-bright: #0ea5e9;
+            --accent-secondary: #06b6d4;
+            --bg-page: linear-gradient(135deg, #f0f9ff 0%, #ecfeff 100%);
+            --bg-sidebar: rgba(255, 255, 255, 0.9);
+            --bg-card: rgba(255, 255, 255, 0.8);
+            --bg-card-alt: rgba(248, 250, 252, 0.75);
             --text-primary: #0f172a;
             --text-secondary: #334155;
             --text-muted: #475569;
             --text-faint: #64748b;
-            --border-subtle: rgba(56, 189, 248, 0.18);
-            --border-strong: rgba(14, 165, 233, 0.32);
-            --danger: #dc2626;
-            --danger-soft: rgba(220, 38, 38, 0.12);
-            --danger-text: #ef4444;
-            --success: #16a34a;
-            --warning: #d97706;
-            --logo-accent: linear-gradient(135deg, #0ea5e9, #22d3ee);
+            --border-subtle: rgba(14, 165, 233, 0.12);
+            --border-strong: rgba(14, 165, 233, 0.22);
+            --glass-bg: rgba(255, 255, 255, 0.85);
+            --glass-bg-strong: rgba(255, 255, 255, 0.92);
+            --glass-border: rgba(148, 163, 184, 0.15);
+            --glass-border-strong: rgba(148, 163, 184, 0.25);
+            --logo-accent: linear-gradient(135deg, #0ea5e9, #06b6d4);
         }
         [data-theme="light"] {
-            --glass-bg: rgba(255, 255, 255, 0.85);
-            --glass-border: rgba(148, 163, 184, 0.22);
-            --glass-shadow: 0 4px 16px rgba(15, 23, 42, 0.08);
-            --accent: #6366f1;
-            --accent-soft: rgba(99, 102, 241, 0.1);
-            --accent-hover: rgba(99, 102, 241, 0.2);
-            --accent-text: #4f46e5;
+            --accent: #4f46e5;
+            --accent-soft: rgba(79, 70, 229, 0.1);
+            --accent-hover: rgba(79, 70, 229, 0.18);
+            --accent-text: #4338ca;
             --accent-text-bright: #6366f1;
-            --bg-page: linear-gradient(135deg, #f8fafc 0%, #eef2ff 50%, #f1f5f9 100%);
-            --bg-sidebar: rgba(255, 255, 255, 0.96);
-            --bg-card: rgba(255, 255, 255, 0.9);
-            --bg-card-alt: rgba(248, 250, 252, 0.88);
+            --accent-secondary: #06b6d4;
+            --bg-page: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            --bg-sidebar: rgba(255, 255, 255, 0.92);
+            --bg-card: rgba(255, 255, 255, 0.85);
+            --bg-card-alt: rgba(248, 250, 252, 0.82);
             --text-primary: #0f172a;
             --text-secondary: #334155;
             --text-muted: #475569;
             --text-faint: #64748b;
-            --border-subtle: rgba(148, 163, 184, 0.18);
-            --border-strong: rgba(99, 102, 241, 0.26);
-            --danger: #dc2626;
-            --danger-soft: rgba(220, 38, 38, 0.1);
-            --danger-text: #ef4444;
-            --success: #16a34a;
-            --warning: #d97706;
-            --logo-accent: linear-gradient(135deg, #6366f1, #8b5cf6);
+            --border-subtle: rgba(148, 163, 184, 0.15);
+            --border-strong: rgba(79, 70, 229, 0.2);
+            --glass-bg: rgba(255, 255, 255, 0.85);
+            --glass-bg-strong: rgba(255, 255, 255, 0.92);
+            --glass-border: rgba(148, 163, 184, 0.12);
+            --glass-border-strong: rgba(148, 163, 184, 0.2);
+            --logo-accent: linear-gradient(135deg, #4f46e5, #06b6d4);
         }
         [data-theme="mourning"] {
-            --glass-bg: rgba(24, 24, 27, 0.88);
-            --glass-border: rgba(113, 113, 122, 0.28);
-            --glass-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
             --accent: #52525b;
-            --accent-soft: rgba(82, 82, 91, 0.2);
-            --accent-hover: rgba(113, 113, 122, 0.3);
+            --accent-soft: rgba(82, 82, 91, 0.18);
+            --accent-hover: rgba(113, 113, 122, 0.28);
             --accent-text: #71717a;
             --accent-text-bright: #a1a1aa;
-            --bg-page: linear-gradient(135deg, #0a0a0a 0%, #18181b 50%, #0a0a0a 100%);
-            --bg-sidebar: rgba(10, 10, 10, 0.97);
-            --bg-card: rgba(24, 24, 27, 0.85);
-            --bg-card-alt: rgba(24, 24, 27, 0.78);
+            --accent-secondary: #71717a;
+            --bg-page: linear-gradient(135deg, #0a0a0a 0%, #18181b 100%);
+            --bg-sidebar: rgba(10, 10, 10, 0.92);
+            --bg-card: rgba(24, 24, 27, 0.8);
+            --bg-card-alt: rgba(24, 24, 27, 0.72);
             --text-primary: #d4d4d8;
             --text-secondary: #a1a1aa;
             --text-muted: #71717a;
             --text-faint: #52525b;
-            --border-subtle: rgba(82, 82, 91, 0.18);
-            --border-strong: rgba(113, 113, 122, 0.28);
-            --danger: #44403c;
-            --danger-soft: rgba(68, 64, 60, 0.3);
-            --danger-text: #78716c;
-            --success: #52525b;
-            --warning: #71717a;
+            --border-subtle: rgba(82, 82, 91, 0.15);
+            --border-strong: rgba(113, 113, 122, 0.25);
+            --glass-bg: rgba(24, 24, 27, 0.85);
+            --glass-bg-strong: rgba(24, 24, 27, 0.92);
+            --glass-border: rgba(113, 113, 122, 0.15);
+            --glass-border-strong: rgba(113, 113, 122, 0.25);
             --logo-accent: linear-gradient(135deg, #52525b, #71717a);
         }
-        [data-theme] body, body[data-theme] { background: var(--bg-page); background-attachment: fixed; }
-        [data-theme] .mtscos-sidebar { background: var(--bg-sidebar); border-right: 1px solid var(--border-strong); }
+
+        /* ========== THEME OVERRIDES ========== */
+        [data-theme] body,
+        body[data-theme] {
+            background: var(--bg-page);
+            background-attachment: fixed;
+        }
+        [data-theme] .mtscos-sidebar {
+            background: var(--bg-sidebar);
+            border-right: 1px solid var(--border-strong);
+        }
         [data-theme] .mtscos-sidebar-logo-icon,
         [data-theme] .mtscos-sidebar-avatar,
         [data-theme] .mtscos-user-avatar,
-        [data-theme] .lock-avatar { background: var(--logo-accent); }
+        [data-theme] .lock-avatar {
+            background: var(--logo-accent);
+        }
         [data-theme] .mtscos-glass-card,
-        [data-theme] .glass-effect, [data-theme] .card, [data-theme] .panel, [data-theme] .dashboard-card,
-        [data-theme] .content-box, [data-theme] .section-card, [data-theme] .info-card,
-        [data-theme] .data-card, [data-theme] .form-container, [data-theme] .modal-content,
-        [data-theme] .dialog-box, [data-theme] .popup-content, [data-theme] .list-container,
+        [data-theme] .glass-effect,
+        [data-theme] .card,
+        [data-theme] .panel,
+        [data-theme] .dashboard-card,
+        [data-theme] .content-box,
+        [data-theme] .section-card,
+        [data-theme] .info-card,
+        [data-theme] .data-card,
+        [data-theme] .form-container,
+        [data-theme] .modal-content,
+        [data-theme] .dialog-box,
+        [data-theme] .popup-content,
+        [data-theme] .list-container,
         [data-theme] .table-container {
             background: var(--bg-card);
             border: 1px solid var(--border-subtle);
             color: var(--text-primary);
-            box-shadow: var(--glass-shadow);
+            box-shadow: var(--shadow-md);
         }
         [data-theme] .mtscos-global-header,
         [data-theme] .lock-container {
             background: var(--glass-bg);
             border: 1px solid var(--border-strong);
-            box-shadow: var(--glass-shadow);
+            box-shadow: var(--shadow-md);
             color: var(--text-primary);
         }
         [data-theme] .mtscos-header-title,
@@ -767,12 +1045,24 @@
         [data-theme] .mtscos-sidebar-username,
         [data-theme] .lock-title,
         [data-theme] .lock-username,
-        [data-theme] .mtscos-user-info { color: var(--text-primary); }
+        [data-theme] .mtscos-user-info {
+            color: var(--text-primary);
+        }
         [data-theme] .mtscos-header-title i,
-        [data-theme] .mtscos-system-logo-text { color: var(--accent); }
-        [data-theme] .mtscos-nav-item { color: var(--text-muted); }
-        [data-theme] .mtscos-nav-item:hover { background: var(--accent-soft); color: var(--text-secondary); }
-        [data-theme] .mtscos-nav-item.active { background: var(--accent-hover); color: var(--accent-text); }
+        [data-theme] .mtscos-system-logo-text {
+            color: var(--accent);
+        }
+        [data-theme] .mtscos-nav-item {
+            color: var(--text-muted);
+        }
+        [data-theme] .mtscos-nav-item:hover {
+            background: var(--accent-soft);
+            color: var(--text-secondary);
+        }
+        [data-theme] .mtscos-nav-item.active {
+            background: var(--accent-hover);
+            color: var(--accent-text);
+        }
         [data-theme] .mtscos-user-info,
         [data-theme] .mtscos-sidebar-user,
         [data-theme] .lock-user-info {
@@ -781,20 +1071,37 @@
             color: var(--text-primary);
         }
         [data-theme] .mtscos-back-btn,
-        [data-theme] .mtscos-back-btn:visited { background: var(--accent-soft); color: var(--accent-text); }
-        [data-theme] .mtscos-back-btn:hover { background: var(--accent-hover); color: var(--accent-text-bright); }
+        [data-theme] .mtscos-back-btn:visited {
+            background: var(--accent-soft);
+            color: var(--accent-text);
+        }
+        [data-theme] .mtscos-back-btn:hover {
+            background: var(--accent-hover);
+            color: var(--accent-text-bright);
+        }
         [data-theme] .mtscos-logout-btn,
-        [data-theme] .mtscos-sidebar-logout { background: var(--danger-soft); color: var(--danger-text); }
+        [data-theme] .mtscos-sidebar-logout {
+            background: var(--danger-soft);
+            color: var(--danger-text);
+        }
         [data-theme] .mtscos-logout-btn:hover,
-        [data-theme] .mtscos-sidebar-logout:hover { filter: brightness(1.1); }
+        [data-theme] .mtscos-sidebar-logout:hover {
+            filter: brightness(1.1);
+        }
         [data-theme] .mtscos-sidebar-footer,
-        [data-theme] .mtscos-sidebar-header { border-color: var(--border-strong); }
+        [data-theme] .mtscos-sidebar-header {
+            border-color: var(--border-strong);
+        }
         [data-theme] .mtscos-sidebar-role,
         [data-theme] .lock-role,
         [data-theme] .lock-desc,
-        [data-theme] .lock-smart-tip { color: var(--text-muted); }
+        [data-theme] .lock-smart-tip {
+            color: var(--text-muted);
+        }
         [data-theme] .lock-divider::before,
-        [data-theme] .lock-divider::after { background: var(--border-strong); }
+        [data-theme] .lock-divider::after {
+            background: var(--border-strong);
+        }
         [data-theme] .lock-input {
             background: var(--bg-card-alt);
             border: 1px solid var(--border-strong);
@@ -805,181 +1112,18 @@
             background: var(--accent) !important;
             color: white;
         }
-        [data-theme] .mtscos-system-time { color: var(--text-muted); }
-        [data-theme] .mtscos-system-time i { color: var(--success); }
-        body[data-theme="mourning"] * { color-adjust: exact !important; }
+        [data-theme] .mtscos-system-time {
+            color: var(--text-muted);
+        }
+        [data-theme] .mtscos-system-time i {
+            color: var(--success);
+        }
+        body[data-theme="mourning"] * {
+            color-adjust: exact !important;
+        }
         body[data-theme="mourning"] img,
-        body[data-theme="mourning"] .lock-icon { filter: grayscale(100%); }
-
-        /* ========== LAYOUT & GLASS: 毛玻璃 + sidebar 2:8 / mini 1:9 / hover 智能展开 ========== */
-
-        /* ----- 毛玻璃统一变量：按主题切换透明度，不改变主色 ----- */
-        :root,
-        body[data-theme="deep_blue"] {
-            --sidebar-width: 20%;
-            --sidebar-width-mini: 10%;
-            --glass-bg: rgba(15, 23, 42, 0.55);
-            --glass-bg-strong: rgba(15, 23, 42, 0.70);
-            --glass-blur: 24px;
-            --glass-blur-strong: 32px;
-            --glass-border: 1px solid rgba(255,255,255,0.10);
-            --glass-border-strong: 1px solid rgba(255,255,255,0.16);
-            --glass-shadow: 0 16px 48px rgba(2, 6, 23, 0.35);
-        }
-        body[data-theme="light_tech"] {
-            --glass-bg: rgba(248, 250, 252, 0.60);
-            --glass-bg-strong: rgba(248, 250, 252, 0.78);
-            --glass-blur: 24px;
-            --glass-blur-strong: 32px;
-            --glass-border: 1px solid rgba(148,163,184,0.18);
-            --glass-border-strong: 1px solid rgba(148,163,184,0.28);
-            --glass-shadow: 0 16px 48px rgba(15, 23, 42, 0.10);
-        }
-        body[data-theme="soft_light"] {
-            --glass-bg: rgba(255, 255, 255, 0.62);
-            --glass-bg-strong: rgba(255, 255, 255, 0.80);
-            --glass-blur: 24px;
-            --glass-blur-strong: 32px;
-            --glass-border: 1px solid rgba(148,163,184,0.16);
-            --glass-border-strong: 1px solid rgba(148,163,184,0.26);
-            --glass-shadow: 0 16px 48px rgba(15, 23, 42, 0.08);
-        }
-        body[data-theme="mourning"] {
-            --glass-bg: rgba(24, 24, 27, 0.58);
-            --glass-bg-strong: rgba(24, 24, 27, 0.72);
-            --glass-blur: 24px;
-            --glass-blur-strong: 32px;
-            --glass-border: 1px solid rgba(161,161,170,0.18);
-            --glass-border-strong: 1px solid rgba(161,161,170,0.28);
-            --glass-shadow: 0 16px 48px rgba(0, 0, 0, 0.35);
-        }
-
-        /* ----- 全局毛玻璃通用样式（强制高毛玻璃 + 高特异性覆盖老主题层）
-           加 [data-theme] 前缀，特异性提升到 0-2-0，且位于 L720-L780 主题块之后，位置优先覆盖 ----- */
-        /* ① Header/Footer：32px 强毛玻璃 */
-        [data-theme] .site-header,
-        [data-theme] .mtscos-header,
-        [data-theme] [class*="header"][class*="fixed"],
-        .site-header,
-        .mtscos-header,
-        [class*="header"][class*="fixed"] {
-            backdrop-filter: blur(32px) saturate(180%) !important;
-            -webkit-backdrop-filter: blur(32px) saturate(180%) !important;
-            background: rgba(15, 23, 42, 0.70) !important;
-            background: var(--glass-bg-strong, rgba(15, 23, 42, 0.70)) !important;
-            border-bottom: 1px solid rgba(255,255,255,0.10) !important;
-            box-shadow: 0 2px 24px rgba(0,0,0,0.10) !important;
-        }
-        [data-theme] .site-footer,
-        [data-theme] .mtscos-footer,
-        .site-footer,
-        .mtscos-footer {
-            backdrop-filter: blur(24px) saturate(180%) !important;
-            -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
-            background: rgba(15, 23, 42, 0.55) !important;
-            background: var(--glass-bg, rgba(15, 23, 42, 0.55)) !important;
-            border-top: 1px solid rgba(255,255,255,0.10) !important;
-        }
-
-        /* ② 全站卡片 / 面板 / 登录卡 / 弹窗：24px blur 高毛玻璃 */
-        [data-theme] .card,
-        [data-theme] [class*="-card"],
-        [data-theme] [class*="Card"],
-        [data-theme] [class*="panel"],
-        [data-theme] [class*="Panel"],
-        [data-theme] [class*="home-section"],
-        [data-theme] [class*="spec"],
-        [data-theme] [class*="hero"],
-        [data-theme] [class*="changelog"],
-        [data-theme] [class*="engine-card"],
-        [data-theme] [class*="engine-matrix"],
-        [data-theme] [class*="matrix-"],
-        [data-theme] [class*="ai-card"],
-        [data-theme] [class*="comp-"],
-        [data-theme] [class*="stat-card"],
-        [data-theme] [class*="db-card"],
-        [data-theme] [class*="lane"],
-        [data-theme] [class*="chip"],
-        [data-theme] .version-tag,
-        [data-theme] .version-item,
-        [data-theme] [class*="banner"],
-        [data-theme] [class*="dialog"],
-        [data-theme] [class*="modal-content"],
-        [data-theme] [class*="tab-"],
-        .card,
-        [class*="-card"],
-        [class*="Card"],
-        [class*="panel"],
-        [class*="Panel"],
-        [class*="home-section"],
-        [class*="spec"],
-        [class*="hero"],
-        [class*="changelog"],
-        [class*="engine-card"],
-        [class*="engine-matrix"],
-        [class*="matrix-"],
-        [class*="ai-card"],
-        [class*="comp-"],
-        [class*="stat-card"],
-        [class*="db-card"],
-        [class*="lane"],
-        [class*="chip"],
-        .version-tag,
-        .version-item,
-        [class*="banner"],
-        [class*="dialog"],
-        [class*="modal-content"],
-        [class*="tab-"] {
-            backdrop-filter: blur(24px) saturate(180%) !important;
-            -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
-            background: rgba(15, 23, 42, 0.55) !important;
-            background: var(--glass-bg, rgba(15, 23, 42, 0.55)) !important;
-            border: 1px solid rgba(255,255,255,0.10) !important;
-            box-shadow: 0 16px 48px rgba(2, 6, 23, 0.35) !important;
-        }
-
-        /* ③ 登录卡（index.html）：32px 超强毛玻璃 */
-        [data-theme] .login-card,
-        [data-theme] .login-guard,
-        [data-theme] [class*="login-"],
-        .login-card,
-        .login-guard,
-        [class*="login-"] {
-            backdrop-filter: blur(32px) saturate(180%) !important;
-            -webkit-backdrop-filter: blur(32px) saturate(180%) !important;
-            background: rgba(15, 23, 42, 0.70) !important;
-            background: var(--glass-bg-strong, rgba(15, 23, 42, 0.70)) !important;
-            border: 1px solid rgba(255,255,255,0.16) !important;
-            box-shadow: 0 24px 64px rgba(0,0,0,0.35) !important;
-        }
-
-        /* Sidebar toggle 按钮样式保持 */
-        .mtscos-sidebar-toggle {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-            padding: 6px 12px;
-            background: var(--accent-soft, rgba(99,102,241,.15));
-            color: var(--accent-text, #818cf8);
-            border: 1px solid var(--border-subtle, rgba(99,102,241,.2));
-            border-radius: 8px;
-            font-size: 13px;
-            cursor: pointer;
-            transition: all .2s;
-        }
-        .mtscos-sidebar-toggle:hover { background: var(--accent-hover, rgba(99,102,241,.25)); }
-        .mtscos-theme-mourning-tag {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 4px 10px;
-            background: rgba(113,113,122,.18);
-            color: #a1a1aa;
-            border: 1px solid rgba(113,113,122,.35);
-            border-radius: 999px;
-            font-size: 12px;
-            font-weight: 500;
+        body[data-theme="mourning"] .lock-icon {
+            filter: grayscale(100%);
         }
     </style>
 </head>
@@ -1044,6 +1188,60 @@
                     {% if theme_forced_mourning %}
                     <span class="mtscos-theme-mourning-tag"><i class="fas fa-ribbon"></i>国家公祭日 · 追思主题</span>
                     {% endif %}
+                    {% if lunar_display %}
+                    <div class="mtscos-lunar-calendar{% if is_special_day %} special-day{% endif %}">
+                        <i class="fas fa-moon"></i>
+                        <span>{{ lunar_display }}</span>
+                    </div>
+                    {% endif %}
+                    <div class="mtscos-vikey-status" id="mtscos-vikey-status"
+                         data-present="{{ 'true' if vikey_present else 'false' }}"
+                         data-super-admin="{{ 'true' if vikey_has_super_admin else 'false' }}"
+                         title="VIKEY设备状态">
+                        <i class="fas fa-key"></i>
+                        <span class="vikey-status-text">{% if vikey_present %}{% if vikey_has_super_admin %}加密狗正常{% else %}检测到设备{% endif %}{% else %}未检测到加密狗{% endif %}</span>
+                        <span class="vikey-pulse-dot"></span>
+                        <div class="vikey-tooltip" id="vikey-tooltip">
+                            <div class="vikey-tooltip-header">
+                                <i class="fas fa-key"></i>
+                                <span>VIKEY USB密钥状态</span>
+                            </div>
+                            <div class="vikey-tooltip-content">
+                                <div class="vikey-info-row">
+                                    <span class="vikey-info-label">设备状态</span>
+                                    <span class="vikey-info-value" id="vikey-tooltip-status">检测中...</span>
+                                </div>
+                                <div class="vikey-info-row">
+                                    <span class="vikey-info-label">在线设备</span>
+                                    <span class="vikey-info-value" id="vikey-tooltip-count">0</span>
+                                </div>
+                                <div class="vikey-info-row">
+                                    <span class="vikey-info-label">超级管理员密钥</span>
+                                    <span class="vikey-info-value" id="vikey-tooltip-admin">未检测</span>
+                                </div>
+                                <div class="vikey-info-row">
+                                    <span class="vikey-info-label">安全状态</span>
+                                    <span class="vikey-info-value" id="vikey-tooltip-security">评估中</span>
+                                </div>
+                                <div class="vikey-info-row">
+                                    <span class="vikey-info-label">驱动版本</span>
+                                    <span class="vikey-info-value" id="vikey-tooltip-version">--</span>
+                                </div>
+                                <div class="vikey-info-row">
+                                    <span class="vikey-info-label">最后同步</span>
+                                    <span class="vikey-info-value" id="vikey-tooltip-sync">--</span>
+                                </div>
+                            </div>
+                            <div class="vikey-tooltip-actions">
+                                <button class="vikey-action-btn" onclick="MTSCOS.refreshVikey();">
+                                    <i class="fas fa-sync-alt"></i> 刷新
+                                </button>
+                                <button class="vikey-action-btn" onclick="window.location.href='/vikey_status.html';">
+                                    <i class="fas fa-external-link-alt"></i> 详情
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                     <div class="mtscos-system-time" id="mtscos-system-time">
                         <i class="fas fa-clock"></i>
                         <span>加载中...</span>
@@ -1068,7 +1266,7 @@
         
         <div id="mtscos-lock-overlay" class="mtscos-lock-overlay">
             <div class="lock-container">
-                <div class="lock-icon">🔒</div>
+                <div class="lock-icon"><i class="fas fa-lock"></i></div>
                 <div class="lock-title">系统已锁定</div>
                 <div class="lock-desc">由于长时间未操作，系统已自动锁定</div>
                 
@@ -1099,7 +1297,7 @@
             </div>
         </div>
     <div id="mtscos-timeout-warning" class="mtscos-timeout-warning">
-        ⚠️ 会话即将超时，请点击任意位置继续
+        <i class="fas fa-exclamation-triangle"></i> 会话即将超时，请点击任意位置继续
     </div>
 
     <script src="/assets/layout_adapter.js"></script>
@@ -1136,6 +1334,7 @@
                     this.loadSystemLogo();
                     this.initSidebarSmart();
                     this.initThemeRuntime();
+                    this.startVikeyMonitor();
                 },
 
                 /* ---- Sidebar 智能收缩 / 回放 / 恢复（单一入口） ----
@@ -1311,7 +1510,7 @@
                             avatarEl.innerHTML = '<img src="' + this.currentUser.avatar + '" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">';
                         } else {
                             avatarEl.textContent = displayUsername.charAt(0).toUpperCase();
-                            avatarEl.style.background = 'linear-gradient(135deg, #6366f1, #8b5cf6)';
+                            avatarEl.style.background = 'linear-gradient(135deg, #4f46e5, #06b6d4)';
                             avatarEl.innerHTML = '';
                         }
                         usernameEl.textContent = displayUsername;
@@ -1339,7 +1538,7 @@
                             avatarEl.innerHTML = '<img src="' + this.currentUser.avatar + '" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">';
                         } else {
                             avatarEl.textContent = displayUsername.charAt(0).toUpperCase();
-                            avatarEl.style.background = 'linear-gradient(135deg, #6366f1, #8b5cf6)';
+                            avatarEl.style.background = 'linear-gradient(135deg, #4f46e5, #06b6d4)';
                             avatarEl.innerHTML = '';
                         }
                         usernameEl.textContent = displayUsername;
@@ -1381,6 +1580,106 @@
                     this.systemTimeTimer = setInterval(function() {
                         MTSCOS.updateSystemTime();
                     }, 1000);
+                },
+                
+                startVikeyMonitor: function() {
+                    var self = this;
+                    this.vikeyMonitorTimer = setInterval(function() {
+                        self.checkVikeyStatus();
+                    }, 2000);
+                    this.checkVikeyStatus();
+                    this.loadVikeyVersion();
+                },
+
+                loadVikeyVersion: function() {
+                    fetch('/api/vikey/version', { credentials: 'include' })
+                        .then(function(r) { return r.json(); })
+                        .then(function(d) {
+                            if (d && d.success) {
+                                var v = d.data.driver_version || '--';
+                                var el = document.getElementById('vikey-tooltip-version');
+                                if (el) el.textContent = v;
+                            }
+                        })
+                        .catch(function() {});
+                },
+
+                refreshVikey: function() {
+                    this.checkVikeyStatus();
+                    this.loadVikeyVersion();
+                    var syncEl = document.getElementById('vikey-tooltip-sync');
+                    if (syncEl) {
+                        var now = new Date();
+                        syncEl.textContent = now.toLocaleTimeString();
+                    }
+                },
+
+                checkVikeyStatus: function() {
+                    var el = document.getElementById('mtscos-vikey-status');
+                    if (!el) return;
+                    var statusText = el.querySelector('.vikey-status-text');
+
+                    fetch('/api/vikey/status', { credentials: 'include' })
+                        .then(function(response) { return response.json(); })
+                        .then(function(data) {
+                            if (data && data.success) {
+                                var d = data.data || data;
+                                var present = d.present || false;
+                                var hasSuperAdmin = d.has_super_admin_key || false;
+                                var count = d.count || 0;
+
+                                el.setAttribute('data-present', present ? 'true' : 'false');
+                                el.setAttribute('data-super-admin', hasSuperAdmin ? 'true' : 'false');
+                                el.classList.remove('vikey-present', 'vikey-super-admin', 'vikey-warning');
+
+                                if (hasSuperAdmin) {
+                                    el.classList.add('vikey-super-admin');
+                                    if (statusText) statusText.textContent = '超级密钥';
+                                } else if (present) {
+                                    el.classList.add('vikey-warning');
+                                    if (statusText) statusText.textContent = count + '设备';
+                                } else {
+                                    if (statusText) statusText.textContent = '未检测';
+                                }
+
+                                // 更新 tooltip
+                                var sEl = document.getElementById('vikey-tooltip-status');
+                                var cEl = document.getElementById('vikey-tooltip-count');
+                                var aEl = document.getElementById('vikey-tooltip-admin');
+                                var secEl = document.getElementById('vikey-tooltip-security');
+                                var syncEl = document.getElementById('vikey-tooltip-sync');
+
+                                if (sEl) {
+                                    sEl.textContent = present ? '✓ 在线' : '✗ 离线';
+                                    sEl.className = 'vikey-info-value ' + (present ? 'vikey-success' : 'vikey-error');
+                                }
+                                if (cEl) {
+                                    cEl.textContent = count;
+                                    cEl.className = 'vikey-info-value ' + (count > 0 ? 'vikey-success' : 'vikey-warning');
+                                }
+                                if (aEl) {
+                                    aEl.textContent = hasSuperAdmin ? '✓ 已插入' : '✗ 未插入';
+                                    aEl.className = 'vikey-info-value ' + (hasSuperAdmin ? 'vikey-success' : 'vikey-error');
+                                }
+                                if (secEl) {
+                                    if (present && hasSuperAdmin) {
+                                        secEl.textContent = '✓ 安全';
+                                        secEl.className = 'vikey-info-value vikey-success';
+                                    } else if (present && !hasSuperAdmin) {
+                                        secEl.textContent = '⚠ 警告';
+                                        secEl.className = 'vikey-info-value vikey-warning';
+                                    } else {
+                                        secEl.textContent = '✗ 未保护';
+                                        secEl.className = 'vikey-info-value vikey-error';
+                                    }
+                                }
+                                if (syncEl) {
+                                    var now = new Date();
+                                    syncEl.textContent = now.toLocaleTimeString();
+                                }
+                            }
+                        })
+                        .catch(function() {});
                 },
                 
                 loadSystemLogo: function() {
@@ -1867,10 +2166,11 @@
                     notification.className = 'mtscos-error-notification';
                     notification.style.cssText = `
                         position: fixed; bottom: 20px; right: 20px; padding: 16px 24px; 
-                        background: rgba(239,68,68,0.95); color: white; border-radius: 12px;
+                        background: rgba(239,68,68,0.95); color: white; border-radius: 8px;
                         font-size: 13px; z-index: 10000; max-width: 400px;
-                        box-shadow: 0 4px 20px rgba(239,68,68,0.4);
+                        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
                         border: 1px solid rgba(255,255,255,0.1);
+                        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
                     `;
                     notification.innerHTML = `
                         <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
@@ -1960,11 +2260,11 @@
     <style id="force-glass-and-sidebar">
       [data-theme] .mtscos-sidebar, .mtscos-sidebar {
         width: 20% !important;
-        background: rgba(15, 15, 35, 0.55) !important;
-        backdrop-filter: blur(32px) saturate(180%) !important;
-        -webkit-backdrop-filter: blur(32px) saturate(180%) !important;
-        border-right: 1px solid rgba(255,255,255,0.16) !important;
-        box-shadow: 2px 0 32px rgba(0,0,0,0.14) !important;
+        background: var(--bg-sidebar, rgba(15, 23, 42, 0.85)) !important;
+        backdrop-filter: blur(16px) !important;
+        -webkit-backdrop-filter: blur(16px) !important;
+        border-right: 1px solid var(--border-strong, rgba(255,255,255,0.12)) !important;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.08) !important;
         transition: width .28s cubic-bezier(.4,0,.2,1) !important;
         will-change: width;
       }
@@ -2022,17 +2322,17 @@
       [data-theme] body.sidebar-mini.sidebar-hovered .mtscos-sidebar-logout,
       body.sidebar-mini.sidebar-hovered .mtscos-sidebar-logout { justify-content: center !important; }
       [data-theme] .site-header, [data-theme] .mtscos-header, .site-header, .mtscos-header {
-        backdrop-filter: blur(32px) saturate(180%) !important;
-        -webkit-backdrop-filter: blur(32px) saturate(180%) !important;
-        background: rgba(15, 23, 42, 0.70) !important;
-        border-bottom: 1px solid rgba(255,255,255,0.10) !important;
-        box-shadow: 0 2px 24px rgba(0,0,0,0.10) !important;
+        backdrop-filter: blur(16px) !important;
+        -webkit-backdrop-filter: blur(16px) !important;
+        background: var(--glass-bg, rgba(15, 23, 42, 0.8)) !important;
+        border-bottom: 1px solid var(--glass-border, rgba(255,255,255,0.08)) !important;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.08) !important;
       }
       [data-theme] .site-footer, [data-theme] .mtscos-footer, .site-footer, .mtscos-footer {
-        backdrop-filter: blur(24px) saturate(180%) !important;
-        -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
-        background: rgba(15, 23, 42, 0.55) !important;
-        border-top: 1px solid rgba(255,255,255,0.10) !important;
+        backdrop-filter: blur(12px) !important;
+        -webkit-backdrop-filter: blur(12px) !important;
+        background: var(--bg-card, rgba(15, 23, 42, 0.7)) !important;
+        border-top: 1px solid var(--border-subtle, rgba(255,255,255,0.08)) !important;
       }
       [data-theme] .card, [data-theme] [class*="-card"], [data-theme] [class*="Card"],
       [data-theme] [class*="panel"], [data-theme] [class*="home-section"], [data-theme] [class*="spec"],
@@ -2045,19 +2345,19 @@
       [class*="hero"], [class*="changelog"], [class*="engine-card"], [class*="matrix-"], [class*="ai-card"],
       [class*="comp-"], [class*="stat-card"], [class*="db-card"], [class*="lane"], [class*="chip"],
       .version-tag, .version-item, [class*="banner"], [class*="dialog"], [class*="modal-content"] {
-        backdrop-filter: blur(24px) saturate(180%) !important;
-        -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
-        background: rgba(15, 23, 42, 0.55) !important;
-        border: 1px solid rgba(255,255,255,0.10) !important;
-        box-shadow: 0 16px 48px rgba(2, 6, 23, 0.35) !important;
+        backdrop-filter: blur(12px) !important;
+        -webkit-backdrop-filter: blur(12px) !important;
+        background: var(--bg-card, rgba(15, 23, 42, 0.7)) !important;
+        border: 1px solid var(--border-subtle, rgba(255,255,255,0.08)) !important;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
       }
       [data-theme] .login-card, [data-theme] .login-guard, [data-theme] [class*="login-"],
       .login-card, .login-guard, [class*="login-"] {
-        backdrop-filter: blur(32px) saturate(180%) !important;
-        -webkit-backdrop-filter: blur(32px) saturate(180%) !important;
-        background: rgba(15, 23, 42, 0.70) !important;
-        border: 1px solid rgba(255,255,255,0.16) !important;
-        box-shadow: 0 24px 64px rgba(0,0,0,0.35) !important;
+        backdrop-filter: blur(16px) !important;
+        -webkit-backdrop-filter: blur(16px) !important;
+        background: var(--glass-bg-strong, rgba(15, 23, 42, 0.9)) !important;
+        border: 1px solid var(--border-strong, rgba(255,255,255,0.12)) !important;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.12) !important;
       }
     </style>
 
@@ -2430,6 +2730,102 @@
         LAYOUT_AI.init();
       }
       window.MTSCOS_LAYOUT_AI = LAYOUT_AI;
+    })();
+    </script>
+    <script>
+    (function() {
+      var _errBuffer = [];
+      var _errFlushTimer = null;
+      var _MAX_ERRORS = 50;
+      var _FLUSH_INTERVAL = 5000;
+
+      function _flushErrors() {
+        if (_errBuffer.length === 0) return;
+        var errors = _errBuffer.slice(0, _MAX_ERRORS);
+        _errBuffer = [];
+        
+        try {
+          var xhr = new XMLHttpRequest();
+          xhr.open('POST', '/api/ai_inspection/console_error', true);
+          xhr.setRequestHeader('Content-Type', 'application/json');
+          xhr.send(JSON.stringify(errors[0]));
+        } catch (e) {}
+      }
+
+      function _reportError(errData) {
+        if (_errBuffer.length < _MAX_ERRORS) {
+          _errBuffer.push(errData);
+        }
+        if (!_errFlushTimer) {
+          _errFlushTimer = setTimeout(function() {
+            _errFlushTimer = null;
+            _flushErrors();
+          }, _FLUSH_INTERVAL);
+        }
+      }
+
+      window.addEventListener('error', function(e) {
+        _reportError({
+          source: 'window_error',
+          type: e.type || 'error',
+          message: e.message || '',
+          filename: e.filename || '',
+          lineno: e.lineno || 0,
+          colno: e.colno || 0,
+          stack: e.error && e.error.stack ? e.error.stack : '',
+          url: window.location.href,
+          userAgent: navigator.userAgent,
+          timestamp: Date.now()
+        });
+      }, true);
+
+      window.addEventListener('unhandledrejection', function(e) {
+        var reason = '';
+        if (e.reason) {
+          if (typeof e.reason === 'string') reason = e.reason;
+          else if (e.reason.message) reason = e.reason.message;
+          else if (e.reason.stack) reason = e.reason.stack.toString().substring(0, 200);
+        }
+        _reportError({
+          source: 'unhandled_promise',
+          type: 'unhandledrejection',
+          message: reason,
+          filename: '',
+          lineno: 0,
+          colno: 0,
+          stack: e.reason && e.reason.stack ? e.reason.stack : '',
+          url: window.location.href,
+          userAgent: navigator.userAgent,
+          timestamp: Date.now()
+        });
+      }, true);
+
+      var _origConsoleError = console.error;
+      console.error = function() {
+        _origConsoleError.apply(console, arguments);
+        try {
+          var msg = Array.prototype.slice.call(arguments).map(function(a) {
+            return typeof a === 'object' ? JSON.stringify(a).substring(0, 200) : String(a);
+          }).join(' ');
+          _reportError({
+            source: 'console_error',
+            type: 'console.error',
+            message: msg.substring(0, 500),
+            filename: '',
+            lineno: 0,
+            colno: 0,
+            stack: '',
+            url: window.location.href,
+            userAgent: navigator.userAgent,
+            timestamp: Date.now()
+          });
+        } catch (e) {}
+      };
+
+      window.MTSCOS_ERROR_REPORTER = {
+        report: _reportError,
+        flush: _flushErrors
+      };
     })();
     </script>
 </body>

@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 教育智能客服服务 (v15.15.0) ==================================== 提供AI智能客服、智能问答、知识库管理、多轮对话、情感分析、工单管理、智能路由、客服质检等综合服务。  核心能力： 1. AI智能客服 - 智能问答、多轮对话、上下文理解 2. 知识库管理 - FAQ管理、文档知识、案例知识、流程知识 3. 多轮对话 - 对话流程、上下文对话、知识引导 4. 情感分析 - 情感识别、情绪监测、客户满意度 5. 工单管理 - 工单创建、分配、处理、关闭 6. 智能路由 - 技能路由、优先级路由、业务路由 7. 客服质检 - 响应速度、服务态度、问题解决 8. 客服绩效 - 绩效评估、服务指标、工作统计  差异化支持： - 成人教育 - 职业培训、学历提升、继续教育 - K12教育 - 中小学教育、学科辅导、素质教育 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

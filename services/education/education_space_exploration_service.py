@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 教育太空探索服务 (v15.19.0) ==================================== 提供太空科学、天文观测、航天工程、卫星技术、太空实验、深空探测、太空教育、太空创新等综合管理服务。  核心能力： 1. 太空科学 - 天文学/天体物理/行星科学/宇宙学/空间物理/地球科学/航天医学/生命科学 2. 天文观测 - 望远镜/射电望远镜/空间望远镜/光谱仪/探测器/卫星遥感 3. 航天工程 - 火箭技术/航天器设计/轨道力学/推进系统/导航控制/热防护 4. 卫星技术 - 通信卫星/遥感卫星/导航卫星/科学卫星/微卫星/纳米卫星 5. 太空实验 - 微重力实验/生命科学实验/材料科学实验/物理实验/天文观测/地球观测 6. 深空探测 - 月球探测/火星探测/小行星探测/彗星探测/木星探测/土星探测 7. 太空教育 - 天文课程/航天课程/太空夏令营/模拟飞行/太空竞赛/科普活动 8. 太空创新 - 太空旅游/商业航天/太空资源开发/太空采矿/太空工厂/太空农业 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

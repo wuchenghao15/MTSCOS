@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 图书馆服务 (v15.5.0) ==================================== 提供图书管理、借阅、预约、推荐和阅读统计等综合服务。  核心能力： 1. 图书管理 - 图书入库、分类、检索 2. 借阅管理 - 借书、还书、续借、逾期 3. 预约管理 - 图书预约、到馆提醒 4. 阅读统计 - 借阅统计、阅读排行 5. 荐购管理 - 读者荐购、采购管理 6. 读者信用 - 信用积分、借阅权限 7. 成人图书馆 - 成人教育文献资源 8. K12图书馆 - 九年制义务教育图书 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

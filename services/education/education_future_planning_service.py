@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 教育未来规划服务 (v15.23.0) ==================================== 提供教育战略规划、发展预测、改革设计、技术规划等综合管理服务。  核心能力： 1. 教育战略规划 - 长期战略、中期规划、短期计划、专项规划 2. 教育发展预测 - 趋势预测、情景分析、模型预测、专家评估 3. 教育改革设计 - 课程改革、教学改革、管理改革、评价改革 4. 教育技术规划 - AI技术、大数据、云计算、物联网 5. 教育人才规划 - 教师人才、管理人才、科研人才、技术人才 6. 教育资源规划 - 人力、物力、财力、信息资源 7. 教育质量规划 - 办学质量、教学质量、科研质量、管理质量 8. 教育创新规划 - 教学创新、课程创新、管理创新、技术创新 9. 预警管理 - 规划预警、风险评估、预警记录 10. 统计分析 - 规划统计、数据报表 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

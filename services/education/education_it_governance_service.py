@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 教育信息化治理服务 (v15.20.0) ==================================== 提供IT治理、信息系统管理、技术架构、数据治理、安全治理、IT服务管理、 IT投资管理、IT绩效评估等综合管理服务。  核心能力： 1. IT治理 - 治理框架、战略对齐、价值交付、治理委员会 2. 信息系统 - 系统管理、目录管理、集成管理、运行监控 3. 技术架构 - 架构规划、组件管理、技术选型、演进管理 4. 数据治理 - 数据标准、数据质量、元数据管理、数据安全 5. 安全治理 - 安全策略、身份认证、访问控制、安全审计、合规管理 6. IT服务管理 - 服务目录、服务级别、变更管理、问题管理 7. IT投资管理 - 预算管理、投资评估、采购管理、供应商管理 8. IT绩效评估 - 效率评估、效果评估、满意度、价值分析 9. 项目管理 - 项目规划、执行跟踪、状态管理、资源分配 10. 统计分析 - 综合统计、报表生成  支持教育类型：成人教育、K12教育 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

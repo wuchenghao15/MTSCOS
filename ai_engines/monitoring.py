@@ -36,7 +36,9 @@ class AIMonitor:
             'database': 0,
             'ai': 0,
             'network': 0,
-            'security': 0
+            'security': 0,
+            'vikey': 0,
+            'layout': 0,
         }
 
         self.metrics = {
@@ -65,10 +67,31 @@ class AIMonitor:
             'memory': 85,
             'disk': 90,
             'response_time': 1000,
-            'error_rate': 0.05
+            'error_rate': 0.05,
+            'error_rate_vikey': 0.01,
+            'layout_violation_rate': 0.1,
+        }
+
+        self.idle_thresholds = {
+            'warn': 300,
+            'hibernate': 900,
+            'reclaim': 1800,
         }
 
         self.alerts = deque(maxlen=100)
+        self.vikey_status = {
+            'vikey_present': None,
+            'vikey_bound': None,
+            'last_probe_time': None,
+            'serial': None,
+            'consecutive_anomalies': 0,
+        }
+        self.memorial_theme_state = {
+            'current_theme': 'standard',
+            'today_date': None,
+            'ribbon_text': '',
+            'grayscale_enabled': False,
+        }
         self.start_monitoring()
 
         logger.info("AI监控初始化完成")
@@ -170,6 +193,9 @@ class AIMonitor:
 
             self._check_alerts()
 
+            self._check_vikey_health()
+            self._check_memorial_theme()
+
         except Exception as e:
             logger.error(f"收集系统指标失败: {str(e)}")
 
@@ -192,6 +218,98 @@ class AIMonitor:
                 'HIGH',
                 f"平均响应时间: {self.performance_metrics['average_response_time']:.1f}ms"
             )
+
+    def _check_vikey_health(self):
+        """VIKEY硬件密钥健康检测（MTS架构v2.0新增）"""
+        try:
+            present = False
+            bound = False
+            serial = None
+            try:
+                from core.services.vikey_driver import get_vikey_manager
+                mgr = get_vikey_manager()
+                det = mgr.detect()
+                if isinstance(det, dict):
+                    devices = det.get('devices') or []
+                    for d in devices:
+                        if not isinstance(d, dict):
+                            continue
+                        is_present = bool(d.get('is_present', d.get('present', True)))
+                        if is_present:
+                            present = True
+                            serial = d.get('serial') or d.get('device_serial')
+                            binding = d.get('binding') if isinstance(d.get('binding'), dict) else {}
+                            b_user = binding.get('username') or d.get('username')
+                            b_status = binding.get('binding_status') or binding.get('status') or d.get('binding_status') or ''
+                            bound = bool(b_user) or b_status == 'bound'
+                            if present and bound:
+                                break
+            except ImportError:
+                try:
+                    import urllib.request, json
+                    with urllib.request.urlopen('http://127.0.0.1:8888/api/vikey/detect', timeout=2) as resp:
+                        data = json.loads(resp.read().decode('utf-8'))
+                        d = data.get('data', data)
+                        present = (d.get('present_count') or 0) > 0
+                        if present and d.get('devices'):
+                            for dev in d['devices']:
+                                if dev.get('present') and dev.get('binding_status') == 'bound':
+                                    bound = True
+                                    serial = dev.get('serial')
+                                    break
+                except Exception:
+                    pass
+            except Exception:
+                pass
+            now = time.time()
+            self.vikey_status['vikey_present'] = present
+            self.vikey_status['vikey_bound'] = bound
+            self.vikey_status['last_probe_time'] = now
+            self.vikey_status['serial'] = serial
+            abnormal = (present is False or bound is False)
+            if abnormal:
+                self.vikey_status['consecutive_anomalies'] += 1
+                if self.vikey_status['consecutive_anomalies'] >= 3:
+                    self._create_alert(
+                        'vikey',
+                        'CRITICAL',
+                        f"VIKEY硬件密钥异常: present={present}, bound={bound}, serial={serial}, 连续异常={self.vikey_status['consecutive_anomalies']}次"
+                    )
+                    with self.error_lock:
+                        self.error_count['vikey'] += 1
+                        self.metrics['total_errors'] += 1
+            else:
+                if self.vikey_status['consecutive_anomalies'] > 0:
+                    self.vikey_status['consecutive_anomalies'] = 0
+                    logger.info("VIKEY硬件密钥恢复正常")
+        except Exception as e:
+            logger.error(f"VIKEY健康检测失败: {str(e)}")
+
+    def _check_memorial_theme(self):
+        """公祭日主题自动检测（MTS架构v2.0新增）"""
+        try:
+            today = datetime.now().strftime('%m-%d')
+            self.memorial_theme_state['today_date'] = today
+            memorial_map = {
+                '09-18': '九一八事变纪念日',
+                '09-30': '烈士纪念日',
+                '12-13': '南京大屠杀死难者国家公祭日',
+            }
+            if today in memorial_map:
+                name = memorial_map[today]
+                if self.memorial_theme_state['current_theme'] != 'memorial':
+                    self.memorial_theme_state['current_theme'] = 'memorial'
+                    self.memorial_theme_state['grayscale_enabled'] = True
+                    self.memorial_theme_state['ribbon_text'] = f"国家公祭日·{name}·追思主题"
+                    logger.info(f"检测到今日为国家公祭日 [{name}]，自动切换黑灰追思主题")
+            else:
+                if self.memorial_theme_state['current_theme'] != 'standard':
+                    self.memorial_theme_state['current_theme'] = 'standard'
+                    self.memorial_theme_state['grayscale_enabled'] = False
+                    self.memorial_theme_state['ribbon_text'] = ''
+                    logger.info("非公祭日，恢复标准深紫色渐变主题")
+        except Exception as e:
+            logger.error(f"公祭日主题检测失败: {str(e)}")
 
     def _create_alert(self, alert_type: str, severity: str, message: str):
         """创建告警"""
@@ -316,8 +434,83 @@ class AIMonitor:
             'health_score': health_score,
             'issues': issues,
             'metrics': self.metrics,
-            'resource_usage': usage
+            'resource_usage': usage,
+            'vikey': self.vikey_status,
+            'memorial_theme': self.memorial_theme_state,
+            'architecture': 'MTS v2.0',
         }
+
+    def monitor_employee_idle(self, employee_manager):
+        """监控AI员工空闲状态并应用3级空闲策略"""
+        if not employee_manager:
+            return {'success': False, 'error': 'employee_manager为空'}
+
+        idle_stats = {
+            'total': 0,
+            'active': 0,
+            'idle': 0,
+            'hibernated': 0,
+            'reclaimed': 0,
+            'actions_taken': [],
+            'warnings': [],
+        }
+
+        for emp_id, employee in employee_manager.employees.items():
+            idle_stats['total'] += 1
+            
+            status = getattr(employee, 'status', 'unknown')
+            
+            if status == 'active':
+                idle_stats['active'] += 1
+                
+                try:
+                    idle_duration = employee.get_idle_duration() if hasattr(employee, 'get_idle_duration') else 0
+                except Exception:
+                    idle_duration = 0
+                
+                if idle_duration > self.idle_thresholds['reclaim']:
+                    result = employee.reclaim()
+                    idle_stats['reclaimed'] += 1
+                    idle_stats['actions_taken'].append({
+                        'employee_id': emp_id,
+                        'name': getattr(employee, 'name', emp_id),
+                        'action': 'reclaim',
+                        'duration': f"{idle_duration:.1f}s",
+                        'message': result.get('message', '')
+                    })
+                    self._create_alert('employee_idle', 'CRITICAL', f"AI员工 {getattr(employee, 'name', emp_id)} 空闲超30分钟，已回收")
+                
+                elif idle_duration > self.idle_thresholds['hibernate']:
+                    result = employee.hibernate()
+                    idle_stats['hibernated'] += 1
+                    idle_stats['active'] -= 1
+                    idle_stats['actions_taken'].append({
+                        'employee_id': emp_id,
+                        'name': getattr(employee, 'name', emp_id),
+                        'action': 'hibernate',
+                        'duration': f"{idle_duration:.1f}s",
+                        'message': result.get('message', '')
+                    })
+                    self._create_alert('employee_idle', 'WARNING', f"AI员工 {getattr(employee, 'name', emp_id)} 空闲超15分钟，已休眠")
+                
+                elif idle_duration > self.idle_thresholds['warn']:
+                    idle_stats['idle'] += 1
+                    idle_stats['warnings'].append({
+                        'employee_id': emp_id,
+                        'name': getattr(employee, 'name', emp_id),
+                        'idle_duration': f"{idle_duration:.1f}s"
+                    })
+            
+            elif status == 'hibernated':
+                idle_stats['hibernated'] += 1
+            
+            elif status == 'reclaimed':
+                idle_stats['reclaimed'] += 1
+
+        if idle_stats['actions_taken']:
+            logger.info(f"AI员工空闲监控: 执行了 {len(idle_stats['actions_taken'])} 个操作")
+
+        return idle_stats
 
 
 ai_monitor = AIMonitor()

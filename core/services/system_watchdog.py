@@ -25,8 +25,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
-CONFIG_FILE = os.path.join(PROJECT_DIR, 'services_config.json')
+PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+CONFIG_FILE = os.path.join(PROJECT_DIR, 'config', 'services_config.json')
 PID_DIR = os.path.join(PROJECT_DIR, 'pids')
 WATCHDOG_PID_FILE = os.path.join(PID_DIR, 'watchdog.pid')
 
@@ -69,7 +69,7 @@ class ServiceManager:
         return {
             'flask_app': {
                 'name': 'Flask应用',
-                'command': ['python3', 'app.py'],
+                'command': ['python3', 'server_real_db.py'],
                 'cwd': PROJECT_DIR,
                 'env': {},
                 'log_file': 'flask_app.log',
@@ -77,22 +77,22 @@ class ServiceManager:
                 'auto_start': True,
                 'auto_restart': True
             },
-            'service_manager': {
-                'name': '服务管理器',
-                'command': ['python3', '-m', 'app.services.service_manager'],
+            'ai_agent_service': {
+                'name': 'AI Agent服务',
+                'command': ['python3', '-m', 'ai_engines.ai_service'],
                 'cwd': PROJECT_DIR,
                 'env': {},
-                'log_file': 'service_manager.log',
+                'log_file': 'ai_agent_service.log',
                 'check_port': None,
                 'auto_start': True,
                 'auto_restart': True
             },
-            'ai_agent_service': {
-                'name': 'AI Agent服务',
-                'command': ['python3', 'ai_agent_service.py'],
+            'auto_scheduler': {
+                'name': '自动调度器',
+                'command': ['python3', '-m', 'ai_engines.auto_scheduler'],
                 'cwd': PROJECT_DIR,
                 'env': {},
-                'log_file': 'ai_agent_service.log',
+                'log_file': 'auto_scheduler.log',
                 'check_port': None,
                 'auto_start': True,
                 'auto_restart': True

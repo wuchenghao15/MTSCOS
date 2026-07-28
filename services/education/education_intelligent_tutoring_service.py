@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 教育智能辅导服务 (v15.24.0) ==================================== 提供智能辅导计划、个性化学习路径、智能答疑、学习分析、作业辅导、 考试辅导、学习反馈和智能推荐等综合智能辅导服务。  核心能力： 1. 智能辅导计划 - 一对一/小班/小组/在线/线下/混合/专题/综合辅导 2. 个性化学习路径 - 根据学习风格和知识水平定制学习路线 3. 智能答疑 - 概念理解/知识应用/分析推理/综合评价等多种问题类型 4. 学习分析 - 学习行为/知识掌握/学习进度/学习效果等多维度分析 5. 作业辅导 - 作业布置/批改/反馈/统计分析 6. 考试辅导 - 单元测验/期中/期末/模拟/资格/认证/竞赛/综合测评 7. 学习反馈 - 即时/延迟/个性化/群体/正面/建设性/详细/简洁反馈 8. 智能推荐 - 内容/资源/课程/学习路径/辅导老师/学习伙伴/活动/任务推荐 9. 预警管理 - 学习预警/风险提示/干预措施/预警历史 10. 统计分析 - 全局数据分析与报表生成  支持教育类型：成人教育 / K12教育 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

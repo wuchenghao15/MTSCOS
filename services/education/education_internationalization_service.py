@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 教育国际化服务 (v15.14.0) ==================================== 提供国际合作办学、国际课程、国际交流、留学生管理、国际考试、 海外升学、跨文化教育、国际认证等综合管理服务。  核心能力： 1. 国际项目 - 中外合作办学/双学位/交换生/留学预科/海外分校/联合培养/短期交流/暑期学校 2. 合作院校 - 学术合作/学生交流/教师互访/联合研究/课程共建/学分互认/学位互授/战略联盟 3. 国际课程 - 双语课程/国际认证课程/学分互认课程 4. 交换生 - 交换申请/录取管理/学分转换/成绩对接 5. 留学生 - 招生管理/学籍管理/签证办理/住宿安排/毕业管理 6. 国际考试 - TOEFL/IELTS/JLPT/GRE/GMAT/SAT/ACT/AP 7. 海外升学 - 升学指导/申请管理/录取跟踪/签证服务 8. 跨文化教育 - 文化体验/语言沉浸/学术交流/实习/志愿服务 9. 国际认证 - IB/A-Level/AP/BCA/国际文凭 10. 统计分析 - 国际化数据汇总与分析  差异化支持： - 成人教育：职业导向、短期项目、灵活学习 - K12教育：课程衔接、语言准备、文化适应 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

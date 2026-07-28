@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 特殊教育服务 (v15.8.0) ==================================== 提供特殊需求学生档案、个别化教育计划、资源教室、融合教育、康复训练、 特教教师管理、家校协同及成人特殊教育等综合管理服务。 本模块同时支持成人教育和K12教育的差异化需求。  核心能力： 1. 特殊需求学生档案 - 残障类型、学习障碍、超常学生、档案管理 2. 个别化教育计划(IEP) - 计划制定、目标管理、进度追踪、周期评估 3. 资源教室管理 - 教室登记、设备配置、使用预约 4. 融合教育支持 - 随班就读、特教班、融合活动 5. 康复训练 - 训练计划、训练记录、效果评估 6. 特教教师管理 - 资质、专长、培训、师生配对 7. 家校协同 - 家庭康复指导、家长培训、沟通记录 8. 成人特殊教育 - 职业康复、残障成人支持、就业辅导 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

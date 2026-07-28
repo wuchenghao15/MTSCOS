@@ -275,6 +275,10 @@ class AILearningAgent:
         try:
             logger.info("Starting self-upgrade cycle")
             # 1. 获取所有模型
+            if not self.ai_service_manager:
+                logger.warning("AI service manager not available, skipping self-upgrade")
+                return False
+            
             model_names = self.ai_service_manager.list_models()
             if not model_names:
                 logger.warning("No models available for self-upgrade")
@@ -433,15 +437,16 @@ class AILearningAgent:
 class AILearningSystem:
     """AI学习系统,整合知识库和学习代理"""
 
-    def __init__(self, ai_service_manager):
+    def __init__(self, ai_service_manager=None):
         self.ai_service_manager = ai_service_manager
         self.knowledge_base = KnowledgeBase()
-        self.learning_agent = AILearningAgent(self.ai_service_manager, self.knowledge_base)
+        try:
+            self.learning_agent = AILearningAgent(self.ai_service_manager, self.knowledge_base)
+        except Exception:
+            self.learning_agent = None
         self.auto_learning_enabled = True
         self.learning_interval = 3600  # 自动学习间隔(秒)
         self.last_learning_time = time.time()
-        # 启动自动学习线程
-        self._start_auto_learning_thread()
 
         logger.info("AI Learning System initialized successfully")
 
@@ -488,6 +493,35 @@ class AILearningSystem:
     def optimize_paper_generation(self, user_preferences=None):
         """优化试卷生成策略"""
         return self.learning_agent.optimize_paper_generation(user_preferences)
+
+    def run_learning_cycle(self):
+        """运行学习周期"""
+        try:
+            logger.info("Running learning cycle...")
+            
+            if self.learning_agent:
+                result = self.learning_agent.self_upgrade_cycle()
+                self.last_learning_time = time.time()
+                return {
+                    'success': True,
+                    'agent_result': result,
+                    'knowledge_stats': self.knowledge_base.get_statistics(),
+                    'last_learning_time': self.last_learning_time,
+                }
+            else:
+                stats = self.knowledge_base.get_statistics()
+                return {
+                    'success': True,
+                    'message': '学习代理未初始化，仅更新知识库统计',
+                    'knowledge_stats': stats,
+                    'last_learning_time': self.last_learning_time,
+                }
+        except Exception as e:
+            logger.error(f"Learning cycle failed: {str(e)}")
+            return {
+                'success': False,
+                'error': str(e),
+            }
 
     def shutdown(self):
         """关闭学习系统"""

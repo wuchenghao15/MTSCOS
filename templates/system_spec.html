@@ -2,11 +2,11 @@
 
 {% block title %}资源中心 · 系统规范与文档 · MTSCOS AI{% endblock %}
 
-{% block page_title %}📘 资源中心 · 系统规范与文档{% endblock %}
+{% block page_title %}<i class="fas fa-book"></i> 资源中心 · 系统规范与文档{% endblock %}
 
 {% block sidebar_nav %}
 <a href="#spec" class="mtscos-nav-item"><i class="fas fa-scroll"></i><span>📜 系统规范 §1-§5</span></a>
-<a href="#docs" class="mtscos-nav-item"><i class="fas fa-book"></i><span>📖 使用文档 §6</span></a>
+<a href="#docs" class="mtscos-nav-item"><i class="fas fa-book"></i><span><i class="fas fa-book-open"></i> 使用文档 §6</span></a>
 <a href="#api" class="mtscos-nav-item"><i class="fas fa-plug"></i><span>🔌 API 接口 §7</span></a>
 <a href="#rules" class="mtscos-nav-item"><i class="fas fa-gavel"></i><span>⚖️ 系统规则 §8</span></a>
 <a href="#faq" class="mtscos-nav-item"><i class="fas fa-circle-question"></i><span>❓ 常见问题 §9</span></a>
@@ -133,6 +133,102 @@
         </div>
 
         <div class="spec-card">
+            <h4><i class="fas fa-cube"></i> §2.1 设计令牌系统（Design Tokens）</h4>
+            <ul>
+                <li><b>设计原则：</b>去AI味、克制专业、统一规范。去除极光动效、颗粒纹理、发光效果、过度渐变等AI生成特征。</li>
+                <li><b>主色系统：</b>
+                    <ul>
+                        <li><code>--accent: #4f46e5</code>（深靛蓝，核心主色）</li>
+                        <li><code>--accent-soft: rgba(79, 70, 229, 0.12)</code>（主色柔和背景）</li>
+                        <li><code>--accent-hover: rgba(79, 70, 229, 0.22)</code>（主色悬停背景）</li>
+                        <li><code>--accent-text: #6366f1</code>（主色文字）</li>
+                        <li><code>--accent-text-bright: #818cf8</code>（亮主色文字）</li>
+                        <li><code>--accent-secondary: #06b6d4</code>（青色辅色）</li>
+                    </ul>
+                </li>
+                <li><b>功能色：</b>
+                    <ul>
+                        <li><code>--success: #22c55e</code> / <code>--success-soft</code></li>
+                        <li><code>--warning: #f59e0b</code> / <code>--warning-soft</code></li>
+                        <li><code>--danger: #ef4444</code> / <code>--danger-soft</code> / <code>--danger-text</code></li>
+                    </ul>
+                </li>
+                <li><b>间距体系（4px基准）：</b><code>--space-1(4px)</code> / <code>--space-2(8px)</code> / <code>--space-3(12px)</code> / <code>--space-4(16px)</code> / <code>--space-6(24px)</code> / <code>--space-8(32px)</code></li>
+                <li><b>圆角体系（克制）：</b><code>--radius-sm(8px)</code> / <code>--radius-md(12px)</code> / <code>--radius-full(9999px)</code></li>
+                <li><b>阴影体系（柔和无发光）：</b><code>--shadow-sm(0 1px 3px)</code> / <code>--shadow-md(0 4px 12px)</code> / <code>--shadow-lg(0 8px 24px)</code></li>
+                <li><b>玻璃拟态（适度模糊）：</b><code>--glass-blur(12px)</code> / <code>--glass-blur-strong(16px)</code> / <code>--glass-bg/rgba(15,23,42,0.8)</code> / <code>--glass-border/rgba(255,255,255,0.08)</code></li>
+                <li><b>文本色：</b><code>--text-primary(#f8fafc)</code> / <code>--text-secondary(#cbd5e1)</code> / <code>--text-muted(#94a3b8)</code> / <code>--text-faint(#64748b)</code></li>
+                <li><b>背景：</b><code>--bg-page(linear-gradient 135deg #0f172a → #1e1b4b)</code> / <code>--bg-card/rgba(15,23,42,0.7)</code> / <code>--bg-card-alt/rgba(15,23,42,0.6)</code></li>
+                <li><b>字体栈：</b><code>--font-sans(-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif)</code></li>
+            </ul>
+        </div>
+
+        <div class="spec-card">
+            <h4><i class="fas fa-palette"></i> §2.1.1 主题变量体系（Theme Variables）</h4>
+            <ul>
+                <li><b>统一主题变量前缀：</b>所有主题变量使用 <code>--theme-*</code> 前缀，定义于 <code>/static/css/theme.css</code>，由首页和基础模板引用。</li>
+                <li><b>主色系统：</b><code>--theme-primary(#4f46e5)</code> / <code>--theme-primary-light(#6366f1)</code> / <code>--theme-primary-dark(#4338ca)</code> / <code>--theme-primary-accent(#06b6d4)</code></li>
+                <li><b>文本色：</b><code>--theme-text-primary(#f8fafc)</code> / <code>--theme-text-secondary(#cbd5e1)</code> / <code>--theme-text-muted(#94a3b8)</code> / <code>--theme-text-faint(#64748b)</code></li>
+                <li><b>背景色：</b><code>--theme-bg-page(linear-gradient)</code> / <code>--theme-bg-card/rgba(15,23,42,0.7)</code> / <code>--theme-bg-sidebar/rgba(15,23,42,0.85)</code></li>
+                <li><b>边框色：</b><code>--theme-border-subtle/rgba(79,70,229,0.1)</code> / <code>--theme-border-strong/rgba(79,70,229,0.18)</code></li>
+                <li><b>功能色：</b><code>--theme-success(#22c55e)</code> / <code>--theme-warning(#f59e0b)</code> / <code>--theme-danger(#ef4444)</code></li>
+                <li><b>间距体系：</b><code>--theme-space-1(4px)</code> / <code>--theme-space-2(8px)</code> / <code>--theme-space-4(16px)</code> / <code>--theme-space-6(24px)</code> / <code>--theme-space-8(32px)</code></li>
+                <li><b>使用方式：</b>子组件变量通过 <code>var(--theme-xxx, fallback)</code> 引用统一主题变量，确保主题切换时全站同步。</li>
+            </ul>
+        </div>
+
+        <div class="spec-card">
+            <h4><i class="fas fa-users"></i> §2.1.2 千人千面主题推荐</h4>
+            <ul>
+                <li><b>推荐策略：</b>基于时间（日间/夜间）自动推荐主题，API <code>/api/theme/recommend</code> 提供推荐逻辑。</li>
+                <li><b>日间（6:00-18:00）：</b>推荐浅色主题（<code>light</code>），减少眼睛疲劳。</li>
+                <li><b>夜间（18:00-6:00）：</b>推荐深色主题（<code>deep_blue</code>），保护视力。</li>
+                <li><b>用户偏好：</b>用户可在设置页手动选择主题，选择后保存至 <code>localStorage['mtscos_theme']</code> 和 Session。</li>
+                <li><b>超级管理员：</b>可在超级管理员设置页面统一配置系统默认主题，并开启/关闭千人千面推荐功能。</li>
+            </ul>
+        </div>
+
+        <div class="spec-card">
+            <h4><i class="fas fa-layer-group"></i> §2.2 组件样式规范</h4>
+            <ul>
+                <li><b>卡片（Card）：</b><code>background: var(--bg-card); backdrop-filter: blur(var(--glass-blur)); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); box-shadow: var(--shadow-md);</code></li>
+                <li><b>按钮（Button）：</b>
+                    <ul>
+                        <li>主按钮：<code>background: var(--accent); color: white;</code></li>
+                        <li>次按钮：<code>background: var(--accent-soft); color: var(--accent-text); border: 1px solid var(--border-subtle);</code></li>
+                        <li>危险按钮：<code>background: var(--danger); color: white;</code></li>
+                    </ul>
+                </li>
+                <li><b>输入框（Input）：</b><code>background: var(--bg-card-alt); border: 1px solid var(--border-subtle); focus时border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft);</code></li>
+                <li><b>标签（Chip/Badge）：</b><code>padding: var(--space-1) var(--space-3); border-radius: var(--radius-full); 使用对应--xxx-soft背景 + --xxx前景色</code></li>
+                <li><b>表格（Table）：</b><code>th使用--bg-card-alt背景；tr:hover使用--accent-soft背景；border-bottom使用--border-subtle</code></li>
+            </ul>
+        </div>
+
+        <div class="spec-card">
+            <h4><i class="fas fa-pencil-ruler"></i> §2.3 布局规范</h4>
+            <ul>
+                <li><b>首页布局：</b>Header(10vh) : Main(70vh) : Footer(20vh) ≡ 1:7:2</li>
+                <li><b>后台布局：</b>Sidebar(20%) : Main(80%) ≡ 2:8；侧边栏可切换为1:9图标模式</li>
+                <li><b>侧边栏折叠：</b>展开宽度220px，缩进宽度64px，状态通过localStorage持久化</li>
+                <li><b>滚动策略：</b>内容区域内部滚动，隐藏滚动条；页面无全局滚动</li>
+                <li><b>响应式断点：</b>768px（移动端）、1024px（平板）、1280px（桌面）</li>
+            </ul>
+        </div>
+
+        <div class="spec-card">
+            <h4><i class="fas fa-ban"></i> §2.4 禁用装饰清单（去AI味）</h4>
+            <ul>
+                <li>禁止使用极光动效（aurora）、颗粒纹理（grain）、发光效果（glow）</li>
+                <li>禁止使用渐变文字（-webkit-background-clip: text）</li>
+                <li>禁止使用脉冲动画（pulse）、浮动动画（float）、弹跳动画（bounce）</li>
+                <li>禁止使用Emoji作为图标或装饰元素</li>
+                <li>禁止使用过度渐变背景（超过2色的渐变视为过度）</li>
+                <li>禁止使用阴影发光效果（box-shadow中rgba alpha值超过0.2视为发光）</li>
+            </ul>
+        </div>
+
+        <div class="spec-card">
             <h4><i class="fas fa-ribbon"></i> §3 国家公祭日主题 · 自动切换规则</h4>
             <ul>
                 <li><b>触发日期（固定，不可配置）</b>：<code>9/18 九一八</code>、<code>9/30 烈士纪念日</code>、<code>12/13 南京大屠杀死难者国家公祭日</code>。</li>
@@ -209,19 +305,25 @@
             <tr><td>POST</td><td><code>/api/auth/login</code></td><td>账密登录（已挂载正式 DB，验证码已移除）</td><td>匿名</td></tr>
             <tr><td>POST</td><td><code>/api/theme/set</code></td><td>切换主题；公祭日仅超级管理员可写</td><td>登录/超管</td></tr>
             <tr><td>POST</td><td><code>/api/theme/reset</code></td><td>清除自定义覆盖，回到系统自动判定</td><td>登录</td></tr>
+            <tr><td>GET</td><td><code>/api/theme/get</code></td><td>获取当前主题及可用主题列表</td><td>匿名</td></tr>
+            <tr><td>GET</td><td><code>/api/theme/recommend</code></td><td>千人千面主题推荐（基于时间）</td><td>登录</td></tr>
             <tr><td>GET</td><td><code>/api/user/info</code></td><td>当前会话用户/版本/角色信息</td><td>登录</td></tr>
         </tbody>
     </table>
 </section>
 
 <section class="home-section" id="rules">
-    <h3 class="section-title"><i class="fas fa-gavel"></i> §8 · 系统规则（会话/安全/权限/审计/数据）</h3>
+    <h3 class="section-title"><i class="fas fa-gavel"></i> §8 · 系统规则（会话/安全/权限/审计/数据/VIKEY）</h3>
     <ul class="rule-list">
         <li><b>会话：</b>连续 30 分钟无操作自动登出，5 分钟无输入进入锁屏（<code>MTSCOS.lock()</code>）。</li>
         <li><b>安全：</b>账密经 <code>scrypt + salt</code> 存储，登录失败 5 次触发 10 分钟冷却；全程 HTTPS/TLS。</li>
         <li><b>权限：</b>角色分为 学生 / 家长 / 教师 / 校管理员 / 超管 五阶，细粒度由 <code>users.super_admin_approved</code> 与 <code>role</code> 联合判定。</li>
         <li><b>审计：</b>登录/登出、主题切换、敏感数据写入均进入审计表可追溯。</li>
         <li><b>数据：</b>个人数据支持导出（JSON）与删除（GDPR 合规），在 <code>/settings → 数据管理</code> 操作。</li>
+        <li><b>VIKEY强制规则：</b><code>VIKEY_FORCE_CHECK_ENABLED=1</code> — 无论调试模式还是普通模式，超级管理员界面和操作必须插入VIKEY USB加密狗。</li>
+        <li><b>VIKEY监控：</b>超级管理员页面每2秒检测VIKEY状态，异常时立即快照并锁定系统，5分钟（<code>VIKEY_LOCK_TIMEOUT=300</code>）未插入则退出并释放快照。</li>
+        <li><b>VIKEY锁定：</b>检测到加密狗拔出后，前端显示"VIKEY USB加密狗状态异常"，重新插入后显示"已插入VIKEY USB硬件加密狗"并恢复快照状态。</li>
+        <li><b>调试模式绕过：</b><code>VIKEY_ALLOW_DEBUG_BYPASS=0</code> — 不允许在调试模式下绕过VIKEY检测，确保安全策略在所有环境下一致执行。</li>
     </ul>
 </section>
 

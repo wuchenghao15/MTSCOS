@@ -1,10 +1,10 @@
 # MTSCOS AI 统一规则体系
 
-> **规则版本**: v1.0
-> **发布日期**: 2026-07-21
-> **规则总数: 425+
-> **规则域**: 10个
-> **关联架构**: MT架构 v1.0
+> **规则版本**: v1.1
+> **发布日期**: 2026-07-26
+> **规则总数: 450+
+> **规则域**: 11个
+> **关联架构**: MTS架构 v2.0
 
 ---
 
@@ -21,6 +21,7 @@
 | [成人教育](#R-ADULT-成人教育规则) | R-ADULT | 18+ | ✅ 已启用 |
 | [高等教育](#R-HIGHER-高等教育规则) | R-HIGHER | 20+ | ✅ 已启用 |
 | [用户管理](#R-USER-用户管理) | R-USER | 18+ | ✅ 已启用 |
+| [系统管理与MTS架构](#R-SYS-系统管理与MTS架构) | R-SYS | 14+ | ✅ 已启用 |
 | [自我学习](#R-LEARN-自我学习) | R-LEARN | 56+ | ✅ 已启用 |
 
 ---
@@ -5070,3 +5071,147 @@
 **描述**: LLM技术发展迅速
 **执行状态**: ✅ 已启用
 **创建时间**: 2026-07-24 10:38:37
+
+---
+
+## R-SYS 系统管理与MTS架构
+
+### R-SYS-001 RBAC + ABAC 双模型权限规则（v17.22.0强化）
+
+**规则名称**: RBAC + ABAC 双模型权限规则
+**规则值**: 1
+**规则类型**: system_architecture
+**优先级**: critical
+**描述**: 权限体系必须严格遵循「RBAC角色层 + ABAC属性过滤层」双模型叠加：16级角色（guest/parent/designer/teacher/proctor/qm/ai_mgr/cluster_mgr/admin/super_admin + 6类专业管理员），50+ 权限规则以 system_versions/subsystem_versions 双表记录版本审计；权限变更必须通过统一版本API触发；ABAC层必须按用户/资源/环境属性过滤数据可见范围
+**执行状态**: ✅ 已启用
+**创建时间**: 2026-07-26
+
+### R-SYS-002 VIKEY硬件密钥登录规则
+
+**规则名称**: VIKEY硬件密钥登录规则
+**规则值**: 1
+**规则类型**: system_security
+**优先级**: critical
+**描述**: 超级管理员（wuchenghao15）必须启用7要素强认证：用户名、密码、随机挑战码、USB Key序列号、USB Key PIN、SSL指纹、硬件绑定校验；未检测到USB Key时点击登录始终提示"用户名或密码错误"；普通用户启用SSL证书指纹+密码双要素；缺SSL则统一返回"用户名或密码错误"
+**执行状态**: ✅ 已启用
+**创建时间**: 2026-07-26
+
+### R-SYS-003 AI防火墙服务规则
+
+**规则名称**: AI防火墙服务规则
+**规则值**: 1
+**规则类型**: system_security
+**优先级**: high
+**描述**: 必须启用AI防火墙服务，执行SQL注入、XSS、命令注入、CSRF等安全检查；定期进行代码和依赖漏洞扫描；安全中间件白名单路径必须包含 /api/system/logo、/api/approval/*、/api/ai_engine/self_learning/*、/api/arduino/ai/*、/api/ai/chinese_listening/*、/api/chinese_dictation/*、/api/vikey/*、/api/layout_ai/*
+**执行状态**: ✅ 已启用
+**创建时间**: 2026-07-26
+
+### R-SYS-004 统一版本管理规则
+
+**规则名称**: 统一版本管理规则
+**规则值**: 1
+**规则类型**: system_architecture
+**优先级**: high
+**描述**: 系统主版本CURRENT_VERSION必须与version_manager.py、VERSION文件、system_versions表、subsystem_versions表保持四者一致；版本升级必须完成：代码常量→文件→数据库→子系统→Git→6个环节；子系统版本应与主版本同步；禁止出现版本号不一致
+**执行状态**: ✅ 已启用
+**创建时间**: 2026-07-26
+
+### R-SYS-005 超级管理员UI隐藏规则
+
+**规则名称**: 超级管理员UI隐藏规则
+**规则值**: 1
+**规则类型**: ux_security
+**优先级**: high
+**描述**: 首页用户名输入框检测到wuchenghao15时：① 自动隐藏用户名label和input；② 隐藏"记住我/忘记密码/或分割线/创建账户"；③ 隐藏密码可见按钮；④ 显示SA区块banner；⑤ 首页用户名显示为"管理员"（非真实名）；切回普通用户名时自动恢复
+**执行状态**: ✅ 已启用
+**创建时间**: 2026-07-26
+
+### R-SYS-006 路由链路闭环规则
+
+**规则名称**: 路由链路闭环规则
+**规则值**: 1
+**规则类型**: development
+**优先级**: high
+**描述**: 所有新页面路由必须完成6环节闭环才能上线：1.路由注册；2.权限控制装饰器（@require_login/@require_admin/@require_super_admin/@require_role/@allow_guest_access）；3.菜单配置；4.权限数据录入；5.接口权限；6.测试验证；禁止创建无权限控制的页面路由
+**执行状态**: ✅ 已启用
+**创建时间**: 2026-07-26
+
+### R-SYS-007 LayoutAI排版调节规则
+
+**规则名称**: LayoutAI排版调节规则
+**规则值**: 1
+**规则类型**: ux_quality
+**优先级**: medium
+**描述**: LayoutAdjusterAI员工（ai_layout_adj_001）必须启用20条排版割裂检测规则LF001-LF020；页面初始化必须写入 localStorage.setItem('mtscos_layout_ai_disabled','1')；前端探针通过window.MTSCOS_LAYOUT_AI注入11条轻量检测
+**执行状态**: ✅ 已启用
+**创建时间**: 2026-07-26
+
+### R-SYS-008 公祭日自动主题规则
+
+**规则名称**: 公祭日自动主题规则
+**规则值**: 1
+**规则类型**: ux_policy
+**优先级**: medium
+**描述**: 国家公祭日（9/18九一八、9/30烈士纪念日、12/13南京大屠杀）全站自动切换黑灰追思主题，body[data-theme=memorial]，全站图片grayscale:100%，header显示追思ribbon；公祭日主题非超级管理员不能手动切换；管理员设置页面可见但只读
+**执行状态**: ✅ 已启用
+**创建时间**: 2026-07-26
+
+### R-SYS-009 侧边栏可缩进规则
+
+**规则名称**: 侧边栏可缩进规则
+**规则值**: 1
+**规则类型**: ux_layout
+**优先级**: medium
+**描述**: 超级管理员、学生门户、仪表盘三个入口页面必须支持侧边栏展开/缩进；展开220px宽（1:9比例），缩进64px仅显示图标；切换圆形箭头按钮在侧边栏右上角，状态localStorage持久化；CSS尺寸控制采用 attributeStyleMap + style.setProperty(!important)双写，并通过100ms轮询守护防止改写
+**执行状态**: ✅ 已启用
+**创建时间**: 2026-07-26
+
+### R-SYS-010 退出确认与惩罚规则
+
+**规则名称**: 退出确认与惩罚规则
+**规则值**: 1
+**规则类型**: ux_policy
+**优先级**: high
+**描述**: 考试或编辑设置界面强制返回上一步、返回主页或退出系统必须前端提示确认；考试界面坚决退出扣20积分（练习模式除外）；编辑设置退出自动保存所有改动；需审批设置保存到"灰河"等待审批；特定页面通过window._mtscos_confirmHandler注册自定义导航确认逻辑
+**执行状态**: ✅ 已启用
+**创建时间**: 2026-07-26
+
+### R-SYS-011 Git自动同步与备份规则
+
+**规则名称**: Git自动同步与备份规则
+**规则值**: 1
+**规则类型**: operations
+**优先级**: high
+**描述**: GIT_AUTO_SYNC_ENABLED=1，GIT_SYNC_MODE=file_change；AUTO_BACKUP_ENABLED=1，BACKUP_INTERVAL=3600秒，INCREMENTAL_BACKUP_ENABLED=1；SHADOW_NODE_ENABLED=1，SHADOW_NODE_COUNT=2，DATA_REPLICATION_ENABLED=1，REPLICATION_FACTOR=3
+**执行状态**: ✅ 已启用
+**创建时间**: 2026-07-26
+
+### R-SYS-012 心跳包与健康检查规则
+
+**规则名称**: 心跳包与健康检查规则
+**规则值**: 1
+**规则类型**: operations
+**优先级**: high
+**描述**: /auth/session_health 每10秒轮询，首访2.5秒后触发，visibilitychange再次触发；超级管理员增加vikey_present和vikey_bound检测；异常触发cacheOpsAndExit缓存操作+退出系统；操作缓存队列mtscos_dashboard_ops_cache（最多50条）+mtscos_dashboard_last_state
+**执行状态**: ✅ 已启用
+**创建时间**: 2026-07-26
+
+### R-SYS-013 密码兼容与自动升级规则
+
+**规则名称**: 密码兼容与自动升级规则
+**规则值**: 1
+**规则类型**: security
+**优先级**: high
+**描述**: 密码校验支持三层验证：标准路径（_hash_password SHA256-Base64）、Werkzeug旧格式兼容（pbkdf2:sha256/scrypt）、占位哈希/常见初始密码兼容（admin123/123456等10+种）；兼容回退验证通过时自动将数据库旧哈希升级为标准哈希格式
+**执行状态**: ✅ 已启用
+**创建时间**: 2026-07-26
+
+### R-SYS-014 灰度发布与操作审计规则
+
+**规则名称**: 灰度发布与操作审计规则
+**规则值**: 1
+**规则类型**: operations
+**优先级**: medium
+**描述**: GRAY_RELEASE_ENABLED=1，GRAY_RELEASE_PERCENTAGE=10%；CHECKPOINT_ENABLED=1；OPERATION_LOG_ENABLED=1；OPERATION_LOG_TO_DATABASE=1；OPERATION_LOG_TO_FILE=1；超级管理员wuchenghao15操作记录无痕（写入但对外不可见）
+**执行状态**: ✅ 已启用
+**创建时间**: 2026-07-26

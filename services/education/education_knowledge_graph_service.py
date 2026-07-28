@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 教育知识图谱服务 (v15.28.0) ==================================== 提供知识图谱构建、节点管理、关系管理、查询、推理、推荐、融合和更新等综合服务。  核心能力： 1. 知识图谱 - 图谱构建、图谱配置、图谱导出、图谱导入 2. 知识节点 - 节点创建、节点查询、节点更新、节点删除 3. 知识关系 - 关系创建、关系查询、关系更新、关系删除 4. 知识查询 - 精确查询、模糊查询、语义查询、关系查询、路径查询 5. 知识推理 - 演绎推理、归纳推理、类比推理、因果推理 6. 知识推荐 - 相关知识推荐、学习路径推荐、知识点推荐、资源推荐 7. 知识融合 - 实体对齐、关系融合、属性合并、冲突解决 8. 知识更新 - 增量更新、全量更新、实时更新、定期更新 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

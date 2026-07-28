@@ -2,6 +2,7 @@
 """ 历史数据服务 实现历史数据记录、归档和管理功能 """
 
 import os
+import sys
 import sqlite3
 import logging
 import json
@@ -9,6 +10,9 @@ import time
 import shutil
 from datetime import datetime, timedelta
 from typing import Dict, Optional
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from core.db_path import get_db_path
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +36,7 @@ class HistoryDataService:
     
     def _init_database(self):
         """初始化数据库表"""
-        db_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'app.db')
+        db_path = get_db_path('app.db')
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         
@@ -45,7 +49,7 @@ class HistoryDataService:
     
     def _initialize_historical_data(self):
         """初始化历史数据，添加项目发展历程记录"""
-        db_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'app.db')
+        db_path = get_db_path('app.db')
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         
@@ -104,7 +108,7 @@ class HistoryDataService:
         if not self.enabled:
             return
         
-        db_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'app.db')
+        db_path = get_db_path('app.db')
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         
@@ -122,7 +126,7 @@ class HistoryDataService:
         
         cutoff_time = (datetime.now() - timedelta(days=self.retention_days)).isoformat()
         
-        db_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'app.db')
+        db_path = get_db_path('app.db')
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         
@@ -171,7 +175,7 @@ class HistoryDataService:
         """清理过期数据"""
         cutoff_time = (datetime.now() - timedelta(days=self.retention_days * 2)).isoformat()
         
-        db_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'app.db')
+        db_path = get_db_path('app.db')
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         
@@ -188,7 +192,7 @@ class HistoryDataService:
                    start_time: str = None, end_time: str = None,
                    limit: int = 100, offset: int = 0) -> list:
         """查询历史数据"""
-        db_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'app.db')
+        db_path = get_db_path('app.db')
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         
@@ -228,7 +232,7 @@ class HistoryDataService:
     
     def get_stats(self) -> Dict:
         """获取历史馆统计数据"""
-        db_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'app.db')
+        db_path = get_db_path('app.db')
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         
@@ -254,7 +258,7 @@ class HistoryDataService:
     
     def get_timeline(self) -> list:
         """获取版本时间线"""
-        db_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'app.db')
+        db_path = get_db_path('app.db')
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         
@@ -283,7 +287,7 @@ class HistoryDataService:
     
     def get_upgrades(self) -> list:
         """获取升级记录"""
-        db_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'app.db')
+        db_path = get_db_path('app.db')
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         
@@ -307,7 +311,7 @@ class HistoryDataService:
     
     def get_learning_tasks(self) -> list:
         """获取学习任务"""
-        db_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'app.db')
+        db_path = get_db_path('app.db')
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         
@@ -330,7 +334,7 @@ class HistoryDataService:
     
     def get_knowledge(self) -> list:
         """获取知识脑库"""
-        db_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'app.db')
+        db_path = get_db_path('app.db')
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         
@@ -353,7 +357,7 @@ class HistoryDataService:
     
     def get_rules(self) -> list:
         """获取系统规则"""
-        db_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'app.db')
+        db_path = get_db_path('app.db')
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         

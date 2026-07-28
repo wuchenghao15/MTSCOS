@@ -1,13 +1,13 @@
 {% extends 'base.html' %}
 
-{% block title %}MT 架构 v2.0 · 双引擎分层协作 · MTSCOS AI{% endblock %}
+{% block title %}MTS 架构 v2.0 · 双引擎分层协作 · MTSCOS AI{% endblock %}
 
-{% block page_title %}🛡️ MT 架构 v2.0 · 双引擎分层协作架构{% endblock %}
+{% block page_title %}🛡️ MTS 架构 v2.0 · 双引擎分层协作架构{% endblock %}
 
 {% block sidebar_nav %}
 <a href="#overview" class="mtscos-nav-item"><i class="fas fa-sitemap"></i><span>🏯 架构总览</span></a>
-<a href="#layers" class="mtscos-nav-item"><i class="fas fa-layer-group"></i><span>📚 5 层泳道图</span></a>
-<a href="#engines" class="mtscos-nav-item"><i class="fas fa-bolt"></i><span>⚡ MT 双引擎</span></a>
+<a href="#layers" class="mtscos-nav-item"><i class="fas fa-layer-group"></i><span><i class="fas fa-book-open"></i> 5 层泳道图</span></a>
+<a href="#engines" class="mtscos-nav-item"><i class="fas fa-bolt"></i><span><i class="fas fa-bolt"></i> MTS 双引擎</span></a>
 <a href="#components" class="mtscos-nav-item"><i class="fas fa-cubes"></i><span>🧩 8 大组件</span></a>
 <a href="#data" class="mtscos-nav-item"><i class="fas fa-database"></i><span>💾 分库矩阵</span></a>
 <a href="#changelog" class="mtscos-nav-item"><i class="fas fa-code-branch"></i><span>🗺️ v1.0 → v2.0</span></a>
@@ -129,11 +129,11 @@
 <section id="overview">
     <div class="mt-overview">
         <div class="mt-hero-card">
-            <span class="mt-hero-eyebrow"><i class="fas fa-shield-alt"></i> MT Architecture · v2.0</span>
+            <span class="mt-hero-eyebrow"><i class="fas fa-shield-alt"></i> MTS Architecture · v2.0</span>
             <h1 class="mt-hero-title"><span>双引擎分层协作</span> · 智能学习评估平台核心底座</h1>
             <p class="mt-hero-sub">
-                MT 架构从 v1.0 的单体分层，升级为 <b>MT-Proposition 命题引擎</b> + <b>MT-Diagnosis 诊断引擎</b> 双核驱动；
-                5 层泳道清晰解耦：用户 → 应用 → MT 双核 → 数据安全 → 基础设施；
+                MTS 架构从 v1.0 的单体分层，升级为 <b>MT-Proposition 命题引擎</b> + <b>MT-Diagnosis 诊断引擎</b> 双核驱动；
+                5 层泳道清晰解耦：用户 → 应用 → MTS 双核 → 数据安全 → 基础设施；
                 9 大分库 + 10,809 AI 员工矩阵 + 206 条强制合规规则，支撑万级并发与等保三级审计要求。
             </p>
             <div class="mt-badge-row">
@@ -148,7 +148,7 @@
         <div class="mt-stats-card">
             <div class="mt-stats-grid">
                 <div class="mt-stat">
-                    <div class="k">MT 架构版本</div>
+                    <div class="k">MTS 架构版本</div>
                     <div class="v">v{{ mt_version or '2.0' }}</div>
                     <div class="s">{{ mt_codename or '双引擎分层协作架构' }}</div>
                 </div>
@@ -183,7 +183,7 @@
 </section>
 
 <section class="mt-section" id="layers">
-    <h3><i class="fas fa-layer-group"></i> 📚 5 层泳道图（自顶向下，MT v2.0 解耦）</h3>
+    <h3><i class="fas fa-layer-group"></i> <i class="fas fa-book-open"></i> 5 层泳道图（自顶向下，MT v2.0 解耦）</h3>
     <div class="mt-layers">
         <div class="mt-lane lane-l1" data-lvl="L1 · 用户">
             <div class="lane-title"><h4>👤 用户与角色层</h4><p>5 阶角色 + 权限矩阵</p></div>
@@ -197,7 +197,7 @@
             </div>
         </div>
         <div class="mt-lane lane-l2" data-lvl="L2 · 应用">
-            <div class="lane-title"><h4>🎯 应用与业务层</h4><p>8 大产品线 × 52 入口</p></div>
+            <div class="lane-title"><h4><i class="fas fa-target"></i> 应用与业务层</h4><p>8 大产品线 × 52 入口</p></div>
             <div class="lane-cards">
                 <span class="lane-chip"><i class="fas fa-file-alt"></i> 考试与题库系统</span>
                 <span class="lane-chip"><i class="fas fa-robot"></i> AI 辅导老师</span>
@@ -209,8 +209,8 @@
                 <span class="lane-chip"><i class="fas fa-puzzle-piece"></i> 扩展中心</span>
             </div>
         </div>
-        <div class="mt-lane lane-l3" data-lvl="L3 · MT 核心">
-            <div class="lane-title"><h4>⚡ MT 双引擎核心层</h4><p>命题 + 诊断双核调度</p></div>
+        <div class="mt-lane lane-l3" data-lvl="L3 · MTS 核心">
+            <div class="lane-title"><h4><i class="fas fa-bolt"></i> MTS 双引擎核心层</h4><p>命题 + 诊断双核调度</p></div>
             <div class="lane-cards">
                 <span class="lane-chip"><i class="fas fa-scroll"></i> MT-Proposition 命题引擎</span>
                 <span class="lane-chip"><i class="fas fa-bullseye"></i> 自适应难度控制</span>
@@ -246,7 +246,7 @@
 </section>
 
 <section class="mt-section" id="engines">
-    <h3><i class="fas fa-bolt"></i> ⚡ MT 双引擎（v2.0 新增双核）</h3>
+    <h3><i class="fas fa-bolt"></i> <i class="fas fa-bolt"></i> MTS 双引擎（v2.0 新增双核）</h3>
     <div class="mt-engine-grid">
         <div class="engine-card engine-prop">
             <h4><i class="fas fa-scroll"></i> MT-Proposition · 命题引擎</h4>
@@ -338,7 +338,7 @@
 </section>
 
 <section class="mt-section" id="changelog">
-    <h3><i class="fas fa-code-branch"></i> 🗺️ MT 架构版本日志（v1.0 → v2.0 强化升级）</h3>
+    <h3><i class="fas fa-code-branch"></i> 🗺️ MTS 架构版本日志（v1.0 → v2.0 强化升级）</h3>
     <div style="display:grid;gap:10px;">
         <div class="mt-log-row">
             <div class="mt-log-ver">v2.0</div>
@@ -377,7 +377,7 @@
             <div class="mt-log-ver">v1.0</div>
             <div class="mt-log-date">2026-07-01</div>
             <div class="mt-log-what">
-                <b>MT 架构 v1.0 首版</b>：Flask + Jinja2 + SQLite 单体分层，建立 index.html / base.html 双模板骨架。
+                <b>MTS 架构 v1.0 首版</b>：Flask + Jinja2 + SQLite 单体分层，建立 index.html / base.html 双模板骨架。
             </div>
             <span class="mt-log-tag tag-new">NEW · 发布</span>
         </div>

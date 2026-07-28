@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 教育社交学习服务 (v15.24.0) ==================================== 提供学习社区、学习小组、学习互动、知识分享、协作学习、同伴互助、社交评价和学习社交网络等综合服务。  核心能力： 1. 学习社区 - 社区创建、成员管理、社区活动、社区讨论 2. 学习小组 - 小组创建、成员管理、小组任务、小组讨论 3. 学习互动 - 讨论交流、问答互动、分享展示、协作创作 4. 知识分享 - 知识发布、资源分享、经验交流、成果展示、方法分享 5. 协作学习 - 项目协作、课题协作、作业协作、竞赛协作 6. 同伴互助 - 同伴辅导、同伴评价、同伴激励、同伴监督 7. 社交评价 - 评价管理、互评互教、反馈收集、综合评价 8. 学习网络 - 关系管理、知识图谱、社交图谱、推荐系统 9. 预警管理 - 学习预警、行为预警、成绩预警、干预措施 10. 统计分析 - 学习数据分析与报告 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

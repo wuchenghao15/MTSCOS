@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 艺术与文化管理服务 (v15.7.0) ==================================== 提供艺术课程、文艺活动、作品展览和文化传承等综合管理服务。  核心能力： 1. 艺术课程 - 课程管理、选课记录、考级管理 2. 文艺活动 - 活动组织、演出管理、票务系统 3. 作品管理 - 作品登记、展览管理、评价系统 4. 艺术考级 - 考级报名、成绩管理、证书发放 5. 社团管理 - 艺术社团、成员管理、活动记录 6. 文化传承 - 传统文化、非遗项目、文化课程 7. 成人艺术 - 成人教育艺术素养提升 8. K12美育 - 学生艺术素养培养与评价 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

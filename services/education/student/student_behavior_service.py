@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 学生行为与品德管理服务 (v15.3.0) ==================================== 提供学生行为记录、品德评定、奖惩管理和行为分析等综合服务。  核心能力： 1. 行为记录 - 日常行为记录、分类管理 2. 品德评定 - 多维度品德评分与评定 3. 奖惩管理 - 奖励与处分记录 4. 行为分析 - 行为趋势分析、异常预警 5. 品德档案 - 学生品德成长档案 6. 行为积分 - 行为积分制管理 7. 成人品德 - 成人教育职业素养管理 8. K12品德 - 九年制义务教育品德发展 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

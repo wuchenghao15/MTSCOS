@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 教育智能硬件服务 (v15.16.0) ==================================== 提供智能设备管理、物联网连接、智慧教室硬件、智能终端、传感器网络、 设备运维、数据采集、硬件集成等综合管理服务。  核心能力： 1. 设备管理 - 设备注册、状态监控、设备配置、设备分组 2. 物联网连接 - 连接管理、协议支持、网络配置、连接日志 3. 传感器网络 - 传感器管理、数据采集、网络拓扑、节点监控 4. 智慧教室 - 教室管理、设备绑定、环境监测、智能控制 5. 设备运维 - 维护计划、故障修复、设备校准、安全检查、性能优化 6. 数据采集 - 采集规则、实时采集、批量处理、数据存储 7. 硬件集成 - 集成配置、接口对接、数据同步、生态整合 8. 设备预警 - 预警规则、异常检测、告警通知、告警处理 9. 更新管理 - 固件更新、版本管理、更新记录 10. 统计分析 - 设备统计、使用分析、运维报告 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

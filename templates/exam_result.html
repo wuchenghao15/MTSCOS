@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>考试结果 - {{ exam_title }}</title>
-    <link rel="stylesheet" href="/assets/font-awesome/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
             --dark-bg-primary: #0c0c1e;
@@ -320,13 +320,13 @@
             </div>
             <div class="analysis-text">
                 {% if score >= 90 %}
-                <p>🎉 太棒了！您的表现非常优秀，掌握了大部分知识点。建议继续保持，可以尝试更有挑战性的题目。</p>
+                <p><i class="fas fa-party-horn"></i> 太棒了！您的表现非常优秀，掌握了大部分知识点。建议继续保持，可以尝试更有挑战性的题目。</p>
                 {% elif score >= 70 %}
                 <p>👍 不错！您已经掌握了基础知识，但还有一些内容需要加强。建议回顾错题，巩固薄弱环节。</p>
                 {% elif score >= 60 %}
                 <p>💪 刚刚及格！建议系统复习相关知识点，多做练习来巩固。</p>
                 {% else %}
-                <p>📚 需要加油！建议从头开始学习相关内容，多做练习题，逐步提升。</p>
+                <p><i class="fas fa-book-open"></i> 需要加油！建议从头开始学习相关内容，多做练习题，逐步提升。</p>
                 {% endif %}
             </div>
         </div>

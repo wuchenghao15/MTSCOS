@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 教育量子计算服务 (v15.19.0) ==================================== 提供量子计算课程、量子实验、量子编程和量子模拟等综合教育服务。  核心能力： 1. 量子计算基础 - 量子比特、叠加态、纠缠、量子门、量子测量、量子纠错 2. 量子算法 - 肖尔算法、格罗弗算法、量子傅里叶变换、量子相位估计 3. 量子编程 - Qiskit、Cirq、Q#、PennyLane、IBM Q Experience 4. 量子模拟 - 量子化学、材料科学、优化问题、金融建模 5. 量子机器学习 - 量子分类、量子回归、量子聚类、量子神经网络 6. 量子通信 - 量子密钥分发、量子隐形传态、量子网络 7. 量子实验 - 量子设备操作、实验设计、数据采集分析 8. 量子教育资源 - 课程资料、学习路径、评估体系 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

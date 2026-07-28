@@ -25,6 +25,15 @@
         .form-group input { width: 100%; padding: 16px 20px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.3); color: white; font-size: 16px; transition: all 0.3s; }
         .form-group input:focus { outline: none; border-color: #6366f1; box-shadow: 0 0 25px rgba(99, 102, 241, 0.3), inset 0 0 20px rgba(99, 102, 241, 0.1); }
         .form-group input::placeholder { color: #64748b; }
+        .form-group input.input-error { border-color: #e53e3e !important; background: rgba(69,10,10,0.5); color: #fff !important; animation: shake 0.3s ease-in-out; }
+        .form-group input.input-ok { border-color: #38a169 !important; }
+        .form-group .hint-text { font-size: 12px; color: #94a3b8; margin-top: 6px; min-height: 16px; line-height: 16px; }
+        .form-group .hint-text.err { color: #fc8181; font-weight: 500; }
+        .form-group .hint-text.ok  { color: #9ae6b4; }
+        .password-box { position: relative; }
+        .password-box input { padding-right: 48px !important; }
+        .toggle-pw { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); width: 34px; height: 34px; border-radius: 8px; background: transparent; border: none; cursor: pointer; color: #94a3b8; font-size: 15px; }
+        .toggle-pw:hover { color: #60a5fa; }
         .btn { width: 100%; padding: 16px; border-radius: 14px; border: none; cursor: pointer; font-size: 16px; font-weight: 600; transition: all 0.3s; }
         .btn-primary { background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; position: relative; overflow: hidden; }
         .btn-primary::before { content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent); transition: left 0.5s; }
@@ -82,7 +91,7 @@
 
             <div class="error-message" id="error-message"></div>
 
-            <form id="login-form" method="POST" action="/auth/login">
+            <form id="login-form" method="POST" action="/auth/login" novalidate>
                 <div class="form-group">
                     <label for="username">
                         <svg class="icon-svg" viewBox="0 0 24 24">
@@ -90,7 +99,8 @@
                         </svg>
                         用户名
                     </label>
-                    <input type="text" id="username" name="username" placeholder="请输入用户名" required>
+                    <input type="text" id="username" name="username" placeholder="请输入用户名（3-20字符）" required minlength="3" maxlength="20" autocomplete="username" data-validate="username">
+                    <div class="hint-text" id="username-hint">用户名长度 3-20 字符</div>
                 </div>
                 <div class="form-group">
                     <label for="password">
@@ -99,7 +109,11 @@
                         </svg>
                         密码
                     </label>
-                    <input type="password" id="password" name="password" placeholder="请输入密码" required>
+                    <div class="password-box">
+                        <input type="password" id="password" name="password" placeholder="请输入密码（8-64位）" required minlength="8" maxlength="64" autocomplete="current-password" data-validate="password">
+                        <button type="button" class="toggle-pw" data-target="password" title="显示/隐藏密码">👁️</button>
+                    </div>
+                    <div class="hint-text" id="password-hint">建议使用 8-64 位，包含多类字符</div>
                 </div>
                 <button type="submit" class="btn btn-primary">登录系统</button>
             </form>
@@ -116,8 +130,81 @@
     </div>
 
     <script>
+(function(){
+  function $(id){ return document.getElementById(id); }
+  function toggleError(el, ok, msg){
+      if (!el) return;
+      el.classList.remove('input-error','input-ok');
+      var hintId = el.id + '-hint';
+      var hint = document.getElementById(hintId);
+      if (!hint) return;
+      if (!hint.dataset.def) hint.dataset.def = hint.textContent;
+      if (ok === null || ok === undefined) { hint.className = 'hint-text'; hint.textContent = hint.dataset.def; return; }
+      if (ok) { el.classList.add('input-ok'); hint.className = 'hint-text ok'; hint.textContent = msg || '校验通过'; }
+      else { el.classList.add('input-error'); hint.className = 'hint-text err'; hint.textContent = msg || '格式不正确'; }
+  }
+  function analyzePw(pw){
+      pw = String(pw || '');
+      var rules = {
+          len: pw.length >= 8 && pw.length <= 64,
+          lower: /[a-z]/.test(pw),
+          upper: /[A-Z]/.test(pw),
+          digit: /\d/.test(pw),
+          special: /[^A-Za-z0-9]/.test(pw),
+      };
+      rules.classCount = (rules.lower?1:0) + (rules.upper?1:0) + (rules.digit?1:0) + (rules.special?1:0);
+      return rules;
+  }
+  function validateUsername(){
+      var el = $('username'); if (!el) return false;
+      var v = (el.value || '').trim();
+      if (!v) { toggleError(el, null); return false; }
+      if (v.length < 3) { toggleError(el, false, '用户名至少 3 个字符'); return false; }
+      if (v.length > 20) { toggleError(el, false, '用户名至多 20 个字符'); return false; }
+      toggleError(el, true, v.length + ' 字符');
+      return true;
+  }
+  function validatePassword(){
+      var el = $('password'); if (!el) return false;
+      var v = el.value || '';
+      if (!v) { toggleError(el, null); return false; }
+      var rules = analyzePw(v);
+      if (!rules.len) { toggleError(el, false, v.length < 8 ? '密码长度不足 8 位' : '密码长度超过 64 位'); return false; }
+      toggleError(el, true, '密码长度符合要求（' + rules.classCount + ' 类字符）');
+      return true;
+  }
+  // 可见性切换
+  document.addEventListener('click', function(e){
+      var btn = e.target.closest && e.target.closest('.toggle-pw');
+      if (!btn) return;
+      var targetId = btn.getAttribute('data-target');
+      var input = document.getElementById(targetId);
+      if (!input) return;
+      var isPw = input.type === 'password';
+      input.type = isPw ? 'text' : 'password';
+      btn.textContent = isPw ? '🔒' : '👁️';
+  });
+  ['input','blur','change'].forEach(function(evt){
+      if ($('username')) $('username').addEventListener(evt, validateUsername);
+      if ($('password')) $('password').addEventListener(evt, validatePassword);
+  });
+  [['username-hint','用户名长度 3-20 字符'],
+   ['password-hint','建议使用 8-64 位，包含多类字符']].forEach(function(p){
+      var el = document.getElementById(p[0]); if (el) el.dataset.def = p[1];
+  });
+})();
         document.getElementById('login-form').addEventListener('submit', function(e) {
             e.preventDefault();
+            if (!document.getElementById('username').value.trim()) {
+                var em = document.getElementById('error-message');
+                em.textContent = '请输入用户名'; em.classList.add('show');
+                setTimeout(() => em.classList.remove('show'), 3000); return;
+            }
+            if (!document.getElementById('password').value) {
+                var em2 = document.getElementById('error-message');
+                em2.textContent = '请输入密码'; em2.classList.add('show');
+                setTimeout(() => em2.classList.remove('show'), 3000); return;
+            }
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
             

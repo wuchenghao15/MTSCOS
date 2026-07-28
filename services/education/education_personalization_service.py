@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 教育个性化服务 (v15.24.0) ==================================== 提供用户画像构建、个性化推荐、自适应学习等综合个性化服务。  核心能力： 1. 用户画像构建 - 多维用户画像、画像更新、画像分析、画像导出 2. 个性化推荐 - 课程推荐、内容推荐、学习路径推荐、活动推荐 3. 自适应学习 - 难度自适应、进度自适应、内容自适应、方法自适应 4. 个性化内容 - 内容定制、内容推送、内容偏好、内容过滤、内容排序 5. 个性化评估 - 评估定制、评估执行、结果分析、评估反馈 6. 个性化反馈 - 即时反馈、详细反馈、鼓励反馈、反思反馈 7. 个性化路径 - 路径规划、路径调整、路径追踪、路径评估 8. 个性化体验 - 界面定制、交互优化、激励机制、专属服务 9. 预警管理 - 学习预警、风险评估、干预建议、预警历史 10. 统计分析 - 个性化效果统计 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

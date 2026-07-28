@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 实习就业服务 (v15.6.0) ==================================== 提供实习管理、就业指导、岗位推荐和职业发展等综合服务。  核心能力： 1. 实习管理 - 实习岗位、实习申请、实习考核 2. 就业指导 - 职业规划、简历指导、面试辅导 3. 岗位推荐 - 企业招聘、智能匹配、投递管理 4. 校企合作 - 企业合作、实习基地、联合培养 5. 就业统计 - 就业率统计、薪资分析、行业分布 6. 职业测评 - 职业兴趣、能力评估、性格测试 7. 成人就业 - 成人教育职业发展管理 8. K12职业启蒙 - 职业体验、兴趣探索 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

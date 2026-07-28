@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 教育品牌建设服务 (v15.14.0) ==================================== 提供学校品牌管理、形象设计、宣传推广、品牌评估、品牌传播、 品牌保护、品牌合作、品牌活动等综合管理服务。  核心能力： 1. 品牌管理 - 品牌元素、品牌层级、品牌定位、品牌战略 2. 形象设计 - VI系统、视觉规范、标识设计、宣传物料 3. 宣传推广 - 推广渠道、营销活动、内容营销、媒体投放 4. 媒体关系 - 媒体资源、新闻发布、媒体报道、媒体监测 5. 品牌评估 - 品牌价值、评估维度、评估模型、评估报告 6. 品牌保护 - 商标注册、域名保护、版权保护、侵权维权 7. 品牌合作 - 合作洽谈、合作协议、合作执行、合作评估 8. 品牌活动 - 校庆活动、开放日、研讨会、公益活动 9. 品牌故事 - 故事创作、故事传播、故事沉淀 10. 统计分析 - 品牌数据、效果分析、趋势报告  支持教育类型： - 成人教育 (adult) - K12教育 (k12) """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

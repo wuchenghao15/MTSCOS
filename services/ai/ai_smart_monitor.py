@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 """ MTSCOS AI 智能监控服务 (v14.6.0) ================================== AI 系统自身的智能监控和健康度评估服务。  核心能力： 1. 健康度评分 - 综合评估 AI 系统健康度（0-100） 2. 服务监控 - 监控 AI 服务运行状态和性能 3. 资源监控 - CPU/内存/磁盘/数据库 4. 指标采集 - 时序指标采集和存储 5. 告警生成 - 智能告警规则和通知 6. 趋势分析 - 历史趋势和预测 7. 自检报告 - 定期生成自检报告 8. 仪表盘 - 监控数据可视化聚合 """
 import os
@@ -11,7 +12,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

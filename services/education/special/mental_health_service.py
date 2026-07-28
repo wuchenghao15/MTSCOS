@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 心理健康服务 (v15.5.0) ==================================== 提供心理咨询预约、心理测评、情绪追踪和心理健康管理等综合服务。  核心能力： 1. 心理咨询 - 咨询师管理、在线预约、咨询记录 2. 心理测评 - 多种量表、自动评分、结果报告 3. 情绪追踪 - 每日情绪记录、情绪趋势 4. 危机干预 - 危机预警、紧急联系 5. 心理档案 - 心理健康档案 6. 团体辅导 - 团体心理活动 7. 成人心理 - 成人教育心理支持 8. K12心理 - 九年制心理健康教育 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

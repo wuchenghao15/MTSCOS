@@ -915,12 +915,12 @@ async function loadStats() {
     if (data.success && data.data) {
         const s = data.data;
         const cards = [
-            { icon: '👥', value: s.user_count || s.users || 0, label: '用户总数' },
+            { icon: '<i class="fas fa-users"></i>', value: s.user_count || s.users || 0, label: '用户总数' },
             { icon: '🎭', value: s.role_count || s.roles || 0, label: '角色总数' },
             { icon: '📦', value: s.module_count || s.modules || 0, label: '功能模块数' },
             { icon: '🔑', value: s.permission_count || s.permissions || 0, label: '权限项总数' },
             { icon: '🧾', value: s.audit_count || s.audit_logs || 0, label: '审计日志数' },
-            { icon: '⚡', value: s.active_user_count || s.active_users || 0, label: '活跃用户数' }
+            { icon: '<i class="fas fa-bolt"></i>', value: s.active_user_count || s.active_users || 0, label: '活跃用户数' }
         ];
         grid.innerHTML = cards.map(c => `
             <div class="stat-card">

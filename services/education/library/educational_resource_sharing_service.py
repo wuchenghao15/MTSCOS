@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 教育资源共享服务 (v15.13.0) ==================================== 提供教育资源共享、校际协作、资源联盟、资源交易、知识产权等综合管理服务。  核心能力： 1. 教育资源共享 - 资源发布、下载、收藏、分享 2. 校际协作 - 联合教研、资源共建、课程共享、师资互聘 3. 资源联盟 - 区域联盟、学科联盟、校际联盟、国际联盟 4. 资源交易 - 付费下载、订阅服务、捐赠支持 5. 知识产权 - 版权登记、授权管理、合规审查 6. 共享空间 - 团队协作、资源库管理、权限控制 7. 资源评价 - 评分系统、评论管理、质量评估 8. 推荐系统 - 个性化推荐、智能匹配、热门排行  差异化支持： - 成人教育：职业培训、继续教育、企业内训 - K12教育：基础教育、学科课程、素质教育 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

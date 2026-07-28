@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 教育保险服务 (v15.30.0) ============================ 提供学生保险、教师保险、学校保险、教育金保险、健康保险、意外保险、财产保险、责任保险等综合管理服务。  核心能力： 1. 学生保险 - 学平险、意外险、重疾险、医疗险、住院险、门诊险、住院津贴、意外医疗 2. 教师保险 - 意外险、重疾险、医疗险、职业险、养老保险、失业保险、工伤保险、生育保险 3. 学校保险 - 校责险、校园方责任险、公众责任险、财产险、雇主责任险、产品责任险、火灾险、自然灾害险 4. 教育金保险 - 少儿教育金、大学教育金、研究生教育金、留学教育金、终身教育金、分红型、万能型、投连型 5. 健康保险 - 重疾险、医疗险、住院险、门诊险、慢病险、牙科险、眼科险、体检险 6. 意外保险 - 个人意外险、团体意外险、交通意外险、旅行意外险、运动意外险、家庭意外险、校园意外险、综合意外险 7. 财产保险 - 房屋险、设备险、车辆险、货物险、电子产品险、办公用品险、图书资料险、无形资产险 8. 责任保险 - 校责险、教责险、产品责任险、公众责任险、雇主责任险、医疗责任险、职业责任险、环境责任险  差异化支持： - 成人教育保险方案 - K12教育保险方案 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

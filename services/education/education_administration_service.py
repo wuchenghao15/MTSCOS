@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 教育行政管理服务 (v15.26.0) ==================================== 提供行政事务、人事、财务、资产、档案、会议、公文、后勤等综合管理服务。  核心能力： 1. 行政事务管理 - 日常行政事务处理与记录 2. 人事管理 - 教师、职工、干部管理与绩效考核 3. 财务管理 - 预算、经费、报销、收费管理 4. 资产管理 - 固定资产、设备、图书、采购管理 5. 档案管理 - 文书、学籍、人事、财务档案管理 6. 会议管理 - 会议组织、记录、纪要管理 7. 公文管理 - 通知、请示、批复、函件管理 8. 后勤管理 - 食堂、宿舍、水电、维修管理 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

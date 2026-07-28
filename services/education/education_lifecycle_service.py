@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 教育全生命周期服务 (v15.23.0) ====================================== 提供学前教育、基础教育、高等教育、继续教育、终身学习、职业教育、特殊教育和老年教育的综合管理服务。  核心能力： 1. 学前教育 - 托儿所、幼儿园、早教中心管理 2. 基础教育 - 小学、初中、高中课程与评估 3. 高等教育 - 本科、研究生、成人高等教育管理 4. 继续教育 - 成人教育、在职培训、职业资格培训 5. 终身学习 - 学习型社会、社区教育、在线教育 6. 职业教育 - 中职、高职、技工教育、产教融合 7. 特殊教育 - 特殊儿童、融合教育、康复教育 8. 老年教育 - 老年大学、社区老年课程 9. 全生命周期跟踪 - 学习轨迹、进度监控、预警系统 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

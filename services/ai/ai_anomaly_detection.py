@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 """ MTSCOS AI 异常检测服务 (v14.5.0) ================================== 基于统计学和规则方法的异常检测引擎，支持时序数据、点异常、模式异常检测。  核心能力： 1. 点异常 - Z-Score / IQR / 3-Sigma 2. 时序异常 - 移动平均 / EWMA / 差分 3. 模式异常 - 频率变化 / 周期性异常 4. 多维异常 - 基线偏离 + 加权评分 5. 行为异常 - 用户行为基线对比 6. 检测器管理 - 多检测器配置和动态加载 7. 告警阈值 - 动态阈值和静态阈值 """
 import os
@@ -9,7 +10,7 @@ import logging
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple, Callable
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 学生资助与奖学金服务 (v15.11.0) ==================================== 提供学生资助、奖学金、困难认定、学费减免、勤工助学、贷款管理与资助发放等综合服务。 本模块同时支持成人教育和K12教育的差异化需求，覆盖学生从困难认定到资助发放的全流程。  核心能力： 1. 资助政策 - 资助项目、政策发布、申请条件管理 2. 助学金 - 国家助学金、学校助学金、社会助学金 3. 奖学金 - 国家奖学金、学校奖学金、专项奖学金、社会奖学金 4. 学费减免 - 减免申请、审批、执行 5. 困难认定 - 家庭经济困难认定、困难等级 6. 勤工助学 - 岗位发布、申请、安排（侧重资助角度的工费补助） 7. 贷款管理 - 生源地贷款、校园地贷款 8. 资助发放 - 发放记录、统计、报告 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

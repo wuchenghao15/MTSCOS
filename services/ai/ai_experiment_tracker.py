@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 """ MTSCOS AI 实验追踪服务 (v14.9.0) =================================== AI 实验管理和超参数追踪服务。  核心能力： 1. 实验管理 - 创建/运行/对比实验 2. 超参数追踪 - 参数记录和版本管理 3. 指标记录 - 训练指标实时记录和可视化 4. 超参搜索 - 网格搜索/随机搜索/贝叶斯优化 5. 实验对比 - 多实验指标对比和统计 6. 模型注册 - 模型版本和工件管理 7. 实验报告 - 综合实验报告生成 8. 协作管理 - 实验标签和备注 """
 import os
@@ -10,7 +11,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple, Callable
 from collections import defaultdict, deque
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

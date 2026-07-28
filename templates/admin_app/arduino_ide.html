@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex, nofollow">
     <title>Arduino IDE - MTSCOS AI</title>
-    <link rel="stylesheet" href="/assets/font-awesome/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
             --primary-color: #6366f1;
@@ -1865,7 +1865,7 @@
                 if (!_aiPanelOpen) toggleAIPanel();
                 setTimeout(function () {
                     document.getElementById('ai-input').focus();
-                    addAIMessage('ai', '<p><strong>✨ 代码生成模式</strong></p><p>请描述你想要实现的功能，例如：</p><ul><li>控制LED灯闪烁，间隔500ms</li><li>使用超声波传感器测距并在串口输出</li><li>通过PWM控制电机转速</li></ul><p>请输入你的需求描述：</p>');
+                    addAIMessage('ai', '<p><strong><i class="fas fa-sparkles"></i> 代码生成模式</strong></p><p>请描述你想要实现的功能，例如：</p><ul><li>控制LED灯闪烁，间隔500ms</li><li>使用超声波传感器测距并在串口输出</li><li>通过PWM控制电机转速</li></ul><p>请输入你的需求描述：</p>');
                 }, 150);
                 return;
             }
@@ -1874,9 +1874,9 @@
 
             var actionLabels = {
                 debug: '🔍 代码调试',
-                optimize: '⚡ 代码优化',
-                components: '🔧 组件推荐',
-                explain: '📖 代码解释'
+                optimize: '<i class="fas fa-bolt"></i> 代码优化',
+                components: '<i class="fas fa-wrench"></i> 组件推荐',
+                explain: '<i class="fas fa-book-open"></i> 代码解释'
             };
 
             addAIMessage('user', '<p><strong>' + actionLabels[type] + '</strong></p>');

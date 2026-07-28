@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 学生生涯规划服务 (v15.9.0) ==================================== 提供学生生涯发展档案、职业测评、升学规划与职业探索等综合管理服务。 同时支持成人教育与K12教育的差异化需求。  核心能力： 1. 生涯档案 - 学生生涯发展档案、兴趣特长记录 2. 职业测评 - 霍兰德兴趣、MBTI性格、职业价值观、能力倾向测评 3. 升学规划 - 升学路径、目标院校、专业选择指导 4. 职业探索 - 职业信息库、职业体验、行业认知 5. 选科指导 - K12新高考选科、成人专业选择 6. 生涯课程 - 生涯规划课程、讲座、活动 7. 咨询辅导 - 一对一咨询、团体辅导 8. 成人职业发展与K12升学规划差异化 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

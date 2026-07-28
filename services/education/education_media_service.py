@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 教育媒体服务 (v15.27.0) ============================= 提供多媒体内容管理、视频管理、音频管理、直播服务、流媒体服务、内容分发、媒体转码、媒体存储等综合管理服务。  核心能力： 1. 多媒体内容 - 内容上传、元数据管理、内容检索、内容分类 2. 视频管理 - 视频上传、视频编辑、视频发布、视频播放 3. 音频管理 - 音频上传、音频编辑、音频发布、音频播放 4. 直播服务 - 直播创建、直播推流、直播录制、直播回放、直播互动 5. 流媒体服务 - 流媒体配置、流媒体分发、流媒体监控、流媒体统计 6. 内容分发 - CDN分发、P2P分发、智能分发、边缘分发 7. 媒体转码 - 格式转换、分辨率调整、码率控制、批量转码 8. 媒体存储 - 存储管理、存储迁移、存储备份、存储清理  支持成人教育与K12教育差异化服务。 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

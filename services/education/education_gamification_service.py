@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 教育游戏化服务 (v15.24.0) ==================================== 提供游戏化设计、积分系统、成就系统、排行榜、任务系统、徽章系统、虚拟货币和社交游戏等综合管理服务。  核心能力： 1. 游戏化设计 - 游戏元素配置、教育差异化设置 2. 积分系统 - 学习积分、行为积分、成就积分、任务积分、社交积分 3. 成就系统 - 学习成就、行为成就、社交成就、竞赛成就 4. 排行榜 - 总分排行、学习排行、竞赛排行、社交排行 5. 任务系统 - 日常任务、周任务、月任务、学习任务、社交任务 6. 徽章系统 - 学习徽章、行为徽章、社交徽章、竞赛徽章 7. 虚拟货币 - 学习币、成就币、社交币、奖励币 8. 社交游戏 - 对战游戏、合作游戏、竞赛游戏、互动游戏 9. 预警管理 - 游戏化预警规则、预警记录 10. 统计分析 - 游戏化数据统计  差异化支持： - 成人教育：侧重职业技能提升、专业认证、学习成果转化 - K12教育：侧重兴趣培养、知识积累、综合素质发展 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

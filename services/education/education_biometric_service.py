@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 教育生物识别服务 (v15.21.0) ==================================== 提供人脸识别、指纹识别、虹膜识别、声纹识别、行为识别、身份认证、考勤管理、安全门禁等综合管理服务。  核心能力： 1. 人脸识别 - 人脸采集、人脸比对、人脸搜索、人脸验证 2. 指纹识别 - 指纹采集、指纹比对、指纹搜索、指纹验证 3. 虹膜识别 - 虹膜采集、虹膜比对、虹膜搜索、虹膜验证 4. 声纹识别 - 声纹采集、声纹比对、声纹搜索、声纹验证 5. 行为识别 - 行为分析、行为比对、行为监控、行为预警 6. 身份认证 - 单因素认证、双因素认证、多因素认证、连续认证 7. 考勤管理 - 考勤记录、考勤统计、考勤规则、考勤异常处理 8. 安全门禁 - 门禁控制、门禁记录、门禁授权、门禁异常处理  差异化支持： - 成人教育：更高安全级别、灵活认证方式、多场景应用 - K12教育：简化操作、家长授权、校园安全优先 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

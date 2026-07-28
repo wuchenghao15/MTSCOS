@@ -4,8 +4,9 @@ import sys
 import sqlite3
 import json
 from datetime import datetime
+from core.db_path import get_db_path as _mtscos_get_db_path
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 VERSION_HISTORY = [
     {

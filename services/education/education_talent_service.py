@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 教育人才服务 (v15.29.0) ==================================== 提供人才招聘、人才培养、人才评价、人才流动、人才激励、人才储备、人才服务和人才发展等综合管理服务。  核心能力： 1. 人才招聘 - 招聘管理、报名审核、录用流程、招聘统计 2. 人才培养 - 培训计划、培训实施、培训评估、培养跟踪 3. 人才评价 - 绩效评估、能力测评、360度评价、评价结果 4. 人才流动 - 内部流动、外部流动、岗位轮换、晋升管理、人才引进 5. 人才激励 - 薪酬激励、绩效激励、股权期权、荣誉表彰 6. 人才储备 - 后备干部、名师工作室、专家库、人才梯队 7. 人才服务 - 职业规划、心理咨询、法律援助、生活服务 8. 人才发展 - 发展路径、职业指导、继续教育、导师计划  支持成人教育和K12教育差异化管理。 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

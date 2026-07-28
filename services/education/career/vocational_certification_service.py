@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 职业资格认证服务 (v15.8.0) ==================================== 提供职业资格认证、技能等级考核、语言能力考试及培训机构等综合管理服务。 同时支持成人职业教育与 K12 职业启蒙教育的差异化需求。  核心能力： 1. 证书目录管理 - 职业资格、技能等级、语言能力证书目录维护 2. 报名管理 - 报考条件、在线报名、资格审核、缴费 3. 考点管理 - 考点登记、考场配置、容量管理 4. 考试安排 - 考试计划、场次编排、准考证发放 5. 成绩与证书 - 成绩录入、合格判定、证书发放 6. 证书验证 - 在线验证、防伪查询、有效性检查 7. 培训机构 - 机构管理、培训课程、师资管理 8. 成人职业资格与 K12 职业启蒙差异化支持 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

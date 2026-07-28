@@ -46,6 +46,15 @@ class SystemRulesExtension:
         ('SECURITY_SESSION_ABSOLUTE_TIMEOUT', '会话绝对超时', '28800', 'security', '会话最大持续时间(秒)', 1),
         ('SECURITY_AUTO_BLACKLIST_THRESHOLD', '自动黑名单阈值', '10', 'security', 'AI自动拉黑IP的安全事件次数阈值', 1),
         
+        # ==================== VIKEY加密狗强制规则 ====================
+        ('VIKEY_FORCE_CHECK_ENABLED', 'VIKEY强制检查启用', '1', 'security', '是否启用VIKEY强制检查（无论调试/普通模式）', 1),
+        ('VIKEY_SUPER_ADMIN_REQUIRED', '超级管理员强制VIKEY', '1', 'security', '超级管理员界面和操作是否必须插入VIKEY', 1),
+        ('VIKEY_CHECK_INTERVAL', 'VIKEY检测间隔', '2000', 'security', 'VIKEY状态轮询检测间隔(毫秒)', 1),
+        ('VIKEY_LOCK_TIMEOUT', 'VIKEY锁定超时', '300', 'security', 'VIKEY拔出后锁定超时时间(秒)，超时后自动退出系统', 1),
+        ('VIKEY_LOCK_SNAPSHOT_ENABLED', '锁定时快照启用', '1', 'security', 'VIKEY拔出时是否保存操作状态快照', 1),
+        ('VIKEY_ALLOW_DEBUG_BYPASS', '允许调试模式绕过', '0', 'security', '是否允许在调试模式下绕过VIKEY检测（0=不允许，1=允许）', 1),
+        ('VIKEY_REQUIRED_SERIAL', '要求的VIKEY序列号', '', 'security', '指定必须插入的VIKEY序列号（为空则接受任何已绑定VIKEY）', 1),
+        
         # ==================== GitHub自动同步规则 ====================
         ('GITHUB_AUTO_SYNC_ENABLED', 'GitHub自动同步启用', '1', 'github', '是否启用GitHub自动同步', 1),
         ('GITHUB_SYNC_TOKEN', 'GitHub访问令牌', '', 'github', 'GitHub Personal Access Token', 1),

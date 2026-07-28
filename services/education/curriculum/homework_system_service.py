@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 作业与练习管理服务 (v15.2.0) ==================================== 提供作业发布、提交、批改、统计和练习题库等综合服务。  核心能力： 1. 作业管理 - 发布、编辑、删除作业，作业状态追踪 2. 作业提交 - 学生提交作业，多格式支持 3. 作业批改 - 自动批改+人工批改，评语反馈 4. 作业统计 - 班级作业完成率、正确率统计 5. 练习题库 - 分科目分难度练习题 6. 练习记录 - 做题记录和错题归集 7. 成人作业 - 成人教育作业管理 8. K12作业 - 九年制义务教育作业管理 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

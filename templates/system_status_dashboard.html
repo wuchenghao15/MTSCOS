@@ -126,8 +126,8 @@
                 <span style="font-size: 14px; color: var(--text-secondary);">CPU使用率</span>
                 <span style="font-size: 14px; font-weight: 600; color: var(--text-primary);">{{ system_info.cpu_usage or 0 }}%</span>
             </div>
-            <div style="height: 8px; background: var(--bg-secondary); border-radius: 4px; overflow: hidden;">
-                <div style="height: 100%; background: linear-gradient(90deg, var(--primary-color), #818cf8); border-radius: 4px; width: {{ system_info.cpu_usage or 0 }}%; transition: width 0.5s;"></div>
+            <div style="height: 8px; background: var(--bg-card-alt); border-radius: 4px; overflow: hidden;">
+                <div style="height: 100%; background: var(--accent); border-radius: 4px; width: {{ system_info.cpu_usage or 0 }}%; transition: width 0.2s;"></div>
             </div>
         </div>
         <div>
@@ -135,8 +135,8 @@
                 <span style="font-size: 14px; color: var(--text-secondary);">内存使用率</span>
                 <span style="font-size: 14px; font-weight: 600; color: var(--text-primary);">{{ system_info.memory_usage or 0 }}%</span>
             </div>
-            <div style="height: 8px; background: var(--bg-secondary); border-radius: 4px; overflow: hidden;">
-                <div style="height: 100%; background: linear-gradient(90deg, var(--success-color), #4ade80); border-radius: 4px; width: {{ system_info.memory_usage or 0 }}%; transition: width 0.5s;"></div>
+            <div style="height: 8px; background: var(--bg-card-alt); border-radius: 4px; overflow: hidden;">
+                <div style="height: 100%; background: var(--success); border-radius: 4px; width: {{ system_info.memory_usage or 0 }}%; transition: width 0.2s;"></div>
             </div>
         </div>
         <div>
@@ -144,8 +144,8 @@
                 <span style="font-size: 14px; color: var(--text-secondary);">磁盘使用率</span>
                 <span style="font-size: 14px; font-weight: 600; color: var(--text-primary);">{{ system_info.disk_usage or 0 }}%</span>
             </div>
-            <div style="height: 8px; background: var(--bg-secondary); border-radius: 4px; overflow: hidden;">
-                <div style="height: 100%; background: linear-gradient(90deg, var(--warning-color), #fbbf24); border-radius: 4px; width: {{ system_info.disk_usage or 0 }}%; transition: width 0.5s;"></div>
+            <div style="height: 8px; background: var(--bg-card-alt); border-radius: 4px; overflow: hidden;">
+                <div style="height: 100%; background: var(--warning); border-radius: 4px; width: {{ system_info.disk_usage or 0 }}%; transition: width 0.2s;"></div>
             </div>
         </div>
     </div>

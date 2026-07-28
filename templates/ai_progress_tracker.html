@@ -877,7 +877,7 @@
 
         container.innerHTML = `
             <div class="report-section">
-                <h3>📊 周学习报告 - ${content.week_range}</h3>
+                <h3><i class="fas fa-chart-bar"></i> 周学习报告 - ${content.week_range}</h3>
                 <div class="report-summary">
                     <div class="report-summary-item">
                         <div class="summary-value">${content.summary.total_study_time}</div>
@@ -897,7 +897,7 @@
                     </div>
                 </div>
                 <div class="report-suggestions">
-                    <h4>💡 改进建议</h4>
+                    <h4><i class="fas fa-lightbulb"></i> 改进建议</h4>
                     <ul>
                         ${content.suggestions.map(s => `<li>• ${s}</li>`).join('')}
                     </ul>
@@ -959,7 +959,7 @@
 
         container.innerHTML = `
             <div class="trend-chart">
-                <h3>📈 学习时长趋势（最近${trend_data.length}天）</h3>
+                <h3><i class="fas fa-chart-line"></i> 学习时长趋势（最近${trend_data.length}天）</h3>
                 <div class="chart-container">
                     ${trend_data.map(d => `
                         <div class="chart-bar" style="height:${(d.study_time / max_value) * 100}%" data-value="${d.study_time}分钟"></div>

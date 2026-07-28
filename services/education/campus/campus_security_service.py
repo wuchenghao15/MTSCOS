@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 校园安全保卫服务 (v15.7.0) ==================================== 提供门禁管理、巡逻检查、应急处理和安全教育等综合服务。  核心能力： 1. 门禁管理 - 出入控制、访客登记、权限管理 2. 巡逻检查 - 巡逻路线、检查记录、隐患排查 3. 应急处理 - 应急预案、事件报告、联动处置 4. 安全教育 - 安全培训、演练记录、知识考核 5. 监控管理 - 监控点位、报警记录、视频调阅 6. 消防安全 - 消防设施、检查记录、演练管理 7. 事故管理 - 事故记录、调查处理、统计分析 8. 成人与K12 - 差异化安全管理策略 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

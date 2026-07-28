@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 教育创新管理服务 (v15.22.0) ==================================== 提供创新项目管理、创新人才培养、创新成果转化等综合管理服务。  核心能力： 1. 创新项目管理 - 项目创建、阶段管理、成员管理、任务管理 2. 创新人才培养 - 人才登记、角色管理、能力评估、成长轨迹 3. 创新成果转化 - 成果登记、转化管理、知识产权、产业化跟踪 4. 创新资金管理 - 资金申请、审批管理、预算控制、使用跟踪 5. 创新平台建设 - 平台创建、资源管理、运营维护、协作支持 6. 创新合作网络 - 合作建立、资源共享、协同创新、成果共享 7. 创新评估体系 - 评估指标、评分管理、报告生成、改进建议 8. 创新文化建设 - 文化活动、氛围营造、激励机制、创新宣传 9. 奖励管理 - 奖项设置、申报管理、评审流程、颁奖记录 10. 统计分析 - 创新数据汇总、趋势分析、决策支持  差异化支持： - 成人教育：职业技能创新、企业培训、终身学习 - K12教育：素养培育、创客教育、STEM教育 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 """ MTSCOS AI 向量数据库服务 (v14.6.0) ==================================== 纯 Python 实现的向量存储与检索服务，支持多种索引结构和相似度算法。  核心能力： 1. 向量存储 - 文档+向量+元数据持久化 2. 索引结构 - 暴力搜索 / LSH / IVF 倒排 3. 相似度算法 - 余弦/欧氏/点积/曼哈顿 4. CRUD 操作 - 增删改查批量操作 5. 元数据过滤 - 标签/分类/范围过滤 6. 集合管理 - 多 collection 独立管理 7. 嵌入服务 - 简单文本嵌入（字符级/词频） 8. 统计监控 - 集合大小/查询延迟/召回率 """
 import os
@@ -11,7 +12,7 @@ import re
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

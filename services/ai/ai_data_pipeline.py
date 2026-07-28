@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 """ MTSCOS AI 数据预处理管道 (v14.6.0) ==================================== AI 数据预处理和特征工程管道服务。  核心能力： 1. 数据清洗 - 缺失值/异常值/重复值处理 2. 数据转换 - 编码/归一化/标准化 3. 特征工程 - 特征提取/选择/构造 4. 文本预处理 - 分词/去停用词/词干化 5. 数据分割 - 训练/验证/测试集划分 6. 数据增强 - 噪声/采样/平衡 7. 管道编排 - 步骤链式执行 8. 持久化 - 处理结果入库 """
 import os
@@ -10,7 +11,7 @@ import logging
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple, Callable
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 教育规划咨询服务 (v15.29.0) ==================================== 提供教育规划、学习规划、升学规划、职业规划等综合咨询服务。  核心能力： 1. 教育规划咨询 - 教育路径规划、学习目标设定、教育资源配置、规划评估调整 2. 学习规划指导 - 学习计划制定、课程选择指导、学习方法优化、进度跟踪管理 3. 升学规划服务 - 升学目标定位、备考策略制定、志愿填报指导、录取结果跟进 4. 职业规划服务 - 职业兴趣测评、职业路径规划、技能提升计划、就业指导服务 5. 教育政策咨询 - 政策解读分析、政策影响评估、政策合规指导、政策动态跟踪 6. 教育投资咨询 - 投资方案设计、投资风险评估、投资回报分析、投资组合优化 7. 教育管理咨询 - 学校管理诊断、管理流程优化、绩效评估体系、管理能力提升 8. 教育改革咨询 - 改革方案设计、改革实施路径、改革效果评估、改革经验总结 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 教育大数据分析服务 (v15.22.0) ===================================== 提供数据采集汇聚、数据存储管理、数据分析挖掘、数据可视化、 数据预测建模、数据智能决策、数据安全隐私、数据应用服务等综合能力。  核心能力： 1. 数据采集汇聚 - 多源数据采集、实时数据同步、数据清洗转换 2. 数据存储管理 - 多类型存储、数据治理、元数据管理 3. 数据分析挖掘 - 描述性分析、诊断性分析、预测性分析、规范性分析 4. 数据可视化 - 图表、仪表盘、报表、交互式可视化 5. 数据预测建模 - 回归模型、分类模型、时序模型、深度学习模型 6. 数据智能决策 - 数据驱动决策、智能决策支持、自动化决策 7. 数据安全隐私 - 数据加密、访问控制、数据脱敏、隐私保护 8. 数据应用服务 - 应用注册、服务接口、数据共享 9. 预警管理 - 告警规则、预警触发、告警处理 10. 统计分析 - 综合统计、趋势分析  差异化支持： - 成人教育：学历提升、职业培训、继续教育 - K12教育：基础教育、综合素质评价、学业分析 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

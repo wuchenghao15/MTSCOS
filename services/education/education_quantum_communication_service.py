@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 教育量子通信服务 (v15.21.0) ==================================== 提供量子密钥分发、量子隐形传态、量子中继、量子网络、量子加密、 量子安全、量子认证、量子通信协议等综合管理服务。  核心能力： 1. 量子密钥分发 - BB84/B92/E91/QKD协议管理 2. 量子信道 - 光纤/自由空间/卫星信道管理 3. 密钥管理 - 生成/分发/存储/更新/销毁/备份/恢复/审计 4. 量子安全 - 理论安全/计算安全/量子安全策略 5. 量子认证 - 量子/经典/混合认证方法 6. 量子网络 - 星型/网状/树形网络拓扑 7. 通信协议 - 点对点/广播/组播通信模式 8. 应用管理 - 教育数据安全/在线考试/远程教学 9. 设备管理 - 量子设备监控与使用 10. 统计分析 - 量子通信数据统计 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

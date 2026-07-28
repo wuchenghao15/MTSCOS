@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 教育心理健康服务 (v15.25.0) ==================================== 提供心理健康评估、心理咨询服务、心理危机干预、心理健康教育、 心理档案管理、心理数据监测、心理健康预警、心理康复支持等综合管理服务。  核心能力： 1. 心理健康评估 - 测评管理、评估记录、结果分析、报告生成 2. 心理咨询服务 - 咨询预约、咨询记录、咨询师管理、咨询统计 3. 心理危机干预 - 危机识别、干预处理、危机跟踪、危机报告 4. 心理健康教育 - 课程管理、讲座组织、资料发布、教育评估、活动记录 5. 心理档案管理 - 档案创建、档案查询、档案更新、档案归档 6. 心理数据监测 - 数据采集、数据分析、趋势跟踪、异常预警 7. 心理健康预警 - 预警规则、预警触发、预警处理、预警统计 8. 心理康复支持 - 康复计划、康复记录、康复评估、康复跟踪 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

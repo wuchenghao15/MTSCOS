@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 教育资源服务 (v15.27.0) ============================== 提供资源库管理、资源检索、资源共享、资源推荐等综合管理服务。  核心能力： 1. 资源库管理 - 库创建、配置管理、资源上传、资源管理 2. 资源检索服务 - 全文检索、分类检索、高级检索、语义检索 3. 资源共享服务 - 共享设置、权限控制、共享记录、版本管理 4. 资源推荐服务 - 个性化推荐、热门推荐、相似推荐、关联推荐 5. 资源评估服务 - 评估指标、评分管理、评估报告、质量监控 6. 资源统计服务 - 使用统计、访问分析、下载统计、趋势分析 7. 资源权限管理 - 用户权限、角色管理、访问控制、审计日志 8. 资源迁移服务 - 在线迁移、离线迁移、批量迁移、数据同步  差异化支持： - 成人教育：职业技能、继续教育、企业培训 - K12教育：课程资源、学习资料、教学素材 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

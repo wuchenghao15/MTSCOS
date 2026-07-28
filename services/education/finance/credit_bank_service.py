@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 学分银行服务 (v15.8.0) ==================================== 提供学分账户、学分存储、学分转换、学分兑换、学分认证、跨机构互认等 综合管理服务，支持成人教育与K12教育的差异化需求。  核心能力： 1. 学分账户 - 开户、账户管理、信用评级 2. 学分存储 - 学习成果转换学分、存入记录 3. 学分转换规则 - 成果类型与学分换算 4. 学分累积与等级 - 等级体系、权益解锁 5. 学分兑换 - 证书、课程、奖励兑换 6. 学分认证 - 学习成果认证申请与审核 7. 跨机构互认 - 学分互认协议、转换 8. 成人终身学习档案与K12综合素质学分 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 创客与STEAM教育服务 (v15.9.0) ====================================== 提供创客空间、STEAM课程、创新项目、机器人教育、3D打印、编程教育、 竞赛管理等综合服务，支持成人创新教育与K12 STEAM教育的差异化需求。  核心能力： 1. STEAM课程 - 科学/技术/工程/艺术/数学跨学科课程 2. 创客空间 - 创客实验室、设备工具、材料管理 3. 创新项目 - 项目式学习、创新挑战、创客马拉松 4. 机器人教育 - 机器人课程、编程、竞赛 5. 3D打印 - 3D建模、打印管理、作品库 6. 编程教育 - Scratch/Python/C++编程、算法 7. 竞赛管理 - STEAM竞赛、获奖记录 8. 成人创新与K12 STEAM差异化 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

@@ -69,6 +69,7 @@ from ai_engines.ai_devops_agent import AIDevOpsAgent
 from ai_engines.ai_microservice_agent import AIMicroserviceAgent
 from ai_engines.ai_knowledge_graph_agent import AIKnowledgeGraphAgent
 from ai_engines.ai_digital_twin_agent import AIDigitalTwinAgent
+from ai_engines.ai_vikey_security_employee import AI_VIKEY_Security_Employee
 
 try:
     from ai_engines.test_ai_employee import TestAIEmployee
@@ -618,6 +619,13 @@ class AIEmployeeManager:
         self.employees["dt_001"] = dt_employee
         self._safe_start_employee(dt_employee)
         self.add_employee_to_organizations(dt_employee)
+
+        # 创建VIKEY安全专家AI员工 (级别9)
+        vikey_security_employee = AI_VIKEY_Security_Employee("vikey_sec_001", "VIKEY安全专家")
+        vikey_security_employee.type = "vikey_security"
+        self.employees["vikey_sec_001"] = vikey_security_employee
+        self._safe_start_employee(vikey_security_employee)
+        self.add_employee_to_organizations(vikey_security_employee)
 
     def _parse_json_or_text(self, text):
         """解析JSON或文本，返回列表"""

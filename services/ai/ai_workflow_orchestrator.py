@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 """ MTSCOS AI 工作流编排服务 (v14.5.0) ==================================== AI 工作流编排引擎，支持 DAG 任务编排、节点执行、状态追踪、错误重试。  核心能力： 1. 工作流定义 - YAML/JSON 风格声明式 DAG 2. 节点编排 - 顺序/并行/分支/合并 3. 状态机管理 - pending/running/success/failed/skipped 4. 重试机制 - 可配置重试次数和退避策略 5. 上下文传递 - 节点间数据流转 6. 持久化 - 工作流实例和执行历史入库 7. 调度策略 - 立即/延迟/定时 """
 import os
@@ -10,7 +11,7 @@ import time
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Callable
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 教育AI助手服务 (v15.28.0) ==================================== 提供AI学习助手、AI辅导助手、AI写作助手、AI编程助手、AI翻译助手、 AI创作助手、AI分析助手、AI对话助手等综合智能教育服务。  核心能力： 1. AI学习助手 - 智能学习辅助、知识问答、学习进度跟踪 2. AI辅导助手 - 作业辅导、知识点讲解、错题分析 3. AI写作助手 - 论文写作、报告撰写、文案创作 4. AI编程助手 - 代码生成、代码调试、编程指导 5. AI翻译助手 - 多语言翻译、术语翻译、翻译记忆 6. AI创作助手 - 创意写作、诗歌创作、剧本创作 7. AI分析助手 - 数据分析、文本分析、趋势分析 8. AI对话助手 - 智能对话、情感交流、知识问答  差异化支持： - 成人教育：专业技能提升、职业培训、终身学习 - K12教育：学科辅导、作业指导、综合素质培养 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

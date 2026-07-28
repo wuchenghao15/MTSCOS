@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 劳动教育服务 (v15.9.0) ==================================== 提供劳动课程、劳动实践、劳动技能、劳动评价、实践基地、勤工助学、 劳动档案等综合管理服务，支持成人教育和K12教育的差异化需求。  核心能力： 1. 劳动课程 - 日常生活劳动、生产劳动、服务性劳动课程 2. 劳动实践 - 实践活动、劳动周、劳动基地 3. 劳动技能 - 技能培训、技能等级、技能认证 4. 劳动评价 - 劳动态度、劳动技能、劳动成果评价 5. 实践基地 - 基地管理、合作单位、岗位安排 6. 勤工助学 - 岗位发布、申请、安排、考核 7. 劳动档案 - 劳动经历记录、劳动素养档案 8. K12劳动教育与成人职业劳动差异化 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

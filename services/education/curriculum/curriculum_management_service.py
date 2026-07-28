@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 课程与教学计划管理服务 (v15.3.0) ==================================== 提供课程管理、教学计划、课表编排和教学进度追踪等综合服务。  核心能力： 1. 课程管理 - 课程创建、大纲管理、课程配置 2. 教学计划 - 学期/周/课时计划管理 3. 课表编排 - 自动排课、冲突检测 4. 教学进度 - 课时进度追踪、教学日志 5. 课程大纲 - 知识点体系、教学目标 6. 教学资源 - 课件、教案关联管理 7. 成人课程 - 成人教育课程管理 8. K12课程 - 九年制义务教育课程管理 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

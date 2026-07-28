@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 继续教育与终身学习服务 (v15.11.0) ========================================== 提供继续教育项目、课程、学员、证书、终身学习档案等综合管理服务。 主要服务成人继续教育用户，同时兼容 K12 终身学习启蒙理念。  核心能力： 1. 继续教育项目 - 学历继续教育、非学历培训、职业提升 2. 课程管理 - 继续教育课程、学习方式、学分认证 3. 学员管理 - 注册、学籍、学习计划 4. 证书管理 - 结业证书、学历证书、继续教育学分证明 5. 终身学习档案 - 学习历程、技能积累、成长轨迹 6. 学习成果认证 - 先前学习认证（RPL）、工作经验转换 7. 培训机构管理 - 合作机构、资质、课程供给 8. 成人继续教育与K12终身学习启蒙差异化 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

@@ -411,14 +411,14 @@ async function loadStats() {
     if (data.success) {
         const s = data.data;
         document.getElementById('stats-content').innerHTML = `
-            <div class="stat-card"><div class="stat-icon">🔔</div><div class="stat-value">${s.notifications.unread}</div><div class="stat-label">未读通知 (共${s.notifications.total})</div></div>
+            <div class="stat-card"><div class="stat-icon"><i class="fas fa-bell"></i></div><div class="stat-value">${s.notifications.unread}</div><div class="stat-label">未读通知 (共${s.notifications.total})</div></div>
             <div class="stat-card"><div class="stat-icon">📧</div><div class="stat-value">${s.emails.sent}</div><div class="stat-label">已发送邮件</div></div>
             <div class="stat-card"><div class="stat-icon">⏳</div><div class="stat-value">${s.emails.pending}</div><div class="stat-label">待发邮件</div></div>
             <div class="stat-card"><div class="stat-icon">❌</div><div class="stat-value">${s.emails.failed}</div><div class="stat-label">失败邮件</div></div>
             <div class="stat-card"><div class="stat-icon">📱</div><div class="stat-value">${s.sms.sent}</div><div class="stat-label">已发短信</div></div>
             <div class="stat-card"><div class="stat-icon">💬</div><div class="stat-value">${s.chat.active_conversations}</div><div class="stat-label">活跃会话</div></div>
-            <div class="stat-card"><div class="stat-icon">📝</div><div class="stat-value">${s.chat.total_messages}</div><div class="stat-label">总消息数</div></div>
-            <div class="stat-card"><div class="stat-icon">📋</div><div class="stat-value">${s.templates.email + s.templates.sms}</div><div class="stat-label">模板数 (邮件${s.templates.email}+短信${s.templates.sms})</div></div>`;
+            <div class="stat-card"><div class="stat-icon"><i class="fas fa-file-alt"></i></div><div class="stat-value">${s.chat.total_messages}</div><div class="stat-label">总消息数</div></div>
+            <div class="stat-card"><div class="stat-icon"><i class="fas fa-list-check"></i></div><div class="stat-value">${s.templates.email + s.templates.sms}</div><div class="stat-label">模板数 (邮件${s.templates.email}+短信${s.templates.sms})</div></div>`;
     }
 }
 

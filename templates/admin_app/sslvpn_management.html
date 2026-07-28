@@ -721,7 +721,7 @@ async function loadStats() {
             <div class="stat-card"><div class="stat-icon">⚠️</div><div class="stat-value">${s.ssl.expiring_certificates}</div><div class="stat-label">即将过期</div></div>
             <div class="stat-card"><div class="stat-icon">🔐</div><div class="stat-value">${s.ssl.enabled ? '已启用' : '已禁用'}</div><div class="stat-label">SSL状态 (${s.ssl.security_level})</div></div>
             <div class="stat-card"><div class="stat-icon">🌐</div><div class="stat-value">${s.vpn.configs_total}</div><div class="stat-label">VPN配置</div></div>
-            <div class="stat-card"><div class="stat-icon">👥</div><div class="stat-value">${s.vpn.active_users}/${s.vpn.users_total}</div><div class="stat-label">活跃VPN用户</div></div>
+            <div class="stat-card"><div class="stat-icon"><i class="fas fa-users"></i></div><div class="stat-value">${s.vpn.active_users}/${s.vpn.users_total}</div><div class="stat-label">活跃VPN用户</div></div>
             <div class="stat-card"><div class="stat-icon">🔌</div><div class="stat-value">${s.proxy.active}/${s.proxy.total}</div><div class="stat-label">代理服务器</div></div>`;
     }
 

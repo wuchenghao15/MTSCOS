@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 教育特色项目服务 (v15.14.0) ==================================== 提供特色课程、校本课程、项目学习、特色活动、特色基地、特色社团、特色竞赛、特色评估等综合管理服务。  核心能力： 1. 特色项目 - 项目管理、项目详情、项目状态、项目归档 2. 课程设计 - 校本课程、特色课程、项目课程、跨学科课程 3. 项目学习 - 学习小组、学习记录、成果提交、成果展示 4. 特色活动 - 活动组织、活动参与、活动评估、活动记录 5. 特色基地 - 基地管理、合作管理、资源共享、基地评估 6. 特色社团 - 社团管理、成员管理、活动记录、成果管理 7. 特色竞赛 - 竞赛管理、报名管理、成绩管理、奖项管理 8. 特色评估 - 评估体系、评估记录、评估报告、改进建议 9. 项目展示 - 展示管理、展示内容、展示统计 10. 推广管理 - 推广计划、推广执行、推广效果 11. 统计分析 - 综合统计、趋势分析、对比分析 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

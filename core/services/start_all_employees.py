@@ -13,8 +13,9 @@ import time
 from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from core.db_path import get_db_path
 
-AI_DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'split_databases', 'ai.db')
+AI_DB_PATH = get_db_path('ai.db')
 
 class RunningEmployee:
     """运行中的员工实例"""

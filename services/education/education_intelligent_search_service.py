@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 教育智能搜索服务 (v15.28.0) ==================================== 提供全文搜索、语义搜索、图像搜索、语音搜索、视频搜索、智能问答、个性化搜索和搜索推荐等综合搜索服务。  核心能力： 1. 全文搜索 - 基于关键词的精确匹配搜索 2. 语义搜索 - 基于语义理解的智能搜索 3. 图像搜索 - 基于图像内容的搜索 4. 语音搜索 - 基于语音识别的搜索 5. 视频搜索 - 基于视频内容的搜索 6. 智能问答 - 基于知识库的问答服务 7. 个性化搜索 - 基于用户画像的定制搜索 8. 搜索推荐 - 基于推荐算法的内容推荐  差异化支持： - 成人教育 - 职业技能、学历提升、兴趣爱好 - K12教育 - 学科知识、素质教育、升学备考 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

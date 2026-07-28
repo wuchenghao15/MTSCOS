@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 教育智慧决策服务 (v15.15.0) ==================================== 提供教育大数据决策、智能分析、预测预警、决策支持、知识图谱、可视化仪表盘、智能推荐、绩效评估等综合服务。  核心能力： 1. 决策模型 - 模型管理、规则配置、策略优化、方案生成 2. 数据分析 - 数据查询、统计分析、趋势分析、对比分析 3. 知识图谱 - 图谱构建、实体管理、关系挖掘、路径分析 4. 可视化 - 仪表盘、报表、图表、数据大屏 5. 智能推荐 - 课程推荐、学习路径、教师推荐、资源推荐 6. 预测预警 - 成绩预警、辍学预警、资源预警、财务预警、安全预警 7. 绩效评估 - 指标管理、数据采集、评估计算、报告生成 8. 决策日志 - 日志记录、查询分析、审计追踪 9. 反馈管理 - 反馈收集、分析处理、改进建议 10. 统计分析 - 综合统计、趋势预测 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

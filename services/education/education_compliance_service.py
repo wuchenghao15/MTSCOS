@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 教育合规与风险管理服务 (v15.18.0) ========================================= 提供合规管理、风险评估、内部控制、审计监督、合规培训、风险预警、合规报告、合规检查等综合管理服务。  核心能力： 1. 合规管理 - 合规政策、政策版本、合规评估、合规整改 2. 风险评估 - 风险识别、风险分析、风险评价、风险登记 3. 内部控制 - 控制设计、控制测试、控制评价、控制优化 4. 审计监督 - 审计计划、审计执行、审计发现、审计报告、跟踪整改 5. 合规培训 - 培训计划、培训实施、培训考核、培训记录 6. 风险预警 - 预警指标、预警监测、预警处置、预警历史 7. 合规报告 - 报告生成、报告审核、报告发布、报告归档 8. 合规检查 - 检查计划、检查执行、检查结果、问题整改 9. 举报管理 - 举报受理、举报调查、举报处置 10. 统计分析 - 综合统计报表 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

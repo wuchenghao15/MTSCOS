@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 """ MTSCOS AI 模型评估服务 (v14.5.0) ================================== AI 模型性能评估、回归测试、A/B 测试和模型对比。  核心能力： 1. 性能指标 - 准确率/精确率/召回率/F1/混淆矩阵/ROC-AUC 2. 回归测试 - 测试用例集管理和批量验证 3. A/B 测试 - 多模型流量分配和显著性检验 4. 模型对比 - 多模型性能横向对比 5. 性能基线 - 历史性能趋势追踪 6. 评估报告 - 综合评估报告生成 """
 import os
@@ -9,7 +10,7 @@ import logging
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

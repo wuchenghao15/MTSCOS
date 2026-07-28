@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ MTSCOS 考试与成绩管理服务 (v15.3.0) ==================================== 提供考试安排、成绩录入、成绩分析和报告生成等综合服务。  核心能力： 1. 考试管理 - 考试创建、安排、状态管理 2. 成绩录入 - 单个/批量成绩录入 3. 成绩分析 - 排名、分布、对比分析 4. 报告生成 - 成绩单、班级报告、学期报告 5. 成绩预警 - 不及格预警、退步预警 6. 考试类型 - 月考/期中/期末/模拟/等级考试 7. 成人考试 - 成人教育考试管理 8. K12考试 - 九年制义务教育考试管理 """
@@ -10,7 +11,7 @@ import threading
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,

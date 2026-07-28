@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 """ MTSCOS AI 自动化调度引擎 根据system_rules表中的规则配置，后台自动执行维护、检查、清理、同步等任务 """
 import os
@@ -14,7 +15,7 @@ from datetime import datetime, timedelta
 
 import _path_setup
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 HEARTBEAT_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.scheduler_heartbeat')
 PID_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.scheduler_pid')
 

@@ -24,7 +24,11 @@ AI_AGENTS = {}
 RUNNING_TASKS = []
 STARTUP_TIMESTAMP = None
 
-AI_DB_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'split_databases', 'ai.db')
+# 优先使用 app.db（数据同步后主库），回退到 split_databases/ai.db
+_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_APP_DB = os.path.join(_PROJECT_ROOT, 'app.db')
+_SHARD_DB = os.path.join(_PROJECT_ROOT, 'split_databases', 'ai.db')
+AI_DB_PATH = _APP_DB if os.path.exists(_APP_DB) else _SHARD_DB
 
 
 def get_ai_db_connection():
@@ -228,6 +232,8 @@ class AIEmployeeLoader:
              'id': 'test_sys_001', 'name': '测试系统AI员工', 'type': 'test_system', 'level': 7},
             {'module': 'diagnostics_repair_employee', 'class': 'DiagnosticsRepairEmployee', 
              'id': 'diag_001', 'name': '诊断修复AI员工', 'type': 'diagnostics_repair', 'level': 9},
+            {'module': 'ai_vikey_security_employee', 'class': 'AI_VIKEY_Security_Employee', 
+             'id': 'vikey_sec_001', 'name': 'VIKEY安全专家', 'type': 'vikey_security', 'level': 9},
         ]
         
         for emp_spec in specialized_employees:
@@ -235,7 +241,7 @@ class AIEmployeeLoader:
                 emp_class = self._safe_import(f'ai_engines.{emp_spec["module"]}', emp_spec['class'])
                 if emp_class:
                     try:
-                        if emp_spec['class'] in ['ValidationAIEmployee', 'RoutingAIEmployee', 'TestSystemAIEmployee']:
+                        if emp_spec['class'] in ['ValidationAIEmployee', 'RoutingAIEmployee', 'TestSystemAIEmployee', 'AI_VIKEY_Security_Employee']:
                             employee = emp_class(
                                 emp_spec['id'], emp_spec['name'], emp_spec['type'], emp_spec['level']
                             )
@@ -270,23 +276,44 @@ class AIEmployeeLoader:
                 self.employee_stats['total_failed'] += 1
     
     def load_ai_agents_from_db(self):
-        """从数据库加载AI Agent"""
+        """从数据库加载AI Agent（优先 ai_agents 表，回退 agent_registry 表）"""
         logger.info("\n" + "=" * 60)
         logger.info("从数据库加载AI Agent...")
         logger.info("=" * 60)
-        
+
         try:
             conn = get_ai_db_connection()
             cursor = conn.cursor()
-            
-            cursor.execute('''
-                SELECT id, agent_name, agent_code, agent_type, description,
-                       capabilities, status, priority, is_enabled, schedule_type,
-                       schedule_interval, total_tasks, successful_tasks, failed_tasks,
-                       created_at, updated_at
-                FROM ai_agents
-                ORDER BY priority ASC, id ASC
-            ''')
+
+            # 检测表是否存在，优先 ai_agents，回退 agent_registry
+            tables = [r[0] for r in cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")]
+            use_table = 'ai_agents' if 'ai_agents' in tables else ('agent_registry' if 'agent_registry' in tables else None)
+            if not use_table:
+                raise Exception("数据库中既无 ai_agents 也无 agent_registry 表")
+
+            if use_table == 'ai_agents':
+                cursor.execute('''
+                    SELECT id, agent_name, agent_code, agent_type, description,
+                           capabilities, status, priority, is_enabled, schedule_type,
+                           schedule_interval, total_tasks, successful_tasks, failed_tasks,
+                           created_at, updated_at
+                    FROM ai_agents
+                    ORDER BY priority ASC, id ASC
+                ''')
+            else:
+                # agent_registry 列映射: agent_id→id/agent_code, name→agent_name, agent_type→agent_type,
+                # config_json→capabilities, status→status
+                cursor.execute('''
+                    SELECT agent_id AS id, name AS agent_name, agent_id AS agent_code,
+                           agent_type AS agent_type, NULL AS description,
+                           config_json AS capabilities, status AS status,
+                           5 AS priority, 1 AS is_enabled, '' AS schedule_type,
+                           0 AS schedule_interval, 0 AS total_tasks,
+                           0 AS successful_tasks, 0 AS failed_tasks,
+                           created_at AS created_at, updated_at AS updated_at
+                    FROM agent_registry
+                    ORDER BY agent_id ASC
+                ''')
             agents = cursor.fetchall()
             
             from ai_engines.ai_employees import AIEmployee
@@ -714,7 +741,7 @@ def enable_all_ai_agents():
     return ai_employee_loader.enable_all_agents()
 
 def get_ai_db_employee_count():
-    """从数据库直接获取AI员工数量"""
+    """从数据库直接获取AI员工数量（兼容 ai_agents / agent_registry 两种表名）"""
     try:
         conn = get_ai_db_connection()
         cursor = conn.cursor()
@@ -722,10 +749,19 @@ def get_ai_db_employee_count():
         total = cursor.fetchone()[0]
         cursor.execute('SELECT COUNT(*) FROM ai_employees WHERE is_enabled = 1')
         enabled = cursor.fetchone()[0]
-        cursor.execute('SELECT COUNT(*) FROM ai_agents')
-        total_agents = cursor.fetchone()[0]
-        cursor.execute('SELECT COUNT(*) FROM ai_agents WHERE is_enabled = 1')
-        enabled_agents = cursor.fetchone()[0]
+        # 兼容 ai_agents 或 agent_registry
+        tables = [r[0] for r in cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")]
+        agent_table = 'ai_agents' if 'ai_agents' in tables else ('agent_registry' if 'agent_registry' in tables else None)
+        if agent_table:
+            total_agents = cursor.execute(f'SELECT COUNT(*) FROM {agent_table}').fetchone()[0]
+            # agent_registry 没有 is_enabled 列，视为全部启用
+            if agent_table == 'ai_agents':
+                enabled_agents = cursor.execute('SELECT COUNT(*) FROM ai_agents WHERE is_enabled = 1').fetchone()[0]
+            else:
+                enabled_agents = cursor.execute(f"SELECT COUNT(*) FROM {agent_table} WHERE status = 'active'").fetchone()[0]
+        else:
+            total_agents = 0
+            enabled_agents = 0
         conn.close()
         return {
             'total_employees': total,

@@ -1,3 +1,4 @@
+from core.db_path import get_db_path as _mtscos_get_db_path
 #!/usr/bin/env python3
 """ MTSCOS AI 联邦学习服务 (v14.7.0) =================================== 联邦学习框架和模型聚合管理服务。  核心能力： 1. 联邦任务管理 - 创建/监控/结束联邦训练任务 2. 客户端管理 - 客户端注册、认证、状态管理 3. 模型聚合 - FedAvg/FedProx/FedMedian 等聚合算法 4. 轮次管理 - 训练轮次追踪和参数更新 5. 数据统计 - 各客户端数据分布统计 6. 性能监控 - 各轮次准确率和损失变化 7. 异常客户端检测 - 低质量/恶意客户端检测 8. 差分隐私 - 高斯噪声、Laplace机制 """
 import os
@@ -11,7 +12,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 from collections import defaultdict
 
-DATABASE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.db')
+DATABASE_PATH = _mtscos_get_db_path('app.db')
 
 logging.basicConfig(
     level=logging.INFO,
