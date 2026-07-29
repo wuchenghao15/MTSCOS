@@ -118,6 +118,29 @@ def suggest_version(current_version: str, change_type: str = 'patch') -> str:
         return next_patch_version(current_version)
 
 VERSION_DATA = {
+    '18.1.0': {
+        'major': 18,
+        'minor': 1,
+        'patch': 0,
+        'build_number': '20260729a',
+        'build_date': '2026-07-29',
+        'codename': 'Automation Plans & AI Extension Edition',
+        'status': 'stable',
+        'description': '自动化计划调度系统版本，实现13个核心计划+20个AI自动延展计划；涵盖系统维护、AI投喂、题库管理、教辅同步、AI员工维护、后端巡检、数据库安全、VIKEY监控、对话流管理、积分清零、积分商城、农历佛教事件等全链路自动化',
+        'features': [
+            '自动化计划调度框架（scheduler_base.py）- AbstractAutoPlan抽象基类+CentralPlanScheduler调度管理器',
+            '13个核心自动化计划：系统维护/AI投喂/题库管理/教辅同步/AI员工维护/后端巡检/数据库安全/VIKEY监控/对话流管理/积分清零/积分商城/农历佛教事件/自动延展',
+            '20个AI自动延展计划 - 指标监控/缓存预热/死锁检测/审计清理/索引重建/备份轮转/临时文件清理/内存优化/API频率监控/知识升级/用户活跃度追踪/错误率监控/内容审核/性能基准测试/配置同步/安全扫描/数据完整性验证/通知汇总/功能开关审查/用户分群',
+            'API端点：/api/auto_plans/status/run/run_all/toggle - 支持查看状态、手动执行、启用禁用',
+            '系统启动自动初始化 - create_all_plans_and_register + AI延展 + start_all',
+            '知识投喂引擎扩展 - 从9个知识域48条扩展至20个知识域206条',
+            'AI脑库认知维度模型 - 5层认知体系(L1-L5)+知识关联图谱+跨域推理引擎',
+            'VIKEY API封装 - 统一对外Facade模式，7要素强认证全链路',
+            '首页UI/UX优化 - 65%/35%分栏布局+背景光晕+渐变网格+深度感+入场动画',
+            '积分商城AI脑补 - 12个预设商品+5个AI自动生成商品（考试卷/免作业卷/Token卷/答疑券等）'
+        ],
+        'upgrade_notes': '升级步骤：1. 更新VERSION文件到18.1.0；2. 执行init_version_table()初始化版本历史；3. 批量升级subsystem_versions；4. 重启服务使调度器生效'
+    },
     '17.22.0': {
         'major': 17,
         'minor': 22,
@@ -1247,7 +1270,7 @@ VERSION_DATA = {
     }
 }
 
-CURRENT_VERSION = '17.22.0'
+CURRENT_VERSION = '18.1.0'
 
 def init_version_table():
     conn = connect('system')
