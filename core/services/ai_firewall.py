@@ -62,6 +62,69 @@ SENSITIVE_WORDS_RE = re.compile(
     re.I
 )
 
+# ===== 升级：新增高级威胁检测正则 =====
+
+# XXE 注入（XML External Entity）
+XXE_RE = re.compile(
+    r"(<!ENTITY\s+|<!DOCTYPE\s+\w+\s+\[|SYSTEM\s+[\"']file://|SYSTEM\s+[\"']http|<!ENTITY\s+%\s*\w+\s+SYSTEM|parameter\s+entity|%\w+;)",
+    re.I | re.S
+)
+
+# 服务端模板注入（SSTI: Jinja2/Twig/FreeMarker）
+SSTI_RE = re.compile(
+    r"(\{\{.*?\}\}|\{%.*?%\}|\$\{.*?\}|#set\s*\(|#foreach\s*\(|#if\s*\(|\{\{.*?__class__.*?\}\}|\{\{.*?__subclasses__.*?\}\}|\{\{.*?__globals__.*?\}\}|\{\{.*?__import__.*?\}\}|\{\{.*?__builtins__.*?\}\})",
+    re.I | re.S
+)
+
+# PHP 反序列化 / Java 反序列化载荷
+DESERIAL_RE = re.compile(
+    r"(O:\d+:\"|a:\d+:\{|s:\d+:\"|b:0;|b:1;|N;|i:\d+;|d:[\d.]+;|__wakeup\(|__destruct\(|__toString\(|Serializable|readObject|writeObject|java\.util\.HashMap|javax\.script|org\.apache\.commons\.collections|com\.sun\.org\.apache\.xalan|ysoserial|java\.rmi\.registry|rmi://|ldap://\d|JNDI|InitialContext|remoteReference)",
+    re.I | re.S
+)
+
+# 敏感文件读取（补充 PATH_TRAVERSAL 覆盖不到的）
+SENSITIVE_FILE_RE = re.compile(
+    r"(/proc/(self|version|cpuinfo|meminfo)|/sys/(class|kernel|net)|/var/(log|spool|lib)/|/root/\.|/home/\w+/\.ssh/|/home/\w+/\.bash_history|/home/\w+/\.env|/var/www/\.env|/app/\.env|/opt/\.env|/srv/\.env|\.aws/credentials|\.git/config|\.svn/entries|\.htaccess|\.htpasswd|web\.config|wp-config\.php|configuration\.php|settings\.py|local_settings\.py|config\.database)",
+    re.I
+)
+
+# HTTP 请求走私 / CRLF 注入
+CRLF_RE = re.compile(
+    r"(\r\n\r\n|\n\n|\r\nSet-Cookie:|\r\nLocation:|\r\nContent-Length:|\r\nTransfer-Encoding:|%0d%0a%0d%0a|%0d%0aSet-Cookie:|%0d%0aLocation:|%0d%0aContent-Length:|%0d%0aTransfer-Encoding:)",
+    re.I
+)
+
+# Open Redirect
+OPEN_REDIRECT_RE = re.compile(
+    r"(redirect_uri=https?://(?!localhost|127\.0\.0\.1|\[::1\])|return_url=https?://(?!localhost|127\.0\.0\.1)|next=https?://(?!localhost|127\.0\.0\.1)|callback=https?://(?!localhost|127\.0\.0\.1)|url=https?://(?!localhost|127\.0\.0\.1)[a-z0-9.-]+\.[a-z]{2,})",
+    re.I
+)
+
+# 越权 IDOR 检测模式（参数中的可疑数字递增）
+IDOR_RE = re.compile(
+    r"(user_id=0|user_id=-1|id=0|id=-1|uid=0|uid=-1|admin=1|role=admin|role=super_admin|is_admin=1|is_superuser=1|debug=1|test=1|internal=1)",
+    re.I
+)
+
+# GraphQL 注入
+GRAPHQL_INJECT_RE = re.compile(
+    r"(__schema|__type|__typename|__field|mutation\s*\{|query\s*\{.*\bintrospection\b|batch\s*:\s*\[)",
+    re.I | re.S
+)
+
+# NoSQL 注入
+NOSQL_INJECT_RE = re.compile(
+    r"(\$where\s*:|\$ne\s*:|\$gt\s*:|\$lt\s*:|\$gte\s*:|\$lte\s*:|\$in\s*:|\$nin\s*:|\$regex\s*:|\$exists\s*:|\$or\s*:|\$and\s*:|\$not\s*:|\.find\s*\(\s*\{)",
+    re.I
+)
+
+# JWT 篡改检测
+JWT_RE = re.compile(
+    r"(eyJhbGciOiJub25lIn0\.|eyJhbGciOiJcIlwiXCJ9\.|eyJhbGciOlwiYWxnXCI6XCJub25lXCJ9\.|eyJ0eXAiOiJKV1QiLCJhbGciOiJub25lIn0\.|alg[\"']?\s*:\s*[\"']none[\"'])",
+    re.I
+)
+
+
 
 def _conn():
     conn = sqlite3.connect(APP_DB)
@@ -147,6 +210,23 @@ DEFAULT_SEED_RULES = [
     ('INFO_001', '敏感参数暴露告警（仅日志）', 'secleak', 'medium', 'regex', r"(?i)(password|passwd|pwd|token|secret|apikey|api_key|private[_-]?key)=", 'param,body,header', None, None, None, None, None, 'log', 220, '日志级敏感参数在 URL/Body 里被传入（只记录不拦截）'),
     ('BOT_001', '无头浏览器指纹拦截（默认disable，管理员可开）', 'bot', 'medium', 'regex', r"(?i)(headlesschrome|phantomjs|puppeteer|selenium|webdriver|cypress)", 'header', None, None, None, None, None, 'disabled', 230, '匹配无头 UA，默认关闭防止误伤正常浏览器'),
     ('GLOBAL_001', '全局请求审计日志（仅记录）', 'audit', 'low', 'log_only', None, 'all', None, None, None, None, None, 'log', 999, '所有请求（正常+异常）统一打事件表，便于 SIEM 接入'),
+
+    # ===== 升级：新增高级威胁检测规则 =====
+    ('XXE_001', 'XXE外部实体注入', 'injection', 'critical', 'regex', XXE_RE.pattern, 'param,body', None, None, None, None, None, 'block', 55, '检测XML外部实体注入：DOCTYPE/ENTITY/SYSTEM/参数实体'),
+    ('SSTI_001', '服务端模板注入', 'injection', 'critical', 'regex', SSTI_RE.pattern, 'param,body', None, None, None, None, None, 'block', 56, 'Jinja2/Twig/FreeMarker SSTI：{{}}/{%%}/__class__/__subclasses__'),
+    ('DESERIAL_001', '反序列化攻击载荷', 'injection', 'critical', 'regex', DESERIAL_RE.pattern, 'param,body', None, None, None, None, None, 'block', 57, 'PHP/Java反序列化：O:a:s:/__wakeup/ysoserial/JNDI'),
+    ('SENSFILE_001', '敏感文件路径探测', 'recon', 'high', 'regex', SENSITIVE_FILE_RE.pattern, 'path,param,body', None, None, None, None, None, 'block', 58, '读取/proc/sys/.ssh/.env/.git/config等敏感路径'),
+    ('CRLF_001', 'CRLF注入/HTTP请求走私', 'injection', 'high', 'regex', CRLF_RE.pattern, 'param,header', None, None, None, None, None, 'block', 65, 'CRLF注入：%0d%0a/双换行/Set-Cookie头注入'),
+    ('REDIRECT_001', '开放重定向', 'redirect', 'high', 'regex', OPEN_REDIRECT_RE.pattern, 'param', None, None, None, None, None, 'block', 75, 'redirect_uri/next/return_url指向外部域名'),
+    ('IDOR_001', '越权参数模式检测（仅日志）', 'auth', 'medium', 'regex', IDOR_RE.pattern, 'param,body', None, None, None, None, None, 'log', 85, '检测user_id=0/id=-1/admin=1/role=admin等越权模式'),
+    ('GRAPHQL_001', 'GraphQL注入/内省', 'injection', 'high', 'regex', GRAPHQL_INJECT_RE.pattern, 'param,body', None, None, None, None, None, 'block', 95, '__schema/__type/introspection/batch GraphQL攻击'),
+    ('NOSQL_001', 'NoSQL注入', 'injection', 'high', 'regex', NOSQL_INJECT_RE.pattern, 'param,body', None, None, None, None, None, 'block', 96, '$where/$ne/$gt/$regex等NoSQL注入操作符'),
+    ('JWT_001', 'JWT令牌篡改（alg=none）', 'auth', 'critical', 'regex', JWT_RE.pattern, 'param,header', None, None, None, None, None, 'block', 97, '检测JWT alg=none攻击/降级签名算法'),
+    ('RATE_LOGIN_002', '注册接口速率限制', 'ratelimit', 'high', 'rate', None, 'path', None, None, '/auth/register', 5, 60, 'block', 98, '注册接口 5 次/分钟防批量注册'),
+    ('RATE_PWD_001', '密码重置接口速率限制', 'ratelimit', 'high', 'rate', None, 'path', None, None, '/auth/forgot_password', 3, 300, 'block', 99, '密码重置 3 次/5分钟防邮件轰炸'),
+    ('RATE_API_001', 'API全局速率限制', 'ratelimit', 'medium', 'rate', None, 'path', None, None, '/api/', 300, 60, 'block', 100, '单IP对/api/路径 300次/分钟上限'),
+    ('SQLI_003', 'SQL注入-时间盲注增强', 'injection', 'high', 'regex', r"(?i)(pg_sleep\s*\(\s*\d+\s*\)|SLEEP\s*\(\s*\d+\s*\)|WAITFOR\s+DELAY\s+'[^']+'|WAITFOR\s+TIME\s+'[^']+'|BENCHMARK\s*\(\s*\d+\s*,|GET_LOCK\s*\(|RELEASE_LOCK\s*\(|\bIF\s*\(\s*1\s*=\s*1\s*,\s*SLEEP\s*\(|\bCASE\s+WHEN\s+.*\s+THEN\s+.*\s+END\b)", 'param,body', None, None, None, None, None, 'block', 105, 'pg_sleep/SLEEP/WAITFOR/BENCHMARK时间盲注增强检测'),
+    ('XSS_002', 'XSS-DOM注入增强', 'xss', 'high', 'regex', r"(?i)(innerHTML\s*=|outerHTML\s*=|document\.write\s*\(|document\.writeln\s*\(|\.innerHTML\s*=\s*[^;]+|location\.hash\s*\.|location\.search\s*\.|window\.name\s*[^=]*[<]|\.insertAdjacentHTML\s*\(|\.appendChild\s*\(\s*document\.create)", 'param,body', None, None, None, None, None, 'block', 108, 'DOM XSS：innerHTML/outerHTML/document.write/insertAdjacentHTML'),
 ]
 
 

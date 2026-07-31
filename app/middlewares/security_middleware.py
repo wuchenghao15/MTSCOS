@@ -29,6 +29,48 @@ RATE_LIMIT = 100                # 每分钟最大请求
 RATE_LIMIT_WINDOW = 60          # 限流窗口
 MAX_SESSIONS_PER_USER = 3       # 每用户最大会话数
 
+# ===== 升级：新增安全约束常量 =====
+MAX_REQUEST_BODY_SIZE = 10 * 1024 * 1024   # 请求体最大 10MB
+MAX_QUERY_STRING_LENGTH = 2048             # URL 查询字符串最大长度
+CSRF_EXEMPT_PATHS = frozenset({            # CSRF 豁免路径（GET 天生安全 + API Token 认证路径）
+    '/auth/login', '/auth/register', '/auth/check_username', '/auth/check_password',
+    '/auth/forgot_password', '/auth/reset_password',
+    '/mobile/login', '/admin_app/login',
+    '/api/health', '/api/time', '/api/status', '/api/server-time',
+})
+# 路径-角色权限矩阵：更精细的路径权限控制
+PATH_ROLE_MATRIX = {
+    '/admin_app/': {'admin', 'super_admin', 'teacher_admin', 'school_admin', 'sysadmin', 'hardware_admin'},
+    '/admin_center': {'admin', 'super_admin', 'system_admin'},
+    '/teacher': {'teacher', 'admin', 'super_admin', 'system_admin'},
+    '/designer': {'designer', 'admin', 'super_admin', 'system_admin'},
+    '/exam_system/': {'student', 'student_vip', 'teacher', 'admin', 'super_admin', 'system_admin'},
+    '/backup': {'super_admin'},
+    '/snapshot': {'super_admin'},
+    '/iso_build': {'super_admin'},
+    '/shadow': {'super_admin'},
+    '/upgrade': {'super_admin'},
+    '/api/admin/': {'admin', 'super_admin', 'system_admin'},
+    '/api/vikey/': {'super_admin', 'admin', 'system_admin'},
+    '/api/security/': {'super_admin', 'admin', 'system_admin'},
+    '/api/system/': {'super_admin', 'admin', 'system_admin'},
+    '/api/firewall/': {'super_admin', 'admin', 'system_admin'},
+    '/api/users/manage': {'admin', 'super_admin', 'system_admin'},
+    '/api/users/delete': {'super_admin'},
+    '/api/users/role': {'super_admin'},
+}
+
+# 方法-路径敏感操作约束：写操作仅限特定路径
+WRITE_METHOD_PATHS = {
+    '/api/users/', '/api/admin/', '/api/system/', '/api/firewall/',
+    '/auth/login', '/auth/register', '/auth/forgot_password',
+    '/admin_app/', '/backup', '/snapshot', '/iso_build', '/shadow', '/upgrade',
+}
+
+# 并发登录控制：同用户不同IP同时登录检测
+CONCURRENT_LOGIN_IPS = 2       # 同用户最多允许2个不同IP同时在线
+CONCURRENT_LOGIN_WINDOW = 300  # 5分钟内的并发窗口
+
 # 三级锁定时长（秒）
 LOCK_LEVELS = {
     'soft':      900,    # 软锁 15分钟
@@ -176,8 +218,63 @@ class SecurityMiddlewareClass:
                          '/assets/', '/static/', '/favicon.ico',
                          '/robots.txt', '/sitemap.xml']
 
-        path = request.path
+        path = request.path or ''
         ip_address = request.remote_addr or 'unknown'
+
+        # ===== 升级1：请求体大小限制 =====
+        content_length = request.headers.get('Content-Length')
+        if content_length and content_length.isdigit() and int(content_length) > MAX_REQUEST_BODY_SIZE:
+            SecurityMiddlewareClass._log_security_event(
+                'oversized_request', ip_address, 'warning',
+                f'请求体过大: {content_length} bytes (上限 {MAX_REQUEST_BODY_SIZE})', ip_address, path
+            )
+            return {
+                'success': False,
+                'error': '请求体超过大小限制',
+                'status_code': 413
+            }
+
+        # ===== 升级2：查询字符串长度限制 =====
+        qs = request.query_string.decode() if request.query_string else ''
+        if len(qs) > MAX_QUERY_STRING_LENGTH:
+            SecurityMiddlewareClass._log_security_event(
+                'oversized_query', ip_address, 'warning',
+                f'查询字符串过长: {len(qs)} (上限 {MAX_QUERY_STRING_LENGTH})', ip_address, path
+            )
+            return {
+                'success': False,
+                'error': '请求参数过长',
+                'status_code': 414
+            }
+
+        # ===== 升级3：CSRF 防护（POST/PUT/DELETE/PATCH 需验证 CSRF Token） =====
+        if request.method in ('POST', 'PUT', 'DELETE', 'PATCH'):
+            # 豁免路径（登录/注册/公开API）
+            if path not in CSRF_EXEMPT_PATHS and not path.startswith('/api/vikey/'):
+                csrf_token = request.headers.get('X-CSRF-Token') or request.form.get('csrf_token')
+                session_csrf = session.get('csrf_token')
+                if session_csrf and csrf_token != session_csrf:
+                    SecurityMiddlewareClass._log_security_event(
+                        'csrf_violation', session.get('username', 'unknown'), 'critical',
+                        f'CSRF Token 验证失败: path={path}', ip_address, path
+                    )
+                    return {
+                        'success': False,
+                        'error': 'CSRF 验证失败，请刷新页面重试',
+                        'status_code': 403
+                    }
+
+        # ===== 升级4：HTTP方法约束 =====
+        if request.method not in ('GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'):
+            SecurityMiddlewareClass._log_security_event(
+                'method_violation', ip_address, 'warning',
+                f'不允许的HTTP方法: {request.method}', ip_address, path
+            )
+            return {
+                'success': False,
+                'error': '不支持的HTTP方法',
+                'status_code': 405
+            }
 
         # 白名单检查
         for allowed in allowed_paths:
@@ -294,29 +391,45 @@ class SecurityMiddlewareClass:
                     'status_code': 401
                 }
 
-            # ---- 角色权限检查 ----
-            required_role = None
-            if '/admin_app/' in path or '/admin_center' in path:
-                required_role = ['admin', 'super_admin', 'system_admin']
-            elif '/teacher' in path:
-                required_role = ['teacher', 'admin', 'super_admin', 'system_admin']
-            elif '/designer' in path:
-                required_role = ['designer', 'admin', 'super_admin', 'system_admin']
-            elif '/exam_system/' in path:
-                required_role = ['student', 'student_vip', 'teacher', 'admin', 'super_admin', 'system_admin']
+            # ---- 角色权限检查（升级：使用 PATH_ROLE_MATRIX 精细化路径权限） ----
+            user_role = session.get('role', 'guest')
+            required_roles_for_path = None
+            for matrix_path, allowed_roles_set in PATH_ROLE_MATRIX.items():
+                if path.startswith(matrix_path):
+                    required_roles_for_path = allowed_roles_set
+                    break
 
-            if required_role:
-                user_role = session.get('role')
-                if user_role not in required_role:
+            if required_roles_for_path:
+                if user_role not in required_roles_for_path:
                     SecurityMiddlewareClass._log_security_event(
                         'permission_denied', session.get('username', 'unknown'), 'warning',
-                        f'权限不足: 需要{required_role}, 当前{user_role}', ip_address, path
+                        f'权限不足: 路径{path}需要{required_roles_for_path}, 当前{user_role}', ip_address, path
                     )
                     return {
                         'success': False,
                         'error': '权限不足',
                         'status_code': 403
                     }
+
+            # ---- 升级5：并发登录IP检测 ----
+            user_id = session.get('user_id')
+            if user_id and user_id in ACTIVE_SESSIONS:
+                sessions_list = ACTIVE_SESSIONS[user_id]
+                distinct_ips = set(s.get('ip', '') for s in sessions_list if s.get('ip'))
+                if len(distinct_ips) >= CONCURRENT_LOGIN_IPS and ip_address not in distinct_ips:
+                    SecurityMiddlewareClass._log_security_event(
+                        'concurrent_login_detected', session.get('username', 'unknown'), 'critical',
+                        f'并发登录检测: 用户在{len(distinct_ips)}个IP同时在线, 新IP={ip_address}',
+                        ip_address, json.dumps({'existing_ips': list(distinct_ips)[:5], 'new_ip': ip_address})
+                    )
+                    # 强制清除最旧会话
+                    if sessions_list:
+                        oldest = sessions_list.pop(0)
+                        SecurityMiddlewareClass._log_security_event(
+                            'session_force_kick', session.get('username', 'unknown'), 'warning',
+                            f'并发登录限制: 强制踢出旧会话 IP={oldest.get("ip", "")}',
+                            oldest.get('ip', '')
+                        )
 
             # ---- 会话唯一性检查（防重复登录 + 挂载锁定） ----
             user_id = session.get('user_id')

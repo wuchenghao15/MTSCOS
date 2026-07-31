@@ -17,16 +17,29 @@ DB_DIR = os.path.join(BASE_DIR, 'Database')
 def core_initialization(config=None):
     if not config:
         config = {}
-    
-    app = Flask(__name__, 
-                template_folder=os.path.join(BASE_DIR, 'Logs', 'html_files'),
-                static_folder=os.path.join(BASE_DIR, 'Logs'))
-    
+
+    _LOGS_TMPL = os.path.join(BASE_DIR, 'Logs', 'html_files')
+    _MAIN_TMPL = os.path.join(BASE_DIR, 'templates')
+    os.makedirs(_LOGS_TMPL, exist_ok=True)
+    app = Flask(__name__,
+                template_folder=_MAIN_TMPL,
+                static_folder=os.path.join(BASE_DIR, 'static'))
+
     app.config['DEBUG'] = config.get('debug', False)
     app.config['SECRET_KEY'] = config.get('secret_key', 'mtscos_secret_key_2026')
     app.config['SPLIT_DB_DIR'] = DB_DIR
     app.config['STATIC_URL_PATH'] = '/static'
-    
+
+    # 兼容路径：同时在 Logs/html_files 中查找模板
+    @app.before_request
+    def _ensure_template_paths():
+        from jinja2 import ChoiceLoader, FileSystemLoader
+        if not isinstance(app.jinja_loader, ChoiceLoader):
+            app.jinja_loader = ChoiceLoader([
+                app.jinja_loader,
+                FileSystemLoader([_LOGS_TMPL, _MAIN_TMPL]),
+            ])
+
     os.makedirs(DB_DIR, exist_ok=True)
     
     CORS(app, resources={r'/api/*': {'origins': '*'}})
@@ -39,13 +52,63 @@ def core_initialization(config=None):
     def get_config_obj():
         return config
     
+    @app.template_global(name='is_authenticated')
+    def is_authenticated():
+        from flask import session
+        return bool(session.get('logged_in') or session.get('user_id'))
+    
+    @app.template_global(name='current_user')
+    def get_current_user():
+        from flask import session
+        uid = session.get('user_id')
+        if not uid:
+            return None
+        try:
+            from core.db_path import get_db_path
+            import sqlite3
+            c = sqlite3.connect(get_db_path('auth.db'), timeout=30)
+            c.row_factory = sqlite3.Row
+            r = c.execute("SELECT id, username, role, is_active FROM users WHERE id=?", (uid,)).fetchone()
+            c.close()
+            if r:
+                return {k: r[k] for k in r.keys()}
+        except Exception:
+            pass
+        return None
+    
+    @app.template_global(name='is_super_admin')
+    def is_super_admin():
+        u = get_current_user()
+        if not u:
+            return False
+        return u.get('role') == 'super_admin'
+    
+    @app.template_global(name='get_user_role')
+    def get_user_role():
+        u = get_current_user()
+        if not u:
+            return 'guest'
+        return u.get('role', 'guest')
+    
+    @app.template_global(name='_is_super')
+    def _is_super():
+        return is_super_admin()
+    
+    @app.template_global(name='_role')
+    def _role():
+        return get_user_role()
+    
     @app.route('/')
     def index():
-        return render_template('index.html')
+        version_info = {'codename': 'Nebula', 'version': '2.0'}
+        version = '2.0'
+        return render_template('index.html', version_info=version_info, version=version)
     
     @app.route('/index.html')
     def index_html():
-        return render_template('index.html')
+        version_info = {'codename': 'Nebula', 'version': '2.0'}
+        version = '2.0'
+        return render_template('index.html', version_info=version_info, version=version)
     
     @app.route('/css_files/<filename>')
     def css_files(filename):
@@ -90,6 +153,15 @@ def core_initialization(config=None):
     
     @app.route('/static/<path:filepath>')
     def static_files(filepath):
+        # 1) 主 static 目录优先
+        file_path = os.path.join(BASE_DIR, 'static', filepath)
+        if os.path.exists(file_path):
+            import mimetypes
+            mime_type, _ = mimetypes.guess_type(file_path)
+            with open(file_path, 'rb') as f:
+                content = f.read()
+            return app.response_class(content, mimetype=mime_type or 'application/octet-stream')
+        # 2) 兼容 Logs 目录（历史路径）
         file_path = os.path.join(BASE_DIR, 'Logs', filepath)
         if os.path.exists(file_path):
             import mimetypes
