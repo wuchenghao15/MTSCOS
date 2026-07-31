@@ -22,7 +22,7 @@
     </a>
     &nbsp;
     <a href="https://github.com/wuchenghao15/MTSCOS-AI-Project/releases">
-      <img src="https://img.shields.io/badge/Releases-v17.22.0-purple?style=for-the-badge&logo=semver&logoColor=white" alt="Releases">
+      <img src="https://img.shields.io/badge/Releases-v18.2.0-purple?style=for-the-badge&logo=semver&logoColor=white" alt="Releases">
     </a>
   </p>
 </div>
@@ -42,7 +42,7 @@
 <br>
 
 <!-- ── Repo Health & Quality ── -->
-[![Version](https://img.shields.io/badge/version-v17.22.0_–_SuperAdmin_UX_Unified_Edition-f77f00?style=for-the-badge&logo=semver&logoColor=white)](docs/CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-v18.2.0_–_Security_Container_Edition-f77f00?style=for-the-badge&logo=semver&logoColor=white)](docs/CHANGELOG.md)
 [![Python](https://img.shields.io/badge/python-3.9_%7C_3.10_%7C_3.11_%7C_3.12-3776AB?style=for-the-badge&logo=python&logoColor=ffd54f&labelColor=2b2b2b)](https://www.python.org/downloads/)
 [![Flask](https://img.shields.io/badge/flask-3.x-000000?style=for-the-badge&logo=flask&logoColor=white&labelColor=2b2b2b)](https://flask.palletsprojects.com/)
 [![SQLite](https://img.shields.io/badge/sqlite-3.x%2B-003B57?style=for-the-badge&logo=sqlite&logoColor=white&labelColor=2b2b2b)](https://www.sqlite.org/)
@@ -250,11 +250,11 @@ Now open:
 
 ```bash
 git clone https://github.com/wuchenghao15/MTSCOS-AI-Project.git && cd $_
-docker build -t mtscos-ai:v17.22.0 .
+docker build -t mtscos-ai:v18.2.0 .
 docker run -d -p 8888:8888 --name mtscos-ai \
   -v $(pwd)/split_databases:/app/split_databases:rw \
   -v $(pwd)/data:/app/data:rw \
-  mtscos-ai:v17.22.0
+  mtscos-ai:v18.2.0
 ```
 
 Full container & k8s guidance → [docs/DEPLOYMENT_GUIDE.md](docs/DEPLOYMENT_GUIDE.md).
@@ -342,7 +342,7 @@ MTSCOS-AI-Project/
 ├── app.py                    Legacy entrypoint
 ├── smart_db_router_simple.py SQLite shard router
 ├── requirements.txt          Runtime deps
-├── VERSION                   17.22.0
+├── VERSION                   18.2.0
 ├── Dockerfile                Container build
 ├── .github/
 │   ├── workflows/ci-cd.yml   CI: bandit/pip-audit/trivy + CodeQL
@@ -374,7 +374,8 @@ Extended tree → [docs/PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md)
 
 | Milestone | Target | Status |
 |---|:---:|:---:|
-| **v17.22.x — SuperAdmin UX Unified Edition** | 2026-07-26 | ✅ **Released** — this version. SA UI auto-hide for remember-me/forgot/register; VIKEY integrated; main+20 subsystems version aligned; Dependabot+Trivy+Bandit on CI. |
+| **v18.2.0 — Security Container & EigenFlux Edition** | 2026-07-31 | ✅ **Released** — this version. New security architecture: user container system (mandatory validation on all non-index pages — user_group/permission_code/login_status/is_anomaly/is_valid/unique_login_timestamp), vikey iron law for ALL super admin operations, rule approval confidential workflow (proposal → multi-approval → AI firewall → super admin final → adaptation period → memory-only withdrawal), Arduino IDE access control (super_admin + arduino group only), security console & rule management pages, refactored login flow (index.html → admin_app/login → container → redirect). EigenFlux.al integration: 1475+ AI employees registered to broadcast network. |
+| **v17.22.x — SuperAdmin UX Unified Edition** | 2026-07-26 | ✅ **Released**. SA UI auto-hide for remember-me/forgot/register; VIKEY integrated; main+20 subsystems version aligned; Dependabot+Trivy+Bandit on CI. |
 | **v17.23 — Question Expansion v3** | Aug 2026 | 🚧 In design — multimodal (image/audio) questions; anti-LLM watermark; OCR-in for handwritten grading. |
 | **v17.24 — Role-Twin AI School District** | Sep 2026 | 🚧 In design — every teacher/student has a private AI twin; twin-to-twin delegation graph; GPU offload for local-LLM. |
 | **v18.0 — MTS Architecture v3** | Q4 2026 | 🔭 Planned — streaming event bus (Kafka-compatible pub/sub); hot-reload agents; multi-region sharding; Rust firewall proxy. |

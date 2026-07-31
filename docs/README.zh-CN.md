@@ -21,7 +21,7 @@
     </a>
     &nbsp;
     <a href="https://github.com/wuchenghao15/MTSCOS-AI-Project/releases">
-      <img src="https://img.shields.io/badge/版本-v17.22.0-purple?style=for-the-badge&logo=semver&logoColor=white" alt="版本">
+      <img src="https://img.shields.io/badge/版本-v18.2.0-purple?style=for-the-badge&logo=semver&logoColor=white" alt="版本">
     </a>
   </p>
 </div>
@@ -41,7 +41,7 @@
 <br>
 
 <!-- ── 仓库健康 & 质量 ── -->
-[![版本](https://img.shields.io/badge/版本-v17.22.0_超管 UX 统一版-f77f00?style=for-the-badge&logo=semver&logoColor=white)](docs/CHANGELOG.md)
+[![版本](https://img.shields.io/badge/版本-v18.2.0_安全容器版-f77f00?style=for-the-badge&logo=semver&logoColor=white)](docs/CHANGELOG.md)
 [![Python](https://img.shields.io/badge/python-3.9_%7C_3.10_%7C_3.11_%7C_3.12-3776AB?style=for-the-badge&logo=python&logoColor=ffd54f&labelColor=2b2b2b)](https://www.python.org/downloads/)
 [![Flask](https://img.shields.io/badge/flask-3.x-000000?style=for-the-badge&logo=flask&logoColor=white&labelColor=2b2b2b)](https://flask.palletsprojects.com/)
 [![SQLite](https://img.shields.io/badge/sqlite-3.x%2B-003B57?style=for-the-badge&logo=sqlite&logoColor=white&labelColor=2b2b2b)](https://www.sqlite.org/)
@@ -250,11 +250,11 @@ python3 server_real_db.py --host 0.0.0.0 --port 8888
 
 ```bash
 git clone https://github.com/wuchenghao15/MTSCOS-AI-Project.git && cd $_
-docker build -t mtscos-ai:v17.22.0 .
+docker build -t mtscos-ai:v18.2.0 .
 docker run -d -p 8888:8888 --name mtscos-ai \
   -v $(pwd)/split_databases:/app/split_databases:rw \
   -v $(pwd)/data:/app/data:rw \
-  mtscos-ai:v17.22.0
+  mtscos-ai:v18.2.0
 ```
 
 容器/K8s 完整部署指南 → [docs/DEPLOYMENT_GUIDE.md](docs/DEPLOYMENT_GUIDE.md)
@@ -340,7 +340,7 @@ MTSCOS-AI-Project/
 ├── app.py                    历史兼容入口
 ├── smart_db_router_simple.py SQLite 分片路由器
 ├── requirements.txt          运行依赖
-├── VERSION                   17.22.0
+├── VERSION                   18.2.0
 ├── Dockerfile                容器构建
 ├── .github/
 │   ├── workflows/ci-cd.yml   CI：Bandit/pip-audit/Trivy/CodeQL
@@ -372,7 +372,8 @@ MTSCOS-AI-Project/
 
 | 里程碑 | 目标时间 | 状态 |
 |---|:---:|:---:|
-| **v17.22.x · 超管 UX 统一版** | 2026-07-26 | ✅ **已发布** — 本版本。超管识别隐藏记住我/忘记密码/创建账号；VIKEY 全链路打通；主版本+20 子系统统一对齐；CI 接入 Dependabot+Trivy+Bandit。 |
+| **v18.2.0 · 安全容器 & EigenFlux 版** | 2026-07-31 | ✅ **已发布** — 本版本。全新安全架构：用户容器系统（所有非首页页面强制校验 user_group/permission_code/login_status/is_anomaly/is_valid/unique_login_timestamp）、超管 vikey 铁律（所有超管操作实时检测）、规则审批保密流程（提议→多人审批→AI防火墙→超管终审→适配期→内存级保密撤回）、Arduino IDE 权限控制（仅超管与 arduino 组）、安全控制台与规则管理页面、登录流程重构（index.html → admin_app/login → 容器创建 → 跳转）。EigenFlux.al 集成：1475+ AI 员工接入广播网络。 |
+| **v17.22.x · 超管 UX 统一版** | 2026-07-26 | ✅ **已发布**。超管识别隐藏记住我/忘记密码/创建账号；VIKEY 全链路打通；主版本+20 子系统统一对齐；CI 接入 Dependabot+Trivy+Bandit。 |
 | **v17.23 · 题目扩展 v3** | 2026 年 8 月 | 🚧 设计中 — 多模态（图/音）题目、反大模型水印、手写体 OCR 批改 |
 | **v17.24 · 角色孪生 AI 学区** | 2026 年 9 月 | 🚧 设计中 — 每个师生都有独立 AI 孪生体；孪生体互委托图谱；本地 LLM GPU 卸载 |
 | **v18.0 · MTS 架构 v3** | 2026 年 Q4 | 🔭 规划中 — 流式事件总线（Kafka 兼容）、热加载 Agent、多地域分片、Rust 防火墙侧车代理 |

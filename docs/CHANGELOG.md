@@ -2,6 +2,30 @@
 
 所有重要的项目变更都将记录在此文件中。
 
+## 🚀 v18.2.0 - 2026-07-31 - 安全架构重构 + EigenFlux.al集成
+
+### 🛡️ 安全架构重构 + EigenFlux.al AI 员工集成
+
+v18.2.0 版本代号 "安全架构重构 + EigenFlux.al集成"，主要新增 EigenFlux.al AI 员工广播网络集成、用户容器安全系统、超级管理员 vikey 铁律、规则审批流程、登录流程重构、Arduino IDE 权限控制及安全控制台/规则管理页面等特性。
+
+#### ✨ 新功能
+
+- **EigenFlux.al AI 员工集成**：新建 `eigenflux_adapter.py`，批量注册 1475 个 AI 员工至 EigenFlux.al 广播网络，支持广播/聊天/数据同步
+- **安全架构重构**：引入用户容器系统，包含 user_group、permission_code、login_status、is_anomaly、is_valid、unique_login_timestamp 等字段
+- **超级管理员 vikey 铁律**：所有超管操作必须实时 vikey 硬件检测（桌面端）或指纹认证（移动端），包括调试、发布激活、AI 调试工具
+- **规则审批流程**：提议 → 多管理员审批 → AI 防火墙审核 → 超管终审 → 适配期（立即 / 2 个工作日）→ 保密撤回（仅内存记录，不写数据库日志）
+- **登录流程重构**：`index.html` 作为唯一登录入口 → `admin_app/login` 作为后端处理枢纽 → 用户容器创建 → 重定向
+- **Arduino IDE 权限控制**：仅 super_admin 和 arduino 用户组可访问
+- **新增安全控制台和规则管理页面**：`security_console.html`、`rule_management.html`
+
+#### 📚 文档更新
+
+- 更新 `VERSION` 至 v18.2.0
+- 更新所有 `docs/` 文档版本号至 v18.2.0
+- 更新 `docs/CHANGELOG.md` 添加 v18.2.0 更新记录
+- 更新 `docs/SECURITY.md` 新增用户容器安全系统、超级管理员 vikey 铁律、规则修改保密撤回章节
+- 更新 `docs/RULES.md` 新增 R-SECURITY 安全铁律规则域（R-SEC-001 ~ R-SEC-007）
+
 ## 🚀 v17.22.0 - 2026-07-26
 
 ### 🏛️ SuperAdmin UX Unified Edition（超管 UX 统一版）
