@@ -1,69 +1,34 @@
-# MTSCOS AI Project - Dependabot 版本与安全更新配置
-# 文档: https://docs.github.com/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+# Dependabot 安全扫描配置
+# https://docs.github.com/en/code-security/dependabot
+#
+# 说明: 仓库有 ~18 个 requirements.txt 分散在 ai_engines/_xxx_fusion/ 子目录
+# (外部融合进来的示例代码), 全部依赖老版本库导致 736 虚假漏洞告警
+# 这里只扫描 flask-app/ 主目录的核心依赖文件
 
 version: 2
+
 updates:
+  # Python 主依赖
   - package-ecosystem: "pip"
-    directory: "/"
+    directory: "/flask-app"
     schedule:
-      interval: "daily"
-      time: "03:00"
-      timezone: "Asia/Shanghai"
-    open-pull-requests-limit: 12
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 5
     labels:
       - "dependencies"
       - "security"
-    rebase-strategy: "auto"
-    allow:
-      - dependency-type: "direct"
-      - dependency-type: "indirect"
-    groups:
-      security-patches:
-        applies-to: security-updates
-        patterns:
-          - "*"
-      patch-updates:
-        applies-to: version-updates
-        update-types:
-          - "patch"
-      minor-updates:
-        applies-to: version-updates
-        update-types:
-          - "minor"
-    commit-message:
-      prefix: "chore(deps)"
-      prefix-development: "chore(deps-dev)"
-      include: "scope"
     ignore:
-      - dependency-name: "protobuf"
-        versions: ["6.x"]
-      - dependency-name: "paho-mqtt"
-        versions: ["2.x"]
+      # 这些是外部融合代码, 不影响主系统
+      - dependency-name: "*"
+        directories:
+          - "/flask-app/ai_engines/_*_fusion"
 
+  # GitHub Actions
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
-      day: "monday"
-      timezone: "Asia/Shanghai"
-    open-pull-requests-limit: 10
     labels:
-      - "github-actions"
-      - "security"
-    rebase-strategy: "auto"
-    commit-message:
-      prefix: "ci(actions)"
-      include: "scope"
-
-  - package-ecosystem: "docker"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-      timezone: "Asia/Shanghai"
-    open-pull-requests-limit: 5
-    labels:
-      - "docker"
-      - "security"
-    commit-message:
-      prefix: "chore(docker)"
-      include: "scope"
+      - "dependencies"
