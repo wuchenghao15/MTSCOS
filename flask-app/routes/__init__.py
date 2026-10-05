@@ -493,6 +493,8 @@ def register_all_blueprints(app):
     ('mobile_passport_routes', 'mobile_passport_bp'),
     # 🆕 v25.3: 📱 移动端主应用 — home/exam/learn/profile/login (之前全被 REDIRECT_MAP 重定向到 PC 端)
     ('mobile_routes', 'mobile_bp'),
+    # 🆕 v25.5: 🌌 仙女座星系子系统 — 运营/合规/Swarm 组队/多平台发布 (galaxy_routes.py 完整文件已存在, 从未注册)
+    ('galaxy_routes', 'galaxy_bp'),
 ]
 
     # 🆕 v25.0: 动态注册角色蓝图 (role_registry.build_role_blueprints)
