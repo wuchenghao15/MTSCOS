@@ -300,7 +300,11 @@ class HandshakeEngine:
             "iron_violations": self._count_table("mt_iron_rule_violations"),
             "brain_logs": self._count_table("mt_ai_brain_feed_log"),
             "eigenflux": self._count_table("eigenflux_registrations"),
-            "qbank": self._count_table("adult_education_questions"),
+            "qbank": self._count_tables_sum([
+                "adult_education_questions", "professional_exam_questions",
+                "mt_exam_questions_pool", "mt_exam_australian_questions",
+                "ai_maintenance_questions",
+            ]),
             "version": self._app_version(),
             "role": CONFIG.my_role,  # ← MASTER / SLAVE
         }
@@ -319,6 +323,14 @@ class HandshakeEngine:
     def _count_table(self, table) -> int:
         try: return self.db.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
         except: return 0
+
+    def _count_tables_sum(self, tables: list) -> int:
+        """多张表 COUNT 合计 (题库 5 表合计)."""
+        total = 0
+        for t in tables:
+            try: total += self.db.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0]
+            except: pass
+        return total
 
     def _safe_count(self, table) -> int:
         """表不存在也不崩, 返回 0."""
