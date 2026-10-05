@@ -31,7 +31,8 @@ from typing import Any, Dict, Optional, Tuple
 # §14 引擎路径
 _RULES_ENGINE_DIR = os.path.dirname(os.path.abspath(__file__))
 _AI_ENGINES_DIR = os.path.dirname(_RULES_ENGINE_DIR)
-_APP_DB = os.path.join(_AI_ENGINES_DIR, "app.db")
+_FLASK_APP_DIR = os.path.dirname(_AI_ENGINES_DIR)
+_APP_DB = os.path.join(_FLASK_APP_DIR, "database", "app.db")
 
 # mt_dev_flow_session 表名（与 mt_ir14_dev_flow.MT_SESSION_TABLE 保持一致）
 _MT_SESSION_TABLE = "mt_dev_flow_session"
