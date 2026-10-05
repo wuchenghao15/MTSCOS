@@ -246,8 +246,20 @@ def _aggregate():
             data['system']['rule_changes'] = [dict(r) for r in cur.fetchall()]
         except: pass
         
-        # ── AI Passport (本地硬件状态) ──
-        data['ai_passport']['usb'] = os.path.exists('/dev/cu.usbmodem101')
+        # ── AI Passport (本地 VIKEY 硬件状态) ──
+        # 🆕 2026-10-05: 支持多个 AI Passport (扫描 /dev/cu.usbmodem*)
+        import glob as _glob
+        usb_passports = sorted(set(_glob.glob('/dev/cu.usbmodem*') + _glob.glob('/dev/tty.usbmodem*')))
+        ai_passport_devices = [p for p in usb_passports if 'Bluetooth' not in p]
+        data['ai_passport']['usb'] = len(ai_passport_devices) > 0
+        data['ai_passport']['usb_count'] = len(ai_passport_devices)
+        data['ai_passport']['devices'] = ai_passport_devices
+        # 取第一个设备的实时状态 (如果有)
+        if ai_passport_devices:
+            try:
+                mtime = os.path.getmtime(ai_passport_devices[0])
+                data['ai_passport']['first_seen_epoch'] = int(mtime)
+            except: pass
         
         # ── 仙女座集群占比 (MacBook ↔ Mac mini) ──
         cluster = data['cluster']

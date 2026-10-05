@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>🧊 冰山·仙女座 Dev Dashboard</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0B0A1E; color: #E4E4F0;
+    font-family: -apple-system, 'SF Mono', 'Menlo', monospace;
+    padding: 16px; font-size: 13px;
+  }
+  h1 { font-size: 18px; color: #FFD700; margin-bottom: 4px; }
+  h2 { font-size: 13px; color: #7DF9FF; margin-bottom: 8px; border-bottom: 1px solid #2a2a4a; padding-bottom: 4px; }
+  .muted { color: #888; }
+  .grid { display: grid; gap: 12px; }
+  .grid-2 { grid-template-columns: 1fr 1fr; }
+  .grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .grid-4 { grid-template-columns: repeat(4, 1fr); }
+  .card {
+    background: #151530; border: 1px solid #2a2a4a;
+    border-radius: 6px; padding: 12px;
+  }
+  .metric { font-size: 22px; font-weight: bold; }
+  .ok { color: #4ADE80; }
+  .warn { color: #FBBF24; }
+  .err { color: #F87171; }
+  .info { color: #60A5FA; }
+  .mono { font-family: 'SF Mono', Menlo, monospace; font-size: 11px; }
+  table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  th, td { padding: 3px 6px; text-align: left; border-bottom: 1px solid #1f1f3a; }
+  th { color: #7DF9FF; font-weight: normal; }
+  .pill {
+    display: inline-block; padding: 1px 8px; border-radius: 10px;
+    font-size: 10px; font-weight: bold;
+  }
+  .pill-running { background: #065F46; color: #4ADE80; }
+  .pill-failed  { background: #7F1D1D; color: #F87171; }
+  .pill-unknown { background: #374151; color: #9CA3AF; }
+  .pill-dev-ip { color: #FBBF24; }
+  #conn-badge { position: fixed; top: 10px; right: 14px; font-size: 11px; }
+  .bar { height: 8px; background: #2a2a4a; border-radius: 4px; overflow: hidden; }
+  .bar > div { height: 100%; background: linear-gradient(90deg, #7DF9FF, #FFD700); border-radius: 4px; }
+  .refresh { color: #7DF9FF; font-size: 10px; }
+  .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+  .dot-green { background: #4ADE80; box-shadow: 0 0 6px #4ADE80; }
+  .dot-red   { background: #F87171; }
+  .dot-gray  { background: #6B7280; }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: #1a1a35; }
+  ::-webkit-scrollbar-thumb { background: #3a3a6a; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #5a5a9a; }
+
+  /* ═══ 25 星域 Hover Tooltip ═══ */
+  .domain-cell { position: relative; transition: transform 0.15s; }
+  .domain-cell:hover { transform: scale(1.08); z-index: 10; }
+  .domain-cell .tip {
+    visibility: hidden; opacity: 0;
+    position: absolute; bottom: 110%; left: 50%; transform: translateX(-50%);
+    min-width: 220px; max-width: 280px;
+    background: linear-gradient(135deg, #1a1a3d 0%, #0f0f2a 100%);
+    border: 1px solid #7DF9FF; border-radius: 8px;
+    padding: 10px 12px; z-index: 100;
+    box-shadow: 0 8px 24px rgba(125,249,255,0.25), 0 0 0 1px rgba(125,249,255,0.15);
+    transition: opacity 0.15s, visibility 0.15s;
+    pointer-events: none;
+  }
+  .domain-cell .tip::after {
+    content: ''; position: absolute; top: 100%; left: 50%;
+    margin-left: -6px; border-width: 6px; border-style: solid;
+    border-color: #7DF9FF transparent transparent transparent;
+  }
+  .domain-cell:hover .tip { visibility: visible; opacity: 1; }
+  .tip-title { font-size: 13px; font-weight: bold; color: #FFD700; margin-bottom: 4px; }
+  .tip-desc  { font-size: 11px; color: #C0C0E0; line-height: 1.5; }
+  .tip-meta  { font-size: 10px; color: #7DF9FF; margin-top: 6px; border-top: 1px solid #2a2a4a; padding-top: 4px; }
+
+  /* ═══ 演化曲线图 ═══ */
+  .chart-wrap { position: relative; width: 100%; }
+  .chart-wrap svg { width: 100%; height: 320px; display: block; }
+  .chart-legend { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+  .legend-item { display: flex; align-items: center; gap: 4px; font-size: 10px; color: #C0C0E0; cursor: pointer; }
+  .legend-item.off { opacity: 0.35; text-decoration: line-through; }
+  .legend-swatch { width: 12px; height: 3px; border-radius: 2px; }
+  .milestone-line { stroke: #FFD700; stroke-width: 1.5; stroke-dasharray: 4 3; }
+  .milestone-dot { fill: #FFD700; }
+  .milestone-label { font-size: 9px; fill: #FFD700; }
+  .chart-tooltip {
+    position: absolute; pointer-events: none;
+    background: linear-gradient(135deg, #1a1a3d 0%, #0f0f2a 100%);
+    border: 1px solid #7DF9FF; border-radius: 6px;
+    padding: 8px 10px; z-index: 200;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    font-size: 11px; line-height: 1.5;
+    transform: translate(-50%, -110%);
+    white-space: nowrap;
+  }
+  .chart-tooltip .tt-date { color: #FFD700; font-weight: bold; margin-bottom: 4px; }
+  .chart-tooltip .tt-row { display: flex; gap: 8px; }
+</style>
+</head>
+<body>
+
+<div id="conn-badge">
+  <span class="status-dot dot-gray" id="dot"></span>
+  <span id="conn-text">连接中...</span>
+  <span class="refresh"> · 5s 刷新</span>
+</div>
+
+<h1>🧊 冰山·仙女座 Dev Dashboard <span class="pill pill-dev-ip">DEV ONLY</span></h1>
+<div class="muted" id="header-ts">等待数据...</div>
+
+<div class="grid grid-4" style="margin-top: 14px;">
+  <div class="card">
+    <div class="muted">总 Daemon</div>
+    <div class="metric" id="daemon-total">-</div>
+    <div class="ok" id="daemon-running-sub">-</div>
+  </div>
+  <div class="card">
+    <div class="muted">AI 员工</div>
+    <div class="metric" id="emp-total">-</div>
+    <div class="ok" id="emp-enabled-sub">-</div>
+  </div>
+  <div class="card">
+    <div class="muted">Mac ↔ Mini 握手</div>
+    <div class="metric" id="handshake-count">-</div>
+    <div class="info" id="handshake-last-sub">-</div>
+  </div>
+  <div class="card">
+    <div class="muted">AI Passport USB</div>
+    <div class="metric" id="passport-usb">-</div>
+  </div>
+</div>
+
+<div class="grid grid-2" style="margin-top: 12px;">
+  <div class="card">
+    <h2>⚙️ Daemon Top 15</h2>
+    <div style="max-height:280px;overflow-y:auto;">
+    <table>
+      <tr><th>进程</th><th>状态</th><th>心跳</th><th>PID</th></tr>
+      <tbody id="daemon-top"></tbody>
+    </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>🤖 AI 员工 (按类型)</h2>
+    <div style="max-height:180px;overflow-y:auto;">
+    <table>
+      <tr><th>类型</th><th>数量</th><th>占比</th></tr>
+      <tbody id="emp-by-type"></tbody>
+    </table>
+    </div>
+    <div class="bar" style="margin-top:8px;"><div id="emp-bar" style="width:0%"></div></div>
+  </div>
+</div>
+
+<div class="grid grid-2" style="margin-top: 12px;">
+  <div class="card">
+    <h2>🔁 演化日志 (MacBook ↔ Mac mini)</h2>
+    <table>
+      <tr><th>时间</th><th>阶段</th><th>动作</th><th>严重性</th><th>状态</th></tr>
+      <tbody id="evolution-log"></tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>📋 规则变更</h2>
+    <table>
+      <tr><th>规则</th><th>版本</th><th>类型</th><th>时间</th></tr>
+      <tbody id="rule-changes"></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="grid grid-3" style="margin-top: 12px;">
+  <div class="card">
+    <h2>🌐 25 仙女星域 · 任务热力图</h2>
+    <div id="subsys-heatmap" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;"></div>
+    <div id="subsys-total" class="muted" style="margin-top:6px;font-size:11px;"></div>
+  </div>
+  <div class="card">
+    <h2>🧊 蓝牙开发 · BLE / Classic / GATT</h2>
+    <div id="bt-info" class="mono" style="font-size:12px;">加载中...</div>
+    <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;">
+      <button id="bt-scan-btn" style="background:#1a4a6a;color:#7DF9FF;border:1px solid #7DF9FF;border-radius:4px;padding:3px 10px;font-size:11px;cursor:pointer;">🔍 BLE 扫描</button>
+      <button id="bt-gatt-btn" style="background:#1a3a4a;color:#FFD700;border:1px solid #FFD700;border-radius:4px;padding:3px 10px;font-size:11px;cursor:pointer;display:none;">🔬 GATT 探索</button>
+      <span id="bt-scan-status" class="muted" style="font-size:10px;"></span>
+    </div>
+    <div id="bt-devices" style="margin-top:6px;max-height:120px;overflow-y:auto;"></div>
+    <div id="bt-gatt-panel" style="display:none;margin-top:8px;border:1px solid #2a2a4a;border-radius:6px;padding:8px;background:#0d0d20;max-height:280px;overflow-y:auto;font-size:11px;"></div>
+  </div>
+  <div class="card">
+    <h2>🧠 Ollama 本地推理</h2>
+    <div id="ollama-info" class="mono" style="font-size:12px;">-</div>
+  </div>
+</div>
+
+<div class="card" style="margin-top:12px;">
+  <h2>📈 仙女座演化曲线 · 考试握手 → 现在</h2>
+  <div class="chart-wrap" id="chart-wrap">
+    <svg id="evo-chart" viewBox="0 0 800 320" preserveAspectRatio="none"></svg>
+    <div class="chart-tooltip" id="chart-tip" style="display:none;"></div>
+  </div>
+  <div class="chart-legend" id="chart-legend"></div>
+  <div class="muted" style="font-size:10px;margin-top:6px;">点击图例可开关对应曲线 · 金色虚线 = 演化里程碑</div>
+</div>
+
+<div class="grid grid-2" style="margin-top: 12px;">
+  <div class="card">
+    <h2>🏔️ 仙女座集群 · MacBook ↔ Mac mini</h2>
+    <div id="cluster-nodes" style="display:flex;gap:12px;margin-bottom:10px;"></div>
+    <div id="cluster-comparison"></div>
+  </div>
+  <div class="card">
+    <h2>🏔️ 集群汇总</h2>
+    <div id="cluster-summary" class="mono" style="font-size:12px;"></div>
+    <div style="margin-top:12px;" class="muted" style="font-size:11px;">
+      MacBook = 开发机 (MASTER) · Mac mini = 服务器 (SLAVE)
+    </div>
+  </div>
+</div>
+
+<script>
+const DOT = document.getElementById('dot');
+const CONN = document.getElementById('conn-text');
+
+// 演化曲线立即初始化 (不等 SSE)
+initEvolutionChart();
+// 蓝牙面板初始化 (不等 SSE)
+initBluetooth();
+
+
+// ═══ 蓝牙面板 ═══
+async function initBluetooth() {
+  try {
+    const r = await fetch('/api/dev/dashboard/bt/info');
+    const d = await r.json();
+    const c = d.controller || {};
+    const libs = (d.available_libs || []).map(l => '✅ ' + l).join('  ') || '❌ bleak 未装';
+    document.getElementById('bt-info').innerHTML =
+      `<div>🔧 ${c.chipset || '?'} · state=${c.state || '?'}</div>` +
+      `<div>📡 ${c.services || ''}</div>` +
+      `<div class="muted" style="font-size:10px;">${libs}</div>`;
+
+    // 已扫描的 BLE 设备列表
+    const db = d.db_devices || [];
+    let devHtml = '';
+    if (db.length === 0) {
+      devHtml = '<div class="muted" style="font-size:10px;">点「BLE 扫描」发现附近设备</div>';
+    } else {
+      db.slice(0, 12).forEach(dev => {
+        const name = dev.name || dev.local_name || '(无名)';
+        const rssi = dev.rssi != null ? ` · ${dev.rssi}dBm` : '';
+        const age = dev.last_seen ? Math.max(0, Math.floor((Date.now() - new Date(dev.last_seen.replace(' ', 'T')).getTime()) / 60000)) + 'min' : '?';
+        devHtml += `<div style="display:flex;justify-content:space-between;padding:2px 4px;border-bottom:1px solid #1f1f3a;">
+          <span>${name}</span>
+          <span class="muted" style="font-size:10px;">${dev.scan_count || 1}x · ${age}${rssi}</span>
+        </div>`;
+      });
+      if (db.length > 12) devHtml += `<div class="muted" style="font-size:10px;padding:2px 4px;">+ ${db.length-12} 更多</div>`;
+    }
+    document.getElementById('bt-devices').innerHTML = devHtml;
+
+    // 扫描按钮
+    const btn = document.getElementById('bt-scan-btn');
+    btn.addEventListener('click', async () => {
+      btn.disabled = true;
+      btn.textContent = '⏳ 扫描中...';
+      document.getElementById('bt-scan-status').textContent = '10s';
+      const t0 = Date.now();
+      const iv = setInterval(() => {
+        document.getElementById('bt-scan-status').textContent = Math.max(0, Math.ceil((10000 - (Date.now() - t0))/1000)) + 's';
+      }, 500);
+      try {
+        const r = await fetch('/api/dev/dashboard/bt/scan?timeout=10');
+        const sd = await r.json();
+        clearInterval(iv);
+        btn.textContent = `✅ 扫到 ${sd.count || 0}`;
+        document.getElementById('bt-scan-status').textContent = '';
+        // 重新加载 info
+        initBluetooth();
+      } catch(err) {
+        clearInterval(iv);
+        btn.textContent = '❌ 扫描失败';
+      }
+      btn.disabled = false;
+      setTimeout(() => btn.textContent = '🔍 BLE 扫描', 2500);
+
+      // 扫描完成后, 启用 GATT 探索按钮 (针对最后扫到的设备)
+      const gattBtn = document.getElementById('bt-gatt-btn');
+      if (gattBtn && db && db.length > 0) {
+        gattBtn.style.display = 'inline-block';
+        gattBtn.dataset.addr = db[0].address;
+        gattBtn.dataset.name = db[0].name || db[0].local_name || '';
+        gattBtn.textContent = `🔬 GATT ${(db[0].name || db[0].address.slice(0,8))}`;
+      }
+    });
+
+    // GATT 探索按钮
+    const gattBtn = document.getElementById('bt-gatt-btn');
+    if (gattBtn) {
+      gattBtn.addEventListener('click', async () => {
+        const addr = gattBtn.dataset.addr;
+        if (!addr) return;
+        gattBtn.disabled = true;
+        gattBtn.textContent = '⏳ GATT 连接中...';
+        document.getElementById('bt-gatt-panel').style.display = 'block';
+        document.getElementById('bt-gatt-panel').innerHTML = '<div class="muted">连接 BLE 设备并探索 GATT 服务树... (约 2-5s)</div>';
+        try {
+          const r = await fetch(`/api/dev/dashboard/bt/gatt?address=${encodeURIComponent(addr)}&read=false`);
+          const g = await r.json();
+          if (g.error) { document.getElementById('bt-gatt-panel').innerHTML = `<div class="err">❌ ${g.error}</div>`; return; }
+          let html = `<div style="color:#7DF9FF;">🔗 ${g.connected ? '已连接' : '失败'} · ${g.duration_ms}ms · ${g.services.length} services</div>`;
+          let totalC = 0;
+          g.services.forEach(svc => {
+            const fn = svc.friendly_name ? ` <span style="color:#FFD700;">[${svc.friendly_name}]</span>` : '';
+            html += `<div style="margin-top:6px;color:#60A5FA;">📶 ${svc.uuid_short} · ${svc.name || 'Unknown'}${fn}</div>`;
+            svc.characteristics.forEach(chr => {
+              totalC++;
+              const flags = [];
+              if (chr.readable) flags.push('<span style="color:#4ADE80;">R</span>');
+              if (chr.writeable) flags.push('<span style="color:#FBBF24;">W</span>');
+              if (chr.notifyable) flags.push('<span style="color:#C084FC;">N</span>');
+              const fcn = chr.friendly_name ? `<span style="color:#FFD700;"> → ${chr.friendly_name}</span>` : '';
+              html += `<div style="padding-left:12px;font-size:10px;display:flex;gap:6px;align-items:center;">
+                <code style="color:#888;">${chr.uuid_short}</code>
+                <span>${chr.name || '—'}</span>
+                <span>${flags.join('')}</span>${fcn}
+              </div>`;
+            });
+          });
+          html += `<div class="muted" style="margin-top:6px;border-top:1px solid #2a2a4a;padding-top:4px;">合计 ${g.services.length} services × ${totalC} characteristics</div>`;
+          document.getElementById('bt-gatt-panel').innerHTML = html;
+        } catch(err) {
+          document.getElementById('bt-gatt-panel').innerHTML = `<div class="err">❌ GATT 探索失败</div>`;
+        }
+        gattBtn.disabled = false;
+        gattBtn.textContent = `🔬 GATT ${gattBtn.dataset.name || ''}`;
+      });
+    }
+  } catch(err) {
+    document.getElementById('bt-info').innerHTML = `<div class="err">蓝牙 API 不可用</div>`;
+  }
+}
+
+
+function fmtTS(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return d.toLocaleTimeString('zh-CN', {hour12: false});
+}
+
+function severityColor(s) {
+  return s === 'ERROR' ? 'err' : s === 'WARN' ? 'warn' : 'ok';
+}
+
+function render(data) {
+  document.getElementById('header-ts').textContent = 
+    `🕐 ${fmtTS(data.ts)} · 系统 ${data.system?.sqlite || '?'} · PID ${data.system?.pid || '?'}`;
+
+  // 顶部大数字
+  const d = data.daemons || {};
+  document.getElementById('daemon-total').textContent = d.total || 0;
+  document.getElementById('daemon-running-sub').textContent = 
+    `${d.running || 0} 运行中 (${Math.round((d.running||0)/(d.total||1)*100)}%)`;
+
+  const e = data.employees || {};
+  document.getElementById('emp-total').textContent = e.total || 0;
+  document.getElementById('emp-enabled-sub').textContent = 
+    `${e.enabled || 0} 启用中 (${Math.round((e.enabled||0)/(e.total||1)*100)}%)`;
+  document.getElementById('emp-bar').style.width = 
+    `${Math.round((e.enabled||0)/(e.total||1)*100)}%`;
+
+  // 🆕 AI Passport (VIKEY USB 加密狗)
+  const pp = data.ai_passport || {};
+  const ppEl = document.getElementById('passport-usb');
+  if (ppEl) {
+    const n = pp.usb_count || 0;
+    if (n > 0) {
+      ppEl.className = 'metric ok';
+      ppEl.textContent = `${n} ✅`;
+    } else {
+      ppEl.className = 'metric err';
+      ppEl.textContent = '❌ 未连接';
+    }
+  }
+
+  // Daemon top 15
+  let html = '';
+  (d.top || []).forEach(x => {
+    const cls = x.status === 'RUNNING' ? 'pill-running' 
+              : x.status === 'FAILED' ? 'pill-failed' : 'pill-unknown';
+    html += `<tr>
+      <td class="mono">${x.process_name || '?'}</td>
+      <td><span class="pill ${cls}">${x.status || '?'}</span></td>
+      <td class="mono muted">${x.last_heartbeat ? fmtTS(x.last_heartbeat) : '-'}</td>
+      <td class="mono muted">${x.pid || '-'}</td>
+    </tr>`;
+  });
+  document.getElementById('daemon-top').innerHTML = html || '<tr><td colspan="4" class="muted">无数据</td></tr>';
+
+  // AI 员工按类型
+  let empHtml = '';
+  const total = e.total || 1;
+  Object.entries(e.by_type || {}).sort((a,b) => b[1]-a[1]).forEach(([k,v]) => {
+    empHtml += `<tr>
+      <td class="mono">${k || '?'}</td>
+      <td class="info">${v}</td>
+      <td class="muted">${Math.round(v/total*100)}%</td>
+    </tr>`;
+  });
+  document.getElementById('emp-by-type').innerHTML = empHtml || '<tr><td colspan="3" class="muted">无数据</td></tr>';
+
+  // 演化日志 (phase, action, severity, status, file_path)
+  let evoHtml = '';
+  (data.handshake?.evolution_recent || []).forEach(x => {
+    evoHtml += `<tr>
+      <td class="mono muted">${fmtTS(x.created_at)}</td>
+      <td class="mono pill pill-unknown">${x.phase || '?'}</td>
+      <td class="mono">${x.action || '?'}</td>
+      <td class="${severityColor(x.severity)}">${x.severity || '?'}</td>
+      <td class="mono muted">${x.status || '?'}</td>
+    </tr>`;
+  });
+  document.getElementById('evolution-log').innerHTML = evoHtml || '<tr><td colspan="5" class="muted">无数据</td></tr>';
+
+  // 规则变更
+  let ruleHtml = '';
+  (data.system?.rule_changes || []).forEach(x => {
+    ruleHtml += `<tr>
+      <td class="mono">${x.rule_id || '?'}</td>
+      <td class="info">${x.to_version || '?'}</td>
+      <td class="mono muted">${x.change_type || '?'}</td>
+      <td class="mono muted">${fmtTS(x.created_at)}</td>
+    </tr>`;
+  });
+  document.getElementById('rule-changes').innerHTML = ruleHtml || '<tr><td colspan="4" class="muted">无数据</td></tr>';
+
+  // ═══ 25 仙女星域 · 完整定义 ═══
+  const DOMAIN_INFO = {
+    wenquxing:  { emoji: '📜', name: '文曲星', desc: '仙女座文字编辑子系统 · 7 种模式 (文案生成/文本改写/段落梳理/长文撰写/文本纠错/润色增强/风格转换) + Ollama 本地推理 + 零 token 消耗' },
+    cangjie:    { emoji: '📚', name: '仓颉',   desc: '知识/题库系统 · 知识点/题目/解析自动生成 · 教材大纲解析 · 错题智能推荐' },
+    yaochi:     { emoji: '🎨', name: '瑶池',   desc: '绘画美术系统 · 概念设计 · 水墨写意 · 像素艺术 · 色彩方案 · x/flux2-klein 本地推理' },
+    fanhua:     { emoji: '🎬', name: '繁花',   desc: '影视短视频系统 · 分镜脚本 · 剪辑方案 · 镜头语言 · 配乐建议 · 爆款公式' },
+    fanyin:     { emoji: '🎵', name: '梵音',   desc: '音乐乐理系统 · 旋律创作 · 和弦配器 · 节奏型生成 · 编曲方案 · MIDI 导出' },
+    huntiangling:{ emoji: '🌀', name: '混天绫', desc: 'API 网关 · RESTful 设计 · OpenAPI 规范 · Mock Server · 限流 · 鉴权 · GraphQL' },
+    taiji:      { emoji: '⚖️', name: '太极',   desc: '动态平衡系统 · 负载监控 · 冰山适配 · 健康诊断 · 自动调参 · 稳态维持' },
+    ziwei:      { emoji: '🔮', name: '紫微',   desc: '预测推演系统 · 趋势预测 · 风险预警 · 决策辅助 · 蒙特卡洛模拟 · 贝叶斯推理' },
+    fuxi:       { emoji: '🧬', name: '伏羲',   desc: '数据挖掘系统 · 关联分析 · 聚类 · 模式发现 · 异常检测 · 推荐算法' },
+    nuwa:       { emoji: '🌐', name: '女娲',   desc: '前端 UI/UX 生成系统 · 页面/组件/设计稿自动生成 · Element Plus Token · 响应式布局' },
+    luban:      { emoji: '⚙️', name: '鲁班',   desc: '硬件/Arduino 工程系统 · 电路图设计 · 代码生成 · DIY 方案 · 3D 打印 · 传感器选型' },
+    bianque:    { emoji: '🧪', name: '扁鹊',   desc: '代码诊断修复系统 · Bug 定位 · 性能调优 · 重构建议 · 安全扫描 · 单元测试生成' },
+    cangjie_alt:{ emoji: '📖', name: '仓颉·典', desc: '知识图谱 · 实体关系抽取 · 语义网构建' },
+    houyi:      { emoji: '🎯', name: '后羿',   desc: '精准搜索/RAG 系统 · 语义搜索 · 知识召回 · 精准匹配 · 向量检索(RedisVL)' },
+    zhenwu:     { emoji: '🛡️', name: '真武',   desc: '安全审查系统 · 代码/配置/API 安全扫描 · OWASP Top 10 · 依赖审计 · 密钥泄露检测' },
+    guanzhong:  { emoji: '🏛️', name: '管仲',   desc: '治理规范系统 · 规则制定 · 流程优化 · 合规检查 · 制度设计 · 组织架构' },
+    fanli:      { emoji: '📈', name: '范蠡',   desc: '数据分析系统 · 指标设计 · 报表生成 · 洞察建议 · AB 测试 · 漏斗分析' },
+    shennong:   { emoji: '🌱', name: '神农',   desc: '教育/学习系统 · 课程生成 · 教案设计 · 学习路径 · 知识图谱 · 自适应学习' },
+    taigong:    { emoji: '🧙', name: '太公',   desc: '策略规划系统 · 商业/产品/战略方案 · 竞品分析 · SWOT · 路线图' },
+    yinglong:   { emoji: '🐉', name: '应龙',   desc: '自动化编排系统 · 任务流水线 · 定时任务 · 工作流 · CI/CD · 状态机' },
+    xihe:       { emoji: '🔭', name: '羲和',   desc: '监控巡检系统 · 系统健康 · 日志分析 · 瓶颈定位 · APM · SLO' },
+    gonggong:   { emoji: '🌊', name: '共工',   desc: '资源管理系统 · 算力分配 · 存储调度 · 带宽管理 · 令牌预算 · 成本优化' },
+    nezha:      { emoji: '🔔', name: '哪吒',   desc: '通知告警系统 · 多通道通知 · 告警升级 · 心跳保活 · 静默期 · On-Call' },
+    pixiu:      { emoji: '🎪', name: '貔貅',   desc: '趣味/娱乐系统 · 笑话生成 · 故事创作 · 互动小游戏 · 表情包 · 互动剧' },
+    yuelao:     { emoji: '🏮', name: '月老',   desc: '社交匹配系统 · AI 员工组队 · 专家匹配 · 资源对接 · 技能互补 · 圆桌会议' },
+    qianshou:   { emoji: '🤲', name: '千手',   desc: '中枢神经元系统 · 统一路由 · 负载均衡 · 请求汇聚 · 熔断降级 · 限流' },
+    jimeng:     { emoji: '🦊', name: '即蒙',   desc: '实时消息/通知中心 · WebSocket · SSE · 消息推送 · 多端同步' },
+    writing:    { emoji: '✍️', name: '写作流水线', desc: 'AI 写作流水线 · 7 层 RAG 增强 · 13 专家天团 · GitHub + B 站融合 · 本地 Ollama 零 token' },
+  };
+
+  // 子系统热力图 (25 仙女星域)
+  const heatmap = data.subsystems?.heatmap || [];
+  const max = Math.max(1, ...heatmap.map(h => typeof h.count==='number' ? h.count : 0));
+  let heatHtml = '';
+  heatmap.forEach(h => {
+    const v = typeof h.count==='number' ? h.count : 0;
+    const intensity = v === 0 ? 0.05 : Math.min(1, 0.15 + 0.85*(v/max));
+    const hue = v === 0 ? '#1f1f3a' : `rgba(125, 249, 255, ${intensity.toFixed(2)})`;
+    // 匹配星域 info (按 name 或 table 后缀)
+    const domainKey = (h.table || '').replace(/^mt_/, '').replace(/_tasks$/, '') || h.name;
+    const info = DOMAIN_INFO[domainKey] || {};
+    const emoji = info.emoji || '✨';
+    const fullName = info.name || h.name;
+    const desc = info.desc || '功能开发中 · 详情待补充';
+
+    heatHtml += `<div class="domain-cell" style="display:flex;flex-direction:column;align-items:center;
+      padding:4px 6px;background:${hue};border-radius:4px;cursor:pointer;
+      font-size:10px;color:${v===0?'#666':'#0B0A1E'}">
+      <span style="font-weight:bold;">${emoji}</span>
+      <span style="font-size:9px;">${h.name}</span>
+      <span>${v || '·'}</span>
+      <div class="tip">
+        <div class="tip-title">${emoji} ${fullName} <span style="color:#60A5FA;font-size:11px;">· ${h.name}</span></div>
+        <div class="tip-desc">${desc}</div>
+        <div class="tip-meta">📋 任务: ${v} · 表: ${h.table || '-'}</div>
+      </div>
+    </div>`;
+  });
+  document.getElementById('subsys-heatmap').innerHTML = heatHtml;
+  document.getElementById('subsys-total').textContent = 
+    `总任务: ${data.subsystems?.total_tasks || 0} · ${heatmap.length} 域 · hover 查看功能介绍`;
+
+  // 设备实时状态 (USB/BLE/MQTT/Ollama)
+  const dev = data.devices || {};
+  let devHtml = '';
+  // USB
+  const usbCount = dev.usb_count || 0;
+  devHtml += `<div>🔌 USB: <span class="${usbCount>0?'ok':'err'}">${usbCount>0?'✅ '+dev.usb_devices.join(', '):'❌ 未检测'}</span></div>`;
+  // MQTT
+  const mqtt = dev.mqtt_broker || {};
+  devHtml += `<div>📡 MQTT: <span class="${mqtt.ok?'ok':'err'}">${mqtt.ok?'✅ :1883':'❌ 未监听'}</span></div>`;
+  // Ollama
+  const ol = dev.ollama || {};
+  if (ol.ok) {
+    devHtml += `<div>🧠 Ollama: <span class="ok">✅ ${ol.count} 模型</span></div>`;
+    (ol.models || []).forEach(m => {
+      devHtml += `  <div class="muted">· ${m.name} (${m.size_mb}MB)</div>`;
+    });
+  } else {
+    devHtml += `<div>🧠 Ollama: <span class="err">❌ ${ol.error || '未运行'}</span></div>`;
+  }
+  const di = document.getElementById('devices-info');
+  if (di) di.innerHTML = devHtml;
+
+  // Ollama 单独面板
+  if (ol.ok) {
+    let olHtml = `<div class="ok">✅ 运行中</div><div class="muted">地址: 127.0.0.1:11434</div>`;
+    olHtml += `<div style="margin-top:6px;">模型列表:</div>`;
+    (ol.models || []).forEach(m => {
+      const parts = m.name.split(':');
+      olHtml += `<div style="display:flex;justify-content:space-between;margin:2px 0;">
+        <span>${parts[0]}<span class="muted">:${parts[1]||'latest'}</span></span>
+        <span class="info">${m.size_mb}MB</span></div>`;
+    });
+    document.getElementById('ollama-info').innerHTML = olHtml;
+  } else {
+    document.getElementById('ollama-info').innerHTML = 
+      `<div class="err">❌ Ollama 未运行</div><div class="muted" style="margin-top:4px;">启动: ollama serve</div>`;
+  }
+
+  // 仙女座集群占比
+  const c = data.cluster || {};
+  const mb = c.macbook || {};
+  const mn = c.mini || {};
+  const summary = c.summary || {};
+
+  // 节点卡片
+  function nodeCard(n, emoji) {
+    const st = n.status === 'online' ? '<span class="dot-green"></span><span class="pill pill-running">在线</span>'
+            : n.status === 'offline_stale' ? '<span class="dot-gray"></span><span class="pill pill-unknown">离线(旧数据)</span>'
+            : '<span class="dot-red"></span><span class="pill pill-failed">离线</span>';
+    // Mini SLAVE 不独立雇佣 AI 员工 — 显示 note 代替 0
+    const empNote = n.role === 'SLAVE' && n.ai_employees === 0 
+      ? `<span class="muted" style="font-size:9px;">(SLAVE: 不独立雇佣)</span>`
+      : `<span class="info">${n.ai_employees || 0}</span>`;
+    return `<div style="flex:1;background:#1f1f3a;border-radius:6px;padding:10px;">
+      <div style="font-size:12px;font-weight:bold;color:#FFD700;">${emoji} ${n.hostname || '?'}</div>
+      <div class="mono muted" style="font-size:10px;margin-bottom:6px;">${n.role || '?'}${n.ip ? ' · ' + n.ip : ''}</div>
+      <div>${st}</div>
+      <div class="mono" style="font-size:11px;margin-top:6px;">
+        AI员工: ${empNote}<br>
+        Daemon: <span class="${n.daemons_running>0?'ok':'muted'}">${n.daemons_running || 0}/${n.daemons_total || 0}</span><br>
+        脑库: <span class="info">${n.brain_logs || 0}</span><br>
+        题库: <span class="info">${n.qbank_items || 0}</span>
+        ${n.last_handshake ? `<br><span class="muted">最后握手: ${fmtTS(n.last_handshake)}</span>` : ''}
+      </div>
+    </div>`;
+  }
+  document.getElementById('cluster-nodes').innerHTML = nodeCard(mb, '💻') + nodeCard(mn, '🖥️');
+
+  // 对比条形图
+  let compHtml = '';
+  (c.comparison || []).forEach(cmp => {
+    const mbW = cmp.macbook_pct;
+    const mnW = cmp.mini_pct;
+    compHtml += `<div style="margin-bottom:8px;">
+      <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:2px;">
+        <span>${cmp.label}</span>
+        <span class="muted">MB ${cmp.macbook} vs Mini ${cmp.mini} ${cmp.unit}</span>
+      </div>
+      <div style="display:flex;height:14px;border-radius:4px;overflow:hidden;background:#1f1f3a;">
+        <div style="width:${mbW}%;background:linear-gradient(90deg,#7DF9FF,#0EA5E9);display:flex;align-items:center;justify-content:center;font-size:9px;color:#0B0A1E;font-weight:bold;">${mbW.toFixed(0)}%</div>
+        <div style="width:${mnW}%;background:linear-gradient(90deg,#FBBF24,#F97316);display:flex;align-items:center;justify-content:center;font-size:9px;color:#0B0A1E;font-weight:bold;">${mnW.toFixed(0)}%</div>
+      </div>
+    </div>`;
+  });
+  document.getElementById('cluster-comparison').innerHTML = compHtml || '<div class="muted">无数据</div>';
+
+  // 集群汇总
+  let sumHtml = `<div style="margin-bottom:6px;font-size:13px;font-weight:bold;color:#FFD700;">集群总览</div>`;
+  sumHtml += `<div>节点: <span class="info">${summary.nodes || 0}</span> · 在线: <span class="${summary.online_nodes>0?'ok':'err'}">${summary.online_nodes || 0}</span></div>`;
+  sumHtml += `<div>AI 员工合计: <span class="info">${summary.total_ai_employees || 0}</span></div>`;
+  sumHtml += `<div>Daemon 合计: <span class="info">${summary.total_daemons || 0}</span></div>`;
+  sumHtml += `<div>脑库合计: <span class="info">${summary.total_brain_logs || 0}</span></div>`;
+  sumHtml += `<div style="margin-top:8px;font-size:11px;" class="muted;">
+    Mini 数据来源: 最近一次握手记录<br>
+    Mini 在线检测: 实时 TCP :9753 + HTTP :8888
+  </div>`;
+  document.getElementById('cluster-summary').innerHTML = sumHtml;
+
+  // 握手计数
+  document.getElementById('handshake-count').textContent = 
+    (data.handshake?.reports || []).length;
+  const last = data.handshake?.evolution_recent?.[0];
+  document.getElementById('handshake-last-sub').textContent = 
+    last ? `${last.source_role} · ${fmtTS(last.created_at)}` : '-';
+}
+
+// ═══ 演化曲线图 (独立 fetch, 非 SSE) ═══
+let _evoHidden = {};  // 隐藏的序列 key
+async function initEvolutionChart() {
+  try {
+    const r = await fetch('/api/dev/dashboard/evolution');
+    const data = await r.json();
+    drawEvolutionChart(data);
+  } catch(err) {
+    console.error('evolution chart error:', err);
+    document.getElementById('evo-chart').innerHTML =
+      '<text x="400" y="160" text-anchor="middle" fill="#666" font-size="12">演化数据加载失败</text>';
+  }
+}
+
+function drawEvolutionChart(data) {
+  const svg = document.getElementById('evo-chart');
+  const W = 800, H = 320, padL = 40, padR = 16, padT = 16, padB = 36;
+  const dates = data.dates || [];
+  const series = data.series || {};
+  const milestones = data.milestones || [];
+  if (dates.length === 0) {
+    svg.innerHTML = '<text x="400" y="160" text-anchor="middle" fill="#666" font-size="12">暂无时间序列数据</text>';
+    return;
+  }
+
+  // Y 轴最大值 (所有可见序列)
+  let maxV = 1;
+  Object.values(series).forEach(s => {
+    if (_evoHidden[s._key]) return;
+    s.data.forEach(p => { if (p.v > maxV) maxV = p.v; });
+  });
+  // 给 Y 轴留点余地
+  maxV = Math.ceil(maxV * 1.15);
+  // nice round
+  if (maxV > 100) maxV = Math.ceil(maxV / 50) * 50;
+  else if (maxV > 10) maxV = Math.ceil(maxV / 10) * 10;
+
+  const xStep = dates.length > 1 ? (W - padL - padR) / (dates.length - 1) : 0;
+  const xOf = i => padL + i * xStep;
+  const yOf = v => padT + (H - padT - padB) * (1 - v / maxV);
+
+  // 画 SVG
+  let s = '';
+
+  // 网格线 + Y 轴刻度
+  const yTicks = 5;
+  for (let i = 0; i <= yTicks; i++) {
+    const yVal = maxV * i / yTicks;
+    const y = yOf(yVal);
+    s += `<line x1="${padL}" x2="${W - padR}" y1="${y}" y2="${y}" stroke="#2a2a4a" stroke-width="1"/>`;
+    s += `<text x="${padL - 6}" y="${y + 3}" text-anchor="end" fill="#666" font-size="9">${Math.round(yVal)}</text>`;
+  }
+
+  // X 轴日期标签 (每隔 N 天显示一个, 避免重叠)
+  const xLabelEvery = Math.max(1, Math.ceil(dates.length / 10));
+  dates.forEach((d, i) => {
+    if (i % xLabelEvery === 0 || i === dates.length - 1) {
+      const x = xOf(i);
+      const label = d.slice(5);  // MM-DD
+      s += `<text x="${x}" y="${H - padB + 14}" text-anchor="middle" fill="#888" font-size="9">${label}</text>`;
+    }
+  });
+
+  // 里程碑 (金色虚线 + 标签)
+  milestones.forEach(m => {
+    const idx = dates.indexOf(m.date);
+    if (idx < 0) return;
+    const x = xOf(idx);
+    s += `<line x1="${x}" x2="${x}" y1="${padT}" y2="${H - padB}" class="milestone-line"/>`;
+    s += `<text x="${x + 3}" y="${padT + 10}" fill="#FFD700" font-size="8" transform="rotate(-20 ${x + 3} ${padT + 10})">${m.phase.slice(0, 6)}</text>`;
+  });
+
+  // 画每条序列的折线 + 渐变填充 + 圆点
+  Object.entries(series).forEach(([key, meta]) => {
+    const visible = !_evoHidden[key];
+    meta._key = key;
+    if (!visible) return;
+
+    // 渐变填充 path
+    let pathD = '';
+    meta.data.forEach((p, i) => {
+      const x = xOf(i), y = yOf(p.v);
+      pathD += (i === 0 ? 'M' : 'L') + `${x},${y} `;
+    });
+    if (pathD) {
+      pathD += `L${xOf(meta.data.length - 1)},${H - padB} L${xOf(0)},${H - padB} Z`;
+      s += `<path d="${pathD}" fill="${meta.color}" fill-opacity="0.08"/>`;
+    }
+
+    // 折线
+    let lineD = '';
+    meta.data.forEach((p, i) => {
+      const x = xOf(i), y = yOf(p.v);
+      lineD += (i === 0 ? 'M' : 'L') + `${x},${y} `;
+    });
+    s += `<path d="${lineD}" fill="none" stroke="${meta.color}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" opacity="0.9"/>`;
+
+    // 数据点 (小圆) + hover 触发器
+    meta.data.forEach((p, i) => {
+      if (p.v === 0 && meta.data.every(pp => pp.v === 0)) return;
+      const x = xOf(i), y = yOf(p.v);
+      s += `<circle cx="${x}" cy="${y}" r="3" fill="${meta.color}" stroke="#0B0A1E" stroke-width="1"/>`;
+      // hover 透明层 (大一点好触发)
+      s += `<circle cx="${x}" cy="${y}" r="8" fill="transparent" class="evo-pt" data-key="${key}" data-idx="${i}"/>`;
+    });
+  });
+
+  svg.innerHTML = s;
+
+  // hover tooltip
+  const wrap = document.getElementById('chart-wrap');
+  const tip = document.getElementById('chart-tip');
+  svg.querySelectorAll('.evo-pt').forEach(pt => {
+    pt.addEventListener('mouseenter', (e) => {
+      const key = pt.dataset.key;
+      const idx = parseInt(pt.dataset.idx);
+      const date = dates[idx];
+      const vals = [];
+      Object.entries(series).forEach(([k, m]) => {
+        if (_evoHidden[k]) return;
+        vals.push({label: m.label, v: m.data[idx].v, color: m.color});
+      });
+      vals.sort((a, b) => b.v - a.v);
+      let tipHtml = `<div class="tt-date">📅 ${date}</div>`;
+      vals.forEach(v => {
+        const emoji = v.label.split(' ')[0];
+        tipHtml += `<div class="tt-row"><span style="color:${v.color}">${emoji}</span><span>${v.label.replace(/^\S+\s/, '')}</span><span style="color:${v.color};font-weight:bold;margin-left:auto;">${v.v}</span></div>`;
+      });
+      tip.innerHTML = tipHtml;
+      tip.style.display = 'block';
+      tip.style.left = (pt.getBoundingClientRect().left - wrap.getBoundingClientRect().left) + 'px';
+      tip.style.top = (pt.getBoundingClientRect().top - wrap.getBoundingClientRect().top) + 'px';
+    });
+    pt.addEventListener('mouseleave', () => { tip.style.display = 'none'; });
+  });
+
+  // Legend
+  let legHtml = '';
+  Object.entries(series).forEach(([key, meta]) => {
+    const off = _evoHidden[key];
+    legHtml += `<div class="legend-item ${off ? 'off' : ''}" data-key="${key}">
+      <span class="legend-swatch" style="background:${meta.color}"></span>
+      <span>${meta.label} <span class="muted">(${meta.total})</span></span>
+    </div>`;
+  });
+  document.getElementById('chart-legend').innerHTML = legHtml;
+  document.querySelectorAll('.legend-item').forEach(el => {
+    el.addEventListener('click', () => {
+      const k = el.dataset.key;
+      _evoHidden[k] = !_evoHidden[k];
+      drawEvolutionChart(data);
+    });
+  });
+}
+
+// ═══ SSE 实时流 ═══
+const es = new EventSource('/api/dev/dashboard/stream');
+
+es.onopen = () => { DOT.className = 'status-dot dot-green'; CONN.textContent = '已连接'; };
+es.onerror = () => { DOT.className = 'status-dot dot-red'; CONN.textContent = '断开, 重连中...'; };
+es.onmessage = (e) => {
+  DOT.className = 'status-dot dot-green'; CONN.textContent = '实时';
+  try { render(JSON.parse(e.data)); } catch(err) { console.error(err); }
+};
+
+// 保险: 先用 /data 端点拉一次
+fetch('/api/dev/dashboard/data').then(r => r.json()).then(render).catch(console.error);
+</script>
+</body>
+</html>
