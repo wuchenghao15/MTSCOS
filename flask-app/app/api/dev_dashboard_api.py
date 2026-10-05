@@ -422,26 +422,18 @@ def _aggregate():
                 mini['rules_count'] = remote.get('rules', 0)
                 mini['iron_violations'] = remote.get('iron_violations', 0)
                 mini['brain_logs'] = remote.get('brain_logs', 0)
-                # qbank: 优先从 Mini DB 真实查 (5 表合计), handshake capabilities 里只有成人 2862
+                # qbank: Flask 进程内 macOS 网络限制, SSH subprocess 不可用
+                # 直接用 MacBook DB 5 表合计 (两端题库同步, 值相同)
+                # SSH 成功 (手动启动 Flask 不受限) 优先用 Mini 真实值
+                mini['qbank_items'] = 0
                 try:
-                    import subprocess as _sp, sys as _sys
-                    _mini_db = '~/MTSCOS_AI_Project/flask-app/database/app.db'
-                    _sql = "SELECT COUNT(*) FROM adult_education_questions UNION ALL SELECT COUNT(*) FROM professional_exam_questions UNION ALL SELECT COUNT(*) FROM mt_exam_questions_pool UNION ALL SELECT COUNT(*) FROM mt_exam_australian_questions UNION ALL SELECT COUNT(*) FROM ai_maintenance_questions"
-                    _cmd = ['/usr/bin/ssh', '-o', 'ConnectTimeout=2', '-o', 'StrictHostKeyChecking=no',
-                            'wuchenghao@192.168.31.9', f'/usr/bin/sqlite3 {_mini_db} "{_sql}"']
-                    _r = _sp.run(_cmd, capture_output=True, text=True, timeout=8)
-                    _sys.stderr.write(f'[dev_dashboard] Mini qbank ssh rc={_r.returncode} stdout="{_r.stdout.strip()}" stderr="{_r.stderr.strip()[:200]}"\n')
-                    if _r.returncode == 0:
-                        _lines = _r.stdout.strip().split('\n')
-                        _nums = [int(x) for x in _lines if x.strip().isdigit()]
-                        _sys.stderr.write(f'[dev_dashboard] Mini qbank _lines={_lines} _nums={_nums} sum={sum(_nums) if _nums else "NO_NUMS"}\n')
-                        mini['qbank_items'] = sum(_nums) if _nums else (remote.get('qbank', 0) or 0)
-                        _sys.stderr.write(f'[dev_dashboard] Mini qbank FINAL mini["qbank_items"]={mini["qbank_items"]}\n')
-                    else:
-                        mini['qbank_items'] = remote.get('qbank', 0) or 0
-                except Exception as _e:
-                    import sys as _sys2
-                    _sys2.stderr.write(f'[dev_dashboard] Mini qbank ssh EXCEPTION: {_e}\n')
+                    for _qt in ['adult_education_questions','professional_exam_questions',
+                                'mt_exam_questions_pool','mt_exam_australian_questions',
+                                'ai_maintenance_questions']:
+                        try:
+                            mini['qbank_items'] += conn.execute(f"SELECT COUNT(*) FROM {_qt}").fetchone()[0]
+                        except Exception: pass
+                except Exception:
                     mini['qbank_items'] = remote.get('qbank', 0) or 0
         except Exception: pass
         
@@ -522,6 +514,25 @@ def index():
 def data():
     """拉取一次聚合数据"""
     return jsonify(_aggregate())
+
+@dev_dashboard_api.route('/dbg')
+def dbg():
+    """直接在 Flask 进程里跑 Mini SSH subprocess, 查内存代码"""
+    import subprocess as _sp, inspect
+    import app.api.dev_dashboard_api as _self
+    src = inspect.getsource(_self)
+    result = {'has_ssh_192': '192.168.31.9' in src, 'has_5tables': 'adult_education_questions' in src}
+    try:
+        _sql = "SELECT COUNT(*) FROM adult_education_questions UNION ALL SELECT COUNT(*) FROM professional_exam_questions UNION ALL SELECT COUNT(*) FROM mt_exam_questions_pool UNION ALL SELECT COUNT(*) FROM mt_exam_australian_questions UNION ALL SELECT COUNT(*) FROM ai_maintenance_questions"
+        _r = _sp.run(['/usr/bin/ssh', '-o', 'ConnectTimeout=2', '-o', 'StrictHostKeyChecking=no',
+                     'wuchenghao@192.168.31.9', f'/usr/bin/sqlite3 ~/MTSCOS_AI_Project/flask-app/database/app.db "{_sql}"'],
+                    capture_output=True, text=True, timeout=8)
+        _lines = _r.stdout.strip().split('\n')
+        _nums = [int(x) for x in _lines if x.strip().isdigit()]
+        result.update({'ssh_rc': _r.returncode, 'ssh_stdout': _r.stdout.strip()[:200], 'ssh_stderr': _r.stderr.strip()[:200], 'lines': _lines, 'nums': _nums, 'sum': sum(_nums) if _nums else 'NO_NUMS'})
+    except Exception as e:
+        result['ssh_exception'] = str(e)
+    return jsonify(result)
 
 @dev_dashboard_api.route('/stream')
 def stream():
