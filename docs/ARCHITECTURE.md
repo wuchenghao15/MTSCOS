@@ -128,55 +128,143 @@ adb shell run-as com.mtscos.mobile \
 
 ---
 
-## 3. 仙女座 7 阶段自演化引擎
+## 3. 仙女座十阶段自演化引擎 · Phase 4 衍生
+
+> `engines/andromeda_auto_evolution.py` · **267.8s/cycle** · Ollama 11434 动态端口 · qwen2.5:14b + nomic-embed-text 768维
+
+### 十阶段流水线（Cycle #66 首次 embedding 成功）
 
 ```
                  ┌──────────────┐
-                 │  阶段 1       │
-                 │  感知 Detection│
+                 │ Stage 0      │
+                 │ eigenflux_    │ 摄入 AI 员工讨论 → 脑库增量
+                 │ ingest        │ checkpoint: eigenflux_last_msg_id
                  └──────┬───────┘
-                        │ 收集: 日志异常 + DB 状态 + EigenFlux 消息
+                        │
+                 ┌──────────────┐
+                 │ Stage 1      │
+                 │ auto_detect   │ 脑库新增知识增量 (checkpoint 增量)
+                 └──────┬───────┘
+                        │ 10 条新条目 (batch_size=10)
+                 ┌──────────────┐
+                 │ Stage 2      │
+                 │ auto_retrieve │ Ollama embed 768维 + 语义检索 top_k=10
+                 └──────┬───────┘
+                        │ ✅ 768 维向量首次成功 (之前 total_vectors=0)
+                 ┌──────────────┐
+                 │ Stage 3      │
+                 │ auto_associate│ sim>0.55 → knowledge_graph_relations
+                 └──────┬───────┘
+                        │ 50 对关联
+                 ┌──────────────┐
+                 │ Stage 4      │
+                 │ auto_derive 🥇│ qwen2.5:14b 推理 → 写 mt_derived_knowledge
+                 └──────┬───────┘
+                        │ 50 条衍生知识
+                 ┌──────────────┐
+                 │ Stage 4.5    │
+                 │ AI discuss   │ AI 员工讨论衍生知识
+                 └──────┬───────┘
+                        │ 12 条讨论
+                 ┌──────────────┐
+                 │ Stage 5      │
+                 │ reinforce    │ confidence_score / usage_count 强化
+                 └──────┬───────┘
+                        │ 1527 条强化
+                 ┌──────────────┐
+                 │ Stage 6      │
+                 │ expand       │ AI 员工增强建议
+                 └──────┬───────┘
+                        │
+                 ┌──────────────┐
+                 │ Stage 7      │
+                 │ optimize     │ 动态调阈值 + mt_evolution_runs 记录
+                 └──────┬───────┘
+                        │
+          ══════════════╪══════════════════
+          🆕 2026-10-05 新增 (十阶段)
+          ══════════════╪══════════════════
+                        │
+                 ┌──────────────┐
+                 │ Stage 8 🧠   │
+                 │ gap_fill     │ auto_discover_gaps + auto_expand_knowledge
+                 │ 自研拓展     │ 扫稀疏学科 → Ollama 补 KG 节点 + 增强知识
+                 └──────┬───────┘
+                        │
+                 ┌──────────────┐
+                 │ Stage 9 🔁   │
+                 │ broadcast    │ iceberg_broadcast_derived
+                 │ 冰山广播     │ 推给 5 AI 员工 → EigenFlux 讨论 → 摄入脑库 🌀
+                 └──────┬───────┘
+                        │
+                 ┌──────────────┐
+                 │ Stage 10 ⚡  │
+                 │ phase_meta   │ auto_meta_phase_advance
+                 │ Phase 升级   │ 8 级演化体系自动判定
+                 └──────┬───────┘
+                        │ 🎉 Phase 3(江山) → Phase 4(衍生) 自动升级!
                         ▼
                  ┌──────────────┐
-                 │  阶段 2       │
-                 │  分析 Analysis │
-                 └──────┬───────┘
-                        │ qwen2.5:14b 本地推理 · 根因定位
-                        ▼
-                 ┌──────────────┐
-                 │  阶段 3       │
-                 │  衍生 Derive   │  ← 核心
-                 └──────┬───────┘
-                        │ 自动衍生新知识 +205/cycle
-                        ▼
-                 ┌──────────────┐
-                 │  阶段 4       │
-                 │  共识 Consensus│
-                 └──────┬───────┘
-                        │ 84 名 AI 专家加权投票
-                        ▼
-                 ┌──────────────┐
-                 │  阶段 5       │
-                 │  执行 Execute  │
-                 └──────┬───────┘
-                        │ 修复/改进/新技能注册
-                        ▼
-                 ┌──────────────┐
-                 │  阶段 6       │
-                 │  验证 Verify   │
-                 └──────┬───────┘
-                        │ 对比修复前后指标
-                        ▼
-                 ┌──────────────┐
-                 │  阶段 7       │
-                 │  投喂 Feed     │  ← 自举循环
-                 └──────┬───────┘
-                        │ 脑库 + EigenFlux 广播
-                        ▼
-                 ┌──────────────┐
-                 │  下一轮 cycle │
-                 │  26.9s 周期   │
+                 │ 下一轮 cycle │
+                 │ (自举闭环)    │ Stage 9 广播 → 下轮 Stage 0 摄入 → ... 🌀
                  └──────────────┘
+```
+
+### Phase 8 级演化体系
+
+```
+Phase 1 混沌 ─── 初始状态, 只有静态知识
+Phase 2 感知 ─── 检测新知识变化, basic detect
+Phase 3 觉醒 ─── embedding 工作, retrieve + associate
+Phase 4 衍生 ─── LLM 稳定衍生 (total_derived>1000 + 本轮 derived>0) 🎯 当前
+Phase 5 江山 ─── KG 节点≥10K + 关系≥20K
+Phase 6 星海 ─── AI 员工≥500 active + EigenFlux≥100K 消息
+Phase 7 归一 ─── 跨域衍生知识≥5000
+Phase 8 永恒 ─── 自主演化闭环稳定 30 天
+```
+
+### 关键配置 (checkpoint)
+
+```json
+{
+  "evolution_phase": 4,
+  "evolution_phase_name": "衍生",
+  "cycle_count": 66,
+  "total_vectors": 0,
+  "total_derived": 3818,
+  "total_associations": 7834,
+  "total_reinforced": 34501,
+  "similarity_threshold": 0.55,
+  "reinforce_threshold": 0.8,
+  "batch_size": 50,
+  "eigenflux_last_msg_id": 3200,
+  "eigenflux_total_ingested": 3200
+}
+```
+
+### DB 表
+
+| 表 | 用途 |
+|----|------|
+| `mt_evolution_runs` | 每轮演化耗时/产出/suggestions JSON |
+| `mt_evolution_log` | 演化 action/severity/status |
+| `mt_derived_knowledge` | Stage 4 结构化衍生知识 |
+| `ai_brain_enhanced_knowledge` | 脑库增强知识 (含 auto_derive 产出) |
+| `knowledge_graph_nodes` | KG 节点 (Stage 3/8 写入) |
+| `knowledge_graph_relations` | KG 关系 |
+| `mt_evolution_suggestions` | 演化智能建议 |
+| `mt_ai_eigenflux_messages` | EigenFlux 消息 (Stage 0 摄入源) |
+
+### 自举闭环核心代码路径
+
+```
+auto_derive → 写 mt_derived_knowledge + ai_brain_enhanced_knowledge
+            → 反向驱动 eigenflux_comm_messages (message_type=DERIVED_KNOWLEDGE)
+            → Stage 9 broadcast 推给 5 AI 员工
+            → EigenFlux 讨论产生新消息
+            → 下轮 Stage 0 eigenflux_ingest 摄入
+            → Stage 1 detect → Stage 2 retrieve → ...
+            → 🌀 循环!
 ```
 
 ---
