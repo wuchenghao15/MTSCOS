@@ -603,9 +603,9 @@ function render(data) {
   // 握手计数
   document.getElementById('handshake-count').textContent =
     data.handshake?.total || (data.handshake?.reports || []).length;
-  const last = data.handshake?.evolution_recent?.[0];
-  document.getElementById('handshake-last-sub').textContent = 
-    last ? `${last.source_role} · ${fmtTS(last.created_at)}` : '-';
+  const last = data.handshake?.reports?.[0];
+  document.getElementById('handshake-last-sub').textContent =
+    last ? `${last.host_node || '?'} ↔ ${last.guest_node || '?'} · ${fmtTS(last.created_at)}` : '-';
 }
 
 // ═══ 演化曲线图 (独立 fetch, 非 SSE) ═══
