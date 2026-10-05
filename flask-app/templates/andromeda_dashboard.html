@@ -1,0 +1,539 @@
+{% extends "base_unified.html" %}
+
+{% block title %}
+MTSCOS AI
+{% endblock %}
+
+{% block extra_head %}
+
+<style>
+/* ═══════════════════════════════════════════════════
+     📐 美院院士设计 Tok{{ t('andromeda.上次刷新_367edc', default='上次刷新') }}2.4.0) — 统一注入
+     ═══════════════════════════════════════════════════ */
+  :root {
+    --ink-deep:#0A2342; --ink-mid:#1E4A63; --ink-light:#2C5F7C; --ink-wash:#5B8AA8;
+    --snow:#E8F0F2; --snow-bright:#F8FBFC; --paper:#FFFFFF;
+{{ t('andromeda.Daemon_活率_3d1762', default='Daemon 活率') }}#C9A96E; --gold-bright:#E8C98A; --gold-deep:#8B6F3F;
+    --seal-red:#B83A2F;
+    --text-primary:#1A2E{{ t('andromeda.daemon_守护进程_579a59', default='daemon 守护进程') }}condary:#4A6572; --text-muted:#8EA4B3;
+    --shadow-sm:0 1px 3px rgb{{ t('andromeda.系统健康分_dfaca2', default='系统健康分') }},66,0.08);
+    --shadow-md:0 4px 16px rgba(10,35,66,0.12);
+    --shadow-lg:0 12px 32px rgba(10,35,66,0.16);
+    --radius-sm:6px; --radius-md:10px; --radius-lg:16px; --radius-xl:24px;
+    --space-xs:4px; --space-sm:8px; --space-md:16px; --space-{{ t('andromeda.DB_业务总量_710d50', default='DB 业务总量') }}--space-xl:40px;
+    --ease-out:cubic-bezier(0.22,1,0.36,1);
+  }
+  * { -webkit-font-smoothing:anti{{ t('andromeda.核心表累计行数_9eb5b3', default='核心表累计行数') }}font-feature-settings:"kern","palt"; }
+  body {
+    font-family:'Not{{ t('andromeda.24h_增量_d08f7d', default='24h 增量') }}SC',-apple-system,BlinkMacSystemFont,serif;
+    background:var(--snow); color:var(--text-primary){{ t('andromeda.过去_24_小时_8408f1', default='过去 24 小时') }}ght:1.6;
+    background-image:
+      radial-gradient(ellipse 900px 500px at 10% {{ t('andromeda.🖥️_本机_·_MacBook_c758c9', default='🖥️ 本机 · MacBook Pro') }}.07), transparent 60%),
+      radial-gradient(ellipse 700px 400px at 90% 85%, rgba(30,74,99,0.06), transparent 60%);
+  }
+  .card, .panel, .box, .block {
+    background:var(--paper); border-radius:var(--radius-lg);
+    border:1px solid rgba(44,95,124,0.08);
+    box-shadow:var(--shadow-md);
+    transition:box-shadow 0.25s var(--ease-out), transform 0.25s var(--ease-out);
+  }
+  .card:hover, .panel:hover { box-shadow:var(--shadow-lg); }
+  .title, h1, h2, h3 { color:var(--ink-deep); font-weight:900; letter-spacing:0.02em; }
+  .subtitle, .muted, .hint { color:var(--text-muted); }
+  .gold-text { colo{{ t('andromeda.📊_Daemon_分类活率_b0a45c', default='📊 Daemon 分类活率') }}}
+  .seal-badge {
+    background:linear-gradient(135deg, var(--seal-red), #9A2E24);
+    color:white;{{ t('andromeda.📈_DB_核心表_24h_增量_bbbfbd', default='📈 DB 核心表 24h 增量') }}; border-radius:var(--radius-sm);
+    font-weight:700; font-size:0.7rem; letter-spacing:2px;
+  }
+  button{{ t('andromeda.❤️_系统健康检查_f2de83', default='❤️ 系统健康检查') }}  background:var(--ink-light); color:white; border:none;
+    border-radius:var(--radius-md); padding:8px 20px;
+    font-weight:600; cursor:pointer; transition:all 0.2s var(--ease-out);
+  }
+  button:hover, .btn:hover {
+    background:var(--ink-mid); transform:translateY(-1px);
+    box-shadow:var(--shadow-md);
+  }
+  table { border-collapse:collapse; width:100%; font-size:0.82rem; }
+  th { background:rgba(44,95,124,0.06); color:{{ t('andromeda.🧬_Daemon_分类详情_(_326a3c', default='🧬 Daemon 分类详情 (点击看心跳)') }}eight:700; padding:10px 12px; text-align:left; border-bottom:2px solid rgba(44,95,124,0.12); }
+  td { padding:8px 12px; border-bottom:1px solid rgba(44,95,124,0.06); color:var(--text-secondary); }
+  tr:hover td { background:rgba(44,95,124,0.02); }
+  code, .mono { font-family:'JetBrains Mono','SF Mono',monospace; font-size:0.85em; }
+  a { color:var(--ink-light); text-decoration:none; transition:color 0.2s; }
+  a:hover { color:var(--ink-mid); }
+  @media (max-width: 1100px) { .main-grid, .grid-2, .grid-3 { grid-template-columns:1fr !important; } }
+  @media (max-width: 720px)  { .container { padding:16px !important; } }title="{{ t('andromeda.title="d.last_h_e9ec85', default='d.last_heartbeat || \'从未心跳\'') }}"gleapis.com/css2?family=Noto+Serif+SC:wght@300;400;500;700;900&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=JetBr{{ t('andromeda.🔄_每_10s_自动刷新_edca7b', default='🔄 每 10s 自动刷新') }}@400;500;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+         background: linear-gradient(135deg, #0c1445 0%, #1a1a2e 50%, #16213e 100%);
+         min-height: 100vh; color: #e0e0e0; }
+  #app { padding: 20px; max-width: 1600px; margin: 0 auto; }
+  
+  /* Header */
+  .header { display: flex; justify-content: space-between; align-items: center;
+             padding: 16px 24px; background: rgba(255,255,255,0.04);
+             border-radius: 12px; backdrop-filter: blur(10px);
+             border: 1px solid rgba(255,255,255,0.08); margin-bottom: 20px; }
+  .header h1 { font-size: 22px; background: linear-gradient(90deg,#6366f1,#a855f7);
+               -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .header .subtitle { font-size: 12px; color: #8892b0; margin-top: 2px; }
+  
+  /* Stat cards */
+  .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px; }
+  .stat-card { background: rgba(255,255,255,0.04); border-radius: 12px; padding: 18px 20px;
+               border: 1px solid rgba(255,255,255,0.08); position: relative; overflow: hidden; }
+  .stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+                        background: linear-gradient(90deg,#6366f1,#a855f7); }
+  .stat-card.warn::before { background: linear-gradient(90deg,#f59e0b,#ef4444); }
+  .stat-card.danger::before { background: linear-gradient(90deg,#ef4444,#dc2626); }
+  .stat-label { font-size: 12px; color: #8892b0; text-transform: uppercase; letter-spacing: 1px; }
+  .stat-value { font-size: 32px; font-weight: 700; margin: 6px 0; color: #fff; }
+  .stat-sub { font-size: 12px; color: #64748b; }
+  
+  /* Charts row */
+  .chart-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+  .chart-card { background: rgba(255,255,255,0.04); border-radius: 12px; padding: 20px;
+                border: 1px solid rgba(255,255,255,0.08); }
+  .chart-card h3 { font-size: 14px; color: #c4b5fd; margin-bottom: 12px; }
+  .chart-box { height: 280px; }
+  
+  /* Daemon category list */
+  .daemon-section { background: rgba(255,255,255,0.04); border-radius: 12px; padding: 20px;
+                    border: 1px solid rgba(255,255,255,0.08); margin-bottom: 20px; }
+  .daemon-section h3 { font-size: 14px; color: #c4b5fd; margin-bottom: 12px; }
+  .cat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px,1fr)); gap: 12px; }
+  .cat-card { background: rgba(255,255,255,0.03); border-radius: 8px; padding: 14px; }
+  .cat-header { display: flex; justify-content: space-between; margin-bottom: 8px; }
+  .cat-name { font-size: 13px; font-weight: 600; color: #cbd5e1; }
+  .cat-rate { font-size: 12px; }
+  .rate-bar { height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; margin-bottom: 10px; overflow: hidden; }
+  .rate-bar > div { height: 100%; border-radius: 3px; transition: width .3s; }
+  .daemon-list { display: flex; flex-wrap: wrap; gap: 6px; }
+  .daemon-tag { font-size: 11px; padding: 3px 8px; border-radius: 4px; cursor: default; }
+  .daemon-tag.live { background: rgba(34,197,94,0.15); color: #4ade80; border: 1px solid rgba(34,197,94,0.3); }
+  .daemon-tag.dead { background: rgba(239,68,68,0.12); color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
+  
+  /* Health checks */
+  .health-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px,1fr)); gap: 10px; }
+  .health-item { display: flex; align-items: center; gap: 10px; padding: 10px 14px;
+                 background: rgba(255,255,255,0.03); border-radius: 8px; font-size: 13px; }
+  .health-item .dot { width: 8px; height: 8px; border-radius: 50%; }
+  .health-item.ok .dot { background: #22c55e; box-shadow: 0 0 8px #22c55e; }
+  .health-item.warn .dot { background: #f59e0b; box-shadow: 0 0 8px #f59e0b; }
+  .health-item.fail .dot { background: #ef4444; box-shadow: 0 0 8px #ef4444; }
+  
+  /* Twin machine */
+  .twin-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+  .twin-card { background: rgba(255,255,255,0.04); border-radius: 12px; padding: 18px;
+               border: 1px solid rgba(255,255,255,0.08); }
+  .twin-card h4 { font-size: 13px; color: #8892b0; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; }
+  .twin-card .big-num { font-size: 36px; font-weight: 700; color: #fff; }
+  
+  /* Auto-refresh badge */
+  .refresh-badge { position: fixed; bottom: 20px; right: 20px; font-size: 11px;
+                   background: rgba(99,102,241,0.2); border: 1px solid rgba(99,102,241,0.4);
+                   padding: 6px 12px; border-radius: 20px; color: #c4b5fd; z-index: 100; }
+  
+  /* 🤖 Empower + Aurora widgets */
+  .empower-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+  .empower-card { display:block; background: rgba(255,255,255,0.04); border-radius: 12px;
+                  border: 1px solid rgba(124,58,237,0.25); padding: 18px 22px;
+                  text-decoration:none; color:inherit; transition:transform .2s, box-shadow .2s;
+                  position:relative; overflow:hidden; }
+  .empower-card::before { content:''; position:absolute; top:0;left:0;right:0;height:3px;
+                           background:linear-gradient(90deg,#7c3aed,#0ea5e9); }
+  .empower-card.aurora { border-color: rgba(234,179,8,.25); }
+  .empower-card.aurora::before { background:linear-gradient(90deg,#f59e0b,#22d3ee); }
+  .empower-card:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(124,58,237,.2); }
+  .emp-card.aurora:hover { box-shadow:0 8px 24px rgba(234,179,8,.2); }
+  .emp-head { display:flex; align-items:center; gap:12px; margin-bottom:14px; }
+  .emp-icon { font-size:28px; }
+  .emp-title { font-size:15px; font-weight:700; color:#f1f5f9; }
+  .emp-sub { font-size:11px; color:#64748b; margin-top:2px; }
+  .emp-arrow { margin-left:auto; font-size:22px; color:#7c3aed; font-weight:300; }
+  .empower-card.aurora .emp-arrow { color:#f59e0b; }
+  .emp-stats { display:flex; gap:18px; }
+  .emp-stat { flex:1; text-align:center; }
+  .emp-num { font-size:22px; font-weight:700; color:#e2e8f0; font-family:'JetBrains Mono',monospace; }
+  .emp-num .emp-unit { font-size:12px; color:#64748b; margin-left:2px; font-weight:400; }
+  .emp-label { font-size:10px; color:#64748b; text-transform:uppercase; letter-spacing:1px; margin-top:3px; }
+  .emp-bar-wrap { height:4px; background:rgba(255,255,255,.08); border-radius:2px; margin-top:14px; overflow:hidden; }
+  .emp-bar { height:100%; background:linear-gradient(90deg,#7c3aed,#22d3ee); border-radius:2px; transition:width .6s; }
+  .emp-bar.aurora-bar { background:linear-gradient(90deg,#f59e0b,#22d3ee); }
+  .emp-bar-label { font-size:10px; color:#64748b; text-align:right; margin-top:4px; letter-spacing:1px; }
+  
+  @media (max-width: 900px) {
+    .stat-grid { grid-template-columns: repeat(2, 1fr); }
+    .chart-row { grid-template-columns: 1fr; }
+    .twin-row { grid-template-columns: 1fr; }
+  }
+</style>
+
+<meta charset="UTF-8">
+<title{{ t('andromeda.仙女座仪表盘_·_Androm_45082b', default='仙女座仪表盘 · Andromeda Dashboard') }}/title>
+<link rel="stylesheet" href="https://unpkg.com/element-plus/dist/index.css">
+<script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+<script sr{{ t('andromeda.🪐_仙女座仪表盘_·_Andr_e273c6', default='🪐 仙女座仪表盘 · Andromeda Dashboard') }}s"></script>
+<script src="https://unpkg.com/echarts@5/dist/echarts.min.js"></script>
+
+{% endblock %}
+
+{% block page_title %}
+    仙女座仪表盘
+{% endblock %}
+
+{% block content %}
+{% raw %}
+<div id="app">
+
+<!-- Header -->
+<div class="header">
+  <div>
+    <h1>{{ t('andromeda.仙女座仪表盘___A_e273c6', default='🪐 仙女座仪表盘 · Andromeda Dashboard') }}</h1>
+    <div class="subtitle">v6.2 · 七阶段演化总览 · daemon 活率 · DB 业务增量 · 双机健康</div>
+  </div>
+  <div style="text-align:right">
+    <div style="font-size:11px;color:#64748b">{{ t('andromeda.上次刷新_367edc', default='上次刷新') }}</div>
+    <div style="font-size:13px;color:#c4b5fd">{{ lastUpdate }}</div>
+  </div>
+</div>
+
+<!-- Top stat cards -->
+<div class="stat-grid">
+  <div class="stat-card" :class="{warn: daemonRate < 80, danger: daemonRate < 50}">
+    <div class="stat-label">{{ t('andromeda.Daemon_活率_3d1762', default='Daemon 活率') }}</div>
+    <div class="stat-value">{{ daemonAlive }}/{{ daemonTotal }}</div>
+    <div class="stat-sub">{{ t('andromeda.daemon_守护进程_579a59', default='daemon 守护进程') }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">{{ t('andromeda.系统健康分_dfaca2', default='系统健康分') }}</div>
+    <div class="stat-value">{{ healthScore }}<span style="font-size:18px;color:#64748b">/100</span></div>
+    <div class="stat-sub">{{ healthOk }}/{{ healthTotal }} 检查通过</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">{{ t('andromeda.DB_业务总量_710d50', default='DB 业务总量') }}</div>
+    <div class="stat-value">{{ totalRows.toLocaleString() }}</div>
+    <div class="stat-sub">{{ t('andromeda.核心表累计行数_9eb5b3', default='核心表累计行数') }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">{{ t('andromeda.24h_增量_d08f7d', default='24h 增量') }}</div>
+    <div class="stat-value">{{ delta24h.toLocaleString() }}</div>
+    <div class="stat-sub">{{ t('andromeda.过去_24_小时_8408f1', default='过去 24 小时') }}</div>
+  </div>
+</div>
+
+<!-- Twin machine -->
+<div class="twin-row">
+  <div class="twin-card">
+    <h4>{{ t('andromeda.本机___MacB_c758c9', default='🖥️ 本机 · MacBook Pro') }}</h4>
+    <div class="big-num">{{ daemonAlive }}</div>
+    <div style="font-size:12px;color:#64748b;margin-top:4px">{{ t('andromeda.活跃_daemon_9d077d', default='活跃 daemon · Flask 8888 · Ollama') }}</div>
+  </div>
+  <div class="twin-card">
+    <h4>🖥️ Mac mini · HULK-MACMINI</h4>
+    <div class="big-num" v-if="twin.macmini.reachable">{{ twin.macmini.daemon_live || '?' }}</div>
+    <div class="big-num" v-else style="color:#64748b">—</div>
+    <div style="font-size:12px;color:#64748b;margin-top:4px">
+      {{ twin.macmini.reachable ? '双机同步中' : '离线 · 上线后自动握手' }}
+    </div>
+  </div>
+</div>
+
+<!-- 🤖 AI 员工赋能 微件 -->
+<div class="empower-row">
+  <a href="/empower/center" class="empower-card">
+    <div class="emp-head">
+      <span class="emp-icon">🤖</span>
+      <div>
+        <div class="emp-title">AI 员工赋能</div>
+        <div class="emp-sub" v-if="!empower.total">加载中…</div>
+        <div class="emp-sub" v-else>全员覆盖 · 点击进入管理中心</div>
+      </div>
+      <span class="emp-arrow">›</span>
+    </div>
+    <div class="emp-stats" v-if="empower.total">
+      <div class="emp-stat">
+        <div class="emp-num">{{ empower.total }}</div>
+        <div class="emp-label">赋能员工</div>
+      </div>
+      <div class="emp-stat">
+        <div class="emp-num">{{ empower.avg_yrs }}<span class="emp-unit">年</span></div>
+        <div class="emp-label">平均资历</div>
+      </div>
+      <div class="emp-stat">
+        <div class="emp-num">{{ empower.mentored_pct }}<span class="emp-unit">%</span></div>
+        <div class="emp-label">师徒覆盖</div>
+      </div>
+      <div class="emp-stat">
+        <div class="emp-num">{{ empower.social_edges }}</div>
+        <div class="emp-label">朋友圈边</div>
+      </div>
+      <div class="emp-stat">
+        <div class="emp-num">{{ empower.active_contribs }}</div>
+        <div class="emp-label">发光发热</div>
+      </div>
+    </div>
+    <div style="color:#64748b;font-size:.7rem;text-align:center;padding:20px;" v-else>
+      🔒 请登录后查看赋能数据详情
+    </div>
+    <div class="emp-bar-wrap" v-if="empower.total">
+      <div class="emp-bar" :style="{width: (empower.coverage_pct || 0)+'%'}"></div>
+    </div>
+    <div class="emp-bar-label" v-if="empower.total">覆盖率 {{ empower.coverage_pct || 0 }}%</div>
+  </a>
+  <a href="/aurora/center" class="empower-card aurora">
+    <div class="emp-head">
+      <span class="emp-icon">✨</span>
+      <div>
+        <div class="emp-title">Aurora 极光注册表</div>
+        <div class="emp-sub" v-if="!aurora.total">加载中…</div>
+        <div class="emp-sub" v-else>统一管理 daemon · 冰山域 · 自能力 · 角色</div>
+      </div>
+      <span class="emp-arrow">›</span>
+    </div>
+    <div class="emp-stats" v-if="aurora.total">
+      <div class="emp-stat">
+        <div class="emp-num">{{ aurora.total }}</div>
+        <div class="emp-label">注册能力</div>
+      </div>
+      <div class="emp-stat">
+        <div class="emp-num">{{ aurora.enabled }}</div>
+        <div class="emp-label">已启用</div>
+      </div>
+      <div class="emp-stat">
+        <div class="emp-num">{{ aurora.disabled }}</div>
+        <div class="emp-label">已禁用</div>
+      </div>
+      <div class="emp-stat">
+        <div class="emp-num">{{ aurora.categories }}</div>
+        <div class="emp-label">能力类别</div>
+      </div>
+    </div>
+    <div style="color:#64748b;font-size:.7rem;text-align:center;padding:20px;" v-else>
+      🔒 请登录后查看 Aurora 注册表
+    </div>
+    <div class="emp-bar-wrap" v-if="aurora.total">
+      <div class="emp-bar aurora-bar" :style="{width: auroraEnabledPct+'%'}"></div>
+    </div>
+    <div class="emp-bar-label" v-if="aurora.total">启用率 {{ auroraEnabledPct }}%</div>
+  </a>
+</div>
+
+<!-- Charts -->
+<div class="chart-row">
+  <div class="chart-card">
+    <h3>{{ t('andromeda.Daemon_分类活_b0a45c', default='📊 Daemon 分类活率') }}</h3>
+    <div ref="daemonChart" class="chart-box"></div>
+  </div>
+  <div class="chart-card">
+    <h3>{{ t('andromeda.DB_核心表_24h_bbbfbd', default='📈 DB 核心表 24h 增量') }}</h3>
+    <div ref="dbChart" class="chart-box"></div>
+  </div>
+</div>
+
+<!-- Health checks -->
+<div class="daemon-section">
+  <h3>{{ t('andromeda.系统健康检查_f2de83', default='❤️ 系统健康检查') }}</h3>
+  <div class="health-grid">
+    <div class="health-item" v-for="c in healthChecks" :key="c.name" :class="c.status.toLowerCase()">
+      <span class="dot"></span>
+      <span style="font-weight:500">{{ c.name }}</span>
+      <span style="margin-left:auto;color:#64748b;font-size:11px;max-width:200px;overflow:hidden;text-overflow:ellipsis">{{ c.detail }}</span>
+    </div>
+  </div>
+</div>
+
+<!-- Daemon categories -->
+<div class="daemon-section">
+  <h3>{{ t('andromeda.Daemon_分类详_326a3c', default='🧬 Daemon 分类详情 (点击看心跳)') }}</h3>
+  <div class="cat-grid">
+    <div class="cat-card" v-for="cat in daemonCats" :key="cat.category">
+      <div class="cat-header">
+        <span class="cat-name">{{ cat.category }}</span>
+        <span class="cat-rate">{{ cat.alive }}/{{ cat.total }} ({{ cat.rate }}%)</span>
+      </div>
+      <div class="rate-bar">
+        <div :style="{width: cat.rate+'%', background: cat.rate===100?'#22c55e':cat.rate>=60?'#6366f1':'#ef4444'}"></div>
+      </div>
+      <div class="daemon-list">
+        <span v-for="d in cat.daemons" :key="d.name"
+              class="daemon-tag" :class="d.live ? 'live' : 'dead'"
+              :title="{{ t('andromeda.d_last_heart_e9ac55', default='d.last_heartbeat || \'从未心跳\'') }}">
+          {{ d.name.replace('sys_','') }}
+        </span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="refresh-badge">{{ t('andromeda.每_10s_自动刷新_edca7b', default='🔄 每 10s 自动刷新') }}</div>
+</div>
+
+
+{% endraw %}
+{% endblock %}
+
+{% block extra_scripts %}
+
+<script>
+const { createApp, ref, computed, onMounted, nextTick, watch } = Vue;
+
+createApp({
+  setup() {
+    // Data
+    const daemonAlive = ref(0);
+    const daemonTotal = ref(0);
+    const daemonCats = ref([]);
+    const dbMetrics = ref([]);
+    const healthChecks = ref([]);
+    const healthScore = ref(0);
+    const lastUpdate = ref('—');
+    const twin = ref({ local: {}, macmini: {} });
+    // 🆕 赋能 & Aurora
+    const empower = ref({});
+    const aurora = ref({});
+    const auroraEnabledPct = computed(() =>
+      aurora.value.total ? Math.round((aurora.value.enabled || 0) / aurora.value.total * 100) : 0);
+
+    // Charts refs
+    const daemonChart = ref(null);
+    const dbChart = ref(null);
+    let daemonChartInst = null;
+    let dbChartInst = null;
+
+    // Computed
+    const daemonRate = computed(() =>
+      daemonTotal.value ? Math.round(daemonAlive.value / daemonTotal.value * 100) : 0);
+    const totalRows = computed(() =>
+      dbMetrics.value.reduce((s, t) => s + (t.total || 0), 0));
+    const delta24h = computed(() =>
+      dbMetrics.value.reduce((s, t) => s + (t.delta_24h || 0), 0));
+    const healthOk = computed(() =>
+      healthChecks.value.filter(c => c.status === 'OK').length);
+    const healthTotal = computed(() => healthChecks.value.length);
+
+    // API helpers
+    async function fetchJSON(url) {
+      try {
+        const r = await fetch(url, { cache: 'no-store' });
+        return await r.json();
+      } catch (e) { return { code: -1 }; }
+    }
+
+    async function refreshAll() {
+      const [dRes, bRes, hRes, tRes, eRes, aRes] = await Promise.all([
+        fetchJSON('/api/daemon_status'),
+        fetchJSON('/api/db_metrics'),
+        fetchJSON('/api/system_health'),
+        fetchJSON('/api/twin_machine'),
+        fetchJSON('/api/empower/status'),
+        fetchJSON('/api/aurora/status'),
+      ]);
+
+      if (dRes.code === 0) {
+        daemonAlive.value = dRes.data.summary.alive;
+        daemonTotal.value = dRes.data.summary.total;
+        daemonCats.value = dRes.data.categories;
+      }
+      if (bRes.code === 0) dbMetrics.value = bRes.data.tables;
+      if (hRes.code === 0) {
+        healthChecks.value = hRes.data.checks;
+        healthScore.value = Math.round(hRes.data.score);
+      }
+      if (tRes.code === 0) twin.value = tRes.data;
+
+      // 🆕 赋能 & Aurora (后端返回格式: {ok:true, ...stats})
+      if (eRes.ok) empower.value = {
+        total: eRes.total_employees || 0,
+        avg_yrs: Math.round(eRes.avg_seniority || 0),
+        mentored_pct: eRes.mentored_pct || 0,
+        social_edges: eRes.social_edges || 0,
+        active_contribs: eRes.contributions_total || 0,
+        coverage_pct: eRes.coverage_pct || 0,
+      };
+      if (aRes.ok) aurora.value = {
+        total: aRes.total || 0,
+        enabled: aRes.enabled || 0,
+        disabled: aRes.disabled || 0,
+        categories: aRes.by_type ? Object.keys(aRes.by_type).length : 0,
+      };
+
+      lastUpdate.value = new Date().toLocaleTimeString('zh-CN');
+
+      await nextTick();
+      renderDaemonChart();
+      renderDbChart();
+    }
+
+    // Charts
+    function renderDaemonChart() {
+      if (!daemonChart.value) return;
+      if (!daemonChartInst) daemonChartInst = echarts.init(daemonChart.value);
+      const data = daemonCats.value.map(c => ({
+        name: c.category,
+        value: c.alive,
+        total: c.total,
+      }));
+      daemonChartInst.setOption({
+        tooltip: { trigger: 'item',
+          formatter: p => `${p.name}<br/>活跃: ${p.value}/${p.data.total} (${Math.round(p.value/p.data.total*100)}%)` },
+        series: [{
+          type: 'pie',
+          radius: ['45%', '75%'],
+          avoidLabelOverlap: true,
+          itemStyle: { borderRadius: 6, borderColor: '#0c1445', borderWidth: 2 },
+          label: { color: '#8892b0', fontSize: 11 },
+          data: data.map(d => ({
+            name: d.name, value: d.value, total: d.total,
+            itemStyle: { color: d.value/d.total >= 0.6 ? '#6366f1' : '#ef4444' }
+          })),
+        }]
+      });
+    }
+
+    function renderDbChart() {
+      if (!dbChart.value) return;
+      if (!dbChartInst) dbChartInst = echarts.init(dbChart.value);
+      dbChartInst.setOption({
+        tooltip: { trigger: 'axis' },
+        grid: { top: 20, bottom: 40, left: 100, right: 20 },
+        xAxis: { type: 'value', axisLabel: { color: '#8892b0' } },
+        yAxis: { type: 'category',
+          data: dbMetrics.value.map(t => t.label),
+          axisLabel: { color: '#cbd5e1', fontSize: 11 } },
+        series: [{
+          type: 'bar',
+          data: dbMetrics.value.map(t => t.delta_24h),
+          itemStyle: {
+            color: p => p.value > 0 ?
+              new echarts.graphic.LinearGradient(0,0,1,0,[
+                {offset:0,color:'#6366f1'},{offset:1,color:'#a855f7'}
+              ]) : '#334155',
+            borderRadius: [0, 4, 4, 0],
+          },
+          label: { show: true, position: 'right', color: '#c4b5fd', fontSize: 11 },
+        }]
+      });
+    }
+
+    onMounted(() => {
+      refreshAll();
+      setInterval(refreshAll, 10000);
+      window.addEventListener('resize', () => {
+        daemonChartInst?.resize();
+        dbChartInst?.resize();
+      });
+    });
+
+    return {
+      daemonAlive, daemonTotal, daemonRate, daemonCats,
+      dbMetrics, healthChecks, healthScore, healthOk, healthTotal,
+      totalRows, delta24h, lastUpdate, twin,
+      daemonChart, dbChart,
+    };
+  }
+}).mount('#app');
+</script>
+
+{% endblock %}

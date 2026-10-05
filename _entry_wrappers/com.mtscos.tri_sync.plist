@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  MTSCOS AI —— 三路双向同步 launchd 守护
+  安装: cp tri_sync.plist ~/Library/LaunchAgents/
+       launchctl load ~/Library/LaunchAgents/com.mtscos.tri_sync.plist
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.mtscos.tri_sync</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>-c</string>
+    <string>/Users/wuchenghao/Library/CloudStorage/OneDrive-个人/文档/MTSCOS_AI_Project/_entry_wrappers/tri_sync.sh git</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>/Users/wuchenghao/Library/CloudStorage/OneDrive-个人/文档/MTSCOS_AI_Project</string>
+  <key>StartInterval</key>
+  <integer>600</integer>
+  <key>StandardOutPath</key>
+  <string>/Users/wuchenghao/Library/CloudStorage/OneDrive-个人/文档/MTSCOS_AI_Project/_runtime/logs/tri_sync_cron.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/wuchenghao/Library/CloudStorage/OneDrive-个人/文档/MTSCOS_AI_Project/_runtime/logs/tri_sync_cron.log</string>
+  <key>RunAtLoad</key>
+  <false/>
+</dict>
+</plist>

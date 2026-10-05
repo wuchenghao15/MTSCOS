@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "checkJs": false,
+    "allowJs": true,
+    "noEmit": true
+  },
+  "exclude": [
+    "node_modules/**",
+    "**/node_modules/**",
+    "**/app/exam_app_node_modules/**",
+    "**/app/cross_platform_node_modules/**",
+    "**/static/**",
+    "**/static/assets/js/arduino_ide/**"
+  ]
+}
