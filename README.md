@@ -15,12 +15,12 @@ AI 驱动的全学段教育智能管理平台。融合机器学习、知识图�
 
 ## ✨ 核心亮点
 
-### 🤖 仙女座 7 阶段自演化引擎
-- **26.9s/cycle** 自主进化循环
-- qwen2.5:14b 本地推理 → 自动衍生新知识
-- 278,920+ 条 EigenFlux 广播消息
-- 84 名 AI 专家加权共识投票
-- 脑库自动投喂 +205 条/cycle 🌀
+### 🤖 仙女座十阶段自演化引擎 · Phase 4 衍生
+- **十阶段流水线** eigenflux_ingest → detect → retrieve → associate → derive → reinforce → expand → optimize → **🧠 自研拓展 gap_fill → 🔁 冰山广播 broadcast → ⚡ Phase 自动升级**
+- **Phase 8 级演化体系**：混沌 → 感知 → 觉醒 → **衍生 (当前)** → 江山 → 星海 → 归一 → 永恒
+- 267.8s/cycle · Cycle #66 首次 embedding 出向量 → 语义检索真正工作 → Phase 3→4 自动升级
+- Ollama 11434 动态端口检测 · qwen2.5:14b + nomic-embed-text 768维
+- 冰山广播推给 AI 员工 → 触发 EigenFlux 讨论 → 摄入脑库 → 下轮再演化 **🌀 自举闭环**
 
 ### 🧠 三层 AI 降级链路 · 永不宕机
 ```
@@ -70,7 +70,7 @@ graph TB
     subgraph "🧠 AI 引擎集群 (140+)"
         SMART["智能挂载<br>15 daemon 管理"]
         LOCAL["本地推理<br>聊天/分类/Bug分析<br>零 token"]
-        EVOLVE["仙女座 7 阶段<br>自演化引擎"]
+        EVOLVE["仙女座十阶段<br>自演化引擎 · Phase 4 衍生"]
         EIGEN["EigenFlux 网络<br>33,525+ AI 员工<br>84 专家共识"]
         PATROL["源码巡逻队<br>6 AI · 语法/模式扫描"]
     end
@@ -172,7 +172,9 @@ adb shell run-as com.mtscos.mobile \
 
 | 指标 | 数值 |
 |------|------|
-| 系统版本 | **v25.5.0** (2026-10-05 · APK v25.5 SP) |
+| 系统版本 | **v25.5.0** (2026-10-05 · 十阶段演化引擎 Phase 4 衍生) |
+| 演化 Phase | **Phase 4 衍生** (8 级体系: 混沌→感知→觉醒→衍生→江山→星海→归一→永恒) |
+| 演化状态 | **自举闭环已打通** · Cycle #66 267.8s · embedding 768维 |
 | 数据库表 | **4,819+** 张 |
 | AI 员工 | **33,525+** 人 |
 | API 路由 | **583+** 条 |

@@ -18,6 +18,23 @@
 - 仓库重初始化 — 剔除 app.db 1.3GB + ai_learning.log 677MB（GitHub 100MB 限制）
 - 新 GitHub 仓库 — git@github.com:wuchenghao15/MTSCOS.git
 
+### 🚀 仙女座十阶段自演化引擎 · Phase 3→4 衍生 🎉
+- **十阶段流水线** eigenflux_ingest → detect → retrieve → associate → derive → discuss → reinforce → expand → optimize → **🆕 gap_fill 自研拓展 → broadcast 冰山广播 → phase_meta Phase 升级**
+- **Phase 8 级演化体系**：混沌 → 感知 → 觉醒 → **衍生 (当前)** → 江山 → 星海 → 归一 → 永恒
+- **Cycle #66 关键突破**：embedding 首次出向量 (768维) → retrieve 10 → associate 50 → derive 50 → 冰山广播 5 AI 员工 → **Phase 3(江山)→4(衍生) 自动升级**
+- **Ollama 动态端口检测**：不盲信环境变量，每次 run_cycle 扫描 11434/11435 哪个活
+- **自举闭环打通**：衍生 → 广播 → EigenFlux 讨论 → 摄入脑库 → 下轮再演化 🌀
+
+### 🔧 仙女座引擎修复
+- `_detect_ollama_host()` 环境变量端口真通才信任 (.zshrc 写死 11435 但早挂了)
+- `knowledge_graph_nodes` 列名修正 `concept→node_name`, `category→node_type`, 加 `node_id` 主键
+- `knowledge_graph_relations` 列名修正 `from_concept→source_node_id`, `to_concept→target_node_id`
+- 关掉火山引擎 fallback (AccountOverdueError 欠费)
+- run_cycle 加 mt_evolution_runs INSERT (演化历史可追溯)
+- auto_derive 同步写 mt_derived_knowledge (3768 条衍生知识不再藏起来)
+- andromeda_dashboard_bp 加 url_prefix='/andromeda' + 防盗链豁免
+- `.github/dependabot.yml` 限制扫描范围 (消除 ai_engines 子目录虚假漏洞)
+
 ### 📊 系统规模
 | 指标 | 数值 |
 |------|------|
