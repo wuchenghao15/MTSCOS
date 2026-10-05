@@ -359,13 +359,15 @@ def _aggregate():
             macbook['brain_logs'] = cur.fetchone()[0]
         except: pass
         try:
-            # 真实表名是 adult_education_questions (2862 条)
-            # mt_qbank_questions 不存在
-            try:
-                cur = conn.execute("SELECT COUNT(*) FROM adult_education_questions")
-            except Exception:
-                cur = conn.execute("SELECT COUNT(*) FROM mt_qbank_questions")
-            macbook['qbank_items'] = cur.fetchone()[0]
+            # 5 个真实题库表合计 (2862+495+300+50+131=3838)
+            total_q = 0
+            for _qt in ['adult_education_questions','professional_exam_questions',
+                        'mt_exam_questions_pool','mt_exam_australian_questions',
+                        'ai_maintenance_questions']:
+                try:
+                    total_q += conn.execute(f"SELECT COUNT(*) FROM {_qt}").fetchone()[0]
+                except Exception: pass
+            macbook['qbank_items'] = total_q
         except: pass
         # 25 星域任务合计
         try:
