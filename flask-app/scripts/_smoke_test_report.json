@@ -1,0 +1,15 @@
+{
+  "test": "冒烟测试·全页面四语种翻译覆盖率·实际渲染",
+  "run_at": "2026-10-05 20:47:57",
+  "total_routes": 115,
+  "ok_routes": 115,
+  "fail_routes": 0,
+  "pass_rate_pct": 100.0,
+  "languages": [
+    "zh_CN",
+    "zh_TW",
+    "ja_JP",
+    "en_US"
+  ],
+  "fail_details": []
+}
