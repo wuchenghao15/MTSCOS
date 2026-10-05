@@ -3767,6 +3767,8 @@ _MT_HOTLINK_WHITELIST_PREFIXES = (
     '/api/neuralhub/health',
     # v25.3: 📱 移动端主应用 (APK WebView 无 Referer, 所有 /mobile/* 直达放行)
     '/mobile/', '/iceberg/mobile',
+    # v25.5: 🌌 仙女座仪表盘 (后台监控, 无 Referer 直达放行)
+    '/andromeda/',
 )
 # API 内部白名单 — 这些 /api/ 路径即使无 Referer 或外站 Referer 也允许访问 (状态检查类)
 _MT_HOTLINK_API_ALLOW_PREFIXES = (
