@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>⚙️ 仙女座角色设置 · Dashboard</title>
+<style>
+:root{
+  --bg:#0f172a; --bg2:#1e293b; --card:#ffffff; --ink:#0f172a; --ink-2:#334155; --muted:#64748b;
+  --iceberg:#0ea5e9; --iceberg-dim:#0284c7; --ok:#16a34a; --warn:#d97706; --danger:#dc2626; --purple:#7c3aed;
+  --border:#e2e8f0; --border-dark:rgba(148,163,184,.15); --radius:10px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;}
+body{font-family:-apple-system,'PingFang SC','Segoe UI',sans-serif;
+  background:linear-gradient(135deg,#020617 0%,#0c4a6e 40%,#1e1b4b 100%);min-height:100vh;color:#e2e8f0;}
+
+/* HEADER */
+.hdr{padding:22px 28px;background:linear-gradient(180deg,rgba(2,6,23,.9) 0%,rgba(15,23,42,.6) 100%);border-bottom:1px solid var(--border-dark);position:relative;}
+.hdr::before{content:'🧊';position:absolute;font-size:180px;opacity:.06;right:-30px;top:-40px;}
+.hdr-row{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;}
+.hdr-row h1{font-size:1.4rem;letter-spacing:2px;color:#f1f5f9;}
+.hdr-row h1 span{color:var(--iceberg);}
+.hdr-row p{color:#64748b;font-size:.75rem;letter-spacing:1px;margin-top:4px;}
+.hdr-right{display:flex;gap:10px;align-items:center;}
+.pill{display:flex;align-items:center;gap:6px;background:rgba(148,163,184,.12);border:1px solid rgba(148,163,184,.25);border-radius:20px;padding:5px 12px;color:#cbd5e1;font-size:.7rem;font-family:'JetBrains Mono',monospace;}
+.pill.ok{border-color:rgba(22,163,74,.4);color:#4ade80;}
+
+/* STATS */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;padding:16px 28px 0;}
+.stat{background:rgba(17,24,39,.85);border:1px solid var(--border-dark);border-radius:var(--radius);padding:14px 16px;border-left:3px solid var(--iceberg);transition:transform .15s;}
+.stat:hover{transform:translateY(-2px);}
+.stat{border-left-color:var(--iceberg);}
+.stat.audit{border-left-color:var(--warn);}
+.stat.exclusive{border-left-color:var(--purple);}
+.stat .n{font-size:1.5rem;font-weight:800;font-family:'JetBrains Mono',monospace;color:#f1f5f9;line-height:1.1;}
+.stat .l{font-size:.68rem;color:#64748b;letter-spacing:1px;margin-top:4px;text-transform:uppercase;}
+
+/* ROLE CARDS GRID */
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;padding:16px 28px;}
+@media(max-width:900px){.grid{grid-template-columns:1fr;}}
+
+.role-card{
+  background:rgba(17,24,39,.85);border:1px solid var(--border-dark);border-radius:var(--radius);
+  padding:18px 20px;transition:all .15s;position:relative;overflow:hidden;
+}
+.role-card:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(14,165,233,.1);border-color:rgba(14,165,233,.35);}
+.role-card::before{content:'';position:absolute;left:0;top:0;width:4px;height:100%;background:var(--iceberg);border-radius:2px;}
+.role-card.super_admin::before{background:#c4b5fd;}
+.role-card.admin::before{background:#38bdf8;}
+.role-card.student::before{background:#4ade80;}
+.role-card.teacher::before{background:#fbbf24;}
+.role-card.professor::before{background:#f472b6;}
+.role-card.counselor::before{background:#22d3ee;}
+.role-card.mentor::before{background:#a78bfa;}
+.role-card.parent::before{background:#fb7185;}
+
+.role-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+.role-hd .rk{font-size:1rem;font-weight:700;color:#f1f5f9;letter-spacing:.5px;display:flex;align-items:center;gap:8px;}
+.role-hd .rk .icon{font-size:1.3rem;}
+.role-hd .acts{display:flex;gap:6px;}
+.domain-tag{font-family:'JetBrains Mono',monospace;font-size:.68rem;color:var(--iceberg);background:rgba(14,165,233,.12);border:1px solid rgba(14,165,233,.25);padding:2px 8px;border-radius:4px;}
+.perm-tag{font-size:.65rem;color:#94a3b8;background:rgba(148,163,184,.1);padding:2px 7px;border-radius:4px;border:1px solid var(--border-dark);}
+
+.can-grid{display:flex;flex-wrap:wrap;gap:4px;margin:10px 0 8px;}
+.can-tag{font-size:.68rem;padding:2px 8px;border-radius:3px;font-family:'JetBrains Mono',monospace;letter-spacing:.3px;}
+.can-true{background:rgba(22,163,74,.12);color:#4ade80;border:1px solid rgba(22,163,74,.25);}
+.can-false{background:rgba(148,163,184,.08);color:#64748b;border:1px solid var(--border-dark);text-decoration:line-through;}
+
+.feat-row{display:flex;gap:5px;flex-wrap:wrap;margin:6px 0;font-size:.68rem;}
+.feat-chip{padding:2px 8px;border-radius:3px;background:rgba(124,58,237,.12);color:#c4b5fd;border:1px solid rgba(124,58,237,.25);}
+.exclusive-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;padding-top:8px;border-top:1px dashed var(--border-dark);}
+.excl-item{font-size:.68rem;font-family:'JetBrains Mono',monospace;color:#64748b;}
+.excl-item .v{color:#fbbf24;margin-left:4px;}
+
+.audit-mini{font-size:.65rem;color:#64748b;margin-top:8px;font-family:'JetBrains Mono',monospace;}
+.audit-mini .e{color:#f87171;margin-left:6px;}
+.audit-mini .ok{color:#4ade80;margin-left:6px;}
+
+/* BUTTONS */
+.btn{padding:6px 12px;border-radius:6px;border:none;cursor:pointer;font-size:.72rem;font-weight:600;letter-spacing:.5px;transition:all .12s;font-family:inherit;display:inline-flex;align-items:center;gap:5px;}
+.btn-primary{background:var(--iceberg);color:white;}
+.btn-primary:hover:not([disabled]){background:var(--iceberg-dim);}
+.btn-ghost{background:transparent;color:#cbd5e1;border:1px solid var(--border-dark);}
+.btn-ghost:hover:not([disabled]){background:rgba(148,163,184,.1);}
+.btn-success{background:var(--ok);color:white;}
+.btn-danger{background:var(--danger);color:white;}
+.btn-sm{padding:4px 10px;font-size:.68rem;}
+
+/* TOAST */
+.toast{position:fixed;bottom:22px;right:22px;padding:11px 18px;border-radius:8px;background:#1e293b;color:#f1f5f9;font-size:.8rem;z-index:200;transform:translateY(120%);transition:transform .25s;border-left:3px solid var(--iceberg);box-shadow:0 10px 30px rgba(0,0,0,.3);}
+.toast.show{transform:translateY(0);}
+.toast.ok{border-left-color:var(--ok);}
+.toast.err{border-left-color:var(--danger);}
+.toast.warn{border-left-color:var(--warn);}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="hdr-row">
+    <div>
+      <h1>⚙️ 仙女座 <span>统一角色设置 Dashboard</span></h1>
+      <p>v25.0 · role_settings_engine.py · 8 角色 · 5 专属表 · DB 深度绑定</p>
+    </div>
+    <div class="hdr-right">
+      <span class="pill ok">🧠 DB: app.db · 实时同步</span>
+      <button class="btn btn-ghost btn-sm" onclick="apiSync()">🔄 从 role_registry 同步</button>
+    </div>
+  </div>
+</div>
+
+<!-- STATS -->
+<div class="stats">
+  <div class="stat"><div class="n" id="s-roles">8</div><div class="l">角色总数</div></div>
+  <div class="stat exclusive"><div class="n" id="s-excl">5</div><div class="l">专属表角色</div></div>
+  <div class="stat audit"><div class="n" id="s-audits">0</div><div class="l">变更审计</div></div>
+  <div class="stat"><div class="n" id="s-perms">120+</div><div class="l">权限项总数</div></div>
+</div>
+
+<!-- ROLE CARDS GRID -->
+<div class="grid" id="roleGrid"></div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const ICONS = {super_admin:'👑',admin:'🛡️',student:'🎓',teacher:'📚',professor:'🎓',counselor:'💬',mentor:'🌟',parent:'👨‍👩‍👧'};
+const PERM_LABELS = {super_admin:'super_admin',admin:'admin',student:'login',teacher:'login',professor:'login',counselor:'login',mentor:'login',parent:'login'};
+
+function toast(msg,cls='info'){
+  const t=document.getElementById('toast'); t.textContent=msg;
+  t.className='toast show '+(cls==='ok'?'ok':cls==='err'?'err':cls==='warn'?'warn':'');
+  clearTimeout(window._tt); window._tt=setTimeout(()=>t.className='toast',2600);
+}
+
+async function apiSync(){
+  const r=await fetch('/api/roles/sync',{method:'POST'}).then(x=>x.json());
+  toast(r.ok?`✅ 同步 ${r.synced} 个角色`:'❌ 同步失败', r.ok?'ok':'err'); loadAll();
+}
+
+async function loadAll(){
+  const d = await fetch('/api/roles').then(x=>x.json());
+  const roles = d.roles || [];
+  const audits = roles.reduce((s,r)=>s+(r.recent_audits?.length||0),0);
+  document.getElementById('s-roles').textContent = roles.length;
+  document.getElementById('s-excl').textContent = roles.filter(r=>r.exclusive).length;
+  document.getElementById('s-audits').textContent = audits;
+  const totalPerms = roles.reduce((s,r)=>s+(Object.keys(r.can||{}).length+Object.keys(r.features||{}).length),0);
+  document.getElementById('s-perms').textContent = totalPerms + '+';
+
+  document.getElementById('roleGrid').innerHTML = roles.map(r=>renderCard(r)).join('');
+}
+
+function renderCard(r){
+  const icon = ICONS[r.role_key] || '👤';
+  const canHtml = Object.entries(r.can||{}).map(([k,v])=>
+    `<span class="can-tag ${v?'can-true':'can-false'}">${k.replace('_',' ')}</span>`).join('');
+  const featHtml = Object.keys(r.features||{}).filter(k=>r.features[k]).map(k=>
+    `<span class="feat-chip">${k.replace(/_/g,' ')}</span>`).join('');
+  const excl = r.exclusive || {};
+  const exclHtml = Object.entries(excl).filter(([k,v])=>k!=='role_key').slice(0,4).map(([k,v])=>
+    `<div class="excl-item">${k}=<span class="v">${v}</span></div>`).join('');
+  const audits = (r.recent_audits||[]).slice(0,2);
+  const auditHtml = audits.length ? audits.map(a=>
+    `${a.section}.${a.field} <span class="${a.new_value?'ok':'e'}">${a.new_value||'null'}</span>`).join(' · ')
+    : '<span style="color:#475569;">(无变更)</span>';
+
+  return `
+    <div class="role-card ${r.role_key}">
+      <div class="role-hd">
+        <div class="rk"><span class="icon">${icon}</span> ${r.role_label} <span style="color:#475569;font-size:.72rem;font-weight:400;">(${r.role_key})</span></div>
+        <div class="acts">
+          <button class="btn btn-ghost btn-sm" onclick="window.location='/roles/${r.role_key}/settings'">⚙️ 设置面板</button>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;margin-bottom:8px;">
+        <span class="domain-tag">🧊 ${r.iceberg_domain}</span>
+        <span class="perm-tag">🔑 ${r.perm_level}</span>
+        ${r.exclusive?'<span class="perm-tag" style="color:#c4b5fd;">🎯 专属表</span>':''}
+      </div>
+      <div style="font-size:.68rem;color:#64748b;letter-spacing:1px;margin-bottom:3px;">权限矩阵 (can)</div>
+      <div class="can-grid">${canHtml}</div>
+      ${featHtml?`<div style="font-size:.68rem;color:#64748b;letter-spacing:1px;margin:3px 0;">功能开关 (features)</div><div class="feat-row">${featHtml}</div>`:''}
+      ${exclHtml?`<div class="exclusive-row">${exclHtml}</div>`:''}
+      <div class="audit-mini">📜 最近变更: ${auditHtml}</div>
+    </div>
+  `;
+}
+
+loadAll();
+setInterval(loadAll,20000);
+</script>
+</body>
+</html>

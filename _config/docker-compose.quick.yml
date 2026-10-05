@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  web:
+    image: python:3.9-slim
+    ports:
+      - "8888:8888"
+    environment:
+      - FLASK_ENV=production
+      - LOG_LEVEL=INFO
+      - DATABASE_URI=sqlite:///app.db
+      - SELF_LEARNING_ENABLED=0
+      - GIT_AUTO_SYNC_ENABLED=0
+      - AUTO_BACKUP_ENABLED=0
+    volumes:
+      - .:/app
+    working_dir: /app
+    command: >
+      bash -c "pip install --no-cache-dir -r requirements.txt && python app.py"
+    restart: unless-stopped
+
+volumes:
+  mtscos_data:

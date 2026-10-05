@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+==============================================================
+  MTSCOS Smart Mount Engine - macOS launchd auto-start v2.1.0
+  Goal: 真守护进程，脱离 Trae IDE / Terminal.app 进程树,
+        Trae 关闭/Terminal 退出后系统稳定运行, 系统重启自动恢复。
+
+  v2.1.0 关键变更（Trae-independent + OneDrive TCC fix）:
+    1. wrapper 用 `open -a Terminal .command` 触发（Finder 双击模式），
+       Terminal.app 有 OneDrive TCC 授权可访问 OneDrive 内文件。
+       launchd 自身没有 TCC 授权，bash-exec / file-open 都被拒绝。
+    2. .command 脚本调用 daemon launcher（双 fork + setsid），
+       daemon launcher 让 engine ppid=1 完全脱离 Terminal.app 进程树。
+       Terminal.app 关闭/Trae 关闭都不会影响 engine（ppid=1）。
+    3. KeepAlive=false（wrapper 立即返回，launchd 不能监督其进程）。
+       实际保活由 L3 crontab 每分钟 check-keepalive + L1 engine 内置
+       主循环异常捕获不死掉 双重保险。
+    4. ThrottleInterval=15: 防 launchd 在 RunAtLoad 时崩溃循环。
+    5. 日志: stdout/stderr -> _runtime/logs/smart_mount_launchd.{stdout,stderr}.log
+       daemon launcher 自带 _runtime/logs/smart_mount_supervisor.log
+
+  Triple keepalive architecture after v2.1.0:
+    L1 engine built-in: 主循环异常捕获不死掉 + 子进程心跳监控 + 自动重启
+    L2 launchd (this): RunAtLoad=true 登录触发 open(1) -> Terminal.app ->
+                       .command 调 daemon launcher -> 双fork setsid (ppid=1)
+    L3 crontab patrol:  每分钟 check-keepalive，进程死亡自动恢复
+
+  Deploy:  bash _config/services/deploy_smart_mount_launchd.sh install
+==============================================================
+Manual deploy validation chain:
+    launchctl bootout gui/$UID/com.mtscos.smart-mount 2>/dev/null || true
+    cp com.mtscos.smart-mount.starter.sh  ~/Library/LaunchAgents/
+    cp com.mtscos.smart-mount.plist        ~/Library/LaunchAgents/
+    chown $(whoami):staff ~/Library/LaunchAgents/com.mtscos.smart-mount*
+    chmod 644              ~/Library/LaunchAgents/com.mtscos.smart-mount.plist
+    chmod 755              ~/Library/LaunchAgents/com.mtscos.smart-mount.starter.sh
+    launchctl bootstrap gui/$UID ~/Library/LaunchAgents/com.mtscos.smart-mount.plist
+    launchctl kickstart -k gui/$UID/com.mtscos.smart-mount
+    sleep 8
+    launchctl list | grep mtscos
+    ps -ef | grep ai_smart_mount_engine | grep -v grep
+    # 验证 ppid=1 表示已脱离 Trae/Terminal
+    ps -o pid,ppid,command -p $(cat _runtime/pids/ai_smart_mount_engine.pid)
+Uninstall:
+    launchctl stop        com.mtscos.smart-mount
+    launchctl bootout gui/$UID/com.mtscos.smart-mount
+    rm -f ~/Library/LaunchAgents/com.mtscos.smart-mount*
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.mtscos.smart-mount</string>
+
+    <!--
+      ProgramArguments (v2.1.0):
+      执行 ~/Library/LaunchAgents/ 下的 wrapper（本地盘，launchd 可访问）。
+      wrapper 内部 open(1) -> Terminal.app -> .command 脚本，
+      .command 调 daemon launcher 双 fork + setsid，让 engine ppid=1。
+      Terminal.app 有 OneDrive TCC 授权，可读 OneDrive 内文件。
+    -->
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>__HOME_LA__/com.mtscos.smart-mount.starter.sh</string>
+    </array>
+
+    <!-- RunAtLoad=true: 用户登录立刻触发 -->
+    <key>RunAtLoad</key>
+    <true/>
+
+    <!-- KeepAlive=false: wrapper open(1) 后立即返回 0，不能监督其子进程
+         (Terminal.app 是 launchd 的远房亲戚，daemon launcher fork 后
+          ppid=1，launchd 也找不到)。实际保活走 L3 crontab。 -->
+    <key>KeepAlive</key>
+    <false/>
+
+    <!-- ThrottleInterval=15: 防 launchd 在 RunAtLoad 时崩溃循环 -->
+    <key>ThrottleInterval</key>
+    <integer>15</integer>
+
+    <!-- StartInterval=60: 每60秒触发一次 wrapper 巡检 (替代 crontab L3 保活)
+         wrapper 检测 engine 存活则静默退出, 死亡则 open(1)->Terminal->daemon launcher 重启
+         不需要 Full Disk Access (crontab 在 Trae 终端中受 TCC 限制) -->
+    <key>StartInterval</key>
+    <integer>60</integer>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>__PROJECT_ROOT__/_runtime/.venv/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/local/sbin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+        <key>MTSCOS_SM_LAUNCHD_MANAGED</key>
+        <string>1</string>
+    </dict>
+
+    <!--
+      WorkingDirectory is CRITICAL on OneDrive-sandboxed projects.
+      Setting it to OneDrive path causes launchd's child bash to fail
+      "shell-init: error retrieving current directory: getcwd:
+      Operation not permitted". $HOME is always accessible.
+    -->
+    <key>WorkingDirectory</key>
+    <string>__HOME__</string>
+
+    <key>StandardOutPath</key>
+    <string>__PROJECT_ROOT__/_runtime/logs/smart_mount_launchd.stdout.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>__PROJECT_ROOT__/_runtime/logs/smart_mount_launchd.stderr.log</string>
+
+    <!-- Raise file-descriptor soft limit: engine opens many SQLite WAL connections -->
+    <key>SoftResourceLimits</key>
+    <dict>
+        <key>NumberOfFiles</key>
+        <integer>8192</integer>
+    </dict>
+
+    <key>ProcessType</key>
+    <string>Background</string>
+</dict>
+</plist>

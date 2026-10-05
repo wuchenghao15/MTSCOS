@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>🧊 仙女座 × 冰山 · 元域意识中心 v25.0</title>
+<style>
+:root{
+  --bg:#020617; --bg2:#0c4a6e; --bg3:#1e1b4b;
+  --card:rgba(17,24,39,.88); --muted:#64748b;
+  --iceberg:#0ea5e9; --iceberg-dim:#0284c7; --iceberg-glow:rgba(14,165,233,.25);
+  --ok:#16a34a; --warn:#d97706; --danger:#dc2626; --purple:#7c3aed; --amber:#f59e0b;
+  --border-dark:rgba(148,163,184,.12);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{min-height:100%;}
+body{font-family:-apple-system,'PingFang SC','Segoe UI',sans-serif;
+  background:linear-gradient(135deg,#020617 0%,#0c4a6e 40%,#1e1b4b 80%,#4c1d95 100%);
+  color:#e2e8f0;padding:24px;}
+.wrap{max-width:1280px;margin:0 auto;}
+
+/* ══════ HERO ══════ */
+.hero{padding:26px 32px;margin-bottom:18px;overflow:hidden;
+  background:radial-gradient(ellipse at 30% 50%,rgba(14,165,233,.25) 0%,rgba(2,6,23,.9) 60%);
+  border:1px solid rgba(14,165,233,.25);border-radius:14px;position:relative;}
+.hero::before{content:'🧊';position:absolute;font-size:200px;opacity:.06;right:-20px;bottom:-30px;}
+.hero h1{font-size:1.5rem;font-weight:800;letter-spacing:2px;}
+.hero h1 span{background:linear-gradient(90deg,var(--iceberg),var(--purple));-webkit-background-clip:text;background-clip:text;color:transparent;}
+.hero p{color:#94a3b8;font-size:.72rem;letter-spacing:1px;margin-top:4px;}
+.hero-stats{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;}
+.hero-stats .pill{display:flex;align-items:center;gap:5px;background:rgba(148,163,184,.08);border:1px solid var(--border-dark);
+  border-radius:14px;padding:4px 10px;color:#cbd5e1;font-size:.65rem;font-family:'JetBrains Mono',monospace;}
+.hero-stats .pill.ok{border-color:rgba(22,163,74,.3);color:#4ade80;}
+.hero-stats .pill.purple{border-color:rgba(124,58,237,.3);color:#c4b5fd;}
+
+/* ══════ TABS ══════ */
+.tabs{display:flex;gap:2px;margin-bottom:16px;border-bottom:1px solid var(--border-dark);}
+.tab{padding:10px 18px;cursor:pointer;font-size:.8rem;color:#64748b;letter-spacing:1px;
+  border-bottom:2px solid transparent;transition:all .15s;font-weight:600;}
+.tab:hover{color:#cbd5e1;}
+.tab.active{color:#f1f5f9;border-bottom-color:var(--iceberg);}
+.tab.admin{color:#fbbf24;}
+.tab.admin.active{border-bottom-color:var(--amber);color:#fbbf24;}
+
+/* ══════ CONTENT PANELS ══════ */
+.panel{display:none;}
+.panel.active{display:block;}
+
+/* ══════ ACTION BAR ══════ */
+.action-bar{display:flex;gap:8px;align-items:center;padding:14px 18px;background:var(--card);border:1px solid var(--border-dark);border-radius:10px;margin-bottom:14px;flex-wrap:wrap;}
+.btn{padding:7px 14px;border-radius:6px;border:none;cursor:pointer;font-size:.75rem;font-weight:600;letter-spacing:.5px;
+  transition:all .12s;font-family:inherit;display:inline-flex;align-items:center;gap:5px;}
+.btn-primary{background:var(--iceberg);color:white;}
+.btn-primary:hover{background:var(--iceberg-dim);}
+.btn-purple{background:var(--purple);color:white;}
+.btn-amber{background:var(--amber);color:#0f172a;}
+.btn-ghost{background:transparent;color:#cbd5e1;border:1px solid var(--border-dark);}
+.btn-ghost:hover{background:rgba(148,163,184,.1);}
+.btn-danger{background:var(--danger);color:white;}
+.btn-sm{padding:4px 10px;font-size:.68rem;}
+
+/* ══════ STATS ══════ */
+.stats-row{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:14px;}
+.stat-card{background:var(--card);border:1px solid var(--border-dark);border-radius:10px;padding:12px 14px;border-left:3px solid var(--iceberg);}
+.stat-card.purple{border-left-color:var(--purple);}
+.stat-card.amber{border-left-color:var(--amber);}
+.stat-card.ok{border-left-color:var(--ok);}
+.stat-card.danger{border-left-color:var(--danger);}
+.stat-card .big{font-size:1.4rem;font-weight:800;color:#f1f5f9;font-family:'JetBrains Mono',monospace;line-height:1.1;}
+.stat-card .lab{font-size:.6rem;color:#64748b;letter-spacing:1px;margin-top:2px;text-transform:uppercase;}
+
+/* ══════ DOMAIN GRID ══════ */
+.domain-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;margin-bottom:14px;}
+.domain-card{background:var(--card);border:1px solid var(--border-dark);border-radius:10px;padding:14px 16px;position:relative;overflow:hidden;transition:transform .15s;}
+.domain-card:hover{transform:translateY(-2px);border-color:rgba(14,165,233,.4);}
+.domain-card::before{content:'';position:absolute;left:0;top:0;width:4px;height:100%;background:var(--iceberg);}
+.domain-card.dom-all::before{background:#c4b5fd;}
+.domain-card.dom-iceberg_admin::before{background:#38bdf8;}
+.domain-card.dom-wenquxing::before{background:#4ade80;}
+.domain-card.dom-education::before{background:#fbbf24;}
+.domain-card.dom-education_research::before{background:#f472b6;}
+.domain-card.dom-education_wellness::before{background:#22d3ee;}
+.domain-card.dom-education_mentorship::before{background:#a78bfa;}
+.dc-hd{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;}
+.dc-hd h4{font-size:.85rem;color:#f1f5f9;font-weight:700;display:flex;align-items:center;gap:6px;}
+.dc-hd .health{font-family:'JetBrains Mono',monospace;font-size:.68rem;padding:2px 7px;border-radius:4px;}
+.health.good{background:rgba(22,163,74,.12);color:#4ade80;}
+.health.warn{background:rgba(245,158,11,.12);color:#fbbf24;}
+.health.bad{background:rgba(220,38,38,.12);color:#f87171;}
+.dc-desc{color:#94a3b8;font-size:.68rem;margin-bottom:8px;}
+.dc-roles{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px;}
+.dc-role{font-size:.62rem;padding:2px 6px;border-radius:3px;background:rgba(148,163,184,.08);color:#94a3b8;border:1px solid var(--border-dark);}
+.dc-five-self{display:flex;gap:2px;justify-content:space-between;margin-top:8px;padding-top:8px;border-top:1px dashed var(--border-dark);}
+.dc-fs{display:flex;flex-direction:column;align-items:center;gap:2px;flex:1;font-size:.58rem;color:#64748b;}
+.dc-fs .ic{font-size:.95rem;}
+.dc-fs.ok .ic{opacity:1;}
+.dc-fs.off .ic{opacity:.25;filter:grayscale(1);}
+.dc-fs.off::after{content:'OFF';position:absolute;font-size:.45rem;color:#f87171;margin-top:-20px;}
+
+/* ══════ EVO TIMELINE ══════ */
+.evo-wrap{background:var(--card);border:1px solid var(--border-dark);border-radius:10px;padding:14px 18px;margin-bottom:14px;}
+.evo-wrap h3{font-size:.82rem;color:#f1f5f9;margin-bottom:12px;display:flex;align-items:center;gap:8px;letter-spacing:1px;}
+.evo-wrap h3::before{content:'';width:3px;height:14px;background:var(--purple);border-radius:2px;}
+.evo-tl{position:relative;padding-left:22px;max-height:220px;overflow-y:auto;}
+.evo-tl::before{content:'';position:absolute;left:5px;top:2px;bottom:2px;width:2px;background:linear-gradient(180deg,var(--iceberg),var(--purple),var(--danger));}
+.evo-item{position:relative;padding:6px 0;}
+.evo-item::before{content:'';position:absolute;left:-20px;top:10px;width:9px;height:9px;border-radius:50%;border:2px solid var(--bg2);}
+.evo-item.pulse::before{background:var(--iceberg);}
+.evo-item.strengthen::before{background:var(--ok);}
+.evo-item.upgrade::before{background:var(--amber);}
+.evo-item.research::before{background:var(--danger);}
+.evo-item .time{font-family:'JetBrains Mono',monospace;font-size:.62rem;color:#475569;}
+.evo-item .msg{color:#cbd5e1;font-size:.72rem;margin-top:1px;}
+.evo-item .msg b.strengthen{color:#4ade80;}
+.evo-item .msg b.upgrade{color:#fbbf24;}
+.evo-item .msg b.research{color:#f87171;}
+.evo-item .msg b.polish{color:#38bdf8;}
+
+/* ══════ MATRIX TABLE ══════ */
+.matrix-wrap{background:var(--card);border:1px solid var(--border-dark);border-radius:10px;padding:14px 18px;margin-bottom:14px;overflow-x:auto;}
+.matrix-wrap h3{font-size:.82rem;color:#f1f5f9;margin-bottom:10px;letter-spacing:1px;}
+.matrix-table{width:100%;border-collapse:separate;border-spacing:2px;font-size:.7rem;}
+.matrix-table th{background:rgba(14,165,233,.08);color:#94a3b8;font-weight:600;padding:5px 7px;text-align:center;letter-spacing:.5px;}
+.matrix-table th.row{text-align:left;background:rgba(124,58,237,.08);color:#c4b5fd;}
+.matrix-table td{padding:5px 7px;text-align:center;background:rgba(30,41,59,.5);}
+.matrix-table td.row{text-align:left;background:rgba(30,41,59,.6);font-weight:600;color:#f1f5f9;}
+.matrix-table td.ok{background:rgba(22,163,74,.12);color:#4ade80;}
+.matrix-table td.off{background:rgba(220,38,38,.1);color:#f87171;}
+.matrix-table td.empty{background:rgba(148,163,184,.05);color:#374151;}
+
+/* ══════ MODAL ══════ */
+.modal-backdrop{position:fixed;inset:0;background:rgba(2,6,23,.75);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;z-index:100;}
+.modal-backdrop.show{display:flex;}
+.modal{background:#0f172a;border:1px solid rgba(14,165,233,.3);border-radius:14px;width:min(560px,92vw);max-height:82vh;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.6);}
+.modal-hd{padding:14px 20px;border-bottom:1px solid var(--border-dark);display:flex;justify-content:space-between;align-items:center;background:rgba(14,165,233,.08);}
+.modal-hd h3{font-size:.9rem;color:#f1f5f9;letter-spacing:1px;}
+.modal-close{background:none;border:none;color:#64748b;font-size:1.2rem;cursor:pointer;padding:0;line-height:1;}
+.modal-close:hover{color:#f1f5f9;}
+.modal-bd{padding:18px 20px;overflow-y:auto;max-height:calc(82vh - 120px);}
+.modal-ft{padding:12px 20px;border-top:1px solid var(--border-dark);display:flex;gap:8px;justify-content:flex-end;background:rgba(148,163,184,.03);}
+
+.form-row{margin-bottom:14px;}
+.form-row label{display:block;color:#94a3b8;font-size:.68rem;letter-spacing:1px;margin-bottom:5px;text-transform:uppercase;}
+.form-row input,.form-row select,.form-row textarea{
+  width:100%;padding:8px 10px;border-radius:6px;border:1px solid var(--border-dark);
+  background:rgba(30,41,59,.6);color:#f1f5f9;font-size:.8rem;font-family:inherit;}
+.form-row input:focus,.form-row select:focus,.form-row textarea:focus{outline:none;border-color:var(--iceberg);}
+.form-row textarea{min-height:60px;resize:vertical;}
+.form-row small{color:#64748b;font-size:.62rem;margin-top:4px;display:block;}
+
+.threshold-item{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:rgba(30,41,59,.5);border-radius:6px;margin-bottom:6px;}
+.threshold-item .k{color:#cbd5e1;font-size:.75rem;font-family:'JetBrains Mono',monospace;}
+.threshold-item .d{color:#64748b;font-size:.62rem;margin-top:2px;}
+.threshold-item input{width:90px;padding:5px 8px;border-radius:4px;border:1px solid var(--border-dark);background:rgba(15,23,42,.8);color:#fbbf24;font-family:'JetBrains Mono',monospace;text-align:right;font-size:.78rem;}
+
+/* ══════ ADMIN PANELS ══════ */
+.admin-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;}
+@media(max-width:900px){.admin-grid{grid-template-columns:1fr;}}
+.admin-card{background:var(--card);border:1px solid var(--border-dark);border-radius:10px;padding:16px 18px;}
+.admin-card h3{font-size:.82rem;color:#f1f5f9;margin-bottom:12px;letter-spacing:1px;display:flex;align-items:center;gap:8px;}
+.admin-card h3::before{content:'';width:3px;height:14px;background:var(--amber);border-radius:2px;}
+.admin-card.five-self h3::before{background:var(--iceberg);}
+.admin-card.daemon h3::before{background:var(--ok);}
+.admin-card.audit h3::before{background:var(--danger);}
+.admin-card.threshold h3::before{background:var(--purple);}
+
+.evolve-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;}
+.evolve-btn{display:flex;flex-direction:column;align-items:center;gap:4px;padding:14px 8px;background:rgba(30,41,59,.5);border:1px solid var(--border-dark);border-radius:8px;cursor:pointer;transition:all .15s;}
+.evolve-btn:hover{border-color:var(--amber);transform:translateY(-2px);}
+.evolve-btn .ic{font-size:1.5rem;}
+.evolve-btn .lab{font-size:.7rem;color:#cbd5e1;font-weight:600;}
+.evolve-btn .drv{font-size:.58rem;color:#64748b;font-family:'JetBrains Mono',monospace;}
+
+.daemon-row{display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:rgba(30,41,59,.4);border-radius:5px;margin-bottom:4px;font-size:.72rem;}
+.daemon-row .name{font-family:'JetBrains Mono',monospace;color:#cbd5e1;}
+.daemon-row .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:middle;}
+.dot.running,.dot.ok{background:#16a34a;box-shadow:0 0 6px var(--ok);}
+.dot.stopped,.dot.down{background:#dc2626;}
+.dot.unknown{background:#64748b;}
+.daemon-row .cycle{color:#64748b;font-size:.62rem;font-family:'JetBrains Mono',monospace;}
+.daemon-row.self-label{color:#fbbf24;font-size:.62rem;font-weight:600;letter-spacing:1px;margin-top:6px;display:flex;align-items:center;gap:6px;}
+.daemon-row.self-label::before{content:'';width:2px;height:8px;background:var(--amber);border-radius:2px;}
+
+.audit-row{padding:7px 10px;border-radius:4px;margin-bottom:3px;background:rgba(30,41,59,.4);font-size:.7rem;font-family:'JetBrains Mono',monospace;display:flex;gap:8px;align-items:center;}
+.audit-row .t{color:#475569;font-size:.6rem;}
+.audit-row .u{color:#c4b5fd;}
+.audit-row .a{color:#4ade80;}
+.audit-row .tg{color:#fbbf24;}
+
+/* ══════ TOGGLE SWITCH ══════ */
+.switch{position:relative;width:36px;height:20px;display:inline-block;cursor:pointer;}
+.switch input{opacity:0;width:0;height:0;}
+.switch .slider{position:absolute;inset:0;background:#374151;border-radius:20px;transition:.2s;}
+.switch .slider::before{content:'';position:absolute;height:14px;width:14px;left:3px;top:3px;background:white;border-radius:50%;transition:.2s;}
+.switch input:checked + .slider{background:#16a34a;}
+.switch input:checked + .slider::before{transform:translateX(16px);}
+
+.toast{position:fixed;bottom:20px;right:20px;padding:10px 16px;border-radius:7px;background:#1e293b;color:#f1f5f9;font-size:.78rem;z-index:200;transform:translateY(120%);transition:transform .25s;border-left:3px solid var(--iceberg);box-shadow:0 10px 30px rgba(0,0,0,.3);max-width:360px;}
+.toast.show{transform:translateY(0);}
+.toast.ok{border-left-color:var(--ok);}
+.toast.err{border-left-color:var(--danger);}
+
+.sec-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+.sec-hd h2{font-size:.9rem;color:#f1f5f9;font-weight:700;letter-spacing:1px;display:flex;align-items:center;gap:8px;}
+.sec-hd h2::before{content:'';width:3px;height:14px;background:var(--iceberg);border-radius:2px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- HERO -->
+<div class="hero">
+  <h1>🧊 仙女座 × 冰山 <span>元域意识中心</span></h1>
+  <p>v25.0 · 7 冰山域 × 五自能力 · 35 绑定点 · 120s 意识脉冲 · 后台管理</p>
+  <div class="hero-stats">
+    <span class="pill purple">🧊 7 DOMAINS</span>
+    <span class="pill">💪🧠⬆️✨🔬 FIVE SELF</span>
+    <span class="pill purple">35 BINDINGS</span>
+    <span class="pill">🧠 脑库 <span id="brain-count" style="color:#fbbf24;">—</span></span>
+    <span class="pill ok">HEALTH <span id="hero-health">—</span></span>
+    <span class="pill amber" id="hero-evo">EVOLUTION: waiting…</span>
+  </div>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('view')">👁️ 意识视图</div>
+  <div class="tab admin" onclick="switchTab('admin')">⚙️ 后台管理</div>
+</div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- 👁️ TAB 1: 意识视图 (原有展示) -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="panel active" id="panel-view">
+
+  <!-- ACTION -->
+  <div class="action-bar">
+    <button class="btn btn-primary" onclick="triggerPulse()">🧠 触发意识脉冲</button>
+    <button class="btn btn-amber" onclick="triggerSelf('self_strengthen')">💪 自强化</button>
+    <button class="btn btn-amber" onclick="triggerSelf('self_upgrade')">⬆️ 自升级</button>
+    <button class="btn btn-amber" onclick="triggerSelf('self_research')">🔬 自研发</button>
+    <span style="flex:1;"></span>
+    <span style="font-family:'JetBrains Mono',monospace;font-size:.68rem;color:#64748b;">上次脉冲: <span id="last-pulse">—</span></span>
+  </div>
+
+  <!-- STATS -->
+  <div class="stats-row">
+    <div class="stat-card"><div class="big" id="s-domains">7</div><div class="lab">冰山域</div></div>
+    <div class="stat-card purple"><div class="big" id="s-bindings">35</div><div class="lab">绑定点</div></div>
+    <div class="stat-card amber"><div class="big" id="s-pulses">—</div><div class="lab">意识脉冲</div></div>
+    <div class="stat-card ok"><div class="big" id="s-daemons">—</div><div class="lab">daemon</div></div>
+    <div class="stat-card danger"><div class="big" id="s-evolve">—</div><div class="lab">进化动作</div></div>
+  </div>
+
+  <!-- DOMAIN GRID -->
+  <div class="sec-hd"><h2>🧊 冰山域分布</h2><span id="domain-summary" style="font-size:.68rem;color:#64748b;"></span></div>
+  <div class="domain-grid" id="domain-grid"></div>
+
+  <!-- EVO TIMELINE -->
+  <div class="evo-wrap">
+    <h3>🔬 意识脉冲时间线</h3>
+    <div class="evo-tl" id="evo-tl"><div style="color:#475569;font-size:.72rem;">加载中…</div></div>
+  </div>
+
+  <!-- MATRIX -->
+  <div class="matrix-wrap">
+    <h3>📊 绑定矩阵 (35 绑定点)</h3>
+    <table class="matrix-table" id="matrix-table"></table>
+  </div>
+
+</div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- ⚙️ TAB 2: 后台管理 -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="panel" id="panel-admin">
+
+  <div class="admin-grid">
+
+    <!-- 五自进化触发 -->
+    <div class="admin-card five-self">
+      <h3>💪🧠⬆️✨🔬 手动触发五自进化</h3>
+      <div class="evolve-grid">
+        <div class="evolve-btn" onclick="triggerSelf('self_strengthen')">
+          <span class="ic">💪</span><span class="lab">自强化</span><span class="drv">rule_enforcer</span></div>
+        <div class="evolve-btn" onclick="triggerSelf('self_awaken')">
+          <span class="ic">🧠</span><span class="lab">自觉醒</span><span class="drv">consciousness</span></div>
+        <div class="evolve-btn" onclick="triggerSelf('self_upgrade')">
+          <span class="ic">⬆️</span><span class="lab">自升级</span><span class="drv">gray_release</span></div>
+        <div class="evolve-btn" onclick="triggerSelf('self_polish')">
+          <span class="ic">✨</span><span class="lab">自完善</span><span class="drv">auto_patrol</span></div>
+        <div class="evolve-btn" onclick="triggerSelf('self_research')">
+          <span class="ic">🔬</span><span class="lab">自研发</span><span class="drv">parliament</span></div>
+      </div>
+      <div style="margin-top:10px;font-size:.65rem;color:#64748b;">点击将以 admin 身份触发对应自能力 · 所有操作自动落 <b>mt_iceberg_admin_audit</b></div>
+    </div>
+
+    <!-- 阈值配置 -->
+    <div class="admin-card threshold">
+      <h3>🎯 意识脉冲阈值 <span style="color:#64748b;font-weight:400;font-size:.65rem;">(改后立即生效)</span></h3>
+      <div id="thresholds-list"><div style="color:#475569;font-size:.7rem;">加载中…</div></div>
+      <div style="margin-top:10px;display:flex;gap:6px;">
+        <button class="btn btn-primary btn-sm" onclick="saveThresholds()">💾 保存阈值</button>
+        <button class="btn btn-ghost btn-sm" onclick="loadThresholds()">🔄 重载</button>
+      </div>
+    </div>
+
+    <!-- daemon 状态 -->
+    <div class="admin-card daemon">
+      <h3>⚙️ 五自 Daemon 心跳</h3>
+      <div id="daemon-list"><div style="color:#475569;font-size:.7rem;">加载中…</div></div>
+    </div>
+
+    <!-- 审计日志 -->
+    <div class="admin-card audit">
+      <h3>📝 管理操作审计 <span style="color:#64748b;font-weight:400;font-size:.65rem;">(最近 20 条)</span></h3>
+      <div id="audit-list"><div style="color:#475569;font-size:.7rem;">加载中…</div></div>
+    </div>
+
+  </div>
+
+  <!-- 绑定编辑 (大型) -->
+  <div class="admin-card" style="margin-bottom:14px;">
+    <h3 style="font-size:.82rem;color:#f1f5f9;margin-bottom:12px;letter-spacing:1px;display:flex;align-items:center;gap:8px;">
+      <span style="width:3px;height:14px;background:#22d3ee;border-radius:2px;"></span>
+      🔗 绑定编辑 — 停用某域某自 / 手动健康覆盖
+    </h3>
+    <div style="overflow-x:auto;">
+      <table class="matrix-table" id="bind-edit-table"></table>
+    </div>
+    <div style="margin-top:10px;font-size:.65rem;color:#64748b;">
+      关闭开关 = 该域该自能力暂时停用 · 健康覆盖 = 强制该域健康分 (NULL = 自动计算)
+    </div>
+  </div>
+
+</div>
+
+</div>
+
+<!-- ═══════════════════ MODAL: 阈值编辑 ═══════════════════ -->
+<div class="modal-backdrop" id="modal-thresholds">
+  <div class="modal">
+    <div class="modal-hd"><h3>🎯 意识阈值配置</h3><button class="modal-close" onclick="closeModal('modal-thresholds')">✕</button></div>
+    <div class="modal-bd">
+      <div class="form-row">
+        <label>脑库 ≥ <input type="number" id="t-brain-upgrade" value="500"> 条 → ⬆️ 自升级</label>
+        <small>意识脉冲检测 mt_ai_brain_feed_log 累积量，到达此阈值下一次脉冲会触发自升级 proposal</small>
+      </div>
+      <div class="form-row">
+        <label>脑库 ≥ <input type="number" id="t-brain-research" value="1000"> 条 → 🔬 自研发</label>
+        <small>脑库积累到 N 条后，触发议会提案（mt_parliament_proposals）</small>
+      </div>
+      <div class="form-row">
+        <label>冰山域健康分 < <input type="number" id="t-health-strengthen" value="70"> → 💪 自强化</label>
+        <small>某冰山域 120s 脉冲健康分低于此值，自动触发修复动作 + 脑库投喂</small>
+      </div>
+      <div class="form-row">
+        <label>DOWN daemon > <input type="number" id="t-daemon-down" value="2"> → 💪 自强化</label>
+        <small>mt_daemon_registry 中 status!=RUNNING 的 daemon 超过 N 个，触发 sys_auto_repair</small>
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn btn-ghost" onclick="closeModal('modal-thresholds')">取消</button>
+      <button class="btn btn-primary" onclick="saveThresholdsModal()">💾 保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ MODAL: 域健康覆盖 ═══════════════════ -->
+<div class="modal-backdrop" id="modal-health">
+  <div class="modal">
+    <div class="modal-hd"><h3>🩺 手动覆盖域健康分</h3><button class="modal-close" onclick="closeModal('modal-health')">✕</button></div>
+    <div class="modal-bd">
+      <div class="form-row">
+        <label>冰山域</label>
+        <select id="h-domain">
+          <option value="ALL">ALL 全域控制</option>
+          <option value="iceberg_admin">iceberg_admin 管理冰山</option>
+          <option value="wenquxing">wenquxing 文曲星冰山</option>
+          <option value="education">education 教育冰山</option>
+          <option value="education_research">education_research 科研冰山</option>
+          <option value="education_wellness">education_wellness 学生福祉冰山</option>
+          <option value="education_mentorship">education_mentorship 师徒冰山</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label>强制健康分 (0–100, 留空=自动)</label>
+        <input type="number" id="h-health" min="0" max="100" step="0.1" placeholder="如 85.0">
+      </div>
+      <div class="form-row">
+        <label>原因</label>
+        <textarea id="h-reason" placeholder="临时修正某域健康分的原因…"></textarea>
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn btn-ghost" onclick="closeModal('modal-health')">取消</button>
+      <button class="btn btn-primary" onclick="saveHealth()">💾 保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+/* ══════════════════════════════════════════════════════════
+   🧊 仙女座 × 冰山 元域仪表板 — 前端交互
+   ══════════════════════════════════════════════════════════ */
+
+const SELF_DETAILS = {
+  self_strengthen:{label:'自强化',icon:'💪',driver:'sys_rule_enforcer',cycle:'300s',desc:'守护规则·防破坏·自动加固'},
+  self_awaken:    {label:'自觉醒',icon:'🧠',driver:'sys_consciousness',cycle:'120s',desc:'状态感知·广播EigenFlux·脑库投喂'},
+  self_upgrade:   {label:'自升级',icon:'⬆️',driver:'sys_gray_release_progress',cycle:'120s',desc:'灰度发布·审批闭环·智能门禁'},
+  self_polish:    {label:'自完善',icon:'✨',driver:'sys_auto_patrol',cycle:'300s',desc:'代码/UI/体验持续优化·自动修复'},
+  self_research:  {label:'自研发',icon:'🔬',driver:'sys_parliament',cycle:'600s',desc:'提案→辩论→投票→执行'},
+};
+
+let DOMAINS={}, BINDINGS=[], RUNS=[], THRESHOLDS=[], DAEMONS={}, AUDIT=[], OPTIMIZATIONS=[];
+
+const API = {
+  pulse:      ()=>fetch('/api/iceberg/pulse').then(x=>x.json()),
+  pulsePOST:  ()=>fetch('/api/iceberg/pulse',{method:'POST'}).then(x=>x.json()),
+  domains:    ()=>fetch('/api/iceberg/domains').then(x=>x.json()),
+  matrix:     ()=>fetch('/api/iceberg/matrix').then(x=>x.json()),
+  runs:       (l=15)=>fetch('/api/iceberg/runs?limit='+l).then(x=>x.json()),
+  thresholds: ()=>fetch('/api/iceberg/thresholds').then(x=>x.json()),
+  threshPUT:  (b)=>fetch('/api/iceberg/thresholds',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)}).then(x=>x.json()),
+  daemons:    ()=>fetch('/api/iceberg/daemons').then(x=>x.json()),
+  audit:      (l=50)=>fetch('/api/iceberg/audit?limit='+l).then(x=>x.json()),
+  toggle:     (d,s,e,reason)=>fetch(`/api/iceberg/bindings/${d}/${s}/toggle`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled:e,reason})}).then(x=>x.json()),
+  health:     (d,h,r)=>fetch('/api/iceberg/domain_health',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({domain:d,health:h,reason:r})}).then(x=>x.json()),
+  evolve:     (sk)=>fetch(`/api/iceberg/evolve/${sk}`,{method:'POST'}).then(x=>x.json()),
+};
+
+function toast(msg,cls='info'){
+  const t=document.getElementById('toast');t.textContent=msg;
+  t.className='toast show '+(cls==='ok'?'ok':cls==='err'?'err':'');
+  clearTimeout(window._tt);window._tt=setTimeout(()=>t.className='toast',2400);
+}
+
+function switchTab(t){
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('panel-'+t).classList.add('active');
+  if(t==='admin') loadAdminPanel();
+}
+
+function openModal(id){document.getElementById(id).classList.add('show');}
+function closeModal(id){document.getElementById(id).classList.remove('show');}
+
+/* ═══════════════════ LOAD ALL ═══════════════════ */
+async function loadAll(){
+  const [dRes,mRes,rRes,tRes,daRes,aRes,oRes] = await Promise.all([
+    API.domains(),API.matrix(),API.runs(15),API.thresholds(),API.daemons(),API.audit(20),
+    fetch('/api/iceberg/optimizations?limit=10').then(x=>x.json()).catch(()=>({optimizations:[]}))
+  ]);
+  DOMAINS=dRes.domains; BINDINGS=mRes.bindings; RUNS=rRes.runs; THRESHOLDS=tRes.thresholds;
+  DAEMONS=daRes.five_self_daemons; AUDIT=aRes.audit; OPTIMIZATIONS=oRes.optimizations;
+
+  // stats
+  document.getElementById('s-bindings').textContent = mRes.total;
+  document.getElementById('s-pulses').textContent = RUNS.length;
+  let running=0,total=0;
+  Object.values(daRes.all||{}).forEach(d=>{total++; if(d.status==='RUNNING'||d.status==='running'||d.status==='ok'||d.status==='OK') running++;});
+  document.getElementById('s-daemons').textContent = running+'/'+total;
+  document.getElementById('s-evolve').textContent = AUDIT.filter(x=>x.action?.startsWith('evolve')).length;
+
+  renderDomains(); renderMatrixView(); renderMatrixEdit(); renderTimeline();
+
+  if(RUNS[0]){
+    const l=RUNS[0];
+    document.getElementById('hero-health').textContent=l.health_score;
+    document.getElementById('hero-evo').textContent='EVOLUTION: '+(l.evolution_decision||'stable');
+    document.getElementById('last-pulse').textContent=l.created_at;
+    document.getElementById('brain-count').textContent=507;
+  }
+}
+
+async function loadAdminPanel(){
+  await loadThresholds(); renderDaemons(); renderAudit();
+}
+
+/* ═══════════════════ THRESHOLDS ═══════════════════ */
+async function loadThresholds(){
+  const r = await API.thresholds(); THRESHOLDS = r.thresholds;
+  const map = {}; r.thresholds.forEach(t=>map[t.threshold_key]=t);
+  // fill modal inputs
+  ['brain_upgrade','brain_research','health_strengthen','daemon_down'].forEach(k=>{
+    const el=document.getElementById('t-'+k);
+    if(el) el.value = map[k]?.value ?? 500;
+  });
+  // render list in admin panel
+  const container = document.getElementById('thresholds-list');
+  container.innerHTML = r.thresholds.map(t=>`
+    <div class="threshold-item">
+      <div>
+        <div class="k">${t.threshold_key}</div>
+        <div class="d">${t.description||''}</div>
+      </div>
+      <div>
+        <input type="number" value="${t.value}" id="th-${t.threshold_key}" data-k="${t.threshold_key}">
+      </div>
+    </div>
+  `).join('');
+}
+async function saveThresholds(){
+  const body = {};
+  document.querySelectorAll('#thresholds-list input').forEach(i=>body[i.dataset.k]=parseInt(i.value));
+  const r = await API.threshPUT(body);
+  toast(r.ok?`✅ 阈值已保存 (${r.updated.join(', ')})`:'❌ 保存失败', r.ok?'ok':'err');
+  if(r.ok) await loadThresholds();
+}
+async function saveThresholdsModal(){
+  const body = {
+    brain_upgrade:parseInt(document.getElementById('t-brain-upgrade').value),
+    brain_research:parseInt(document.getElementById('t-brain-research').value),
+    health_strengthen:parseInt(document.getElementById('t-health-strengthen').value),
+    daemon_down:parseInt(document.getElementById('t-daemon-down').value),
+  };
+  const r = await API.threshPUT(body);
+  toast(r.ok?'✅ 阈值已保存':'❌ 保存失败', r.ok?'ok':'err');
+  if(r.ok){closeModal('modal-thresholds'); await loadThresholds();}
+}
+
+/* ═══════════════════ DOMAIN GRID (VIEW) ═══════════════════ */
+function renderDomains(){
+  const keys=Object.keys(DOMAINS);
+  document.getElementById('domain-summary').textContent=`${keys.length} 域 · ${BINDINGS.filter(b=>b.enabled!==false).length}/${BINDINGS.length} bindings 启用中`;
+  const grid=document.getElementById('domain-grid');
+  grid.innerHTML=keys.map(k=>{
+    const d=DOMAINS[k];
+    const binds=BINDINGS.filter(b=>b.domain===k);
+    const fsHtml=['self_strengthen','self_awaken','self_upgrade','self_polish','self_research'].map(sk=>{
+      const b=binds.find(x=>x.self===sk); const det=SELF_DETAILS[sk];
+      return `<div class="dc-fs ${b?.enabled===false?'off':'ok'}"><span class="ic">${det.icon}</span><span class="lab">${det.label.replace('self_','')}</span></div>`;
+    }).join('');
+    const health = b=>b.health_override||98;
+    return `
+      <div class="domain-card dom-${k}" onclick="document.getElementById('h-domain').value='${k}';openModal('modal-health')">
+        <div class="dc-hd"><h4>🧊 ${k}</h4><span class="health good">${health()}%</span></div>
+        <div class="dc-desc">${d.desc||''}</div>
+        <div class="dc-roles">${(d.roles||[]).map(r=>`<span class="dc-role">${r}</span>`).join('')}</div>
+        <div class="dc-five-self">${fsHtml}</div>
+      </div>`;
+  }).join('');
+}
+
+/* ═══════════════════ MATRIX (VIEW + EDIT) ═══════════════════ */
+function renderMatrixView(){
+  const domains=Object.keys(DOMAINS);
+  const selfs=['self_strengthen','self_awaken','self_upgrade','self_polish','self_research'];
+  const selfLabels={'self_strengthen':'💪 自强化','self_awaken':'🧠 自觉醒','self_upgrade':'⬆️ 自升级','self_polish':'✨ 自完善','self_research':'🔬 自研发'};
+  let h=`<table class="matrix-table"><thead><tr><th class="row">🧊 冰山域</th>`;
+  selfs.forEach(s=>h+=`<th>${selfLabels[s]}</th>`);
+  h+=`<th>绑定数</th></tr></thead><tbody>`;
+  domains.forEach(dk=>{
+    const binds=BINDINGS.filter(b=>b.domain===dk);
+    h+=`<tr><td class="row">${dk}</td>`;
+    selfs.forEach(sk=>{
+      const b=binds.find(x=>x.self===sk);
+      if(b){
+        const cls=b.enabled===false?'off':'ok';
+        h+=`<td class="${cls}" title="${b.driver}${b.override_reason?' · '+b.override_reason:''}">${SELF_DETAILS[sk].icon} ${b.enabled===false?'OFF':'✓'}</td>`;
+      } else h+=`<td class="empty">—</td>`;
+    });
+    h+=`<td>${binds.filter(b=>b.enabled!==false).length}/5</td></tr>`;
+  });
+  document.getElementById('matrix-table').innerHTML=h;
+}
+
+function renderMatrixEdit(){
+  const domains=Object.keys(DOMAINS);
+  const selfs=['self_strengthen','self_awaken','self_upgrade','self_polish','self_research'];
+  const selfLabels={'self_strengthen':'💪 自强化','self_awaken':'🧠 自觉醒','self_upgrade':'⬆️ 自升级','self_polish':'✨ 自完善','self_research':'🔬 自研发'};
+  let h=`<table class="matrix-table"><thead><tr><th class="row">🧊 冰山域</th>`;
+  selfs.forEach(s=>h+=`<th>${selfLabels[s]}<br><span style="font-size:.58rem;color:#64748b;">ON/OFF · 健康覆盖</span></th>`);
+  h+=`</tr></thead><tbody>`;
+  domains.forEach(dk=>{
+    h+=`<tr><td class="row">${dk}</td>`;
+    selfs.forEach(sk=>{
+      const b=BINDINGS.find(x=>x.domain===dk && x.self===sk);
+      const enabled=b?.enabled!==false;
+      const ho=b?.health_override;
+      h+=`<td>
+        <label class="switch">
+          <input type="checkbox" ${enabled?'checked':''} onchange="toggleBinding('${dk}','${sk}',this.checked)">
+          <span class="slider"></span>
+        </label>
+        <input type="number" step="0.1" min="0" max="100" placeholder="${ho?'':'auto'}"
+               value="${ho||''}" style="width:60px;margin-left:4px;padding:2px 4px;font-size:.68rem;"
+               onchange="setHealth('${dk}',this.value)">
+      </td>`;
+    });
+    h+=`</tr>`;
+  });
+  document.getElementById('bind-edit-table').innerHTML=h;
+}
+
+async function toggleBinding(dom,self,on){
+  const r=await API.toggle(dom,self,on?1:0,on?'':'前端手动停用');
+  toast(r.ok?`✅ ${dom}/${self} ${on?'已启用':'已停用'}`:'❌ 失败', r.ok?'ok':'err');
+  if(r.ok){BINDINGS = BINDINGS.map(b=>b.domain===dom&&b.self===self?{...b,enabled:r.enabled}:b); renderMatrixView(); renderDomains();}
+}
+async function setHealth(dom,val){
+  const r=await API.health(dom, parseFloat(val)||null, val?'健康覆盖':'');
+  toast(r.ok?`✅ ${dom} 健康=${val||'auto'}`:'❌ 失败', r.ok?'ok':'err');
+}
+async function saveHealth(){
+  const dom=document.getElementById('h-domain').value;
+  const h=document.getElementById('h-health').value;
+  const r=await API.health(dom, h?parseFloat(h):null, document.getElementById('h-reason').value);
+  toast(r.ok?`✅ ${dom} 健康覆盖已保存`:'❌ 失败', r.ok?'ok':'err');
+  if(r.ok){closeModal('modal-health'); loadAll();}
+}
+
+/* ═══════════════════ TIMELINE ═══════════════════ */
+function renderTimeline(){
+  const tl=document.getElementById('evo-tl');
+  if(!RUNS.length){tl.innerHTML='<div style="color:#475569;font-size:.72rem;">等意识脉冲积累…</div>';return;}
+  tl.innerHTML=RUNS.map(r=>{
+    const evo=r.evolution_decision;
+    const cls=evo==='upgrade'?'upgrade':evo==='strengthen'?'strengthen':evo==='research'?'research':'pulse';
+    const msg=evo&&evo!=='none'
+      ?`触发 <b class="${evo}">${SELF_DETAILS[evo]?.label||evo}</b> (健康 ${r.health_score})`
+      :`意识脉冲 · 健康 ${r.health_score} · 五自全绿`;
+    return `<div class="evo-item ${cls}"><div class="time">${r.created_at}</div><div class="msg">${msg}</div></div>`;
+  }).join('');
+}
+
+/* ═══════════════════ DAEMONS ═══════════════════ */
+function renderDaemons(){
+  const el=document.getElementById('daemon-list');
+  let h='';
+  Object.entries(DAEMONS||{}).forEach(([self,d])=>{
+    h+=`<div class="daemon-row self-label">${SELF_DETAILS[self].icon} ${SELF_DETAILS[self].label} · all_ok=${d.all_ok?'✅':'⚠️'}</div>`;
+    d.daemons.forEach(dn=>{
+      const s=dn.status||'unknown';
+      const cls=/(RUNNING|running|ok|OK|ACTIVE|active)/.test(s)?'running':'down';
+      h+=`<div class="daemon-row">
+        <span><span class="dot ${cls}"></span><span class="name">${dn.process_name}</span></span>
+        <span class="cycle">${s} · 💓 ${dn.last_heartbeat||'—'}</span>
+      </div>`;
+    });
+  });
+  if(!h) h='<div style="color:#475569;font-size:.7rem;">无 daemon 数据</div>';
+  el.innerHTML=h;
+}
+
+/* ═══════════════════ AUDIT ═══════════════════ */
+function renderAudit(){
+  const el=document.getElementById('audit-list');
+  if(!AUDIT.length){el.innerHTML='<div style="color:#475569;font-size:.7rem;">暂无审计记录</div>';return;}
+  el.innerHTML=AUDIT.map(a=>`
+    <div class="audit-row">
+      <span class="t">${a.created_at?.slice(5,16)}</span>
+      <span class="u">@${a.username}</span>
+      <span class="a">${a.action}</span>
+      <span class="tg">→ ${a.target}</span>
+    </div>
+  `).join('');
+}
+
+/* ═══════════════════ ACTIONS ═══════════════════ */
+async function triggerPulse(){
+  toast('🧠 触发意识脉冲…');
+  const r=await API.pulsePOST();
+  if(r.ok){
+    toast(`✅ run=${r.pulse.run_id} health=${r.pulse.health_avg}`, 'ok');
+    document.getElementById('hero-health').textContent=r.pulse.health_avg;
+    document.getElementById('hero-evo').textContent='EVOLUTION: '+(r.pulse.evolution_decision||'stable');
+    document.getElementById('last-pulse').textContent=r.pulse.run_id;
+    document.getElementById('brain-count').textContent=r.pulse.brain_feed_total;
+    await loadAll();
+  } else toast('❌ 脉冲失败','err');
+}
+
+async function triggerSelf(selfKey){
+  if(!confirm(`确认手动触发 ${SELF_DETAILS[selfKey].icon} ${SELF_DETAILS[selfKey].label}?\n\n将生成意识脉冲 + 对应自能力动作 + 自动落审计。`)) return;
+  toast(`⚡ 触发 ${SELF_DETAILS[selfKey].label}…`);
+  const r=await API.evolve(selfKey);
+  if(r.ok){
+    const acts = Object.values(r.actions||{}).flat().join(' · ');
+    toast(`✅ 完成 · pulse=${r.pulse?.slice(-8)} · ${acts||selfKey}`, 'ok');
+    await loadAll();
+  } else toast('❌ 触发失败','err');
+}
+
+/* init */
+loadAll();
+setInterval(loadAll, 20000);
+</script>
+</body>
+</html>

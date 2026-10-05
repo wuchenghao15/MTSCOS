@@ -1,0 +1,590 @@
+{% extends "base_unified.html" %}
+{% block title %}文曲星 · 仙女座文学域 AI 写作生成器{% endblock %}
+
+{% block extra_head %}
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<style>
+  :root {
+    --ink-deep:#0A2342; --ink-mid:#1E4A63; --ink-light:#2C5F7C; --ink-wash:#5B8AA8;
+    --snow:#E8F0F2; --paper:#FFFFFF;
+    --gold:#C9A96E; --gold-bright:#E8C98A; --gold-deep:#8B6F3F;
+    --seal-red:#B83A2F;
+    --text-primary:#1A2E3D; --text-secondary:#4A6572; --text-muted:#8EA4B3;
+    --shadow-sm:0 1px 3px rgba(10,35,66,0.08);
+    --shadow-md:0 4px 16px rgba(10,35,66,0.12);
+    --shadow-lg:0 12px 32px rgba(10,35,66,0.16);
+    --radius-sm:6px; --radius-md:10px; --radius-lg:16px;
+    --ease-out:cubic-bezier(0.22,1,0.36,1);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{
+    font-family:'Noto Serif SC',-apple-system,BlinkMacSystemFont,serif;
+    background:var(--snow);
+    background-image:
+      radial-gradient(ellipse 900px 500px at 10% 15%,rgba(44,95,124,0.07),transparent 60%),
+      radial-gradient(ellipse 700px 400px at 90% 85%,rgba(30,74,99,0.05),transparent 60%),
+      radial-gradient(ellipse 500px 300px at 50% 50%,rgba(201,169,110,0.03),transparent 70%);
+    color:var(--text-primary);min-height:100vh;line-height:1.7;
+  }
+  .wqx-container{max-width:1400px;margin:0 auto;padding:32px 40px 80px;}
+
+  /* 题头 */
+  .wqx-header{text-align:center;margin-bottom:32px;padding:28px;background:linear-gradient(180deg,rgba(255,255,255,0.7),transparent);}
+  .wqx-badge{display:inline-block;padding:4px 16px;border:1px solid var(--gold);border-radius:20px;
+    font-size:0.72rem;color:var(--gold-deep);letter-spacing:2px;margin-bottom:12px;}
+  .wqx-title{font-size:2.6rem;font-weight:900;color:var(--ink-deep);letter-spacing:0.3em;
+    text-shadow:2px 2px 0 rgba(201,169,110,0.2);}
+  .wqx-subtitle{color:var(--text-muted);font-size:0.85rem;margin-top:8px;letter-spacing:0.1em;}
+  .wqx-ollama-chip{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:16px;
+    font-size:0.72rem;margin-top:14px;border:1px solid;}
+  .wqx-ollama-chip.online{border-color:#4CAF50;color:#2E7D32;background:rgba(76,175,80,0.08);}
+  .wqx-ollama-chip.offline{border-color:#F44336;color:#C62828;background:rgba(244,67,54,0.08);}
+  .wqx-ollama-dot{width:6px;height:6px;border-radius:50%;}
+  .wqx-ollama-chip.online .wqx-ollama-dot{background:#4CAF50;animation:pulse 2s infinite;}
+  .wqx-ollama-chip.offline .wqx-ollama-dot{background:#F44336;}
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.3;}}
+
+  /* 统计条 */
+  .wqx-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:28px;}
+  .wqx-stat-card{background:var(--paper);border-radius:var(--radius-lg);padding:18px;
+    box-shadow:var(--shadow-sm);border:1px solid rgba(10,35,66,0.04);}
+  .wqx-stat-num{font-size:1.8rem;font-weight:900;color:var(--ink-deep);font-family:'JetBrains Mono',monospace;}
+  .wqx-stat-lbl{font-size:0.72rem;color:var(--text-muted);letter-spacing:1px;margin-top:4px;}
+  .wqx-stat-card.gold{background:linear-gradient(135deg,rgba(201,169,110,0.1),rgba(232,201,138,0.05));border-color:rgba(201,169,110,0.2);}
+
+  /* 两栏布局 */
+  .wqx-main{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:24px;}
+  .wqx-col{display:flex;flex-direction:column;gap:20px;}
+  .wqx-card{background:var(--paper);border-radius:var(--radius-lg);padding:22px;
+    box-shadow:var(--shadow-sm);border:1px solid rgba(10,35,66,0.05);}
+  .wqx-card-title{font-size:0.78rem;color:var(--ink-mid);letter-spacing:2px;font-weight:700;
+    margin-bottom:16px;display:flex;align-items:center;gap:8px;}
+  .wqx-card-title::before{content:"";width:20px;height:2px;background:var(--gold);}
+
+  /* Genre 切换 (正常/网文/视频脚本) */
+  .wqx-genre-bar{display:flex;gap:8px;margin-bottom:14px;}
+  .wqx-genre-btn{flex:1;padding:10px;border:1px solid var(--ink-wash);border-radius:var(--radius-md);
+    background:transparent;cursor:pointer;font-family:inherit;font-size:0.82rem;color:var(--text-secondary);
+    transition:all 0.2s var(--ease-out);display:flex;align-items:center;justify-content:center;gap:6px;}
+  .wqx-genre-btn:hover{border-color:var(--ink-light);color:var(--ink-mid);}
+  .wqx-genre-btn.active{background:var(--ink-deep);color:var(--gold-bright);border-color:var(--ink-deep);}
+
+  /* 模式卡片网格 */
+  .wqx-modes{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;}
+  .wqx-mode{padding:12px 14px;border:1px solid var(--ink-wash);border-radius:var(--radius-md);
+    cursor:pointer;transition:all 0.2s var(--ease-out);display:flex;align-items:flex-start;gap:10px;
+    background:transparent;font-family:inherit;text-align:left;}
+  .wqx-mode:hover{border-color:var(--ink-light);transform:translateY(-1px);box-shadow:var(--shadow-sm);}
+  .wqx-mode.active{background:linear-gradient(135deg,rgba(10,35,66,0.96),rgba(30,74,99,0.9));
+    border-color:var(--ink-deep);color:var(--gold-bright);box-shadow:var(--shadow-md);}
+  .wqx-mode-icon{font-size:1.4rem;flex-shrink:0;}
+  .wqx-mode-info{flex:1;min-width:0;}
+  .wqx-mode-name{font-size:0.85rem;font-weight:700;margin-bottom:2px;}
+  .wqx-mode-desc{font-size:0.68rem;opacity:0.7;line-height:1.3;}
+
+  /* 星域网格 */
+  .wqx-stars{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;max-height:160px;overflow-y:auto;}
+  .wqx-star{padding:6px 8px;border:1px solid var(--ink-wash);border-radius:var(--radius-sm);
+    cursor:pointer;font-size:0.72rem;transition:all 0.15s;display:flex;align-items:center;gap:4px;
+    background:transparent;font-family:inherit;color:var(--text-secondary);}
+  .wqx-star:hover{border-color:var(--ink-light);background:rgba(44,95,124,0.05);}
+  .wqx-star.active{background:var(--ink-mid);color:white;border-color:var(--ink-mid);}
+  .wqx-star-icon{font-size:0.9rem;}
+
+  /* 表单输入 */
+  .wqx-field{margin-bottom:14px;}
+  .wqx-label{display:block;font-size:0.72rem;color:var(--text-muted);margin-bottom:6px;letter-spacing:1px;}
+  .wqx-input{width:100%;padding:10px 12px;border:1px solid var(--ink-wash);border-radius:var(--radius-md);
+    font-family:inherit;font-size:0.88rem;color:var(--text-primary);background:var(--paper);
+    transition:border-color 0.2s;resize:vertical;}
+  .wqx-input:focus{outline:none;border-color:var(--ink-light);box-shadow:0 0 0 3px rgba(44,95,124,0.08);}
+  .wqx-textarea{min-height:120px;}
+  .wqx-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .wqx-slider-row{display:flex;align-items:center;gap:12px;}
+  .wqx-slider{flex:1;accent-color:var(--ink-deep);}
+  .wqx-slider-val{font-family:'JetBrains Mono',monospace;font-size:0.85rem;color:var(--ink-deep);
+    background:rgba(10,35,66,0.06);padding:4px 10px;border-radius:var(--radius-sm);}
+
+  /* 字数统计 */
+  .wqx-word-count{display:flex;justify-content:space-between;align-items:center;margin-top:6px;}
+  .wqx-word-num{font-family:'JetBrains Mono',monospace;font-size:0.75rem;color:var(--text-muted);}
+  .wqx-word-num span{color:var(--ink-deep);font-weight:700;font-size:0.9rem;}
+
+  /* 生成按钮 */
+  .wqx-gen-btn{width:100%;padding:14px;border:none;border-radius:var(--radius-md);
+    background:linear-gradient(135deg,var(--ink-deep),var(--ink-mid));color:var(--gold-bright);
+    font-family:inherit;font-size:0.95rem;font-weight:700;letter-spacing:4px;cursor:pointer;
+    transition:all 0.2s var(--ease-out);display:flex;align-items:center;justify-content:center;gap:10px;
+    box-shadow:var(--shadow-md);}
+  .wqx-gen-btn:hover:not(:disabled){transform:translateY(-2px);box-shadow:var(--shadow-lg);}
+  .wqx-gen-btn:disabled{opacity:0.5;cursor:not-allowed;}
+  .wqx-gen-btn .spinner{width:16px;height:16px;border:2px solid rgba(232,201,138,0.3);
+    border-top-color:var(--gold-bright);border-radius:50%;animation:spin 0.8s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  /* 输出区 */
+  .wqx-output-wrap{position:relative;min-height:200px;}
+  .wqx-output-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+  .wqx-output-meta{font-size:0.72rem;color:var(--text-muted);display:flex;gap:12px;align-items:center;}
+  .wqx-output-meta .badge{background:rgba(10,35,66,0.06);padding:2px 8px;border-radius:10px;}
+  .wqx-output-actions{display:flex;gap:6px;}
+  .wqx-action-btn{padding:4px 10px;border:1px solid var(--ink-wash);border-radius:var(--radius-sm);
+    background:transparent;cursor:pointer;font-size:0.72rem;color:var(--text-secondary);
+    transition:all 0.15s;font-family:inherit;}
+  .wqx-action-btn:hover{border-color:var(--ink-light);color:var(--ink-mid);}
+  .wqx-output{min-height:160px;max-height:420px;overflow-y:auto;padding:18px 20px;
+    background:var(--paper);border:1px solid var(--ink-wash);border-radius:var(--radius-md);
+    font-size:0.9rem;line-height:1.9;color:var(--text-primary);}
+  .wqx-output h1,.wqx-output h2,.wqx-output h3{color:var(--ink-deep);margin:16px 0 8px;font-weight:900;letter-spacing:0.05em;}
+  .wqx-output h1{font-size:1.4rem;border-bottom:2px solid var(--gold);padding-bottom:8px;}
+  .wqx-output h2{font-size:1.15rem;}
+  .wqx-output h3{font-size:1rem;}
+  .wqx-output p{margin:8px 0;}
+  .wqx-output strong{color:var(--ink-deep);border-bottom:1px dashed var(--gold);padding-bottom:1px;}
+  .wqx-output ul,.wqx-output ol{padding-left:22px;margin:8px 0;}
+  .wqx-output li{margin:3px 0;}
+  .wqx-output blockquote{border-left:3px solid var(--gold);padding:6px 14px;background:rgba(201,169,110,0.05);
+    color:var(--text-secondary);margin:10px 0;font-size:0.85rem;}
+  .wqx-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;
+    min-height:160px;color:var(--text-muted);gap:8px;}
+  .wqx-empty-icon{font-size:2.5rem;opacity:0.4;}
+
+  /* 文学天团 */
+  .wqx-team{display:flex;flex-wrap:wrap;gap:8px;}
+  .wqx-member{padding:10px 12px;border:1px solid var(--ink-wash);border-radius:var(--radius-md);
+    background:linear-gradient(135deg,rgba(201,169,110,0.04),transparent);
+    display:flex;align-items:center;gap:10px;min-width:160px;flex:1;transition:all 0.2s;}
+  .wqx-member:hover{border-color:var(--gold);box-shadow:var(--shadow-sm);transform:translateY(-1px);}
+  .wqx-member-icon{font-size:1.5rem;flex-shrink:0;}
+  .wqx-member-info{flex:1;min-width:0;}
+  .wqx-member-name{font-size:0.82rem;font-weight:700;color:var(--ink-deep);}
+  .wqx-member-role{font-size:0.68rem;color:var(--text-muted);margin-top:2px;}
+  .wqx-member-lvl{font-size:0.6rem;color:var(--gold-deep);font-weight:700;letter-spacing:1px;}
+
+  /* EigenFlux 辅助 */
+  .wqx-eigenflux{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+  .wqx-helper{padding:8px 10px;border:1px solid var(--ink-wash);border-radius:var(--radius-sm);
+    cursor:pointer;transition:all 0.15s;display:flex;align-items:center;gap:6px;font-size:0.72rem;
+    background:transparent;font-family:inherit;color:var(--text-secondary);text-align:left;}
+  .wqx-helper:hover{border-color:var(--gold);background:rgba(201,169,110,0.06);}
+  .wqx-helper-icon{font-size:1.1rem;}
+
+  /* 历史任务 */
+  .wqx-history{max-height:280px;overflow-y:auto;}
+  .wqx-hist-item{padding:10px 12px;border-bottom:1px solid rgba(10,35,66,0.06);
+    cursor:pointer;transition:background 0.15s;display:flex;justify-content:space-between;gap:10px;}
+  .wqx-hist-item:hover{background:rgba(44,95,124,0.04);}
+  .wqx-hist-main{flex:1;min-width:0;}
+  .wqx-hist-topic{font-size:0.82rem;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .wqx-hist-meta{font-size:0.65rem;color:var(--text-muted);margin-top:3px;display:flex;gap:8px;}
+  .wqx-hist-status{font-size:0.65rem;padding:1px 6px;border-radius:8px;font-weight:700;flex-shrink:0;align-self:flex-start;}
+  .wqx-hist-status.done{background:rgba(76,175,80,0.15);color:#2E7D32;}
+  .wqx-hist-status.failed{background:rgba(244,67,54,0.15);color:#C62828;}
+  .wqx-hist-status.generating{background:rgba(255,152,0,0.15);color:#E65100;}
+
+  /* 导航入口 */
+  .wqx-nav-hero{text-align:center;padding:20px 0 0;margin-top:-8px;}
+  .wqx-nav-links{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin-bottom:8px;}
+  .wqx-nav-link{padding:6px 14px;border:1px solid var(--ink-wash);border-radius:20px;font-size:0.72rem;
+    color:var(--text-secondary);text-decoration:none;transition:all 0.2s;}
+  .wqx-nav-link:hover{border-color:var(--ink-light);color:var(--ink-mid);background:rgba(44,95,124,0.04);}
+  .wqx-nav-link.active{background:var(--ink-deep);color:var(--gold-bright);border-color:var(--ink-deep);}
+
+  @media(max-width:960px){
+    .wqx-main{grid-template-columns:1fr;}
+    .wqx-stats{grid-template-columns:repeat(2,1fr);}
+    .wqx-stars{grid-template-columns:repeat(3,1fr);}
+  }
+</style>
+{% endblock %}
+
+{% block page_title %}📜 文曲星 · 仙女座文学域{% endblock %}
+
+{% block content %}
+{% set ollama = ollama_status %}
+<div class="wqx-container">
+
+  <!-- 导航入口 (冰山内嵌) -->
+  <div class="wqx-nav-hero">
+    <div class="wqx-nav-links">
+      <a href="/andromeda/iceberg_center" class="wqx-nav-link">🏔️ 冰山中心</a>
+      <a href="/andromeda/iceberg_evolution" class="wqx-nav-link">📜 冰山演化</a>
+      <a href="/andromeda/wenquxing" class="wqx-nav-link active">📜 文曲星</a>
+      <a href="/andromeda/knowledge_brain" class="wqx-nav-link">🧠 知识脑库</a>
+      <a href="/andromeda/persona_chat" class="wqx-nav-link">💬 人格对话</a>
+      <a href="/andromeda/eigenflux_council" class="wqx-nav-link">✨ EigenFlux</a>
+      <a href="/andromeda/health_board" class="wqx-nav-link">🩺 健康度</a>
+    </div>
+  </div>
+
+  <!-- 权限提示: 非学生角色 -->
+  {% set sess_role = (session.get('role') or session.get('user_role') or '').strip().lower() %}
+  {% set _sa = {'super_admin', 'sa', 'wuchenghao15'} %}
+  {% set _student = {'student', '', 'learner', 'pupil'} %}
+  {% if sess_role not in _sa and sess_role not in _student %}
+  <div style="max-width:720px;margin:12px auto;padding:14px 20px;background:rgba(184,58,47,0.08);border:1px solid var(--seal-red);border-radius:var(--radius-md);color:var(--seal-red);font-size:0.85rem;text-align:center;line-height:1.7;">
+    🔒 文曲星为<b>学生专属页面</b><br>
+    管理员 / 教师 / 教授 / 家长 / 访客账号不可使用生文功能<br>
+    如需产出内容, 请走 <b>后台审批流程</b> 或联系学生账号代操作
+  </div>
+  {% endif %}
+
+  <!-- 题头 -->
+  <div class="wqx-header">
+    <div class="wqx-badge">仙女座 · 25 星域 · 文学域</div>
+    <div class="wqx-title">文 曲 星</div>
+    <div class="wqx-subtitle">❖ AI 写作生成器 · 本地仙女座算力 · 零 Token 消耗 ❖</div>
+    <div class="wqx-ollama-chip {{ 'online' if ollama.online else 'offline' }}">
+      <span class="wqx-ollama-dot"></span>
+      {% if ollama.online %}
+        ✅ Ollama 在线 · {{ ollama.model }}
+      {% else %}
+        ⚠️ Ollama 离线 · 请启动 `ollama serve`
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- 统计条 -->
+  <div class="wqx-stats">
+    <div class="wqx-stat-card gold">
+      <div class="wqx-stat-num">{{ wqx_stats.total_tasks }}</div>
+      <div class="wqx-stat-lbl">累计生成任务</div>
+    </div>
+    <div class="wqx-stat-card">
+      <div class="wqx-stat-num">{{ wqx_stats.done_tasks }}</div>
+      <div class="wqx-stat-lbl">完成任务</div>
+    </div>
+    <div class="wqx-stat-card">
+      <div class="wqx-stat-num">{{ wqx_stats.tokens_saved }}</div>
+      <div class="wqx-stat-lbl">Token 节省 (零消耗)</div>
+    </div>
+    <div class="wqx-stat-card">
+      <div class="wqx-stat-num">{{ literary_team.wqx_employee_count }}</div>
+      <div class="wqx-stat-lbl">文学 AI 员工</div>
+    </div>
+  </div>
+
+  <!-- 两栏 -->
+  <div class="wqx-main">
+    <!-- 左栏: 控制面板 -->
+    <div class="wqx-col">
+
+      <!-- Genre 切换 -->
+      <div class="wqx-card">
+        <div class="wqx-card-title">写 作 类 型</div>
+        <div class="wqx-genre-bar">
+          <button class="wqx-genre-btn active" data-genre="normal">📄 正常文章</button>
+          <button class="wqx-genre-btn" data-genre="webnovel">📖 网文连载</button>
+          <button class="wqx-genre-btn" data-genre="video_script">🎬 视频脚本</button>
+        </div>
+      </div>
+
+      <!-- 7 种模式 -->
+      <div class="wqx-card">
+        <div class="wqx-card-title">编 辑 模 式</div>
+        <div class="wqx-modes" id="wqx-modes">
+          {% for m in wqx_modes %}
+          <button class="wqx-mode {% if loop.first %}active{% endif %}" data-mode="{{ m.key }}">
+            <div class="wqx-mode-icon">{{ m.icon }}</div>
+            <div class="wqx-mode-info">
+              <div class="wqx-mode-name">{{ m.name }}</div>
+              <div class="wqx-mode-desc">{{ m.desc }}</div>
+            </div>
+          </button>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- 25 星域适配 -->
+      <div class="wqx-card">
+        <div class="wqx-card-title">星 域 适 配 (写作文风锚定)</div>
+        <div class="wqx-stars" id="wqx-stars">
+          {% for s in stars %}
+          <button class="wqx-star {% if loop.index0 == 0 %}active{% endif %}" data-star="{{ s.code }}"
+                  title="{{ s.desc }}">
+            <span class="wqx-star-icon">{{ s.icon }}</span>
+            {{ s.name }}
+          </button>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- 输入表单 -->
+      <div class="wqx-card">
+        <div class="wqx-card-title">内 容 输 入</div>
+        <div class="wqx-field">
+          <label class="wqx-label">主 题 / 原 文</label>
+          <textarea class="wqx-input wqx-textarea" id="wqx-topic" placeholder="{% if wqx_modes[0]['key'] == 'copy' %}请输入要写的主题, 例如: 仙女座冰山规则底座系统设计{% else %}请输入要改写/编辑的原文, 或在上方选对应模式后按提示输入{% endif %}"></textarea>
+          <div class="wqx-word-count">
+            <div class="wqx-word-num">当前字数: <span id="wqx-word-current">0</span></div>
+            <div class="wqx-word-num">目标: <span id="wqx-word-target">1500</span></div>
+          </div>
+        </div>
+        <div class="wqx-row">
+          <div class="wqx-field">
+            <label class="wqx-label">目 标 读 者</label>
+            <input type="text" class="wqx-input" id="wqx-audience" value="普通读者">
+          </div>
+          <div class="wqx-field">
+            <label class="wqx-label">写 作 风 格</label>
+            <input type="text" class="wqx-input" id="wqx-style" value="专业客观">
+          </div>
+        </div>
+        <div class="wqx-field">
+          <label class="wqx-label">目 标 字 数</label>
+          <div class="wqx-slider-row">
+            <input type="range" class="wqx-slider" id="wqx-words" min="200" max="8000" step="100" value="1500">
+            <span class="wqx-slider-val" id="wqx-words-val">1500</span>
+          </div>
+        </div>
+        <button class="wqx-gen-btn" id="wqx-gen-btn" {% if not ollama.online %}disabled{% endif %}>
+          {% if ollama.online %}⚡ 开 始 生 成{% else %}⚠️ Ollama 离线{% endif %}
+        </button>
+      </div>
+
+    </div><!-- end left col -->
+
+    <!-- 右栏: 输出 + 天团 + 历史 -->
+    <div class="wqx-col">
+
+      <!-- 输出展示 -->
+      <div class="wqx-card wqx-output-wrap">
+        <div class="wqx-output-header">
+          <div class="wqx-card-title" style="margin:0;">生 成 结 果</div>
+          <div class="wqx-output-meta">
+            <span class="badge" id="wqx-out-status">待生成</span>
+          </div>
+        </div>
+        <div id="wqx-output" class="wqx-output">
+          <div class="wqx-empty">
+            <div class="wqx-empty-icon">📜</div>
+            <div>左侧选模式 + 填主题 → 点"开始生成"</div>
+            <div style="font-size:0.72rem;">本地 Ollama 推理, 零 Token 消耗</div>
+          </div>
+        </div>
+        <div class="wqx-output-header" style="margin-top:12px;">
+          <div class="wqx-output-meta">
+            <span id="wqx-out-words"></span>
+            <span id="wqx-out-time"></span>
+            <span id="wqx-out-saved"></span>
+          </div>
+          <div class="wqx-output-actions">
+            <button class="wqx-action-btn" id="wqx-copy-btn" disabled>📋 复制</button>
+            <button class="wqx-action-btn" id="wqx-download-btn" disabled>📥 下载 .md</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 文学 AI 天团 -->
+      <div class="wqx-card">
+        <div class="wqx-card-title">文 学 AI 天 团 ({{ literary_team.employees|length }} 位)</div>
+        <div class="wqx-team">
+          {% for m in literary_team.employees %}
+          <div class="wqx-member">
+            <div class="wqx-member-icon">{{ m.icon }}</div>
+            <div class="wqx-member-info">
+              <div class="wqx-member-name">{{ m.name }} · {{ m.role }}</div>
+              <div class="wqx-member-role">{{ m.domain }}</div>
+            </div>
+            <div class="wqx-member-lvl">Lv{{ m.level }}</div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- EigenFlux 专家辅助 -->
+      <div class="wqx-card">
+        <div class="wqx-card-title">EigenFlux 风 格 专 家 (辅助写作视角)</div>
+        <div class="wqx-eigenflux">
+          {% for h in eigenflux_team %}
+          <div class="wqx-helper" title="{{ h.expertise }}">
+            <span class="wqx-helper-icon">{{ h.icon }}</span>
+            <span>{{ h.name }} · {{ h.expertise[:8] }}</span>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- 历史任务 -->
+      <div class="wqx-card">
+        <div class="wqx-card-title">历 史 任 务</div>
+        <div class="wqx-history" id="wqx-history">
+          <div class="wqx-empty" style="min-height:80px;">
+            <div style="font-size:0.78rem;">加载中...</div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- end right col -->
+  </div>
+</div>
+
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+
+  // ===== State =====
+  let state = { mode: 'copy', genre: 'normal', star: 'wenquxing' };
+  let lastResult = null;
+
+  // ===== Mode click =====
+  document.querySelectorAll('.wqx-mode').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('.wqx-mode').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      state.mode = btn.dataset.mode;
+    });
+  });
+
+  // ===== Genre click =====
+  document.querySelectorAll('.wqx-genre-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('.wqx-genre-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      state.genre = btn.dataset.genre;
+    });
+  });
+
+  // ===== Star click =====
+  document.querySelectorAll('.wqx-star').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('.wqx-star').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      state.star = btn.dataset.star;
+    });
+  });
+
+  // ===== Word count =====
+  const topicEl = $('wqx-topic');
+  const wcCur = $('wqx-word-current');
+  const wcTgt = $('wqx-word-target');
+  topicEl.addEventListener('input', ()=>{
+    const c = topicEl.value.replace(/[\s\n]/g,'').length;
+    wcCur.textContent = c.toLocaleString();
+  });
+
+  // ===== Words slider =====
+  const slider = $('wqx-words');
+  const sliderVal = $('wqx-words-val');
+  slider.addEventListener('input', ()=>{
+    sliderVal.textContent = slider.value;
+    wcTgt.textContent = slider.value;
+  });
+
+  // ===== Generate =====
+  const genBtn = $('wqx-gen-btn');
+  genBtn.addEventListener('click', async ()=>{
+    const topic = topicEl.value.trim();
+    if(!topic){ alert('请输入主题或原文'); topicEl.focus(); return; }
+
+    genBtn.disabled = true;
+    genBtn.innerHTML = '<div class="spinner"></div> 生 成 中...';
+    $('wqx-out-status').textContent = '生成中...';
+    $('wqx-output').innerHTML = '<div class="wqx-empty"><div class="wqx-empty-icon">⚡</div><div>Ollama 推理中, 可能 30-180s...</div></div>';
+
+    const start = Date.now();
+    try{
+      const resp = await fetch('/api/wqx/generate', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          mode: state.mode,
+          topic: topic,
+          audience: $('wqx-audience').value,
+          style: $('wqx-style').value,
+          target_words: parseInt(slider.value),
+          star_domain: state.star,
+          genre: state.genre,
+        })
+      });
+      const data = await resp.json();
+      const elapsed = ((Date.now()-start)/1000).toFixed(1);
+
+      if(data.code !== 0){
+        $('wqx-output').innerHTML = `<div class="wqx-empty" style="color:#C62828;"><div class="wqx-empty-icon">❌</div><div>${data.msg || '生成失败'}</div></div>`;
+        $('wqx-out-status').textContent = '失败';
+      } else {
+        const r = data.data;
+        $('wqx-out-status').textContent = `✅ 完成 · ${r.task_id}`;
+        $('wqx-out-words').textContent = `字数: ${r.word_count.toLocaleString()}`;
+        $('wqx-out-time').textContent = `耗时: ${elapsed}s`;
+        $('wqx-out-saved').textContent = `零 Token · 节省 ${r.tokens_saved.toLocaleString()}`;
+        $('wqx-output').innerHTML = marked.parse(r.final_text || '');
+        lastResult = { ...r, text: r.final_text };
+        $('wqx-copy-btn').disabled = false;
+        $('wqx-download-btn').disabled = false;
+        loadHistory();
+      }
+    }catch(err){
+      $('wqx-output').innerHTML = `<div class="wqx-empty" style="color:#C62828;"><div class="wqx-empty-icon">❌</div><div>网络错误: ${err.message}</div></div>`;
+      $('wqx-out-status').textContent = '错误';
+    } finally {
+      genBtn.disabled = false;
+      genBtn.innerHTML = '⚡ 开 始 生 成';
+    }
+  });
+
+  // ===== Copy =====
+  $('wqx-copy-btn').addEventListener('click', ()=>{
+    if(!lastResult) return;
+    navigator.clipboard.writeText(lastResult.text).then(()=>{
+      const b = $('wqx-copy-btn'); const t = b.textContent;
+      b.textContent = '✅ 已复制'; setTimeout(()=>b.textContent = t, 1500);
+    });
+  });
+
+  // ===== Download =====
+  $('wqx-download-btn').addEventListener('click', ()=>{
+    if(!lastResult) return;
+    const blob = new Blob([lastResult.text], {type:'text/markdown;charset=utf-8'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `wenquxing_${lastResult.task_id}.md`;
+    a.click(); URL.revokeObjectURL(a.href);
+  });
+
+  // ===== History =====
+  async function loadHistory(){
+    try{
+      const r = await fetch('/api/wqx/list?limit=15');
+      const d = await r.json();
+      if(d.code !== 0) return;
+      const list = d.data || [];
+      const el = $('wqx-history');
+      if(!list.length){ el.innerHTML = '<div class="wqx-empty" style="min-height:80px;"><div style="font-size:0.78rem;">暂无历史</div></div>'; return; }
+      el.innerHTML = list.map(t=>`
+        <div class="wqx-hist-item" data-id="${t.task_id}">
+          <div class="wqx-hist-main">
+            <div class="wqx-hist-topic">${t.topic ? t.topic.slice(0,50) : '(空)'}</div>
+            <div class="wqx-hist-meta">
+              <span>${t.mode_name || t.mode}</span>
+              <span>${t.target_words}字</span>
+              <span>${(t.created_at||'').slice(5,16).replace('T',' ')}</span>
+            </div>
+          </div>
+          <div class="wqx-hist-status ${t.status}">${t.status==='done'?'完成':t.status==='failed'?'失败':'生成'}</div>
+        </div>
+      `).join('');
+      el.querySelectorAll('.wqx-hist-item').forEach(it=>{
+        it.addEventListener('click', async ()=>{
+          const tid = it.dataset.id;
+          const resp = await fetch(`/api/wqx/task/${tid}`);
+          const td = await resp.json();
+          if(td.code === 0 && td.data){
+            const r = td.data;
+            $('wqx-output').innerHTML = marked.parse(r.final_text || '');
+            $('wqx-out-words').textContent = `字数: ${(r.final_text||'').replace(/[\s\n]/g,'').length.toLocaleString()}`;
+            $('wqx-out-status').textContent = `📜 ${tid}`;
+            lastResult = { task_id: tid, text: r.final_text };
+            $('wqx-copy-btn').disabled = false;
+            $('wqx-download-btn').disabled = false;
+          }
+        });
+      });
+    }catch(e){}
+  }
+  loadHistory();
+})();
+</script>
+{% endblock %}

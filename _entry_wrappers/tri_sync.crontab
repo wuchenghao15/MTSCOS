@@ -1,0 +1,17 @@
+# =============================================================================
+# MTSCOS AI —— 三路双向同步 cron 配置
+# =============================================================================
+# 开发机 crontab: crontab -e → 粘贴以下内容
+# =============================================================================
+
+# 每 10 分钟: 轻量 git fetch + 影子快照
+*/10 * * * * /Users/wuchenghao/Library/CloudStorage/OneDrive-个人/文档/MTSCOS_AI_Project/_entry_wrappers/tri_sync.sh git >> /Users/wuchenghao/Library/CloudStorage/OneDrive-个人/文档/MTSCOS_AI_Project/_runtime/logs/tri_sync_cron.log 2>&1
+
+# 每小时: 影子快照（轻量 rsync DB checkpoint 后快照）
+0 * * * * /Users/wuchenghao/Library/CloudStorage/OneDrive-个人/文档/MTSCOS_AI_Project/_entry_wrappers/tri_sync.sh shadow >> /Users/wuchenghao/Library/CloudStorage/OneDrive-个人/文档/MTSCOS_AI_Project/_runtime/logs/tri_sync_cron.log 2>&1
+
+# 每 6 小时: DB 双向同步（重操作，限速 5MB/s）
+0 */6 * * * /Users/wuchenghao/Library/CloudStorage/OneDrive-个人/文档/MTSCOS_AI_Project/_entry_wrappers/tri_sync.sh db >> /Users/wuchenghao/Library/CloudStorage/OneDrive-个人/文档/MTSCOS_AI_Project/_runtime/logs/tri_sync_cron.log 2>&1
+
+# 每天 03:00: 全量同步 + 清理 7 天前快照
+0 3 * * * /Users/wuchenghao/Library/CloudStorage/OneDrive-个人/文档/MTSCOS_AI_Project/_entry_wrappers/tri_sync.sh all >> /Users/wuchenghao/Library/CloudStorage/OneDrive-个人/文档/MTSCOS_AI_Project/_runtime/logs/tri_sync_cron.log 2>&1

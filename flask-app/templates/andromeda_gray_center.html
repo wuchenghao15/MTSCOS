@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🟢 仙女座灰度发布工作台 · v25.0</title>
+<style>
+:root{
+  --bg:#0f172a; --bg2:#1e293b; --bg3:#334155; --surface:#111827;
+  --card:#ffffff; --ink:#0f172a; --ink-2:#334155; --muted:#64748b;
+  --iceberg:#0ea5e9; --iceberg-dim:#0284c7; --iceberg-glow:rgba(14,165,233,.25);
+  --ok:#16a34a; --ok-dim:#22c55e; --warn:#d97706; --danger:#dc2626; --purple:#7c3aed;
+  --border:#e2e8f0; --border-dark:rgba(148,163,184,.15);
+  --radius:10px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;}
+body{
+  font-family:-apple-system,'PingFang SC','Segoe UI','Helvetica Neue',sans-serif;
+  background:linear-gradient(135deg,#020617 0%,#0c4a6e 40%,#1e1b4b 100%);
+  min-height:100vh;color:#e2e8f0;overflow-x:hidden;
+}
+
+/* ═══════════════ HEADER ═══════════════ */
+.hdr{
+  padding:24px 32px 18px;position:relative;
+  background:linear-gradient(180deg,rgba(2,6,23,.9) 0%,rgba(15,23,42,.7) 100%);
+  border-bottom:1px solid var(--border-dark);
+}
+.hdr::before{
+  content:'🧊';position:absolute;font-size:200px;opacity:.06;right:-30px;top:-40px;pointer-events:none;
+}
+.hdr-row{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;flex-wrap:wrap;}
+.hdr-title h1{font-size:1.55rem;font-weight:700;letter-spacing:3px;color:#f1f5f9;}
+.hdr-title h1 span{color:var(--iceberg);}
+.hdr-title p{color:#64748b;font-size:.75rem;letter-spacing:1px;margin-top:4px;}
+.hdr-right{display:flex;gap:10px;align-items:center;}
+.hdr-right .pdaemon{
+  display:flex;align-items:center;gap:6px;background:rgba(22,163,74,.12);
+  border:1px solid rgba(22,163,74,.35);border-radius:20px;padding:6px 14px;font-size:.72rem;color:#4ade80;
+  font-family:'JetBrains Mono',monospace;letter-spacing:.5px;
+}
+.hdr-right .pdaemon .dot{width:8px;height:8px;background:#4ade80;border-radius:50%;animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
+
+/* ═══════════════ STATS CARDS ═══════════════ */
+.stats-wrap{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;padding:18px 32px 0;}
+.stat{
+  background:rgba(17,24,39,.85);border:1px solid var(--border-dark);border-radius:var(--radius);
+  padding:14px 16px;position:relative;overflow:hidden;transition:transform .15s;
+}
+.stat:hover{transform:translateY(-2px);}
+.stat::before{content:'';position:absolute;left:0;top:0;width:4px;height:100%;}
+.stat.full::before{background:var(--ok);}
+.stat.releasing::before{background:var(--iceberg);}
+.stat.rolled::before{background:var(--danger);}
+.stat.draft::before{background:var(--muted);}
+.stat.metrics::before{background:var(--warn);}
+.stat.flags::before{background:var(--purple);}
+.stat .n{font-size:1.65rem;font-weight:800;font-family:'JetBrains Mono',monospace;color:#f1f5f9;line-height:1.1;}
+.stat .l{font-size:.7rem;color:#64748b;letter-spacing:1px;margin-top:4px;text-transform:uppercase;}
+.stat .trend{position:absolute;right:12px;top:10px;font-size:.65rem;color:#4ade80;}
+.stat.rolled .trend{color:#f87171;}
+
+/* ═══════════════ TOOLBAR ═══════════════ */
+.toolbar{
+  padding:18px 32px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;
+  background:rgba(15,23,42,.5);border-bottom:1px solid var(--border-dark);
+}
+.tb-search,.tb-filter{
+  background:rgba(17,24,39,.8);border:1px solid var(--border-dark);border-radius:8px;
+  padding:8px 12px;color:#e2e8f0;font-size:.8rem;font-family:inherit;outline:none;
+}
+.tb-search:focus,.tb-filter:focus{border-color:var(--iceberg);}
+.tb-search{min-width:200px;}
+.tb-filter option{background:#1e293b;}
+.tb-spacer{flex:1;}
+
+/* ═══════════════ MAIN AREA ═══════════════ */
+.main-layout{display:grid;grid-template-columns:1fr;gap:16px;padding:18px 32px;}
+.panel{
+  background:rgba(17,24,39,.85);border:1px solid var(--border-dark);border-radius:var(--radius);
+  overflow:hidden;
+}
+.panel-hd{
+  padding:14px 20px;display:flex;justify-content:space-between;align-items:center;gap:12px;
+  border-bottom:1px solid var(--border-dark);
+}
+.panel-hd h2{font-size:.92rem;font-weight:600;color:#f1f5f9;letter-spacing:1px;display:flex;align-items:center;gap:10px;}
+.panel-hd h2::before{content:'';width:3px;height:16px;background:var(--iceberg);border-radius:2px;}
+
+/* ═══════════════ TABLE ═══════════════ */
+.table-wrap{overflow-x:auto;}
+table.releases{width:100%;border-collapse:collapse;font-size:.82rem;}
+table.releases thead{background:rgba(14,165,233,.08);}
+table.releases th{
+  text-align:left;padding:12px 16px;color:#94a3b8;font-weight:600;font-size:.72rem;
+  letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid var(--border-dark);white-space:nowrap;
+}
+table.releases td{padding:14px 16px;color:#cbd5e1;border-bottom:1px solid rgba(148,163,184,.08);vertical-align:middle;}
+table.releases tbody tr{transition:background .1s;}
+table.releases tbody tr:hover{background:rgba(14,165,233,.04);}
+table.releases tbody tr:last-child td{border-bottom:none;}
+table.releases .col-name{min-width:220px;}
+table.releases .col-stage{min-width:340px;}
+table.releases .col-meta{font-family:'JetBrains Mono',monospace;color:#64748b;font-size:.7rem;white-space:nowrap;}
+table.releases .col-actions{white-space:nowrap;text-align:right;}
+
+/* stage pipeline in table */
+.pipeline-cell{display:flex;align-items:center;gap:2px;}
+.pnode{
+  display:flex;flex-direction:column;align-items:center;min-width:34px;padding:5px 3px;border-radius:5px;
+  border:1px solid var(--border-dark);font-size:.62rem;color:#64748b;background:rgba(30,41,59,.6);transition:all .2s;
+}
+.pnode.done{border-color:rgba(22,163,74,.5);background:rgba(22,163,74,.1);color:#4ade80;}
+.pnode.cur{border-color:var(--iceberg);background:rgba(14,165,233,.12);color:var(--iceberg);box-shadow:0 0 0 2px var(--iceberg-glow);}
+.pnode .p{font-weight:700;font-family:'JetBrains Mono',monospace;font-size:.72rem;}
+.pnode .l{font-size:.58rem;letter-spacing:.5px;margin-top:1px;}
+.parrow{color:#475569;font-size:.7rem;margin:0 1px;}
+
+/* badge + risk */
+.badge{padding:3px 9px;border-radius:4px;font-size:.68rem;font-weight:600;letter-spacing:.5px;}
+.badge-status-draft{background:rgba(148,163,184,.15);color:#94a3b8;}
+.badge-status-releasing{background:rgba(14,165,233,.15);color:#38bdf8;}
+.badge-status-full{background:rgba(22,163,74,.15);color:#4ade80;}
+.badge-status-rolled_back{background:rgba(220,38,38,.15);color:#f87171;}
+.badge-risk-low{background:rgba(22,163,74,.15);color:#4ade80;}
+.badge-risk-medium{background:rgba(217,119,6,.15);color:#fbbf24;}
+.badge-risk-high{background:rgba(239,68,68,.15);color:#fca5a5;}
+.badge-risk-critical{background:rgba(124,58,237,.2);color:#c4b5fd;}
+
+/* ═══════════════ BUTTONS ═══════════════ */
+.btn{
+  padding:7px 14px;border-radius:6px;border:none;cursor:pointer;font-size:.78rem;font-weight:600;
+  letter-spacing:.5px;transition:all .12s;display:inline-flex;align-items:center;gap:6px;font-family:inherit;
+}
+.btn-primary{background:var(--iceberg);color:white;}
+.btn-primary:hover:not([disabled]){background:var(--iceberg-dim);}
+.btn-ghost{background:transparent;color:#cbd5e1;border:1px solid var(--border-dark);}
+.btn-ghost:hover:not([disabled]){background:rgba(148,163,184,.1);border-color:#64748b;}
+.btn-danger{background:var(--danger);color:white;}
+.btn-danger:hover:not([disabled]){background:#b91c1c;}
+.btn-success{background:var(--ok);color:white;}
+.btn-success:hover:not([disabled]){background:#15803d;}
+.btn-warn{background:var(--warn);color:white;}
+.btn-sm{padding:5px 10px;font-size:.72rem;}
+.btn-xs{padding:3px 8px;font-size:.68rem;}
+.btn[disabled]{opacity:.4;cursor:not-allowed;}
+.btn-icon{width:28px;height:28px;padding:0;display:inline-flex;align-items:center;justify-content:center;border-radius:6px;}
+
+/* ═══════════════ CREATE MODAL ═══════════════ */
+.modal-mask{
+  position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;display:none;
+  align-items:center;justify-content:center;backdrop-filter:blur(4px);
+}
+.modal-mask.show{display:flex;}
+.modal{
+  background:#1e293b;border:1px solid var(--border-dark);border-radius:14px;width:540px;max-width:92vw;
+  max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.4);
+}
+.modal-hd{
+  padding:18px 24px;border-bottom:1px solid var(--border-dark);display:flex;justify-content:space-between;align-items:center;
+}
+.modal-hd h3{font-size:1rem;color:#f1f5f9;letter-spacing:1px;}
+.modal-close{background:none;border:none;color:#64748b;font-size:1.4rem;cursor:pointer;padding:0;}
+.modal-close:hover{color:#f1f5f9;}
+.modal-body{padding:20px 24px;}
+.modal-ft{padding:14px 24px;border-top:1px solid var(--border-dark);display:flex;justify-content:flex-end;gap:10px;}
+.field{margin-bottom:14px;}
+.field label{display:block;font-size:.72rem;color:#94a3b8;letter-spacing:1px;margin-bottom:6px;text-transform:uppercase;}
+.field input,.field select,.field textarea{
+  width:100%;padding:10px 12px;background:rgba(15,23,42,.8);border:1px solid var(--border-dark);border-radius:8px;
+  color:#e2e8f0;font-size:.85rem;font-family:inherit;outline:none;transition:border .15s;
+}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--iceberg);}
+.field textarea{min-height:70px;resize:vertical;}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+
+/* ═══════════════ DETAIL DRAWER ═══════════════ */
+.drawer-mask{
+  position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:90;display:none;backdrop-filter:blur(2px);
+}
+.drawer-mask.show{display:block;}
+.drawer{
+  position:fixed;right:0;top:0;bottom:0;width:520px;max-width:92vw;background:#0f172a;border-left:1px solid var(--border-dark);
+  z-index:91;transform:translateX(100%);transition:transform .25s ease;display:flex;flex-direction:column;
+  box-shadow:-20px 0 60px rgba(0,0,0,.4);
+}
+.drawer.show{transform:translateX(0);}
+.drawer-hd{
+  padding:18px 20px;border-bottom:1px solid var(--border-dark);display:flex;justify-content:space-between;align-items:center;gap:12px;
+}
+.drawer-hd h3{font-size:.95rem;color:#f1f5f9;letter-spacing:.5px;display:flex;align-items:center;gap:10px;flex:1;min-width:0;}
+.drawer-hd h3 .n{font-family:'JetBrains Mono',monospace;font-size:.7rem;color:#64748b;font-weight:400;letter-spacing:0;}
+.drawer-body{flex:1;overflow-y:auto;padding:16px 20px;}
+.drawer-section{margin-bottom:22px;}
+.drawer-section h4{font-size:.72rem;color:#64748b;letter-spacing:1px;margin-bottom:10px;text-transform:uppercase;display:flex;align-items:center;gap:8px;}
+.drawer-section h4::before{content:'';width:2px;height:10px;background:var(--iceberg);border-radius:2px;}
+.meta-kv{display:grid;grid-template-columns:110px 1fr;gap:6px 12px;font-size:.78rem;}
+.meta-kv .k{color:#64748b;letter-spacing:.5px;}
+.meta-kv .v{color:#cbd5e1;font-family:'JetBrains Mono',monospace;word-break:break-all;}
+
+/* metrics */
+.metrics-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+.metric-mini{
+  background:rgba(30,41,59,.6);border-radius:8px;padding:10px;text-align:center;border:1px solid var(--border-dark);
+}
+.metric-mini .v{font-size:1.1rem;font-weight:700;font-family:'JetBrains Mono',monospace;color:#f1f5f9;}
+.metric-mini .k{font-size:.6rem;color:#64748b;letter-spacing:1px;margin-top:2px;}
+.metric-mini.ok .v{color:#4ade80;}.metric-mini.warn .v{color:#fbbf24;}.metric-mini.danger .v{color:#f87171;}
+
+/* stage pipeline (big) */
+.pipeline-big{display:flex;align-items:center;gap:4px;flex-wrap:wrap;}
+.pnode-big{
+  display:flex;flex-direction:column;align-items:center;padding:10px 12px;border-radius:8px;
+  border:2px solid var(--border-dark);background:rgba(30,41,59,.6);min-width:56px;font-size:.68rem;color:#64748b;
+}
+.pnode-big.done{border-color:rgba(22,163,74,.5);background:rgba(22,163,74,.1);color:#4ade80;}
+.pnode-big.cur{border-color:var(--iceberg);background:rgba(14,165,233,.12);color:var(--iceberg);box-shadow:0 0 0 3px var(--iceberg-glow);}
+.pnode-big .p{font-weight:700;font-family:'JetBrains Mono',monospace;font-size:.85rem;}
+.pnode-big .l{font-size:.62rem;letter-spacing:.5px;margin-top:3px;}
+.parrow-big{color:#475569;font-size:1rem;}
+
+/* approvals nodes timeline */
+.timeline{position:relative;padding-left:20px;}
+.timeline::before{content:'';position:absolute;left:6px;top:6px;bottom:6px;width:2px;background:rgba(148,163,184,.2);}
+.tline-item{position:relative;padding:6px 0 6px 14px;font-size:.78rem;}
+.tline-item .dot{position:absolute;left:-18px;top:10px;width:10px;height:10px;border-radius:50%;border:2px solid var(--bg2);}
+.tline-item.done .dot{background:var(--ok);}
+.tline-item.pending .dot{background:var(--muted);}
+.tline-item.current .dot{background:var(--iceberg);box-shadow:0 0 0 3px var(--iceberg-glow);}
+.tline-item.rejected .dot{background:var(--danger);}
+.tline-item .who{color:#94a3b8;font-weight:500;}
+.tline-item .who.auto{color:#c4b5fd;font-style:italic;}
+.tline-item .when{color:#64748b;font-size:.68rem;font-family:'JetBrains Mono',monospace;margin-left:6px;}
+.tline-item .note{color:#475569;font-size:.72rem;margin-top:2px;padding-left:4px;}
+
+/* ═══════════════ FLAGS PANEL ═══════════════ */
+.flag-create-row{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;}
+.flag-create-row .field{flex:1;min-width:180px;margin-bottom:0;}
+.flag-row{
+  display:grid;grid-template-columns:2fr 1.5fr 1fr auto;gap:12px;align-items:center;
+  padding:12px 16px;border-bottom:1px solid var(--border-dark);font-size:.82rem;
+}
+.flag-row:last-child{border-bottom:none;}
+.flag-row .fname{font-family:'JetBrains Mono',monospace;color:#e2e8f0;font-weight:600;font-size:.78rem;}
+.pct-bar{height:8px;background:rgba(30,41,59,.8);border-radius:4px;overflow:hidden;}
+.pct-bar>div{height:100%;background:linear-gradient(90deg,var(--iceberg-dim),var(--iceberg));transition:width .4s;}
+
+/* ═══════════════ LOGS PANEL ═══════════════ */
+.logs-container{background:#020617;min-height:280px;max-height:400px;overflow-y:auto;padding:14px;border-radius:0 0 0 0;font-family:'JetBrains Mono',monospace;font-size:.74rem;line-height:1.6;}
+.logs-container .l{padding:2px 0;border-bottom:1px solid rgba(148,163,184,.05);}
+.l-ok{color:#4ade80;}.l-warn{color:#fbbf24;}.l-err{color:#f87171;}.l-info{color:#60a5fa;}.l-act{color:#c4b5fd;}
+
+/* ═══════════════ TABS ═══════════════ */
+.tabs{display:flex;gap:0;padding:0 32px;background:rgba(15,23,42,.6);border-bottom:1px solid var(--border-dark);}
+.tab-item{
+  padding:12px 22px;font-size:.8rem;color:#64748b;cursor:pointer;border-bottom:2px solid transparent;letter-spacing:1px;transition:all .15s;
+}
+.tab-item:hover{color:#cbd5e1;}
+.tab-item.active{color:#38bdf8;border-bottom-color:var(--iceberg);font-weight:600;}
+.tab-pane{display:none;padding:18px 32px;}
+.tab-pane.active{display:block;}
+
+/* toast */
+.toast{
+  position:fixed;bottom:24px;right:24px;padding:12px 20px;border-radius:8px;background:#1e293b;color:#f1f5f9;
+  font-size:.82rem;z-index:200;transform:translateY(120%);transition:transform .25s;box-shadow:0 10px 30px rgba(0,0,0,.3);
+  border-left:3px solid var(--iceberg);
+}
+.toast.show{transform:translateY(0);}
+.toast.ok{border-left-color:var(--ok);}
+.toast.err{border-left-color:var(--danger);}
+.toast.warn{border-left-color:var(--warn);}
+
+/* empty state */
+.empty{text-align:center;padding:40px;color:#64748b;font-size:.82rem;}
+.empty .emoji{font-size:2.5rem;margin-bottom:10px;}
+
+/* responsive */
+@media(max-width:900px){
+  .stats-wrap{grid-template-columns:repeat(3,1fr);}
+  .drawer{width:100%;}
+}
+@media(max-width:600px){
+  .stats-wrap{grid-template-columns:repeat(2,1fr);}
+  .metrics-grid{grid-template-columns:repeat(2,1fr);}
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════ HEADER ═══════════════ -->
+<div class="hdr">
+  <div class="hdr-row">
+    <div class="hdr-title">
+      <h1>🟢 仙女座 <span>灰度发布工作台</span></h1>
+      <p>v25.0 · GrayReleaseEngine · 7 阶段状态机 · 哈希分流 · 仙女座智能门禁</p>
+    </div>
+    <div class="hdr-right">
+      <span class="pdaemon"><span class="dot"></span> sys_gray_release_progress · running · 120s</span>
+      <button class="btn btn-ghost btn-xs" onclick="runProgress()">🔄 手动推进</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ STATS ═══════════════ -->
+<div class="stats-wrap">
+  <div class="stat full"><div class="n" id="s-full">0</div><div class="l">已全量 full</div></div>
+  <div class="stat releasing"><div class="n" id="s-releasing">0</div><div class="l">发布中 releasing</div></div>
+  <div class="stat rolled"><div class="n" id="s-rolled">0</div><div class="l">已回滚 rolled</div></div>
+  <div class="stat draft"><div class="n" id="s-draft">0</div><div class="l">草稿 draft</div></div>
+  <div class="stat metrics"><div class="n" id="s-err">0%</div><div class="l">平均 error_rate</div></div>
+  <div class="stat flags"><div class="n" id="s-flags">0</div><div class="l">Feature Flags</div></div>
+</div>
+
+<!-- ═══════════════ TABS ═══════════════ -->
+<div class="tabs">
+  <div class="tab-item active" onclick="switchTab('releases')">📋 发布列表</div>
+  <div class="tab-item" onclick="switchTab('flags')">🎯 Feature Flags</div>
+  <div class="tab-item" onclick="switchTab('logs')">📜 审计日志</div>
+</div>
+
+<!-- ═══════════════ TAB: RELEASES ═══════════════ -->
+<div class="tab-pane active" id="tab-releases">
+  <div class="panel">
+    <!-- toolbar -->
+    <div class="toolbar" style="padding:14px 20px;border-bottom:1px solid var(--border-dark);background:rgba(15,23,42,.4);">
+      <input class="tb-search" id="tb-search" placeholder="🔍 搜索发布名称 / ID …" oninput="renderReleases()">
+      <select class="tb-filter" id="tb-status" onchange="renderReleases()">
+        <option value="">全部状态</option>
+        <option value="draft">草稿</option>
+        <option value="releasing">发布中</option>
+        <option value="full">已全量</option>
+        <option value="rolled_back">已回滚</option>
+      </select>
+      <select class="tb-filter" id="tb-risk" onchange="renderReleases()">
+        <option value="">全部风险</option>
+        <option value="low">🟢 low</option>
+        <option value="medium">🟡 medium</option>
+        <option value="high">🟠 high</option>
+        <option value="critical">🔴 critical</option>
+      </select>
+      <div class="tb-spacer"></div>
+      <button class="btn btn-ghost btn-sm" onclick="loadAll()">🔄 刷新</button>
+      <button class="btn btn-primary btn-sm" onclick="openCreateModal()">➕ 新建发布</button>
+    </div>
+    <!-- table -->
+    <div class="table-wrap">
+      <table class="releases">
+        <thead>
+          <tr>
+            <th class="col-name">发布名称 / ID</th>
+            <th>状态</th>
+            <th>风险</th>
+            <th class="col-stage">发布进度 (7 阶段)</th>
+            <th>版本</th>
+            <th>发起人</th>
+            <th class="col-actions">操作</th>
+          </tr>
+        </thead>
+        <tbody id="tbody-releases"></tbody>
+      </table>
+    </div>
+    <div class="empty" id="empty-releases" style="display:none;"><div class="emoji">📭</div>暂无发布记录 → 点右上角"新建发布"开始</div>
+  </div>
+</div>
+
+<!-- ═══════════════ TAB: FLAGS ═══════════════ -->
+<div class="tab-pane" id="tab-flags">
+  <div class="panel">
+    <div class="panel-hd">
+      <h2>🎯 Feature Flags — 用户级哈希稳定分流</h2>
+      <button class="btn btn-primary btn-sm" onclick="openFlagCreate()">➕ 创建 Flag</button>
+    </div>
+    <div id="flagCreate" style="padding:14px 20px;border-bottom:1px solid var(--border-dark);display:none;">
+      <div class="flag-create-row">
+        <div class="field"><label>Flag 名称</label><input id="f-name" placeholder="andromeda.approval_center"></div>
+        <div class="field" style="max-width:120px;"><label>Rollout %</label><input id="f-pct" type="number" min="0" max="100" value="10"></div>
+        <div class="field" style="flex:2;"><label>描述</label><input id="f-desc" placeholder="灰度开启审批中心"></div>
+        <button class="btn btn-primary" onclick="createFlag()">创建</button>
+      </div>
+    </div>
+    <div id="flagList"></div>
+  </div>
+</div>
+
+<!-- ═══════════════ TAB: LOGS ═══════════════ -->
+<div class="tab-pane" id="tab-logs">
+  <div class="panel">
+    <div class="panel-hd">
+      <h2>📜 仙女座自动发布审计日志</h2>
+      <button class="btn btn-ghost btn-sm" onclick="runProgress()">🔄 触发 auto_progress (daemon 模拟)</button>
+    </div>
+    <div class="logs-container" id="logPanel" style="padding:20px;"></div>
+  </div>
+</div>
+
+
+<!-- ═══════════════ CREATE MODAL ═══════════════ -->
+<div class="modal-mask" id="modal-create">
+  <div class="modal">
+    <div class="modal-hd">
+      <h3>➕ 新建灰度发布 (自动提交审批)</h3>
+      <button class="modal-close" onclick="closeModal('modal-create')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="field">
+        <label>发布名称 *</label>
+        <input id="c-name" placeholder="例: 审批引擎 v25.0 上线">
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>目标版本 *</label>
+          <input id="c-target" placeholder="v25.0">
+        </div>
+        <div class="field">
+          <label>风险等级</label>
+          <select id="c-risk">
+            <option value="low">🟢 low — 配置/文案变更</option>
+            <option value="medium" selected>🟡 medium — 一般功能/路由</option>
+            <option value="high">🟠 high — 引擎/中间件</option>
+            <option value="critical">🔴 critical — 规则修改/权限变更</option>
+          </select>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>发布范围</label>
+          <select id="c-scope">
+            <option value="flask_engine">flask_engine — Flask 引擎</option>
+            <option value="daemon">daemon — 后台守护进程</option>
+            <option value="api">api — 路由/API</option>
+            <option value="template">template — 前端模板</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>发起人</label>
+          <input id="c-init" value="{{ username or 'wuchenghao15' }}">
+        </div>
+      </div>
+      <div class="field">
+        <label>变更描述</label>
+        <textarea id="c-desc" rows="3" placeholder="本次发布包含什么变更… (可选)"></textarea>
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn btn-ghost" onclick="closeModal('modal-create')">取消</button>
+      <button class="btn btn-primary" onclick="createRelease()">🚀 创建并提交审批</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ DETAIL DRAWER ═══════════════ -->
+<div class="drawer-mask" id="drawer-mask" onclick="closeDrawer()"></div>
+<div class="drawer" id="drawer">
+  <div class="drawer-hd">
+    <h3 id="d-title">— <span class="n" id="d-rid"></span></h3>
+    <button class="modal-close" onclick="closeDrawer()">✕</button>
+  </div>
+  <div class="drawer-body" id="d-body"></div>
+</div>
+
+<!-- ═══════════════ TOAST ═══════════════ -->
+<div class="toast" id="toast"></div>
+
+
+<!-- ═══════════════ SCRIPT ═══════════════ -->
+<script>
+/* ───────────────────────────────────── API ───────────────────────────────────── */
+const API = {
+  list:       () => fetch('/api/gray/releases').then(r=>r.json()),
+  detail:     (id) => fetch(`/api/gray/releases/${id}`).then(r=>r.json()),
+  create:     (d)  => fetch('/api/gray/releases',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)}).then(r=>r.json()),
+  start:      (id) => fetch(`/api/gray/releases/${id}/start`,{method:'POST'}).then(r=>r.json()),
+  advance:    (id,f=false) => fetch(`/api/gray/releases/${id}/advance`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({force:f})}).then(r=>r.json()),
+  rollback:   (id,r) => fetch(`/api/gray/releases/${id}/rollback`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({reason:r})}).then(r=>r.json()),
+  metrics:    (id) => fetch(`/api/gray/releases/${id}/metrics`,{method:'POST'}).then(r=>r.json()),
+  progress:   () => fetch('/api/gray/progress',{method:'POST'}).then(r=>r.json()),
+  flags:      () => fetch('/api/gray/flags').then(r=>r.json()),
+  flagCreate: (d) => fetch('/api/gray/flags',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)}).then(r=>r.json()),
+  flagCheck:  (n,u) => fetch(`/api/gray/flags/${encodeURIComponent(n)}/check?user_id=${encodeURIComponent(u)}`).then(r=>r.json()),
+};
+const STAGE_LABELS=['draft','approved','canary','pct10','pct50','pct100','full'];
+const STAGE_PCTS=[0,0,1,10,50,100,100];
+const STAGES = STAGE_LABELS.map((l,i)=>({stage:i,label:l,pct:STAGE_PCTS[i]}));
+
+/* ───────────────────────────────────── TOOLS ───────────────────────────────────── */
+function toast(msg,cls='info'){
+  const t=document.getElementById('toast'); t.textContent=msg;
+  t.className='toast show '+(cls==='ok'?'ok':cls==='err'?'err':cls==='warn'?'warn':'');
+  clearTimeout(window._tt); window._tt=setTimeout(()=>t.className='toast',2600);
+}
+function switchTab(name){
+  document.querySelectorAll('.tab-item').forEach((t,i)=>{
+    t.classList.toggle('active',['releases','flags','logs'][i]===name);
+  });
+  document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+}
+function openModal(id){document.getElementById(id).classList.add('show');}
+function closeModal(id){document.getElementById(id).classList.remove('show');}
+function openCreateModal(){
+  document.getElementById('c-name').value=''; document.getElementById('c-target').value='v25.0';
+  document.getElementById('c-desc').value='';
+  openModal('modal-create');
+}
+
+/* ───────────────────────────────────── RENDER PIPELINE ───────────────────────────────────── */
+function renderPipeline(curStage, big=false){
+  const cls=big?'pnode-big':'pnode';
+  const arrCls=big?'parrow-big':'parrow';
+  return STAGES.map((s,i)=>{
+    let c=cls;
+    if(s.stage<curStage) c+=' done';
+    else if(s.stage===curStage) c+=' cur';
+    return `<div class="${c}"><div class="p">${s.pct}%</div><div class="l">${s.label}</div></div>${i<6?`<div class="${arrCls}">→</div>`:''}`;
+  }).join('');
+}
+
+/* ───────────────────────────────────── RELEASES LIST ───────────────────────────────────── */
+let RELEASES=[];
+async function loadAll(){
+  const d = await API.list();
+  RELEASES = d.releases || [];
+  // hero stats
+  const full = RELEASES.filter(r=>r.status==='full').length;
+  const rel  = RELEASES.filter(r=>r.status==='releasing').length;
+  const rl   = RELEASES.filter(r=>r.status==='rolled_back').length;
+  const dr   = RELEASES.filter(r=>r.status==='draft'||r.status==='approving').length;
+  document.getElementById('s-full').textContent=full;
+  document.getElementById('s-releasing').textContent=rel;
+  document.getElementById('s-rolled').textContent=rl;
+  document.getElementById('s-draft').textContent=dr;
+  // flags
+  API.flags().then(f=>document.getElementById('s-flags').textContent=(f.flags||[]).length);
+  renderReleases();
+  renderFlags();
+}
+function renderReleases(){
+  const q = (document.getElementById('tb-search').value||'').toLowerCase();
+  const sf = document.getElementById('tb-status').value;
+  const rf = document.getElementById('tb-risk').value;
+  const list = RELEASES.filter(r=>{
+    if(q && !r.name.toLowerCase().includes(q) && !r.release_id.includes(q)) return false;
+    if(sf && r.status!==sf) return false;
+    if(rf && r.risk_level!==rf) return false;
+    return true;
+  });
+  const tb=document.getElementById('tbody-releases');
+  const empty=document.getElementById('empty-releases');
+  if(!list.length){
+    tb.innerHTML=''; empty.style.display='block'; return;
+  }
+  empty.style.display='none';
+  tb.innerHTML = list.map(r=>{
+    const statusText = {draft:'草稿',approving:'审批中',releasing:'发布中',full:'已全量',rolled_back:'已回滚',failed:'失败'}[r.status]||r.status;
+    const riskText = {low:'🟢 LOW',medium:'🟡 MEDIUM',high:'🟠 HIGH',critical:'🔴 CRITICAL'}[r.risk_level]||r.risk_level;
+    return `
+      <tr>
+        <td class="col-name">
+          <div style="font-weight:600;color:#f1f5f9;">🟢 ${r.name}</div>
+          <div class="col-meta">${r.release_id} · created ${r.created_at}</div>
+        </td>
+        <td><span class="badge badge-status-${r.status}">${statusText}</span></td>
+        <td><span class="badge badge-risk-${r.risk_level}">${riskText}</span></td>
+        <td class="col-stage"><div class="pipeline-cell">${renderPipeline(r.current_stage)}</div></td>
+        <td class="col-meta">${r.target_version}</td>
+        <td class="col-meta">${r.initiator}</td>
+        <td class="col-actions">
+          ${r.status==='draft'||r.status==='approving'?`<button class="btn btn-success btn-xs" onclick="actionStart('${r.release_id}')">✅ 审批通过→Canary</button>`:''}
+          ${r.status==='releasing'?`
+            <button class="btn btn-primary btn-xs" onclick="actionAdvance('${r.release_id}',false)">⬆️ 自动门禁</button>
+            <button class="btn btn-ghost btn-xs" onclick="actionAdvance('${r.release_id}',true)">⚡ 强制</button>
+            <button class="btn btn-danger btn-xs" onclick="actionRollback('${r.release_id}')">🔴 回滚</button>
+          `:''}
+          ${r.status==='rolled_back'?`<button class="btn btn-success btn-xs" onclick="actionStart('${r.release_id}')">🟢 重新启动</button>`:''}
+          <button class="btn btn-ghost btn-xs btn-icon" title="详情" onclick="showDetail('${r.release_id}')">👁</button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+/* ───────────────────────────────────── ACTIONS ───────────────────────────────────── */
+async function createRelease(){
+  const name=document.getElementById('c-name').value.trim();
+  const target=document.getElementById('c-target').value.trim();
+  if(!name||!target) return toast('❌ 名称和目标版本必填','err');
+  const d = await API.create({
+    name, target_version:target, risk_level:document.getElementById('c-risk').value,
+    scope:document.getElementById('c-scope').value, description:document.getElementById('c-desc').value,
+    initiator:document.getElementById('c-init').value,
+  });
+  if(d.ok){ closeModal('modal-create'); toast('✅ 创建成功 + 已自动提交审批','ok'); loadAll(); }
+  else toast('❌ '+d.msg,'err');
+}
+async function actionStart(id){
+  const d=await API.start(id);
+  if(d.ok){ toast('✅ 审批通过 → canary 1%','ok'); loadAll(); }
+  else toast('❌ '+d.msg,'err');
+}
+async function actionAdvance(id,force){
+  const d=await API.advance(id,force);
+  if(d.ok){ const ds=d.data; toast(`✅ → ${ds?.stage_label}(${ds?.current_pct}%)`,'ok'); loadAll(); showDetail(id); }
+  else toast(`⛔ ${d.msg}`,'warn');
+}
+async function actionRollback(id){
+  const reason=prompt('回滚原因?','严重 error 手动回滚'); if(!reason) return;
+  const d=await API.rollback(id,reason);
+  if(d.ok){ toast('🔴 已回滚','err'); loadAll(); }
+  else toast('❌ '+d.msg,'err');
+}
+async function actionMetrics(id){
+  const d=await API.metrics(id);
+  if(d.ok){ const m=d.metrics; toast(`📊 total=${m.total} err=${m.errors} gate=${m.gate_ok?'✅':'⛔'} err_rate=${m.error_rate}%`,'info'); showDetail(id); }
+}
+
+/* ───────────────────────────────────── DETAIL DRAWER ───────────────────────────────────── */
+async function showDetail(id){
+  document.getElementById('d-body').innerHTML='<div class="empty">加载中…</div>';
+  const d = await API.detail(id);
+  if(!d.ok){ toast('❌ '+d.msg,'err'); return; }
+  const r = d.data;
+  document.getElementById('d-title').innerHTML = `🟢 ${r.name} <span class="n">${r.release_id}</span>`;
+  document.getElementById('drawer-mask').classList.add('show');
+  document.getElementById('drawer').classList.add('show');
+  const md = r.metrics && r.metrics.length ? r.metrics[0] : null;
+  const metHtml = md ? `
+    <div class="metrics-grid">
+      <div class="metric-mini ${md.success_rate<95?'danger':md.success_rate<99?'warn':'ok'}"><div class="v">${md.success_rate}%</div><div class="k">SUCCESS RATE</div></div>
+      <div class="metric-mini ${md.error_rate_pct>5?'danger':md.error_rate_pct>2?'warn':'ok'}"><div class="v">${md.error_rate_pct}%</div><div class="k">ERROR RATE</div></div>
+      <div class="metric-mini ${md.avg_latency_ms>2000?'danger':md.avg_latency_ms>500?'warn':'ok'}"><div class="v">${md.avg_latency_ms}ms</div><div class="k">LATENCY</div></div>
+      <div class="metric-mini ${md.gate_ok?'ok':'danger'}"><div class="v">${md.gate_ok?'✅':'⛔'}</div><div class="k">GATE OK</div></div>
+    </div>
+    <div style="margin-top:12px;font-size:.72rem;color:#64748b;">最新采集: ${md.measured_at} · 总计 ${md.total_requests} 请求, ${md.total_errors} 错误</div>
+  ` : '<div class="empty" style="padding:10px 0;font-size:.78rem;">暂无指标数据 → 发布中后由仙女座 daemon 自动采集</div>';
+
+  // stages pipeline big
+  const pipeHtml = `<div class="pipeline-big">${renderPipeline(r.current_stage,true)}</div>`;
+
+  // meta
+  const statusText = {draft:'草稿',approving:'审批中',releasing:'发布中',full:'已全量',rolled_back:'已回滚',failed:'失败'}[r.status]||r.status;
+  const riskText = {low:'🟢 LOW',medium:'🟡 MEDIUM',high:'🟠 HIGH',critical:'🔴 CRITICAL'}[r.risk_level]||r.risk_level;
+  const metaHtml = `
+    <div class="meta-kv">
+      <div class="k">状态</div><div class="v">${statusText} (stage ${r.current_stage}/6 · ${r.current_pct}%)</div>
+      <div class="k">风险</div><div class="v">${riskText}</div>
+      <div class="k">目标版本</div><div class="v">${r.target_version}</div>
+      <div class="k">范围</div><div class="v">${r.scope}</div>
+      <div class="k">发起人</div><div class="v">${r.initiator}</div>
+      <div class="k">审批 ID</div><div class="v">${r.approval_id||'(无)'}</div>
+      <div class="k">创建</div><div class="v">${r.created_at}</div>
+      <div class="k">批准</div><div class="v">${r.approved_at||'—'}</div>
+      <div class="k">全量</div><div class="v">${r.full_at||'—'}</div>
+      <div class="k">回滚次数</div><div class="v">${r.rollback_count||0}</div>
+      ${r.last_rolled_back_at?`<div class="k">上次回滚</div><div class="v">${r.last_rolled_back_at}</div>`:''}
+      ${r.error_at?`<div class="k">异常时间</div><div class="v">${r.error_at}</div>`:''}
+      ${r.description?`<div class="k">描述</div><div class="v">${r.description}</div>`:''}
+    </div>
+  `;
+
+  // quick actions
+  const actHtml = `
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      ${r.status==='draft'||r.status==='approving'?`<button class="btn btn-success btn-sm" onclick="actionStart('${id}');closeDrawer();">✅ 审批通过 → Canary</button>`:''}
+      ${r.status==='releasing'?`
+        <button class="btn btn-primary btn-sm" onclick="actionAdvance('${id}',false);closeDrawer();">⬆️ 自动门禁升 stage</button>
+        <button class="btn btn-ghost btn-sm" onclick="actionAdvance('${id}',true);closeDrawer();">⚡ 强制绕过门禁</button>
+        <button class="btn btn-warn btn-sm" onclick="actionMetrics('${id}')">📊 手动采指标</button>
+        <button class="btn btn-danger btn-sm" onclick="actionRollback('${id}');closeDrawer();">🔴 一键回滚</button>
+      `:''}
+      ${r.status==='rolled_back'?`<button class="btn btn-success btn-sm" onclick="actionStart('${id}');closeDrawer();">🟢 重新启动</button>`:''}
+    </div>
+  `;
+
+  document.getElementById('d-body').innerHTML = `
+    <div class="drawer-section">
+      <h4>📈 实时指标</h4>${metHtml}
+    </div>
+    <div class="drawer-section">
+      <h4>🎯 发布进度 (7 阶段)</h4>${pipeHtml}
+    </div>
+    <div class="drawer-section">
+      <h4>⚡ 快速操作</h4>${actHtml}
+    </div>
+    <div class="drawer-section">
+      <h4>📋 元数据</h4>${metaHtml}
+    </div>
+  `;
+}
+function closeDrawer(){
+  document.getElementById('drawer-mask').classList.remove('show');
+  document.getElementById('drawer').classList.remove('show');
+}
+
+/* ───────────────────────────────────── FLAGS ───────────────────────────────────── */
+async function renderFlags(){
+  const d=await API.flags(); const flags=d.flags||[];
+  document.getElementById('s-flags').textContent=flags.length;
+  if(!flags.length){ document.getElementById('flagList').innerHTML='<div class="empty" style="padding:30px;">暂无 Feature Flags</div>'; return; }
+  document.getElementById('flagList').innerHTML = flags.map(f=>`
+    <div class="flag-row">
+      <div class="fname">${f.flag_name} <span style="color:#64748b;font-size:.7rem;">· enabled=${f.enabled?'🟢':'⚪'} · ${f.scope||'all'}</span></div>
+      <div>
+        <div class="pct-bar"><div style="width:${f.rollout_pct}%"></div></div>
+        <div style="font-size:.68rem;color:#64748b;margin-top:3px;">${f.rollout_pct}% · 稳定哈希分流</div>
+      </div>
+      <div style="color:#94a3b8;font-family:'JetBrains Mono',monospace;font-size:.7rem;">${f.salt}</div>
+      <button class="btn btn-ghost btn-xs" onclick="checkFlag('${f.flag_name}')">🔍 检查用户</button>
+    </div>
+  `).join('');
+}
+function openFlagCreate(){
+  const row=document.getElementById('flagCreate');
+  row.style.display = row.style.display==='none'?'flex':'none';
+}
+async function createFlag(){
+  const d=await API.flagCreate({
+    flag_name:document.getElementById('f-name').value,
+    rollout_pct:parseInt(document.getElementById('f-pct').value||'0'),
+    description:document.getElementById('f-desc').value,
+  });
+  if(d.ok){ toast('✅ Flag 已创建','ok'); openFlagCreate(); renderFlags(); }
+  else toast('❌ 失败','err');
+}
+async function checkFlag(name){
+  const u=prompt('测试用户名?','student_a'); if(!u) return;
+  const d=await API.flagCheck(name,u);
+  toast(`${d.enabled?'🟢 ON':'⚪ OFF'} · ${name} for ${u}`, d.enabled?'ok':'info');
+}
+
+/* ───────────────────────────────────── AUTO PROGRESS ───────────────────────────────────── */
+async function runProgress(){
+  toast('🔄 触发 auto_progress daemon cycle…','info');
+  const d=await API.progress();
+  const panel=document.getElementById('logPanel');
+  const lines=(d.results||[]).map(r=>{
+    const rid=r.release_id; const a=r.action;
+    let cls='l-info', txt=`${rid} → ${a}`;
+    if(a==='auto_rollback'){ cls='l-err'; txt+=` 🔴 error_rate=${r.error_rate}%`; }
+    else if(a==='advance'){ cls='l-ok'; txt+=` ✅ → stage ${r.stage}`; }
+    else if(a==='wait_gate'){ cls='l-warn'; txt+=` ⏳ gate_ok=${r.gate_ok}`; }
+    else if(a==='metrics_collected'){ cls='l-info'; txt+=` 采集 ok`; }
+    return `<div class="l ${cls}">${new Date().toLocaleTimeString('zh-CN')}  🧠 ${txt}</div>`;
+  });
+  panel.innerHTML = lines.join('') || '<div class="empty" style="padding:20px;font-size:.82rem;">(当前无 releasing 状态的发布需要推进)</div>';
+  switchTab('logs');
+  loadAll();
+}
+
+/* ───────────────────────────────────── INIT ───────────────────────────────────── */
+loadAll();
+setInterval(loadAll,18000); // 18s 自动刷新
+</script>
+</body>
+</html>

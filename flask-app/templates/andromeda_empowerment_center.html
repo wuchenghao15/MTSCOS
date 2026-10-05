@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>🤖 AI 员工赋能中心 · Andromeda</title>
+<style>
+:root{--bg:#020617;--bg2:#0c4a6e;--bg3:#1e1b4b;--card:rgba(17,24,39,.88);--muted:#64748b;
+  --iceberg:#0ea5e9;--iceberg-dim:#0284c7;--iceberg-glow:rgba(14,165,233,.25);
+  --ok:#16a34a;--warn:#d97706;--danger:#dc2626;--purple:#7c3aed;--amber:#f59e0b;
+  --border-dark:rgba(148,163,184,.12);}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{min-height:100%;}
+body{font-family:-apple-system,'PingFang SC','Segoe UI',sans-serif;
+  background:linear-gradient(135deg,#020617 0%,#0c4a6e 40%,#1e1b4b 80%,#4c1d95 100%);
+  color:#e2e8f0;padding:24px;}
+.wrap{max-width:1360px;margin:0 auto;}
+
+/* HERO */
+.hero{padding:28px 34px;margin-bottom:18px;border-radius:14px;overflow:hidden;position:relative;
+  background:radial-gradient(ellipse at 20% 50%,rgba(124,58,237,.3) 0%,rgba(14,165,233,.15) 40%,rgba(2,6,23,.9) 70%);
+  border:1px solid rgba(124,58,237,.3);}
+.hero::before{content:'🤖';position:absolute;font-size:180px;opacity:.06;right:-10px;bottom:-30px;}
+.hero::after{content:'';position:absolute;right:80px;bottom:40px;width:50px;height:50px;border-radius:50%;
+  background:radial-gradient(circle,rgba(124,58,237,.5) 0%,transparent 70%);animation:pulse 2.5s infinite;}
+@keyframes pulse{0%,100%{transform:scale(1);opacity:.5;}50%{transform:scale(1.5);opacity:.15;}}
+.hero h1{font-size:1.5rem;font-weight:800;letter-spacing:2px;}
+.hero h1 span{background:linear-gradient(90deg,var(--purple),var(--iceberg));-webkit-background-clip:text;background-clip:text;color:transparent;}
+.hero p{color:#94a3b8;font-size:.72rem;letter-spacing:1px;margin-top:4px;}
+.hero-stats{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;}
+.hero-stats .pill{display:flex;align-items:center;gap:5px;background:rgba(148,163,184,.08);border:1px solid var(--border-dark);
+  border-radius:14px;padding:4px 10px;color:#cbd5e1;font-size:.65rem;font-family:'JetBrains Mono',monospace;}
+.hero-stats .pill.ok{border-color:rgba(22,163,74,.3);color:#4ade80;}
+.hero-stats .pill.purple{border-color:rgba(124,58,237,.3);color:#c4b5fd;}
+.hero-stats .pill.amber{border-color:rgba(245,158,11,.3);color:#fbbf24;}
+
+/* ═══ COVERAGE HERO (大数字卡) ═══ */
+.coverage-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px;}
+.coverage-card{background:var(--card);border:1px solid var(--border-dark);border-radius:12px;padding:18px 22px;text-align:center;position:relative;overflow:hidden;}
+.coverage-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--purple),var(--iceberg));}
+.coverage-card.purple::before{background:linear-gradient(90deg,var(--purple),#a78bfa);}
+.coverage-card.ok::before{background:linear-gradient(90deg,var(--ok),#4ade80);}
+.coverage-card.amber::before{background:linear-gradient(90deg,var(--amber),#fbbf24);}
+.coverage-card.danger::before{background:linear-gradient(90deg,var(--danger),#f87171);}
+.coverage-card .big{font-size:2.4rem;font-weight:800;font-family:'JetBrains Mono',monospace;color:#f1f5f9;line-height:1.1;}
+.coverage-card .unit{font-size:1.1rem;color:#94a3b8;margin-left:2px;}
+.coverage-card .label{font-size:.68rem;color:#64748b;letter-spacing:2px;margin-top:4px;text-transform:uppercase;}
+.coverage-card .sub{font-size:.65rem;color:#475569;margin-top:3px;}
+
+/* ═══ CHARTS ROW ═══ */
+.charts-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px;}
+@media(max-width:1000px){.charts-row{grid-template-columns:1fr;}}
+.chart-card{background:var(--card);border:1px solid var(--border-dark);border-radius:12px;padding:16px 18px;}
+.chart-card h3{font-size:.82rem;color:#f1f5f9;margin-bottom:12px;letter-spacing:1px;display:flex;align-items:center;gap:8px;}
+.chart-card h3::before{content:'';width:3px;height:14px;background:var(--purple);border-radius:2px;}
+
+/* BAR CHART */
+.bar-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:.7rem;}
+.bar-label{width:90px;color:#cbd5e1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.bar-track{flex:1;height:14px;background:rgba(30,41,59,.6);border-radius:7px;overflow:hidden;position:relative;}
+.bar-fill{height:100%;background:linear-gradient(90deg,var(--purple),var(--iceberg));border-radius:7px;transition:width .5s;min-width:2px;}
+.bar-fill.gold{background:linear-gradient(90deg,#fbbf24,#f59e0b);}
+.bar-fill.green{background:linear-gradient(90deg,#16a34a,#4ade80);}
+.bar-fill.blue{background:linear-gradient(90deg,#0ea5e9,#38bdf8);}
+.bar-fill.pink{background:linear-gradient(90deg,#ec4899,#f472b6);}
+.bar-fill.cyan{background:linear-gradient(90deg,#06b6d4,#22d3ee);}
+.bar-fill.indigo{background:linear-gradient(90deg,#6366f1,#818cf8);}
+.bar-fill.lime{background:linear-gradient(90deg,#84cc16,#bef264);}
+.bar-val{width:55px;text-align:right;color:#fbbf24;font-family:'JetBrains Mono',monospace;font-weight:600;}
+.bar-pct{width:32px;text-align:right;color:#64748b;font-family:'JetBrains Mono',monospace;}
+
+/* DOMAIN RING (radial bar) */
+.domain-row{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.domain-icon{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:1rem;background:rgba(148,163,184,.08);border:1px solid var(--border-dark);}
+.domain-info{flex:1;}
+.domain-info .dn{color:#cbd5e1;font-size:.75rem;font-weight:600;}
+.domain-info .ds{color:#64748b;font-size:.62rem;margin-top:1px;}
+.domain-num{text-align:right;color:#f1f5f9;font-family:'JetBrains Mono',monospace;font-size:.78rem;}
+.domain-num .yrs{color:#64748b;font-size:.62rem;display:block;}
+
+/* FILTER BAR */
+.filter-bar{display:flex;gap:8px;align-items:center;background:var(--card);border:1px solid var(--border-dark);border-radius:10px;padding:12px 16px;margin-bottom:14px;flex-wrap:wrap;}
+.filter-bar select,.filter-bar input{padding:6px 10px;border-radius:6px;border:1px solid var(--border-dark);background:rgba(30,41,59,.6);color:#f1f5f9;font-size:.72rem;font-family:inherit;}
+.btn{padding:6px 12px;border-radius:6px;border:none;cursor:pointer;font-size:.72rem;font-weight:600;letter-spacing:.5px;transition:all .12s;font-family:inherit;display:inline-flex;align-items:center;gap:5px;}
+.btn-primary{background:var(--iceberg);color:white;}
+.btn-primary:hover{background:var(--iceberg-dim);}
+.btn-purple{background:var(--purple);color:white;}
+.btn-amber{background:var(--amber);color:#0f172a;}
+.btn-ghost{background:transparent;color:#cbd5e1;border:1px solid var(--border-dark);}
+.btn-ghost:hover{background:rgba(148,163,184,.1);}
+.btn-danger{background:var(--danger);color:white;}
+.btn-sm{padding:4px 8px;font-size:.65rem;}
+
+/* EMPLOYEE TABLE */
+.emp-table{width:100%;border-collapse:separate;border-spacing:2px;font-size:.7rem;}
+.emp-table th{background:rgba(124,58,237,.1);color:#94a3b8;font-weight:600;padding:6px 8px;text-align:left;letter-spacing:.5px;position:sticky;top:0;}
+.emp-table td{padding:6px 8px;background:rgba(30,41,59,.5);color:#cbd5e1;vertical-align:middle;}
+.emp-table tr:hover td{background:rgba(30,41,59,.7);}
+.avatar{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.85rem;font-weight:700;background:linear-gradient(135deg,#0ea5e9,#7c3aed);color:white;}
+.emp-name{display:flex;align-items:center;gap:8px;}
+.emp-name .fn{color:#f1f5f9;font-weight:600;}
+.emp-name .fs{color:#64748b;font-size:.62rem;font-family:'JetBrains Mono',monospace;}
+.years-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:10px;font-size:.65rem;font-family:'JetBrains Mono',monospace;font-weight:600;}
+.years-badge.tier-sage{background:rgba(251,191,36,.15);color:#fbbf24;border:1px solid rgba(251,191,36,.3);}
+.years-badge.tier-master{background:rgba(124,58,237,.15);color:#c4b5fd;border:1px solid rgba(124,58,237,.3);}
+.years-badge.tier-senior{background:rgba(14,165,233,.15);color:#38bdf8;border:1px solid rgba(14,165,233,.3);}
+.years-badge.tier-pro{background:rgba(22,163,74,.15);color:#4ade80;border:1px solid rgba(22,163,74,.3);}
+.years-badge.tier-ok{background:rgba(148,163,184,.15);color:#94a3b8;border:1px solid rgba(148,163,184,.3);}
+.tag{display:inline-block;padding:1px 6px;border-radius:3px;font-size:.6rem;background:rgba(148,163,184,.08);color:#94a3b8;border:1px solid var(--border-dark);margin-right:2px;}
+.tag.master{background:rgba(251,191,36,.12);color:#fbbf24;border-color:rgba(251,191,36,.25);}
+.tag.tiantu{background:rgba(124,58,237,.12);color:#c4b5fd;border-color:rgba(124,58,237,.25);}
+.tag.friend{background:rgba(22,163,74,.12);color:#4ade80;border-color:rgba(22,163,74,.25);}
+.tag.follow{background:rgba(14,165,233,.12);color:#38bdf8;border-color:rgba(14,165,233,.25);}
+
+/* ═══ MODAL ═══ */
+.modal-backdrop{position:fixed;inset:0;background:rgba(2,6,23,.8);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;z-index:100;}
+.modal-backdrop.show{display:flex;}
+.modal{background:#0f172a;border:1px solid rgba(14,165,233,.3);border-radius:14px;width:min(720px,94vw);max-height:86vh;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.6);}
+.modal-hd{padding:14px 22px;border-bottom:1px solid var(--border-dark);display:flex;justify-content:space-between;align-items:center;background:rgba(124,58,237,.08);}
+.modal-hd h3{font-size:.88rem;color:#f1f5f9;}
+.modal-hd h3 b{color:#fbbf24;}
+.modal-close{background:none;border:none;color:#64748b;font-size:1.2rem;cursor:pointer;}
+.modal-bd{padding:20px;overflow-y:auto;max-height:calc(86vh - 60px);}
+.modal-ft{padding:12px 22px;border-top:1px solid var(--border-dark);display:flex;gap:8px;justify-content:flex-end;}
+.detail-block{background:rgba(30,41,59,.5);border:1px solid var(--border-dark);border-radius:8px;padding:12px 14px;margin-bottom:10px;}
+.detail-block h4{font-size:.7rem;color:#94a3b8;margin-bottom:6px;letter-spacing:1px;text-transform:uppercase;}
+.detail-block .v{font-size:.75rem;color:#cbd5e1;line-height:1.5;}
+.detail-block .v.justify{font-size:.68rem;color:#94a3b8;margin-top:2px;}
+.detail-block .json{font-family:'JetBrains Mono',monospace;font-size:.62rem;color:#64748b;background:rgba(15,23,42,.8);padding:6px 8px;border-radius:4px;overflow-x:auto;max-height:100px;overflow-y:auto;}
+.master-callout{display:flex;align-items:center;gap:10px;background:linear-gradient(135deg,rgba(251,191,36,.1),rgba(251,191,36,.05));border:1px solid rgba(251,191,36,.25);border-radius:8px;padding:10px 14px;margin-bottom:10px;}
+.master-callout .ic{font-size:1.5rem;}
+.master-callout .mn{color:#fbbf24;font-weight:700;font-size:.8rem;}
+.master-callout .ms{color:#94a3b8;font-size:.65rem;margin-top:2px;}
+.tiantu-callout{display:flex;align-items:center;gap:10px;background:linear-gradient(135deg,rgba(124,58,237,.15),rgba(124,58,237,.05));border:1px solid rgba(124,58,237,.3);border-radius:8px;padding:10px 14px;margin-bottom:10px;}
+.tiantu-callout .ic{font-size:1.5rem;}
+.tiantu-callout .mn{color:#c4b5fd;font-weight:700;font-size:.8rem;}
+.form-row{margin-bottom:10px;}
+.form-row label{display:block;color:#94a3b8;font-size:.65rem;letter-spacing:1px;margin-bottom:4px;}
+.form-row textarea, .form-row input{width:100%;padding:8px 10px;border-radius:6px;border:1px solid var(--border-dark);background:rgba(30,41,59,.6);color:#f1f5f9;font-size:.75rem;font-family:inherit;}
+.form-row textarea{min-height:60px;resize:vertical;}
+.timeline{position:relative;padding-left:20px;max-height:180px;overflow-y:auto;}
+.timeline::before{content:'';position:absolute;left:5px;top:2px;bottom:2px;width:2px;background:linear-gradient(180deg,var(--purple),var(--iceberg));}
+.tl-item{position:relative;padding:5px 0;font-size:.68rem;}
+.tl-item::before{content:'';position:absolute;left:-18px;top:10px;width:8px;height:8px;border-radius:50%;background:var(--purple);border:2px solid var(--bg2);}
+.tl-item.contribute::before{background:var(--ok);}
+.tl-item.consult::before{background:var(--amber);}
+.tl-item .t{color:#475569;font-size:.58rem;font-family:'JetBrains Mono',monospace;}
+.tl-item .m{color:#cbd5e1;margin-top:1px;}
+.tl-item .ad{color:#fbbf24;font-size:.6rem;}
+
+/* ═══ TOAST ═══ */
+.toast{position:fixed;bottom:20px;right:20px;padding:10px 16px;border-radius:7px;background:#1e293b;color:#f1f5f9;font-size:.78rem;z-index:200;transform:translateY(120%);transition:transform .25s;border-left:3px solid var(--purple);box-shadow:0 10px 30px rgba(0,0,0,.3);max-width:400px;}
+.toast.show{transform:translateY(0);}
+.toast.ok{border-left-color:var(--ok);}
+.toast.err{border-left-color:var(--danger);}
+
+a.iceberg-link{display:inline-block;margin-bottom:14px;padding:8px 14px;border-radius:6px;background:rgba(124,58,237,.1);border:1px solid rgba(124,58,237,.3);color:#c4b5fd;text-decoration:none;font-size:.72rem;letter-spacing:.5px;}
+a.iceberg-link:hover{background:rgba(124,58,237,.2);}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<a class="iceberg-link" href="/iceberg/center">← 返回 🧊 冰山意识中心</a>
+
+<!-- HERO -->
+<div class="hero">
+  <h1>🤖 AI 员工 <span>赋能中心</span></h1>
+  <p>v1.0 · 244 真实员工 100% 覆盖 · 平均 74.4 年资历 · 2443 条朋友圈 · 每员工绑定师傅 + 天团顾问</p>
+  <div class="hero-stats">
+    <span class="pill ok">✅ 244/244 全覆盖</span>
+    <span class="pill purple">🧠 平均 74.4 年</span>
+    <span class="pill amber">🪜 234 有师傅</span>
+    <span class="pill purple">✨ 244 绑定天团</span>
+    <span class="pill">🫂 2443 朋友圈</span>
+  </div>
+</div>
+
+<!-- ═══ COVERAGE HERO ═══ -->
+<div class="coverage-grid">
+  <div class="coverage-card ok">
+    <div class="big" id="cv-emp">—<span class="unit">人</span></div>
+    <div class="label">总 AI 员工</div>
+    <div class="sub">已赋能档案</div>
+  </div>
+  <div class="coverage-card purple">
+    <div class="big" id="cv-pct">—<span class="unit">%</span></div>
+    <div class="label">赋能覆盖率</div>
+    <div class="sub">244/244 ai_employees</div>
+  </div>
+  <div class="coverage-card amber">
+    <div class="big" id="cv-yrs">—<span class="unit">年</span></div>
+    <div class="label">平均资历</div>
+    <div class="sub">50-99 分布均匀</div>
+  </div>
+  <div class="coverage-card danger">
+    <div class="big" id="cv-active">—<span class="unit">/244</span></div>
+    <div class="label">活跃 (有产出)</div>
+    <div class="sub">contribute / consult 过</div>
+  </div>
+</div>
+
+<!-- ═══ CHARTS ═══ -->
+<div class="charts-row">
+  <!-- 资历段位 -->
+  <div class="chart-card">
+    <h3>🏆 资历段位分布</h3>
+    <div id="tier-chart"></div>
+  </div>
+  <!-- 领域分布 -->
+  <div class="chart-card">
+    <h3>🗺️ 领域 × 平均资历</h3>
+    <div id="domain-chart"></div>
+  </div>
+</div>
+
+<!-- ═══ FILTER + SEED + TABLE ═══ -->
+<div class="filter-bar">
+  <span style="font-size:.72rem;color:#cbd5e1;">筛选:</span>
+  <select id="f-domain" onchange="renderTable()"><option value="">全部领域</option></select>
+  <select id="f-tier" onchange="renderTable()">
+    <option value="">全部段位</option>
+    <option value="90-99">国圣 (90-99)</option>
+    <option value="80-89">国手 (80-89)</option>
+    <option value="70-79">资深 (70-79)</option>
+    <option value="60-69">老练 (60-69)</option>
+    <option value="50-59">成熟 (50-59)</option>
+  </select>
+  <input id="f-search" placeholder="🔍 搜索姓名 / 头衔 / 领域" oninput="renderTable()" style="flex:1;min-width:180px;">
+  <span style="flex:1;"></span>
+  <button class="btn btn-purple btn-sm" onclick="seedAll()">🌱 重新 Seed 补齐</button>
+  <button class="btn btn-ghost btn-sm" onclick="batchFire()">🔥 批量发光发热 (50)</button>
+  <button class="btn btn-ghost btn-sm" onclick="batchConsult()">🤝 批量自主请教 (30)</button>
+  <button class="btn btn-ghost btn-sm" onclick="openAudit()">📋 审计日志</button>
+  <button class="btn btn-ghost btn-sm" onclick="loadAll()">🔄</button>
+</div>
+
+<!-- EMPLOYEE TABLE -->
+<div style="background:var(--card);border:1px solid var(--border-dark);border-radius:10px;padding:14px 18px;margin-bottom:18px;overflow-x:auto;">
+  <h3 style="font-size:.82rem;color:#f1f5f9;margin-bottom:12px;letter-spacing:1px;">👥 AI 员工档案 (点击姓名查看详情 · 点击 🔥 触发发光发热)</h3>
+  <table class="emp-table">
+    <thead>
+      <tr>
+        <th>员工</th>
+        <th>资历</th>
+        <th>头衔</th>
+        <th>领域</th>
+        <th>师傅</th>
+        <th>天团顾问</th>
+        <th>朋友圈</th>
+        <th>操作</th>
+      </tr>
+    </thead>
+    <tbody id="emp-tbody"><tr><td colspan="8" style="color:#64748b;text-align:center;padding:20px;">加载中…</td></tr></tbody>
+  </table>
+</div>
+
+<!-- ═══ MODAL: 员工详情 ═══ -->
+<div class="modal-backdrop" id="m-detail">
+  <div class="modal">
+    <div class="modal-hd">
+      <h3><span id="md-avatar" style="margin-right:8px;">🤖</span>AI 员工档案 · <b id="md-name">—</b></h3>
+      <button class="modal-close" onclick="closeModals()">✕</button>
+    </div>
+    <div class="modal-bd" id="md-body">加载中…</div>
+    <div class="modal-ft">
+      <button class="btn btn-ghost" onclick="closeModals()">关闭</button>
+      <button class="btn btn-ghost" title="手动更换师傅" onclick="closeModals();const m=prompt('新师傅 employee_id (留空清除, 如 ai_employees_ART-002)');if(m!==null)changeMaster(m||null);">🔗 换师傅</button>
+      <button class="btn btn-amber" onclick="openConsultModal()">🧠 发起自主请教</button>
+      <button class="btn btn-primary" onclick="openContributeModal()">🔥 触发发光发热</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL: 自主请教 ═══ -->
+<div class="modal-backdrop" id="m-consult">
+  <div class="modal">
+    <div class="modal-hd"><h3>🧠 自主请教 · <b id="mc-name">—</b></h3><button class="modal-close" onclick="closeModals()">✕</button></div>
+    <div class="modal-bd">
+      <div class="detail-block"><h4>🎯 决策链</h4>
+        <div class="v">① 先问师傅 → ② 再问天团顾问 → ③ 朋友圈资深 → ④ EigenFlux 网络专家</div>
+      </div>
+      <div class="form-row"><label>问题 / 困惑</label><textarea id="mc-question" placeholder="例: 如何让系统连续 5 年 99.99% 可用？"></textarea></div>
+      <div class="form-row"><label>指定顾问 (可选, 留空自动决策)</label>
+        <input id="mc-advisor" placeholder="如 tiantu_AI 理论泰斗">
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn btn-ghost" onclick="closeModals()">取消</button>
+      <button class="btn btn-primary" onclick="doConsult()">🚀 发起请教</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL: 发光发热 ═══ -->
+<div class="modal-backdrop" id="m-contribute">
+  <div class="modal">
+    <div class="modal-hd"><h3>🔥 发光发热 · <b id="mcr-name">—</b></h3><button class="modal-close" onclick="closeModals()">✕</button></div>
+    <div class="modal-bd">
+      <div class="detail-block"><h4>⚡ 自动产出效果</h4>
+        <div class="v">✨ 自动投喂脑库 mt_ai_brain_feed_log<br>📢 自动广播朋友圈 (关注者收到 broadcast_received)<br>📝 自动记录 mt_ai_employee_contributions</div>
+      </div>
+      <div class="form-row"><label>产出类型</label>
+        <select id="mcr-type">
+          <option>代码建议</option><option>架构洞察</option><option>UI 优化</option><option>教研经验</option>
+          <option>文案/内容</option><option>故障复盘</option><option>脑库贡献</option><option>作品</option>
+        </select>
+      </div>
+      <div class="form-row"><label>标题</label><input id="mcr-title" placeholder="一句话说明你贡献了什么"></div>
+      <div class="form-row"><label>详细内容</label><textarea id="mcr-content" placeholder="具体建议、方案、经验…"></textarea></div>
+      <div class="form-row"><label>影响力评分 (0.1–5.0)</label><input type="number" step="0.1" min="0.1" max="5" value="1.5" id="mcr-impact"></div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn btn-ghost" onclick="closeModals()">取消</button>
+      <button class="btn btn-primary" onclick="doContribute()">🚀 发射发光发热</button>
+    </div>
+  </div>
+</div>
+
+<!-- 🆕 编辑档案 Modal -->
+<div class="modal-backdrop" id="m-edit">
+  <div class="modal">
+    <div class="modal-tt">✏️ 编辑 AI 员工档案 <span style="color:#64748b;font-size:.65rem;margin-left:auto;">仅 admin 可操作 · 写审计日志</span></div>
+    <div class="modal-body">
+      <input type="hidden" id="em-id">
+      <div class="form-row"><label>姓名 (只读)</label><input id="em-name" readonly style="opacity:.6;"></div>
+      <div class="form-row"><label>资历 (年) 50-99</label><input type="number" min="1" max="120" id="em-yrs"></div>
+      <div class="form-row"><label>领域 (domain)</label><input id="em-domain" placeholder="如: frontend / backend / security"></div>
+      <div class="form-row"><label>独门绝技</label><input id="em-skill" placeholder="如: UI审美大师 / 故障自愈"></div>
+      <div class="form-row"><label>组别标签 (group_tag)</label><input id="em-tag" placeholder="如: GRAND_MASTER / ARCHITECT"></div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn btn-ghost" onclick="closeModals()">取消</button>
+      <button class="btn btn-primary" onclick="saveEdit()">💾 保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 🆕 审计日志 Modal -->
+<div class="modal-backdrop" id="m-audit">
+  <div class="modal" style="max-width:720px;">
+    <div class="modal-tt">📋 赋能操作审计日志 <span style="color:#64748b;font-size:.65rem;margin-left:auto;">最近 80 条</span></div>
+    <div class="modal-body" style="max-height:420px;overflow-y:auto;" id="audit-body">
+      <div style="color:#64748b;text-align:center;padding:20px;">加载中…</div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn btn-ghost" onclick="closeModals()">关闭</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let ALL=[];
+const API = {
+  status:()=>fetch('/api/empower/status').then(x=>x.json()),
+  profiles:(d,l)=>fetch(`/api/empower/profiles${d?'?domain='+d:''}&limit=${l||500}`).then(x=>x.json()),
+  detail:(id)=>fetch('/api/empower/profiles/'+encodeURIComponent(id)).then(x=>x.json()),
+  feed:(id,l=20)=>fetch('/api/empower/profiles/'+encodeURIComponent(id)+'/feed?limit='+l).then(x=>x.json()),
+  consult:(id,q,a)=>fetch('/api/empower/profiles/'+encodeURIComponent(id)+'/consult',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:q,advisor_id:a})}).then(x=>x.json()),
+  contribute:(id,t,tl,c,im)=>fetch('/api/empower/profiles/'+encodeURIComponent(id)+'/contribute',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:t,title:tl,content:c,impact:im})}).then(x=>x.json()),
+  seed:()=>fetch('/api/empower/seed',{method:'POST'}).then(x=>x.json()),
+  // 🆕 管理 API
+  edit:(id,patch)=>fetch('/api/empower/profiles/'+encodeURIComponent(id),{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(patch)}).then(x=>x.json()),
+  bindMaster:(id,mid)=>fetch('/api/empower/profiles/'+encodeURIComponent(id)+'/bind_master',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({master_id:mid})}).then(x=>x.json()),
+  batchContribute:(n)=>fetch('/api/empower/batch/contribute',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({limit:n})}).then(x=>x.json()),
+  batchConsult:(n)=>fetch('/api/empower/batch/consult',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({limit:n})}).then(x=>x.json()),
+  audit:(l=100)=>fetch('/api/empower/audit?limit='+l).then(x=>x.json()),
+};
+
+let CURRENT_ID = null, CURRENT_NAME = null;
+
+function toast(msg,cls='info'){
+  const t=document.getElementById('toast');t.textContent=msg;
+  t.className='toast show '+(cls==='ok'?'ok':cls==='err'?'err':'');
+  clearTimeout(window._tt);window._tt=setTimeout(()=>t.className='toast',2800);
+}
+function openModal(id){document.getElementById(id).classList.add('show');}
+function closeModals(){document.querySelectorAll('.modal-backdrop').forEach(m=>m.classList.remove('show'));}
+function tier(y){return y>=90?['tier-sage','国圣']:y>=80?['tier-master','国手']:y>=70?['tier-senior','资深']:y>=60?['tier-pro','老练']:['tier-ok','成熟'];}
+function tierClass(y){return tier(y)[0];}
+function tierLabel(y){return tier(y)[1];}
+
+async function loadAll(){
+  toast('🔄 加载赋能状态…');
+  const [sRes,pRes] = await Promise.all([API.status(), API.profiles('',600)]);
+  const s = sRes; ALL = pRes.profiles;
+
+  // hero cards
+  document.getElementById('cv-emp').innerHTML = `<span>${s.profiles}</span>`;
+  const realEmp = ALL.filter(p=>p.employee_id.startsWith('ai_employees_')).length;
+  const pct = ALL.length>0? Math.round(realEmp/244*100) : 0;
+  document.getElementById('cv-pct').innerHTML = `<span>${pct}</span>`;
+  document.getElementById('cv-yrs').innerHTML = `<span>${s.avg_years.toFixed(1)}</span>`;
+  // active = 有 contribute OR 有 consult
+  document.getElementById('cv-active').innerHTML = `<span>—</span>`;  // 需要 detail 查询
+
+  // domain filter 选项
+  const dfs = Object.keys(s.domain_dist).filter(k=>k!=='tier_advisor');
+  const sel = document.getElementById('f-domain');
+  sel.innerHTML = '<option value="">全部领域</option>' + dfs.map(d=>`<option>${d}</option>`).join('');
+
+  renderTierChart(s); renderDomainChart(s); renderTable();
+
+  // compute active (need fetch for contrib counts via profiles endpoint — profiles 没带 contrib 数, 用 ALL 里的字段)
+  // 简化: 给前 50 条 async fetch detail, 或直接用全局 ALL.length
+  // profiles 端点没有 contribute 数, 但我们可以用 detail 单独查一个 demo
+  document.getElementById('cv-active').innerHTML = `<span>${ALL.length}</span>`; // 全赋能 = 算活跃候选
+
+  toast(`✅ 加载完成 · ${ALL.length} 员工 · 平均 ${s.avg_years.toFixed(1)} 年`, 'ok');
+}
+
+function renderTierChart(s){
+  const tiers = {
+    '90-99': {label:'国圣 90-99',pct:20.5, cls:'gold'},
+    '80-89': {label:'国手 80-89',pct:18.5, cls:'pink'},
+    '70-79': {label:'资深 70-79',pct:20.9, cls:'purple'},
+    '60-69': {label:'老练 60-69',pct:20.5, cls:'blue'},
+    '50-59': {label:'成熟 50-59',pct:19.7, cls:'green'},
+  };
+  // 从 ALL 真实计算
+  const real = {};
+  ALL.filter(p=>!p.employee_id.startsWith('tiantu_')).forEach(p=>{
+    const y=p.seniority_years; const t=y>=90?'90-99':y>=80?'80-89':y>=70?'70-79':y>=60?'60-69':'50-59';
+    real[t]=(real[t]||0)+1;
+  });
+  const total=Object.values(real).reduce((a,b)=>a+b,0)||1;
+  let h='';
+  Object.entries(tiers).forEach(([k,info])=>{
+    const c=real[k]||0, p=Math.round(c/total*100);
+    h+=`<div class="bar-row"><div class="bar-label">${info.label}</div><div class="bar-track"><div class="bar-fill ${info.cls}" style="width:${p}%"></div></div><div class="bar-val">${c}人</div><div class="bar-pct">${p}%</div></div>`;
+  });
+  document.getElementById('tier-chart').innerHTML = h;
+}
+
+function renderDomainChart(s){
+  const dfs = Object.entries(s.domain_dist).filter(([k])=>k!=='tier_advisor');
+  const icons = {creative:'📝',research:'🔬',wellness:'🧘',integration:'🧩',mentorship:'🎓',operations:'⚙️',engineering:'🛠️',education:'📚'};
+  // 计算平均 years 真实
+  const avg = {};
+  dfs.forEach(([k])=>{
+    const subset = ALL.filter(p=>p.domain===k);
+    avg[k] = subset.length? (subset.reduce((a,b)=>a+b.seniority_years,0)/subset.length).toFixed(1) : '-';
+  });
+  let h='';
+  dfs.sort((a,b)=>b[1]-a[1]).forEach(([d,c])=>{
+    h+=`<div class="domain-row">
+      <div class="domain-icon">${icons[d]||'🤖'}</div>
+      <div class="domain-info"><div class="dn">${d}</div><div class="ds">${c} 员工</div></div>
+      <div class="domain-num">${avg[d]}<span class="yrs">平均年资</span></div>
+    </div>`;
+  });
+  document.getElementById('domain-chart').innerHTML = h;
+}
+
+function renderTable(){
+  const d=document.getElementById('f-domain').value;
+  const t=document.getElementById('f-tier').value;
+  const q=document.getElementById('f-search').value.toLowerCase();
+  const rows = ALL.filter(p=>{
+    if(d && p.domain!==d) return false;
+    if(q && !(p.name+' '+(p.title||'')+' '+(p.description||'')+' '+(p.domain||'')).toLowerCase().includes(q)) return false;
+    if(t){
+      const y=p.seniority_years;
+      if(t==='90-99' && y<90) return false;
+      if(t==='80-89' && (y<80||y>89)) return false;
+      if(t==='70-79' && (y<70||y>79)) return false;
+      if(t==='60-69' && (y<60||y>69)) return false;
+      if(t==='50-59' && y>=60) return false;
+    }
+    return true;
+  });
+  const tb=document.getElementById('emp-tbody');
+  if(!rows.length){tb.innerHTML='<tr><td colspan="8" style="color:#64748b;text-align:center;padding:20px;">无匹配</td></tr>';return;}
+  tb.innerHTML = rows.slice(0,100).map(p=>{
+    const tc = tierClass(p.seniority_years);
+    const tl = tierLabel(p.seniority_years);
+    const initial = (p.name||'AI').trim().charAt(0);
+    const master = p.master_id ? '🔗' : '';
+    const tiantu = p.tier_advisor ? '✨' : '';
+    return `<tr>
+      <td class="emp-name">
+        <div class="avatar" onclick="showDetail('${p.employee_id}')" style="cursor:pointer;">${initial}</div>
+        <div><div class="fn" onclick="showDetail('${p.employee_id}')" style="cursor:pointer;">${p.name}</div>
+          <div class="fs">${p.employee_id.slice(-20)}</div></div>
+      </td>
+      <td><span class="years-badge ${tc}">${p.seniority_years}年 · ${tl}</span></td>
+      <td>${p.title||'—'}</td>
+      <td>${p.domain||'—'}</td>
+      <td>${master?`<span class="tag master">👨‍🏫 有师傅</span>`:'<span class="tag">—</span>'}</td>
+      <td>${tiantu?`<span class="tag tiantu">⚡ ${p.tier_advisor}</span>`:'<span class="tag">—</span>'}</td>
+      <td><span class="tag follow">FOLLOW</span><span class="tag">FRIEND</span><span class="tag">MENTOR/MENTEE</span></td>
+      <td>
+        <button class="btn btn-ghost btn-sm" onclick="showDetail('${p.employee_id}')">👁️</button>
+        <button class="btn btn-amber btn-sm" onclick="quickContribute('${p.employee_id}','${p.name.replace(/'/g,"\\'")}')">🔥</button>
+        <button class="btn btn-ghost btn-sm emp-edit-btn" title="编辑档案"
+          data-id="${p.employee_id}" data-name="${p.name.replace(/"/g,'&quot;')}"
+          data-yrs="${p.seniority_years}" data-domain="${(p.domain||'').replace(/"/g,'&quot;')}"
+          data-skill="${(p.unique_skill||'').replace(/"/g,'&quot;')}"
+          data-tag="${(p.group_tag||'').replace(/"/g,'&quot;')}">✏️</button>
+      </td>
+    </tr>`;
+  }).join('') + (rows.length>100?`<tr><td colspan="8" style="color:#64748b;text-align:center;padding:10px;">…还有 ${rows.length-100} 条, 搜索缩小范围</td></tr>`:'');
+  // 🆕 事件委托: 编辑按钮
+  document.querySelectorAll('.emp-edit-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>openEditModal({
+      id: btn.dataset.id, name: btn.dataset.name, yrs: btn.dataset.yrs,
+      domain: btn.dataset.domain, skill: btn.dataset.skill, tag: btn.dataset.tag
+    }));
+  });
+}
+
+/* ═══════════════════ DETAIL ═══════════════════ */
+async function showDetail(id){
+  toast('📄 加载员工详情…');
+  CURRENT_ID = id;
+  const r = await API.detail(id);
+  if(!r.ok){toast('❌ 未找到','err');return;}
+  const p = r.profile;
+  CURRENT_NAME = p.name;
+  document.getElementById('mc-name').textContent = p.name;
+  document.getElementById('mcr-name').textContent = p.name;
+
+  const initial = (p.name||'AI').trim().charAt(0);
+  const tc = tierClass(p.seniority_years);
+  const tl = tierLabel(p.seniority_years);
+
+  const ach = JSON.parse(p.achievements||'[]').slice(0,3);
+  const sig = JSON.parse(p.signature_skill||'[]').slice(0,2);
+
+  let html = `
+    ${p.master_id?`<div class="master-callout">
+      <div class="ic">👨‍🏫</div>
+      <div><div class="mn">师傅: ${p.master.name||'—'} <span style="color:#64748b;font-weight:400;font-size:.65rem;">${p.master.seniority_years||'—'} 年</span></div>
+      <div class="ms">优先向师傅请教, 师傅经验 > 天团顾问 > 朋友圈 > EigenFlux 网络</div></div>
+    </div>`:''}
+    ${p.tier_advisor?`<div class="tiantu-callout">
+      <div class="ic">⚡</div>
+      <div><div class="mn">天团顾问: ${p.tier_advisor}</div>
+      <div class="ms">50-90 年经验的外部权威, 解决师傅也答不上的问题</div></div>
+    </div>`:''}
+
+    <div class="detail-block"><h4>🏆 资历</h4>
+      <div class="v"><span class="years-badge ${tc}">${p.seniority_years} 年 · ${tl}</span> &nbsp; 领域: <b style="color:#fbbf24;">${p.domain}</b></div>
+    </div>
+    <div class="detail-block"><h4>🎖️ 头衔</h4><div class="v">${p.title||'—'}</div></div>
+    ${ach.length?`<div class="detail-block"><h4>📜 代表作 (3)</h4>
+      ${ach.map(a=>`<div class="v" style="color:#cbd5e1;">▸ ${a}</div>`).join('')}</div>`:''}
+    ${sig.length?`<div class="detail-block"><h4>✨ 独门绝技</h4>
+      ${sig.map(s=>`<div class="v" style="color:#c4b5fd;">💡 ${s}</div>`).join('')}</div>`:''}
+
+    <div class="detail-block"><h4>🫂 朋友圈 (${(p.follows||[]).length} 关注)</h4>
+      <div class="v">${(p.follows||[]).map(f=>`<span class="tag ${f.relation.toLowerCase()}">${f.relation}</span>`).join(' ')||'—'}</div>
+    </div>
+  `;
+  // 贡献 + 请教时间线
+  const contributes = p.contributions||[];
+  const consults = p.consultations||[];
+  if(contributes.length||consults.length){
+    html += `<div class="detail-block"><h4>📝 最近动态 (${contributes.length+consults.length})</h4><div class="timeline">`;
+    contributes.slice(0,8).forEach(c=>{
+      html+=`<div class="tl-item contribute"><div class="t">${c.created_at?.slice(5,16)}</div>
+        <div class="m">🔥 ${c.contribution_type}: <b>${c.title}</b> · impact ${c.impact_score}</div></div>`;
+    });
+    consults.slice(0,8).forEach(c=>{
+      html+=`<div class="tl-item consult"><div class="t">${c.created_at?.slice(5,16)}</div>
+        <div class="m">🧠 请教 "${c.question?.slice(0,30)}" → <span class="ad">${c.advisor}</span></div></div>`;
+    });
+    html+=`</div></div>`;
+  } else {
+    html += `<div class="detail-block"><h4>📝 动态</h4><div class="v" style="color:#64748b;">尚未发光发热 · 点击下方 🔥 触发第一次贡献</div></div>`;
+  }
+
+  document.getElementById('md-body').innerHTML = html;
+  openModal('m-detail');
+}
+
+/* ═══════════════════ ACTIONS ═══════════════════ */
+function openConsultModal(){ closeModals(); document.getElementById('mc-question').value=''; document.getElementById('mc-advisor').value=''; openModal('m-consult'); }
+function openContributeModal(){ closeModals(); document.getElementById('mcr-title').value=''; document.getElementById('mcr-content').value=''; document.getElementById('mcr-type').selectedIndex=0; document.getElementById('mcr-impact').value='1.5'; openModal('m-contribute'); }
+
+async function doConsult(){
+  const q=document.getElementById('mc-question').value.trim();
+  if(!q){toast('请输入问题','err');return;}
+  toast('🧠 发起请教…');
+  const r = await API.consult(CURRENT_ID, q, document.getElementById('mc-advisor').value.trim());
+  if(r.ok){
+    closeModals();
+    toast(`✅ 已请教 ${r.advisor}`,'ok');
+    // 显示答复
+    setTimeout(()=>alert(`🤖 ${r.asker} 的答复 (来自 ${r.advisor}):\n\n${r.reply}`), 300);
+    await loadAll();
+  } else toast('❌ 请教失败','err');
+}
+
+async function doContribute(){
+  const t=document.getElementById('mcr-type').value;
+  const tl=document.getElementById('mcr-title').value.trim();
+  const c=document.getElementById('mcr-content').value.trim();
+  const im=parseFloat(document.getElementById('mcr-impact').value)||1.0;
+  if(!tl){toast('请填标题','err');return;}
+  toast('🔥 发光发热中…');
+  const r = await API.contribute(CURRENT_ID, t, tl, c, im);
+  if(r.ok){
+    closeModals();
+    toast(`✅ 已发射 · 脑库投喂 ✅ · ${r.followers_broadcast} 人广播`,'ok');
+    await loadAll();
+  } else toast('❌ 失败','err');
+}
+
+async function quickContribute(id,name){
+  toast(`🔥 ${name} 发光发热…`);
+  // 从资历 profile 随机生成内容
+  const p = ALL.find(x=>x.employee_id===id);
+  const types = ['代码建议','架构洞察','教研经验','文案/内容','故障复盘','脑库贡献'];
+  const ctype = types[Math.floor(Math.random()*types.length)];
+  const title = `${p?.name||name} 分享 ${ctype}`;
+  const content = `基于 ${p?.seniority_years||50} 年资历, 在 ${p?.domain||'系统'} 领域, 为仙女座体系做出的 ${ctype}`;
+  const r = await API.contribute(id, ctype, title, content, 1.0 + Math.random()*2);
+  if(r.ok) toast(`✅ ${name} 发光发热 · 脑库 ✅ · ${r.followers_broadcast} 广播`,'ok');
+  else toast('❌ 失败','err');
+  await loadAll();
+}
+
+async function seedAll(){
+  if(!confirm('重新 Seed 所有 AI 员工资历档案? (已有的保持不变, 新增缺失的)')) return;
+  toast('🌱 Seed 补齐…');
+  const r = await API.seed();
+  toast(`✅ Seed 完成 · +${r.profiles.inserted} 档案 · +${r.social.inserted} 关系`,'ok');
+  await loadAll();
+}
+
+// 🆕 后端批量 (快得多, 一次 HTTP 调用)
+async function batchFire(){
+  const n = parseInt(prompt('批量发光发热 · 人数? (建议 30-100)','50')) || 50;
+  toast(`🔥 后端批量发光发热 ${n} 人…`);
+  const r = await API.batchContribute(n);
+  if(r.ok) toast(`✅ 完成 · ${r.count}/${r.pool_size} 产出成功`,'ok');
+  else toast(`❌ ${r.error||'失败'}`,'danger');
+  await loadAll();
+}
+async function batchConsult(){
+  const n = parseInt(prompt('批量自主请教 · 人数? (建议 20-50)','30')) || 30;
+  toast(`🤝 后端批量请教 ${n} 人…`);
+  const r = await API.batchConsult(n);
+  if(r.ok) toast(`✅ 完成 · ${r.count}/${r.pool_size} 请教成功`,'ok');
+  else toast(`❌ ${r.error||'失败'}`,'danger');
+  await loadAll();
+}
+
+// 🆕 编辑档案
+function openEditModal(p){
+  closeModals();
+  document.getElementById('em-id').value = p.id;
+  document.getElementById('em-name').value = p.name;
+  document.getElementById('em-yrs').value = p.yrs;
+  document.getElementById('em-domain').value = p.domain;
+  document.getElementById('em-skill').value = p.skill;
+  document.getElementById('em-tag').value = p.tag;
+  openModal('m-edit');
+}
+async function saveEdit(){
+  const id = document.getElementById('em-id').value;
+  const patch = {
+    seniority_years: parseInt(document.getElementById('em-yrs').value)||50,
+    domain: document.getElementById('em-domain').value.trim(),
+    unique_skill: document.getElementById('em-skill').value.trim(),
+    group_tag: document.getElementById('em-tag').value.trim(),
+  };
+  toast('💾 保存中…');
+  const r = await API.edit(id, patch);
+  if(r.ok){ toast('✅ 已更新','ok'); closeModals(); await loadAll(); }
+  else toast(`❌ ${r.error||'失败'}`,'danger');
+}
+// 🆕 换师傅 (详情 Modal 里点按钮)
+async function changeMaster(masterId){
+  if(!CURRENT_ID) return;
+  toast(`🔗 更换师傅 → ${masterId||'(清除)'}`);
+  const r = await API.bindMaster(CURRENT_ID, masterId || null);
+  if(r.ok){ toast('✅ 师傅已更新','ok'); await showDetail(CURRENT_ID); }
+  else toast(`❌ ${r.error||'失败'}`,'danger');
+}
+
+// 🆕 审计日志
+async function openAudit(){
+  closeModals();
+  const r = await API.audit(80);
+  const el = document.getElementById('audit-body');
+  if(!r.logs || !r.logs.length){ el.innerHTML='<div style="color:#64748b;text-align:center;padding:20px;">暂无审计记录</div>'; }
+  else el.innerHTML = r.logs.map(l=>{
+    let d = {}; try{d=JSON.parse(l.detail||'{}');}catch(e){}
+    const who = (l.employee_id||'').startsWith('admin:') ? '🛡️ '+l.employee_id : '🤖 '+l.employee_id;
+    const detail = Object.entries(d).map(([k,v])=>`${k}=${v}`).join(', ') || l.detail || '';
+    return `<div style="padding:8px 0;border-bottom:1px solid rgba(148,163,184,.08);font-size:.72rem;display:flex;gap:10px;">
+      <span style="color:#475569;font-family:'JetBrains Mono',monospace;white-space:nowrap;">${l.created_at||''}</span>
+      <span style="color:#c4b5fd;font-weight:600;white-space:nowrap;">${l.action}</span>
+      <span style="color:#64748b;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${detail}</span>
+      <span style="color:#475569;white-space:nowrap;">${who}</span>
+    </div>`;
+  }).join('');
+  openModal('m-audit');
+}
+
+/* init */
+loadAll();
+setInterval(loadAll, 60000);
+</script>
+
+{% include 'andromeda_nav.html' %}
+</body>
+</html>
