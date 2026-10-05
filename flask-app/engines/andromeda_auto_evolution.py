@@ -87,13 +87,28 @@ RUNTIME_DIR = os.environ.get(
 CHECKPOINT_FILE = os.path.join(RUNTIME_DIR, 'evolution_checkpoint.json')
 
 # --- Ollama 配置 ---
-# 🆕 2026-10-05: 自动检测可用端口 (11435 launch agent, 11434 CLI)
-# 两者可能互相切换/挂, 先试哪个活用哪个
+# 🆕 2026-10-05: 动态检测 — 模块加载时只给默认值, 每次 run_cycle 开头刷新
 def _detect_ollama_host() -> str:
-    """自动检测 Ollama 可用端口, 优先用户显式指定"""
+    """每次调用都重新检测 Ollama 可用端口 (11434 CLI / 11435 launch agent).
+    
+    安全策略: 环境变量 OLLAMA_HOST 只有在端口真的通时才信任,
+             否则自动 fallback 扫描 11434 → 11435.
+    """
+    # 先试环境变量 (如果端口真通)
     if 'OLLAMA_HOST' in os.environ:
-        return os.environ['OLLAMA_HOST']
-    for port in [11435, 11434]:
+        env_host = os.environ['OLLAMA_HOST']
+        try:
+            import urllib.request as _ur
+            req = _ur.Request(f'{env_host}/api/tags')
+            with _ur.urlopen(req, timeout=2) as _resp:
+                if _resp.status == 200:
+                    return env_host
+            logger.warning(f'[OLLAMA] env OLLAMA_HOST={env_host} 端口不通, fallback 检测')
+        except Exception:
+            logger.warning(f'[OLLAMA] env OLLAMA_HOST={env_host} 连不上, fallback 检测')
+    
+    # 扫描端口 (优先 11434 CLI, 稳定)
+    for port in [11434, 11435]:
         try:
             import urllib.request as _ur
             req = _ur.Request(f'http://localhost:{port}/api/tags')
@@ -103,16 +118,16 @@ def _detect_ollama_host() -> str:
                     return f'http://localhost:{port}'
         except Exception:
             continue
-    logger.warning('[OLLAMA] 11435/11434 均无响应, 默认 11434')
+    logger.warning('[OLLAMA] 11434/11435 均无响应, 默认 11434')
     return 'http://localhost:11434'
 
+# 模块级默认值, run_cycle 开头会刷新
 OLLAMA_HOST = _detect_ollama_host()
 EMBED_MODEL = os.environ.get('OLLAMA_EMBED_MODEL', 'nomic-embed-text')
 OLLAMA_TIMEOUT = 120  # 大模型推理慢
 
-# 🆕 2026-09-17: Volcengine 方舟 ARK 兜底 (Ollama 挂了自动切云端)
-# 见 ai_engines/ai_volcengine_engine.py — 已实现 smart fallback
-_VOLCENGINE_FALLBACK = True  # 开启云端兜底 (消耗 token)
+# 🔴 2026-10-05: 火山引擎账户欠费 (AccountOverdueError), 先关掉
+_VOLCENGINE_FALLBACK = False
 
 # 🔀 智能择优选择本地大模型
 # 优先级: OLLAMA_DERIVE_MODEL 显式覆盖 > 硬件自动检测+Ollama已装模型择优 > 默认 7b
@@ -1373,15 +1388,395 @@ def auto_optimize(cp: Dict, stats: Dict[str, Any]) -> Dict:
 
 
 # ============================================================
-# 主入口: run_cycle — 七阶段串联
+# 🆕 Stage 8: 自研拓展 — 冰山自己发现知识域空白并填充
+# ============================================================
+
+def auto_discover_gaps(min_nodes_per_subject: int = 10, top_n: int = 3) -> List[Dict]:
+    """
+    扫描知识图谱, 找节点数 < min_nodes_per_subject 的稀疏学科.
+    返回 top_n 个最稀疏学科的 gap 清单.
+    """
+    gaps = []
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.execute('PRAGMA journal_mode=WAL')
+        # 先看 k12_knowledge_points 里各学科的知识点数
+        rows = conn.execute("""
+            SELECT 
+                subject, 
+                count(*) as point_count,
+                (SELECT count(*) FROM knowledge_graph_nodes 
+                 WHERE knowledge_graph_nodes.node_name LIKE '%' || k.subject || '%' 
+                    OR knowledge_graph_nodes.node_type LIKE '%' || k.subject || '%'
+                ) as kg_nodes
+            FROM k12_knowledge_points k
+            GROUP BY subject
+            ORDER BY point_count ASC
+            LIMIT ?
+        """, (top_n * 2,)).fetchall()
+        
+        for row in rows:
+            subject, points, kg_nodes = row
+            # 合并: 稀疏学科 = 知识点少 OR KG 节点少
+            if points < min_nodes_per_subject or kg_nodes < min_nodes_per_subject // 2:
+                gaps.append({
+                    'subject': subject,
+                    'current_points': points,
+                    'current_kg_nodes': kg_nodes,
+                    'gap_type': 'sparse_kg' if kg_nodes < points else 'few_points',
+                })
+                if len(gaps) >= top_n:
+                    break
+        
+        # 如果 k12 没有, 用通用知识图谱按 category 扫
+        if len(gaps) < top_n:
+            rows2 = conn.execute("""
+                SELECT category, count(*) as cnt
+                FROM knowledge_graph_nodes
+                WHERE category IS NOT NULL
+                GROUP BY category
+                ORDER BY cnt ASC
+                LIMIT ?
+            """, (top_n,)).fetchall()
+            for cat, cnt in rows2:
+                if cnt < min_nodes_per_subject:
+                    gaps.append({
+                        'subject': cat,
+                        'current_kg_nodes': cnt,
+                        'gap_type': 'sparse_category',
+                    })
+        
+        conn.close()
+        if gaps:
+            logger.info(f'[Stage8-discover] 发现 {len(gaps)} 个稀疏知识域: '
+                       f'{", ".join(g["subject"] for g in gaps)}')
+    except Exception as e:
+        logger.error(f'[Stage8-discover] 异常: {e}')
+    return gaps
+
+
+def auto_expand_knowledge(gaps: List[Dict], concepts_per_subject: int = 8) -> Dict[str, int]:
+    """
+    对每个稀疏学科, 用 Ollama 生成 N 个关联概念 + 描述,
+    写入 knowledge_graph_nodes + ai_brain_enhanced_knowledge.
+    """
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute('PRAGMA journal_mode=WAL')
+    results = {'subjects_filled': 0, 'concepts_added': 0, 'knowledge_added': 0}
+
+    for gap in gaps:
+        subject = gap['subject']
+        try:
+            prompt = f"""请为学科"{subject}"生成 {concepts_per_subject} 个核心关联概念.
+
+要求:
+1. 每个概念必须和 "{subject}" 直接相关
+2. 输出 JSON 数组, 每项 {{"concept": "概念名", "description": "1-2句描述", "related_to": "相关的上游概念"}}
+3. 概念之间要有层次 (基础→进阶→应用)
+4. 用中文
+
+示例输出:
+[{{"concept": "牛顿第二定律", "description": "F=ma, 力等于质量乘加速度", "related_to": "力学基础"}}]"""
+
+            response = _ollama_chat(
+                prompt, 
+                system='你是知识图谱构建专家. 只输出 JSON 数组.',
+            )
+            if not response:
+                continue
+
+            # 解析 JSON
+            start = response.find('[')
+            end = response.rfind(']') + 1
+            if start < 0 or end <= start:
+                continue
+            try:
+                concepts = json.loads(response[start:end])
+            except json.JSONDecodeError:
+                continue
+
+            subject_added = 0
+            prev_node_id = None
+            for c in concepts[:concepts_per_subject]:
+                concept = (c.get('concept') or '').strip()
+                desc = (c.get('description') or '').strip()
+                related = (c.get('related_to') or '').strip()
+                if not concept:
+                    continue
+
+                node_id = f'KG-{uuid.uuid4().hex[:12]}'
+
+                # 写 KG 节点 (正确列名: node_name, node_type, content)
+                try:
+                    conn.execute(
+                        'INSERT OR IGNORE INTO knowledge_graph_nodes '
+                        '(node_id, node_name, node_type, content, importance_score, '
+                        'is_active, created_at, updated_at) '
+                        'VALUES (?, ?, ?, ?, 0.5, 1, datetime(\'now\',\'localtime\'), '
+                        'datetime(\'now\',\'localtime\'))',
+                        (node_id, concept, subject, desc)
+                    )
+                except sqlite3.Error as e:
+                    logger.debug(f'  KG node skip: {e}')
+                
+                # 写 KG 关系 (related → concept, 用 node_id 关联)
+                # 先查 related 对应的 node_id
+                if related and prev_node_id:
+                    try:
+                        related_row = conn.execute(
+                            'SELECT node_id FROM knowledge_graph_nodes WHERE node_name=? LIMIT 1',
+                            (related,)
+                        ).fetchone()
+                        related_nid = related_row[0] if related_row else prev_node_id
+                        conn.execute(
+                            'INSERT OR IGNORE INTO knowledge_graph_relations '
+                            '(relation_id, source_node_id, target_node_id, relation_type, weight, '
+                            'is_active, created_at) '
+                            'VALUES (?, ?, ?, "related_to", 0.6, 1, datetime(\'now\',\'localtime\'))',
+                            (f'R-{uuid.uuid4().hex[:10]}', related_nid, node_id)
+                        )
+                    except sqlite3.Error as e:
+                        logger.debug(f'  KG rel skip: {e}')
+
+                prev_node_id = node_id
+
+                # 写增强知识 (可被脑库摄入)
+                try:
+                    conn.execute(
+                        'INSERT OR IGNORE INTO ai_brain_enhanced_knowledge '
+                        '(knowledge_id, category, title, content, knowledge_type, '
+                        'tags, confidence_score, usage_count, is_active, created_at, updated_at) '
+                        'VALUES (?, ?, ?, ?, "structured", ?, 0.65, 0, 1, '
+                        'datetime(\'now\',\'localtime\'), datetime(\'now\',\'localtime\'))',
+                        (
+                            f'AE-GAP-{uuid.uuid4().hex[:10]}',
+                            subject,
+                            concept,
+                            desc,
+                            json.dumps(['auto_expand', subject, 'kg_gap_fill'], ensure_ascii=False),
+                        )
+                    )
+                    results['knowledge_added'] += 1
+                except sqlite3.Error:
+                    pass
+
+                results['concepts_added'] += 1
+                subject_added += 1
+
+            conn.commit()
+            results['subjects_filled'] += 1
+            logger.info(f'[Stage8-expand] "{subject}" 填补 {subject_added} 个概念')
+
+        except Exception as e:
+            logger.error(f'[Stage8-expand] "{subject}" 异常: {e}')
+
+    conn.close()
+    logger.info(f'[Stage8-expand] 自研拓展完成: {results["subjects_filled"]} 学科, '
+               f'{results["concepts_added"]} 概念, {results["knowledge_added"]} 知识')
+    return results
+
+
+# ============================================================
+# 🆕 Stage 9: 冰山广播 — 新衍生知识推给 AI 员工触发讨论
+# ============================================================
+
+def iceberg_broadcast_derived(
+    cycle_num: int = 0,
+    derived_count: int = 0,
+    associations_count: int = 0,
+    gaps_filled: int = 0,
+) -> Dict[str, int]:
+    """
+    把本轮演化产出 (衍生数/关联数/填补学科数) 打包成广播消息,
+    推给 N 个活跃 AI 员工 → 触发 EigenFlux 讨论 → 摄入脑库 → 下轮再演化.
+    这是"衍生→广播→讨论→摄入→再衍生"自举循环的关键节点.
+    """
+    result = {'messages_sent': 0, 'receivers': 0}
+    if derived_count == 0 and associations_count == 0 and gaps_filled == 0:
+        return result  # 本轮没产出, 不广播
+
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.execute('PRAGMA journal_mode=WAL')
+
+        # 1. 挑 5 个活跃 AI 员工 (混合仙女座注册员工 + ai_employees)
+        receivers = []
+        # 仙女座注册员工
+        emp1 = conn.execute("""
+            SELECT employee_id, name, level FROM mt_andromeda_employee_registry
+            WHERE enabled=1 ORDER BY level DESC LIMIT 3
+        """).fetchall()
+        for e in emp1:
+            receivers.append({'id': e[0], 'name': e[1], 'table': 'mt_andromeda_employee_registry'})
+        
+        # 普通 AI 员工
+        emp2 = conn.execute("""
+            SELECT id, name FROM ai_employees WHERE status='active' LIMIT 2
+        """).fetchall()
+        for e in emp2:
+            receivers.append({'id': e[0], 'name': e[1], 'table': 'ai_employees'})
+
+        if not receivers:
+            conn.close()
+            return result
+
+        # 2. 构造冰山广播内容
+        broadcast = (
+            f'[ICEBERG_BROADCAST] Cycle #{cycle_num} 自演化产出\n'
+            f'  📊 衍生知识: {derived_count} 条\n'
+            f'  🕸️ 语义关联: {associations_count} 对\n'
+            f'  🧠 自研填补: {gaps_filled} 个稀疏学科\n'
+            f'  🦙 推理模型: {DERIVE_MODEL}\n'
+            f'  💡 请讨论: 这些新知识如何应用到你的工作中?'
+        )
+
+        # 3. 写 eigenflux_comm_messages 触发讨论
+        # 注意: eigenflux_ingest 有防循环 (knowledge_tags_json LIKE '%auto_derived%' 跳过)
+        # 这里用 'iceberg_broadcast' 标签, 让下轮能摄入
+        session = conn.execute(
+            "SELECT id FROM eigenflux_comm_sessions ORDER BY rowid DESC LIMIT 1"
+        ).fetchone()
+        session_id = session[0] if session else 0
+
+        for emp in receivers:
+            try:
+                conn.execute(
+                    'INSERT INTO eigenflux_comm_messages '
+                    '(session_id, employee_id, employee_name, employee_table, '
+                    'message_direction, message_type, message_content, '
+                    'knowledge_tags_json, learning_value, created_at) '
+                    'VALUES (?, ?, ?, ?, "inbound", "ICEBERG_BROADCAST", ?, ?, 8, '
+                    'datetime(\'now\',\'localtime\'))',
+                    (
+                        session_id, emp['id'], emp['name'], emp['table'],
+                        broadcast,
+                        json.dumps(['iceberg_broadcast', f'cycle_{cycle_num}', 'auto_trigger'],
+                                   ensure_ascii=False),
+                    )
+                )
+                result['messages_sent'] += 1
+            except sqlite3.Error as e:
+                logger.debug(f'[Stage9-broadcast] 跳过 {emp["name"]}: {e}')
+
+        conn.commit()
+        conn.close()
+        result['receivers'] = len(receivers)
+        logger.info(f'[Stage9-broadcast] 冰山广播 Cycle #{cycle_num}: '
+                   f'{result["messages_sent"]}/{len(receivers)} AI 员工已收到')
+
+    except Exception as e:
+        logger.error(f'[Stage9-broadcast] 异常: {e}')
+
+    return result
+
+
+# ============================================================
+# 🆕 Stage 10: 元优化 — Phase 升级条件判定
+# ============================================================
+
+_PHASE_DEFS = [
+    (1, '混沌', '初始状态, 只有静态知识'),
+    (2, '感知', '检测新知识变化, 有 basic detect'),
+    (3, '觉醒', 'embedding 工作, 有 retrieve + associate'),
+    (4, '衍生', 'LLM 稳定衍生新知识, auto_derive > 0'),
+    (5, '江山', 'KG 节点 > 10K, 关联 > 20K'),
+    (6, '星海', 'AI 员工 > 100K, EigenFlux 每日 > 10K 消息'),
+    (7, '归一', '多学科知识打通, 跨域衍生 > 1K'),
+    (8, '永恒', '自主演化闭环稳定 30 天'),
+]
+
+
+def auto_meta_phase_advance(cp: Dict, stats: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    每轮判定是否满足 Phase 升级条件.
+    条件基于 checkpoint 累积统计 + DB 实时快照.
+    """
+    current_phase = cp.get('evolution_phase', 1)
+    current_name = cp.get('evolution_phase_name', _PHASE_DEFS[current_phase - 1][1] if current_phase <= len(_PHASE_DEFS) else '?')
+    advance_to = None
+    reasons = []
+
+    try:
+        conn = sqlite3.connect(DB_PATH)
+
+        # 关键指标
+        kg_nodes = conn.execute('SELECT count(*) FROM knowledge_graph_nodes').fetchone()[0]
+        kg_edges = conn.execute('SELECT count(*) FROM knowledge_graph_relations').fetchone()[0]
+        ai_emp = conn.execute('SELECT count(*) FROM ai_employees WHERE status="active"').fetchone()[0]
+        ef_msgs = conn.execute('SELECT count(*) FROM mt_ai_eigenflux_messages').fetchone()[0]
+        derived_total = conn.execute('SELECT count(*) FROM mt_derived_knowledge').fetchone()[0]
+
+        conn.close()
+
+        # Phase 3→4: 觉醒 → 衍生 (需要 derived 开始真正产出)
+        if current_phase == 3:
+            if cp.get('total_derived', 0) > 1000 and stats.get('derived', 0) > 0:
+                advance_to = 4
+                reasons.append(f'total_derived={cp["total_derived"]} + 本轮 derived={stats.get("derived",0)}')
+
+        # Phase 4→5: 衍生 → 江山 (KG 规模)
+        elif current_phase == 4:
+            if kg_nodes >= 10000 and kg_edges >= 20000:
+                advance_to = 5
+                reasons.append(f'KG 节点 {kg_nodes} ≥ 10K, 关系 {kg_edges} ≥ 20K')
+
+        # Phase 5→6: 江山 → 星海 (AI 员工 + EigenFlux 活跃)
+        elif current_phase == 5:
+            if ai_emp >= 500 and ef_msgs >= 100000:
+                advance_to = 6
+                reasons.append(f'active AI 员工 {ai_emp} ≥ 500, EigenFlux 消息 {ef_msgs} ≥ 100K')
+
+        # Phase 6→7: 星海 → 归一 (跨域衍生)
+        elif current_phase == 6:
+            if derived_total >= 5000:
+                advance_to = 7
+                reasons.append(f'mt_derived_knowledge {derived_total} ≥ 5K 跨域衍生')
+
+        if advance_to:
+            new_name = _PHASE_DEFS[advance_to - 1][1]
+            cp['evolution_phase'] = advance_to
+            cp['evolution_phase_name'] = new_name
+            logger.info(f'🎉 冰山 Phase 升级! {current_name} → {new_name} (Phase {advance_to})')
+            logger.info(f'   原因: {"; ".join(reasons)}')
+            return {'advanced': True, 'from': current_name, 'to': new_name, 'reasons': reasons}
+
+        return {
+            'advanced': False,
+            'current_phase': current_phase,
+            'current_name': current_name,
+            'metrics': {
+                'kg_nodes': kg_nodes, 'kg_edges': kg_edges,
+                'ai_emp_active': ai_emp, 'ef_messages': ef_msgs,
+                'derived': derived_total,
+            }
+        }
+
+    except Exception as e:
+        logger.error(f'[Stage10-meta] 异常: {e}')
+        return {'advanced': False, 'error': str(e)}
+
+
+# ============================================================
+# 主入口: run_cycle — 十阶段串联 (原七阶段 + 自研拓展 + 广播 + Phase 升级)
 # ============================================================
 
 def run_cycle() -> Dict[str, Any]:
     """
-    执行完整七阶段自演化循环。
-    daemon 每 600s 调用一次。
+    执行完整十阶段自演化循环 (2026-10-05 扩展).
+    Stage 0: EigenFlux 摄入
+    Stage 1-7: 原七阶段 (detect/retrieve/associate/derive/discuss/reinforce/expand/optimize)
+    Stage 8: 🧠 自研拓展 — KG 稀疏学科填补
+    Stage 9: 🔁 冰山广播 — 新衍生知识推送给 AI 员工触发讨论
+    Stage 10: ⚡ 元优化 — Phase 升级条件判定
+    daemon 每 600s 调用一次, 也可手动触发.
     """
+    global OLLAMA_HOST
     t0 = time.time()
+    
+    # 🆕 每次刷新 Ollama 端口 (防止模块加载后 Ollama 切换了)
+    OLLAMA_HOST = _detect_ollama_host()
+    logger.info(f'[OLLAMA] 本轮使用: {OLLAMA_HOST} (model={DERIVE_MODEL}, embed={EMBED_MODEL})')
+    
     cp = _load_checkpoint()
     cycle_num = cp.get('cycle_count', 0) + 1
     cp['cycle_count'] = cycle_num
@@ -1490,6 +1885,36 @@ def run_cycle() -> Dict[str, Any]:
         stats['optimize'] = optimize_result
     except Exception as e:
         logger.error(f'[Cycle #{cycle_num}] Stage7 整体异常: {e}')
+
+    # --- 🆕 Stage 8: 自研拓展 — KG 稀疏学科填补 ---
+    gap_result = {'subjects_filled': 0, 'concepts_added': 0}
+    try:
+        gaps = auto_discover_gaps(min_nodes_per_subject=10, top_n=3)
+        if gaps:
+            gap_result = auto_expand_knowledge(gaps, concepts_per_subject=8)
+        stats['gap_fill'] = gap_result
+    except Exception as e:
+        logger.error(f'[Cycle #{cycle_num}] Stage8-gap_fill 异常 (不影响主流程): {e}')
+
+    # --- 🆕 Stage 9: 冰山广播 — 新衍生知识推给 AI 员工触发讨论 ---
+    broadcast_result = {'messages_sent': 0, 'receivers': 0}
+    try:
+        broadcast_result = iceberg_broadcast_derived(
+            cycle_num=cycle_num,
+            derived_count=stats.get('derived', 0),
+            associations_count=stats.get('associations', 0),
+            gaps_filled=gap_result.get('subjects_filled', 0),
+        )
+        stats['broadcast'] = broadcast_result
+    except Exception as e:
+        logger.error(f'[Cycle #{cycle_num}] Stage9-broadcast 异常 (不影响主流程): {e}')
+
+    # --- 🆕 Stage 10: 元优化 — Phase 升级条件判定 ---
+    try:
+        phase_result = auto_meta_phase_advance(cp, stats)
+        stats['phase_advance'] = phase_result
+    except Exception as e:
+        logger.error(f'[Cycle #{cycle_num}] Stage10-meta 异常 (不影响主流程): {e}')
 
     # 更新 checkpoint (用最后一条 new_item 的 created_at)
     if new_items:
