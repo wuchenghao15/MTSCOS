@@ -250,11 +250,20 @@ def _aggregate():
         # 🆕 2026-10-05: 支持多个 AI Passport (扫描 /dev/cu.usbmodem*)
         import glob as _glob
         usb_passports = sorted(set(_glob.glob('/dev/cu.usbmodem*') + _glob.glob('/dev/tty.usbmodem*')))
-        ai_passport_devices = [p for p in usb_passports if 'Bluetooth' not in p]
+        # 去重: cu.usbmodem101 和 tty.usbmodem101 是同一个设备, 按 basename 去重
+        _seen_basenames = set()
+        ai_passport_devices = []
+        for p in usb_passports:
+            if 'Bluetooth' in p: continue
+            bn = p.split('/')[-1]  # usbmodem101 / cu.usbmodem101
+            # 归一化: cu.usbmodem101 → usbmodem101
+            bn_clean = bn.replace('cu.', '').replace('tty.', '')
+            if bn_clean not in _seen_basenames:
+                _seen_basenames.add(bn_clean)
+                ai_passport_devices.append(p)
         data['ai_passport']['usb'] = len(ai_passport_devices) > 0
         data['ai_passport']['usb_count'] = len(ai_passport_devices)
         data['ai_passport']['devices'] = ai_passport_devices
-        # 取第一个设备的实时状态 (如果有)
         if ai_passport_devices:
             try:
                 mtime = os.path.getmtime(ai_passport_devices[0])
