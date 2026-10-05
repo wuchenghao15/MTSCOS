@@ -136,28 +136,91 @@ def _has_legitimate_flow(conn: sqlite3.Connection) -> bool:
         print(f"  [guard] _has_legitimate_flow 错误: {e}", flush=True)
     return False
 
-def _record_violation(conn: sqlite3.Connection, detail: str, source: str) -> None:
+def _find_recent_flow_id(conn: sqlite3.Connection) -> str | None:
+    """找最近一个 30 分钟内更新且 final_status 不是终态的 flow_id (用于追溯链)"""
+    try:
+        cutoff = (datetime.now() - timedelta(minutes=30)).strftime("%Y-%m-%d %H:%M:%S")
+        cur = conn.execute(
+            "SELECT flow_id FROM mt_dev_flow_session "
+            "WHERE final_status NOT IN ('FINAL_DONE','ABANDONED','REJECTED','BYPASSED') "
+            "AND updated_at > ? AND current_step IN "
+            "('STEP_7_EXECUTE','STEP_8_ACCEPTANCE','STEP_9A_PASS_OR_LOOPBACK',"
+            "'STEP_9B_SUMMARY','STEP_10_SMART_VERSION_UPGRADE','STEP_11_AUTO_GIT_SYNC','STEP_12_TEST1000') "
+            "ORDER BY updated_at DESC LIMIT 1",
+            (cutoff,)
+        )
+        row = cur.fetchone()
+        return row[0] if row else None
+    except Exception:
+        return None
+
+def _record_violation(conn: sqlite3.Connection, merged_files: list, has_flow: bool,
+                      flow_id: str | None, source: str) -> None:
     """
-    落库 mt_iron_rule_violations (真实 schema)
-    viol_id TEXT PRIMARY KEY, viol_rule, viol_stage, viol_action, viol_payload(TEXT JSON),
-    viol_git_commit, viol_handler, viol_blocked INT, created_at REAL, updated_at REAL
+    合规级落库 — payload 必须包含完整追溯链:
+      {reason, files:[], file_count, has_flow, available_flow, git_commit,
+       mtime_cutoff, guard_pid, timestamp_iso}
     """
     now_ts = time.time()
+    now_iso = datetime.now().isoformat()
     viol_id = f"guard_D9_{int(now_ts)}"
-    payload = json.dumps({"reason": "IronRuleGuard detected file changes without flow_id",
-                         "source": source, "detail": detail[:300]}, ensure_ascii=False)
+
+    # 取当前 git HEAD (追溯链)
+    git_head = ""
+    try:
+        r = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True,
+                          cwd=str(_PROJ_ROOT), timeout=5)
+        if r.returncode == 0:
+            git_head = r.stdout.strip()[:40]
+    except Exception:
+        pass
+
+    payload_obj = {
+        "reason": "IronRuleGuard MT_IR_D9 - file changes without legitimate flow_id",
+        "files": merged_files[:50],  # 完整文件列表 (上限50)
+        "file_count": len(merged_files),
+        "has_flow_at_violation": has_flow,
+        "available_flow_at_violation": flow_id,
+        "git_head_at_violation": git_head,
+        "mtime_window_sec": _FILE_MTIME_WINDOW,
+        "guard_pid": os.getpid(),
+        "detected_at": now_iso,
+        "rule_version": "v1.3.0",
+    }
+    payload = json.dumps(payload_obj, ensure_ascii=False)
     try:
         conn.execute(
             "INSERT OR REPLACE INTO mt_iron_rule_violations"
             "(viol_id, viol_rule, viol_stage, viol_action, viol_payload,"
-            " viol_handler, viol_blocked, viol_rolled_back, created_at, updated_at) "
-            "VALUES(?,?,?,?,?,?,?,?,?,?)",
+            " viol_git_commit, viol_handler, viol_blocked, viol_rolled_back, created_at, updated_at) "
+            "VALUES(?,?,?,?,?,?,?,?,?,?,?)",
             (viol_id, "MT_IR_D9", "dev_activity_preflight", "WARN", payload,
-             "IronRuleGuard", 1, 0, now_ts, now_ts)
+             git_head, "IronRuleGuard", 1, 0, now_ts, now_ts)
         )
         conn.commit()
     except Exception as e:
         print(f"  [guard] record_violation 错误: {e}", flush=True)
+
+def _write_heartbeat(conn: sqlite3.Connection) -> None:
+    """daemon_registry 心跳 — 法务审计需要知道 guard 存活"""
+    now_iso = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    now_ts = time.time()
+    try:
+        conn.execute(
+            "INSERT OR REPLACE INTO mt_daemon_registry"
+            "(process_name, duty, status, last_heartbeat, pid, config_json, updated_at) "
+            "VALUES(?,?,?,?,?,?,?)",
+            ("sys_iron_rule_guard",
+             "§14 IRON_RULE 第2层守护 - 每30s扫描git diff+mtime,无flow_id落库MT_IR_D9",
+             "RUNNING", now_iso, os.getpid(),
+             json.dumps({"interval_sec": 30, "scan_git": True, "scan_mtime": True,
+                        "cutoff_min": 30, "min_viol_sec": 90, "version": "v1.1.0"},
+                       ensure_ascii=False),
+             now_iso)
+        )
+        conn.commit()
+    except Exception:
+        pass
 
 def _feed_brain(conn: sqlite3.Connection, message: str, msg_type: str = "rule_violation") -> None:
     """投喂 AI 脑库"""
@@ -244,14 +307,16 @@ def scan_once() -> dict:
         "mtime_changed": mtime_files,
         "merged": filtered,
         "has_legit_flow": False,
+        "available_flow_id": None,
     }
 
-    if filtered:
-        conn = _get_db()
-        try:
-            result["has_legit_flow"] = _has_legitimate_flow(conn)
-        finally:
-            conn.close()
+    # 始终检查最近可用 flow_id (法务追溯链)
+    conn = _get_db()
+    try:
+        result["available_flow_id"] = _find_recent_flow_id(conn)
+        result["has_legit_flow"] = _has_legitimate_flow(conn)
+    finally:
+        conn.close()
 
     return result
 
@@ -271,14 +336,25 @@ def main() -> None:
 
     last_report_time = 0  # 上次详细报告时间
     violation_counter = 0  # 违规计数（限频）
+    last_hb_time = 0       # 上次心跳时间
 
     while True:
         try:
             result = scan_once()
             merged = result["merged"]
             has_flow = result["has_legit_flow"]
+            avail_flow = result.get("available_flow_id")
 
             now = time.time()
+
+            # ── 每轮都写心跳 (15s 间隔足够) ──
+            if now - last_hb_time > 15:
+                conn = _get_db()
+                try:
+                    _write_heartbeat(conn)
+                finally:
+                    conn.close()
+                last_hb_time = now
 
             if merged and not has_flow:
                 # 检测到未授权变更
@@ -288,20 +364,16 @@ def main() -> None:
                     conn = _get_db()
                     try:
                         _ensure_tables(conn)
-                        detail = (
-                            f"detected {len(merged)} files changed without flow_id: "
-                            + ", ".join(merged[:10])
-                            + ("..." if len(merged) > 10 else "")
-                        )
-                        _record_violation(conn, detail, "IronRuleGuard")
+                        _record_violation(conn, merged, has_flow, avail_flow, "IronRuleGuard")
                         _feed_brain(
                             conn,
                             f"⚠️ [MT_IR_D9] IronRuleGuard 检测到 {len(merged)} 个文件变更未走 12 步骤\n"
                             f"文件列表: {', '.join(merged[:15])}\n"
+                            f"当时可用 flow_id: {avail_flow or '(无)'}\n"
                             f"建议：先创建 flow_id 并走完 STEP_1→STEP_7 再实施",
                             "iron_rule_violation"
                         )
-                        print(f"  [guard] ⚠️ 落库 MT_IR_D9 violation: {len(merged)} files", flush=True)
+                        print(f"  [guard] ⚠️ 落库 MT_IR_D9 violation: {len(merged)} files | avail_flow={avail_flow}", flush=True)
                     finally:
                         conn.close()
 
