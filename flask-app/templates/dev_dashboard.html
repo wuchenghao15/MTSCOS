@@ -601,8 +601,8 @@ function render(data) {
   document.getElementById('cluster-summary').innerHTML = sumHtml;
 
   // 握手计数
-  document.getElementById('handshake-count').textContent = 
-    (data.handshake?.reports || []).length;
+  document.getElementById('handshake-count').textContent =
+    data.handshake?.total || (data.handshake?.reports || []).length;
   const last = data.handshake?.evolution_recent?.[0];
   document.getElementById('handshake-last-sub').textContent = 
     last ? `${last.source_role} · ${fmtTS(last.created_at)}` : '-';
