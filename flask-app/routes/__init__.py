@@ -62,7 +62,7 @@ readonly_inventory_bp = Blueprint('readonly_inventory', __name__)
 # 页面级路由 (v22.35.0 新增) — 非 /api/ 前缀, 给功能域提供独立页面入口
 # page_routes_bp 定义在 routes/page_routes.py 里, 通过 register_all_blueprints 注册
 # 仙女座仪表盘/冰山中心 — 页面级路由 (v22.19.0 新增, blueprint 变量定义在这里, 被 andromeda_dashboard_routes.py 相对引用)
-andromeda_dashboard_bp = Blueprint('andromeda_dashboard', __name__)
+andromeda_dashboard_bp = Blueprint('andromeda_dashboard', __name__, url_prefix='/andromeda')
 
 # ---- home_bp 路由定义 (根路由不挂 url_prefix, 提供 / 和 /index) ----
 from flask import redirect as _redirect, session as _session, render_template as _render_template, request as _request
