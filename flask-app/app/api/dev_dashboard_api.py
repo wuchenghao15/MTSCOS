@@ -108,6 +108,7 @@ def _aggregate():
                 top_rows = [dict(r) for r in cur.fetchall()]
                 # duty → duty_cycle_s (主库 duty 是 "描述+周期" 文本, 如 "系统心跳写入 30s")
                 import re as _re
+                import datetime as _dt
                 for row in top_rows:
                     duty_text = str(row.pop('duty', '') or '')
                     m = _re.search(r'(\d+)\s*[smh]', duty_text)
@@ -118,6 +119,18 @@ def _aggregate():
                         row['duty_cycle_s'] = secs
                     else:
                         row['duty_cycle_s'] = 600  # fallback
+                    # 🆕 last_heartbeat epoch 秒 → ISO (主库存 epoch, 前端 fmtTS 期望 ISO)
+                    lh = row.get('last_heartbeat')
+                    if lh:
+                        try:
+                            epoch = float(lh)
+                            if epoch > 1e9:  # 合理 epoch
+                                row['last_heartbeat'] = _dt.datetime.fromtimestamp(epoch).strftime('%Y-%m-%d %H:%M:%S')
+                        except (ValueError, TypeError):
+                            pass  # 已经是 ISO 格式, 保持原样
+                    # pid NULL → 空字符串 (前端显示 "-" 会更丑)
+                    if not row.get('pid'):
+                        row['pid'] = None
                 data['daemons']['top'] = top_rows
             except Exception as e:
                 data['daemons']['top'] = []
@@ -151,7 +164,28 @@ def _aggregate():
                 "SELECT id, report_id, host_node, guest_node, guest_host, summary, created_at "
                 "FROM mt_handshake_reports ORDER BY id DESC LIMIT 5"
             )
-            data['handshake']['reports'] = [dict(r) for r in cur.fetchall()]
+            reports = [dict(r) for r in cur.fetchall()]
+            data['handshake']['reports'] = reports
+            # 🆕 2026-10-05: 补齐顶部 metric 需要的字段 (之前前端拿到 undefined)
+            data['handshake']['total'] = len(reports)
+            data['handshake']['count'] = len(reports)
+            data['handshake']['host_node'] = reports[0]['host_node'] if reports else '?'
+            data['handshake']['guest_node'] = reports[0]['guest_node'] if reports else '?'
+            data['handshake']['guest_host'] = reports[0]['guest_host'] if reports else ''
+            # 判断在线: 最新握手 30 分钟内算在线
+            data['handshake']['online'] = False
+            data['handshake']['online_text'] = '离线'
+            if reports and reports[0].get('created_at'):
+                try:
+                    from datetime import datetime as _dt
+                    hs_t = _dt.strptime(reports[0]['created_at'], '%Y-%m-%d %H:%M:%S')
+                    age_min = (_dt.now() - hs_t).total_seconds() / 60
+                    if age_min < 30:
+                        data['handshake']['online'] = True
+                        data['handshake']['online_text'] = '在线'
+                    data['handshake']['handshake_age_min'] = round(age_min, 1)
+                    data['handshake']['last_handshake'] = reports[0]['created_at']
+                except: pass
         except Exception as e:
             data['handshake']['error'] = str(e)
         
@@ -349,12 +383,21 @@ def _aggregate():
         }
         try:
             cur = conn.execute(
-                "SELECT phase1_handshake_json, created_at FROM mt_handshake_reports ORDER BY id DESC LIMIT 1"
+                "SELECT phase1_handshake_json, host_node, guest_node, created_at "
+                "FROM mt_handshake_reports ORDER BY id DESC LIMIT 1"
             )
             row = cur.fetchone()
             if row:
+                # 🆕 优先从 host_node/guest_node 取 Mac mini 名 (避免 daemon_status.remote_host 污染)
+                macbook_name = 'MTSCOS-MacBook'
+                mini_name = None
+                for node in [row['host_node'], row['guest_node']]:
+                    if node and macbook_name not in node:
+                        mini_name = node
+                if mini_name:
+                    mini['hostname'] = mini_name
                 mini['last_handshake'] = row['created_at']
-                p1 = json.loads(row['phase1_handshake_json'])
+                p1 = json.loads(row['phase1_handshake_json']) if row['phase1_handshake_json'] else {}
                 remote = p1.get('remote_capabilities', {})
                 mini['daemons_total'] = remote.get('daemons', 0)
                 mini['daemons_running'] = remote.get('daemons', 0)  # handshake 时 Mini 都在跑
@@ -363,10 +406,6 @@ def _aggregate():
                 mini['iron_violations'] = remote.get('iron_violations', 0)
                 mini['brain_logs'] = remote.get('brain_logs', 0)
                 mini['qbank_items'] = remote.get('qbank', 0)
-                # daemon_status 里的 remote 细节
-                ds = p1.get('daemon_status', {})
-                if ds.get('remote_host'):
-                    mini['hostname'] = ds['remote_host']
         except Exception: pass
         
         # --- Mini 在线状态 (用最近握手时间判断) ---
