@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>{{ role_data.role_label }} · 仙女座设置面板</title>
+<style>
+:root{--bg:#0f172a;--card:rgba(17,24,39,.85);--ink:#0f172a;--ink-2:#334155;--muted:#64748b;--iceberg:#0ea5e9;--iceberg-dim:#0284c7;--ok:#16a34a;--warn:#d97706;--danger:#dc2626;--purple:#7c3aed;--border-dark:rgba(148,163,184,.15);--border:#e2e8f0;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,'PingFang SC',sans-serif;background:linear-gradient(135deg,#020617,#0c4a6e 50%,#1e1b4b);min-height:100vh;color:#e2e8f0;padding:20px;}
+.wrap{max-width:1100px;margin:0 auto;}
+
+.hdr{padding:22px 28px;background:rgba(15,23,42,.8);border:1px solid var(--border-dark);border-radius:12px;margin-bottom:18px;position:relative;overflow:hidden;}
+.hdr::before{content:'🧊';position:absolute;font-size:160px;opacity:.05;right:-20px;top:-30px;}
+.hdr h1{font-size:1.4rem;letter-spacing:2px;color:#f1f5f9;}
+.hdr h1 span{color:var(--iceberg);}
+.hdr .meta{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;font-size:.72rem;}
+.hdr .meta span{background:rgba(148,163,184,.1);border:1px solid var(--border-dark);padding:3px 10px;border-radius:4px;font-family:'JetBrains Mono',monospace;}
+.hdr .back{position:absolute;right:22px;top:22px;}
+
+.panel{background:var(--card);border:1px solid var(--border-dark);border-radius:12px;padding:20px 22px;margin-bottom:16px;}
+.panel h2{font-size:.9rem;color:#f1f5f9;margin-bottom:14px;display:flex;align-items:center;gap:10px;letter-spacing:1px;}
+.panel h2::before{content:'';width:3px;height:16px;background:var(--iceberg);border-radius:2px;}
+
+/* Permissions Grid */
+.perm-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:8px;}
+.perm-item{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:rgba(30,41,59,.5);border:1px solid var(--border-dark);border-radius:8px;font-size:.8rem;}
+.perm-item .k{color:#cbd5e1;font-family:'JetBrains Mono',monospace;}
+.perm-item .v{display:flex;gap:6px;}
+
+/* Switch */
+.switch{position:relative;width:40px;height:22px;cursor:pointer;}
+.switch input{display:none;}
+.switch .track{position:absolute;inset:0;background:#334155;border-radius:11px;transition:background .2s;}
+.switch .thumb{position:absolute;left:2px;top:2px;width:18px;height:18px;background:#cbd5e1;border-radius:50%;transition:transform .2s;}
+.switch input:checked + .track{background:var(--iceberg);}
+.switch input:checked + .track + .thumb{transform:translateX(18px);background:white;}
+
+/* Feature Chips */
+.feat-row{display:flex;flex-wrap:wrap;gap:8px;}
+.feat-item{padding:6px 12px;background:rgba(124,58,237,.12);border:1px solid rgba(124,58,237,.3);border-radius:16px;font-size:.75rem;color:#c4b5fd;cursor:pointer;user-select:none;transition:all .12s;}
+.feat-item.off{opacity:.4;border-style:dashed;}
+.feat-item:hover{transform:translateY(-1px);}
+
+/* Exclusive Form */
+.excl-form{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;}
+.excl-field label{display:block;font-size:.68rem;color:#64748b;letter-spacing:1px;margin-bottom:4px;text-transform:uppercase;}
+.excl-field input,.excl-field select,.excl-field textarea{width:100%;padding:9px 12px;background:rgba(15,23,42,.8);border:1px solid var(--border-dark);border-radius:6px;color:#e2e8f0;font-size:.82rem;font-family:inherit;outline:none;}
+.excl-field input:focus,.excl-field select:focus{border-color:var(--iceberg);}
+
+/* Audit Log */
+.audit-list{font-family:'JetBrains Mono',monospace;font-size:.72rem;max-height:280px;overflow-y:auto;background:rgba(2,6,23,.6);border-radius:8px;padding:12px;line-height:1.7;}
+.audit-list .l{padding:2px 0;border-bottom:1px solid rgba(148,163,184,.06);}
+.l-ok{color:#4ade80;}.l-err{color:#f87171;}.l-warn{color:#fbbf24;}.l-info{color:#60a5fa;}
+.empty-audit{text-align:center;color:#475569;padding:20px;font-size:.78rem;}
+
+/* Buttons */
+.btn{padding:7px 14px;border-radius:6px;border:none;cursor:pointer;font-size:.75rem;font-weight:600;letter-spacing:.5px;transition:all .12s;font-family:inherit;}
+.btn-primary{background:var(--iceberg);color:white;}
+.btn-primary:hover{background:var(--iceberg-dim);}
+.btn-ghost{background:transparent;color:#cbd5e1;border:1px solid var(--border-dark);}
+.btn-ghost:hover{background:rgba(148,163,184,.1);}
+.btn-sm{padding:5px 10px;font-size:.7rem;}
+.btn-success{background:var(--ok);color:white;}
+
+.toast{position:fixed;bottom:22px;right:22px;padding:11px 18px;border-radius:8px;background:#1e293b;color:#f1f5f9;font-size:.8rem;z-index:200;transform:translateY(120%);transition:transform .25s;border-left:3px solid var(--iceberg);box-shadow:0 10px 30px rgba(0,0,0,.3);}
+.toast.show{transform:translateY(0);}
+.toast.ok{border-left-color:var(--ok);}
+.toast.err{border-left-color:var(--danger);}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="hdr">
+  <a href="/roles/dashboard" class="btn btn-ghost btn-sm back">← 返回 Dashboard</a>
+  <h1>⚙️ 设置 <span>{{ role_data.role_label }}</span> <span style="color:#475569;font-size:.72rem;font-weight:400;">({{ role_data.role_key }})</span></h1>
+  <div class="meta">
+    <span>🧊 {{ role_data.iceberg_domain }}</span>
+    <span>🔑 {{ role_data.perm_level }}</span>
+    <span>📋 {{ role_data.can|length }} 权限项</span>
+    <span>🎯 {{ role_data.features|length }} 功能开关</span>
+    {% if role_data.exclusive %}<span>📊 专属表 ✅</span>{% endif %}
+  </div>
+</div>
+
+<!-- 权限矩阵 -->
+<div class="panel">
+  <h2>🔐 权限矩阵 (can) · DB: mt_role_settings.can_json</h2>
+  <div class="perm-grid" id="permGrid"></div>
+</div>
+
+<!-- 功能开关 -->
+<div class="panel">
+  <h2>🎯 功能开关 (features) · DB: mt_role_settings.features_json</h2>
+  <div class="feat-row" id="featRow"></div>
+</div>
+
+<!-- 专属设置 -->
+{% if role_data.exclusive %}
+<div class="panel">
+  <h2>⚙️ 专属设置 (DB: {{ 'mt_'+role_data.role_key }}_configs)</h2>
+  <div class="excl-form" id="exclForm"></div>
+  <div style="margin-top:14px;text-align:right;">
+    <button class="btn btn-primary btn-sm" onclick="saveExclusive()">💾 批量保存专属设置</button>
+  </div>
+</div>
+{% endif %}
+
+<!-- 审计日志 -->
+<div class="panel">
+  <h2>📜 变更审计日志 · DB: mt_role_settings_audit</h2>
+  <div class="audit-list" id="auditList"><div class="empty-audit">加载中…</div></div>
+</div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const ROLE_KEY = '{{ role_data.role_key }}';
+const DATA = {{ role_data | tojson }};
+
+const API_SET = (section,key,val)=>fetch(`/api/roles/${ROLE_KEY}/set`,{
+  method:'POST',headers:{'Content-Type':'application/json'},
+  body:JSON.stringify({section,key,value:val})
+}).then(x=>x.json());
+
+const API_BULK = (updates)=>fetch(`/api/roles/${ROLE_KEY}/bulk`,{
+  method:'POST',headers:{'Content-Type':'application/json'},
+  body:JSON.stringify({updates})
+}).then(x=>x.json());
+
+const API_AUDIT = ()=>fetch(`/api/roles/${ROLE_KEY}/audit?limit=20`).then(x=>x.json());
+
+function toast(msg,cls='info'){
+  const t=document.getElementById('toast');t.textContent=msg;
+  t.className='toast show '+(cls==='ok'?'ok':cls==='err'?'err':'');
+  clearTimeout(window._tt);window._tt=setTimeout(()=>t.className='toast',2400);
+}
+
+/* 渲染权限开关 */
+function renderPerms(){
+  const c=DATA.can||{};
+  document.getElementById('permGrid').innerHTML = Object.entries(c).map(([k,v])=>`
+    <div class="perm-item">
+      <span class="k">${k.replace(/_/g,' ')}</span>
+      <label class="switch"><input type="checkbox" ${v?'checked':''} data-key="${k}" onchange="togglePerm('${k}',this.checked)"><span class="track"></span><span class="thumb"></span></label>
+    </div>`).join('');
+}
+async function togglePerm(key,val){
+  const r=await API_SET('can',key,val);
+  toast(r.ok?`✅ can.${key} = ${val}`:'❌ 失败',r.ok?'ok':'err');
+  loadAudit();
+}
+
+/* 渲染功能开关 */
+function renderFeatures(){
+  const f=DATA.features||{};
+  document.getElementById('featRow').innerHTML = Object.entries(f).map(([k,v])=>`
+    <div class="feat-item ${v?'':'off'}" onclick="toggleFeat('${k}',${v?'false':'true'})">${v?'🟢':'⚪'} ${k.replace(/_/g,' ')}</div>
+  `).join('');
+}
+async function toggleFeat(key,val){
+  const r=await API_SET('features',key,val);
+  toast(r.ok?`✅ features.${key} = ${val}`:'❌ 失败',r.ok?'ok':'err');
+  DATA.features[key]=val; renderFeatures(); loadAudit();
+}
+
+/* 渲染专属表表单 */
+function renderExclusive(){
+  const e=DATA.exclusive; if(!e) return;
+  const INPUTS={
+    mt_teacher_configs:[
+      {k:'homework_template',label:'作业模板',type:'text'},{k:'grading_scale',label:'评分制',type:'text'},
+      {k:'attendance_threshold',label:'出勤率阈值',type:'number',step:'0.01'},
+      {k:'auto_grade',label:'AI 自动批改',type:'checkbox'},{k:'subject_focus',label:'教学科目',type:'text'},
+      {k:'office_hours',label:'办公时间',type:'text'}
+    ],
+    mt_professor_prefs:[
+      {k:'research_fields',label:'研究方向',type:'text'},{k:'ai_model_preference',label:'AI 模型偏好',type:'text'},
+      {k:'paper_review_mode',label:'论文评审模式',type:'text'},{k:'lab_size_limit',label:'实验室规模上限',type:'number'},
+      {k:'conference_alerts',label:'会议提醒',type:'checkbox'}
+    ],
+    mt_counselor_configs:[
+      {k:'attendance_warn_threshold',label:'出勤率告警阈值',type:'number',step:'0.01'},
+      {k:'attendance_critical_threshold',label:'出勤率危险阈值',type:'number',step:'0.01'},
+      {k:'parent_visit_interval_days',label:'家访间隔(天)',type:'number'},
+      {k:'mental_health_check_interval',label:'心理检查间隔(天)',type:'number'},
+      {k:'class_size',label:'班级规模',type:'number'}
+    ],
+    mt_mentor_configs:[
+      {k:'disciple_tracking_template',label:'门徒追踪模板',type:'text'},
+      {k:'checkin_interval_days',label:'Check-in 间隔(天)',type:'number'},
+      {k:'max_disciples',label:'门徒上限',type:'number'},
+      {k:'milestone_review_enabled',label:'里程碑评审',type:'checkbox'},
+      {k:'skill_graph_enabled',label:'技能图谱',type:'checkbox'}
+    ],
+    mt_parent_configs:[
+      {k:'watched_subjects',label:'关注科目',type:'text'},
+      {k:'grade_alert_threshold',label:'成绩告警阈值',type:'number',step:'0.1'},
+      {k:'notification_frequency',label:'通知频率',type:'text'},
+      {k:'child_tracking_enabled',label:'孩子追踪',type:'checkbox'},
+      {k:'privacy_mode',label:'隐私模式(隐藏排名)',type:'checkbox'},
+      {k:'read_only_mode',label:'只读模式',type:'checkbox'}
+    ],
+  };
+  const tableKey = Object.keys(e)[0]?null:null; // 简化
+  const tableMap = {teacher:'mt_teacher_configs',professor:'mt_professor_prefs',counselor:'mt_counselor_configs',mentor:'mt_mentor_configs',parent:'mt_parent_configs'};
+  const table = tableMap[ROLE_KEY]||'';
+  const fields = INPUTS[table]||[];
+  document.getElementById('exclForm').innerHTML = fields.map(f=>{
+    let val = e[f.k]; if(typeof val==='boolean') val = val?1:0;
+    if(f.type==='checkbox') return `<div class="excl-field">
+      <label>${f.label}</label>
+      <select id="e_${f.k}"><option value="1" ${val?'selected':''}>启用</option><option value="0" ${!val?'selected':''}>关闭</option></select>
+    </div>`;
+    return `<div class="excl-field">
+      <label>${f.label} (${f.k})</label>
+      <input id="e_${f.k}" type="${f.type}" ${f.step?`step="${f.step}"`:''} value="${val==null?'':val}">
+    </div>`;
+  }).join('');
+  window._exclTable = table;
+}
+async function saveExclusive(){
+  const table = window._exclTable; if(!table) return;
+  const updates = {}; const fields = document.querySelectorAll('#exclForm .excl-field');
+  fields.forEach(el=>{
+    const input = el.querySelector('input,select');
+    const id = input.id.replace('e_','');
+    let v = input.value;
+    if(input.type==='number'||input.tagName==='SELECT') v = parseFloat(v);
+    updates[id] = v;
+  });
+  const r = await API_BULK({[table]: updates});
+  toast(r.ok?`✅ 批量保存 ${r.updated} 个字段`:'❌ 保存失败',r.ok?'ok':'err');
+  loadAudit();
+}
+
+/* 审计 */
+async function loadAudit(){
+  const r = await API_AUDIT();
+  const list = r.audits||[];
+  if(!list.length){ document.getElementById('auditList').innerHTML='<div class="empty-audit">暂无变更 — 仙女座会自动记录所有设置变更</div>'; return; }
+  document.getElementById('auditList').innerHTML = list.map(a=>{
+    let cls='l-info';
+    const nv=a.new_value;
+    if(nv==='null'||nv==null) cls='l-err'; else cls='l-ok';
+    return `<div class="l ${cls}">${a.changed_at}  [${a.changed_by}@${a.changed_from}] ${a.section}.${a.field}  ${a.old_value||'∅'} → ${a.new_value||'∅'}</div>`;
+  }).join('');
+}
+
+renderPerms(); renderFeatures(); renderExclusive(); loadAudit();
+setInterval(loadAudit,15000);
+</script>
+</body>
+</html>

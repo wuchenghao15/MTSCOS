@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+==============================================================
+  MTSCOS AI<->EigenFlux network engine - macOS launchd auto-start v1.2.0
+  Goal: auto-start after user login, auto-restart on crash/exit,
+        recover after system reboot.
+
+  !!! OneDrive sandbox fix (v1.2.0):
+      Previously ProgramArguments pointed directly to
+      start_ai_eigenflux_daemon.command inside the OneDrive sync
+      folder. However launchd (as a system process) does NOT have
+      the user's "Files & Folders -> OneDrive" TCC consent, causing:
+        shell-init: error retrieving current directory: getcwd: Operation not permitted
+        /bin/bash: ...start_ai_eigenflux_daemon.command: Operation not permitted
+        (exit code 126 in launchctl list LastExit column)
+
+      Fix (v1.2.0):
+      - A local starter wrapper (com.mtscos.ai-eigenflux.starter.sh) is
+        copied into ~/Library/LaunchAgents/ next to this plist by the
+        deploy script. This wrapper lives on the local HD (not OneDrive
+        sync sandbox) so launchd can execute it unconditionally.
+      - WorkingDirectory is explicitly set to $HOME (local) rather than
+        the project dir (OneDrive), preventing the getcwd failure.
+      - The wrapper then does PATH injection, python resolution,
+        stale-PID cleanup and finally exec -> python engine start
+        with absolute paths (python/file open syscalls are not subject
+        to the same TCC restrictions as bash path execution).
+
+  LaunchAgents (user-level, ~/Library/LaunchAgents) is used because
+  _runtime and the DB live on the user's OneDrive sync volume, which
+  requires user login to be mounted. A system-level LaunchDaemon
+  (/Library/LaunchDaemons) would start too early (before OneDrive
+  mount) and run as root (root-owned files later cause Finder double-
+  click permission denied).
+
+  Deploy:  bash _config/services/deploy_ai_eigenflux_launchd.sh install
+==============================================================
+Manual deploy validation chain:
+    launchctl bootout gui/$UID/com.mtscos.ai-eigenflux 2>/dev/null || true
+    # copy wrapper + plist placeholders rendered by deploy
+    cp com.mtscos.ai-eigenflux.starter.sh ~/Library/LaunchAgents/
+    cp com.mtscos.ai-eigenflux.plist         ~/Library/LaunchAgents/
+    chown $(whoami):staff ~/Library/LaunchAgents/com.mtscos.ai-eigenflux*
+    chmod 644              ~/Library/LaunchAgents/com.mtscos.ai-eigenflux.plist
+    chmod 755              ~/Library/LaunchAgents/com.mtscos.ai-eigenflux.starter.sh
+    launchctl bootstrap gui/$UID ~/Library/LaunchAgents/com.mtscos.ai-eigenflux.plist
+    launchctl kickstart -k gui/$UID/com.mtscos.ai-eigenflux
+    sleep 8
+    launchctl list | grep mtscos
+    ps aux | grep ai_eigenflux_network_engine
+Uninstall:
+    launchctl stop        com.mtscos.ai-eigenflux
+    launchctl bootout gui/$UID/com.mtscos.ai-eigenflux
+    rm -f ~/Library/LaunchAgents/com.mtscos.ai-eigenflux*
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.mtscos.ai-eigenflux</string>
+
+    <!--
+      ProgramArguments (v1.2.0 OneDrive-sandbox fix):
+        The wrapper .sh is copied alongside this plist into
+        ~/Library/LaunchAgents/. launchd can always execute code
+        there, bypassing the OneDrive TCC sandbox entirely.
+        The wrapper then internally uses absolute paths to call
+        into the real project files on OneDrive (file-open syscalls
+        work fine even when bash-exec does not).
+    -->
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>__HOME_LA__/com.mtscos.ai-eigenflux.starter.sh</string>
+    </array>
+
+    <!-- RunAtLoad = trigger once on user login. KeepAlive=false intentionally:
+         the wrapper calls `open(1) -> Terminal.app` which returns immediately;
+         launchd cannot directly supervise the python process due to OneDrive
+         TCC sandbox anyway. Real keepalive happens via L3 crontab per-minute
+         patrol which detects engine DOWN and re-dispatches open(1). -->
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <false/>
+
+    <!-- Prevent crash-loop backoff (minimum 10s between respawns) -->
+    <key>ThrottleInterval</key>
+    <integer>10</integer>
+
+    <!--
+      WorkingDirectory is CRITICAL on OneDrive-sandboxed projects.
+      Setting it to OneDrive path causes launchd's child bash to
+      fail "shell-init: error retrieving current directory: getcwd:
+      Operation not permitted". $HOME is always accessible.
+    -->
+    <key>WorkingDirectory</key>
+    <string>__HOME__</string>
+
+    <!-- Environment: explicit PATH + launchd-managed marker -->
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>__PROJECT_ROOT__/_runtime/.venv/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/local/sbin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+        <key>MTSCOS_AE_LAUNCHD_MANAGED</key>
+        <string>1</string>
+    </dict>
+
+    <!-- Separate launchd stdout/stderr log files (distinct from engine logs) -->
+    <key>StandardOutPath</key>
+    <string>__PROJECT_ROOT__/_runtime/logs/ai_eigenflux_launchd.stdout.log</string>
+    <key>StandardErrorPath</key>
+    <string>__PROJECT_ROOT__/_runtime/logs/ai_eigenflux_launchd.stderr.log</string>
+
+    <!-- Raise file-descriptor soft limit: engine opens many SQLite WAL connections -->
+    <key>SoftResourceLimits</key>
+    <dict>
+        <key>NumberOfFiles</key>
+        <integer>8192</integer>
+    </dict>
+
+    <key>ProcessType</key>
+    <string>Background</string>
+</dict>
+</plist>
