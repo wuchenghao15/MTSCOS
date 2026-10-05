@@ -422,7 +422,20 @@ def _aggregate():
                 mini['rules_count'] = remote.get('rules', 0)
                 mini['iron_violations'] = remote.get('iron_violations', 0)
                 mini['brain_logs'] = remote.get('brain_logs', 0)
-                mini['qbank_items'] = remote.get('qbank', 0)
+                # qbank: 优先从 Mini DB 真实查 (5 表合计), handshake capabilities 里只有成人 2862
+                try:
+                    import subprocess as _sp
+                    _mini_db = '~/MTSCOS_AI_Project/flask-app/database/app.db'
+                    _sql = "SELECT COUNT(*) FROM adult_education_questions UNION ALL SELECT COUNT(*) FROM professional_exam_questions UNION ALL SELECT COUNT(*) FROM mt_exam_questions_pool UNION ALL SELECT COUNT(*) FROM mt_exam_australian_questions UNION ALL SELECT COUNT(*) FROM ai_maintenance_questions"
+                    _r = _sp.run(['/usr/bin/ssh', '-o', 'ConnectTimeout=2', '-o', 'StrictHostKeyChecking=no',
+                                  'wuchenghao@192.168.31.9', f'/usr/bin/sqlite3 {_mini_db} "{_sql}"'],
+                                 capture_output=True, text=True, timeout=8)
+                    if _r.returncode == 0:
+                        mini['qbank_items'] = sum(int(x) for x in _r.stdout.strip().split('\n') if x.strip().isdigit())
+                    else:
+                        mini['qbank_items'] = remote.get('qbank', 0) or remote.get('qbank_items', 0)
+                except Exception:
+                    mini['qbank_items'] = remote.get('qbank', 0) or remote.get('qbank_items', 0)
         except Exception: pass
         
         # --- Mini 在线状态 (用最近握手时间判断) ---
