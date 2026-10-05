@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>🧊 Aurora 极光衍生维护系统 · v25.1</title>
+<style>
+:root{--bg:#020617;--bg2:#0c4a6e;--bg3:#1e1b4b;--card:rgba(17,24,39,.88);--muted:#64748b;
+  --iceberg:#0ea5e9;--purple:#7c3aed;--amber:#f59e0b;--ok:#16a34a;--danger:#dc2626;
+  --border-dark:rgba(148,163,184,.12);}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,'PingFang SC',sans-serif;
+  background:linear-gradient(135deg,#020617 0%,#0c4a6e 40%,#1e1b4b 80%,#4c1d95 100%);
+  color:#e2e8f0;padding:24px;min-height:100vh;}
+.wrap{max-width:1320px;margin:0 auto;}
+
+/* HERO */
+.hero{padding:28px 34px;margin-bottom:18px;overflow:hidden;border-radius:14px;
+  background:radial-gradient(ellipse at 30% 50%,rgba(124,58,237,.25) 0%,rgba(14,165,233,.15) 40%,rgba(2,6,23,.9) 70%);
+  border:1px solid rgba(124,58,237,.25);position:relative;}
+.hero::before{content:'✨';position:absolute;font-size:220px;opacity:.06;right:-10px;bottom:-30px;}
+.hero::after{content:'';position:absolute;right:60px;bottom:30px;width:70px;height:70px;border-radius:50%;
+  background:radial-gradient(circle,rgba(124,58,237,.5) 0%,transparent 70%);animation:pulse 2.5s infinite;}
+@keyframes pulse{0%,100%{transform:scale(1);opacity:.5;}50%{transform:scale(1.5);opacity:.15;}}
+.hero h1{font-size:1.55rem;font-weight:800;letter-spacing:2px;}
+.hero h1 span{background:linear-gradient(90deg,var(--purple),var(--iceberg));-webkit-background-clip:text;background-clip:text;color:transparent;}
+.hero p{color:#94a3b8;font-size:.72rem;letter-spacing:1px;margin-top:5px;}
+.hero-stats{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;}
+.hero-stats .pill{display:flex;align-items:center;gap:5px;background:rgba(148,163,184,.08);border:1px solid var(--border-dark);
+  border-radius:14px;padding:4px 10px;color:#cbd5e1;font-size:.65rem;font-family:'JetBrains Mono',monospace;}
+.hero-stats .pill.ok{border-color:rgba(22,163,74,.3);color:#4ade80;}
+.hero-stats .pill.purple{border-color:rgba(124,58,237,.3);color:#c4b5fd;}
+.hero-stats .pill.amber{border-color:rgba(245,158,11,.3);color:#fbbf24;}
+
+/* STATS */
+.stats{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:14px;}
+@media(max-width:1000px){.stats{grid-template-columns:repeat(3,1fr);}}
+.stat{background:var(--card);border:1px solid var(--border-dark);border-radius:10px;padding:14px 16px;border-left:3px solid var(--iceberg);}
+.stat.purple{border-left-color:var(--purple);}
+.stat.amber{border-left-color:var(--amber);}
+.stat.ok{border-left-color:var(--ok);}
+.stat.danger{border-left-color:var(--danger);}
+.stat.big{font-size:1.6rem;font-weight:800;color:#f1f5f9;font-family:'JetBrains Mono',monospace;line-height:1.1;}
+.stat.lab{font-size:.6rem;color:#64748b;letter-spacing:1px;margin-top:3px;text-transform:uppercase;}
+
+/* FILTER BAR */
+.filter-bar{display:flex;gap:8px;align-items:center;background:var(--card);border:1px solid var(--border-dark);border-radius:10px;padding:12px 16px;margin-bottom:14px;flex-wrap:wrap;}
+.filter-bar select,.filter-bar input{padding:7px 10px;border-radius:6px;border:1px solid var(--border-dark);background:rgba(30,41,59,.6);color:#f1f5f9;font-size:.75rem;font-family:inherit;}
+.btn{padding:7px 14px;border-radius:6px;border:none;cursor:pointer;font-size:.75rem;font-weight:600;letter-spacing:.5px;transition:all .12s;font-family:inherit;display:inline-flex;align-items:center;gap:5px;}
+.btn-primary{background:var(--iceberg);color:white;}
+.btn-primary:hover{background:var(--bg2);}
+.btn-purple{background:var(--purple);color:white;}
+.btn-amber{background:var(--amber);color:#0f172a;}
+.btn-ghost{background:transparent;color:#cbd5e1;border:1px solid var(--border-dark);}
+.btn-ghost:hover{background:rgba(148,163,184,.1);}
+.btn-danger{background:var(--danger);color:white;}
+.btn-sm{padding:4px 10px;font-size:.68rem;}
+
+/* TABLE */
+.card{background:var(--card);border:1px solid var(--border-dark);border-radius:10px;padding:16px 18px;margin-bottom:14px;overflow-x:auto;}
+.card h3{font-size:.82rem;color:#f1f5f9;margin-bottom:12px;letter-spacing:1px;display:flex;align-items:center;gap:8px;}
+.card h3::before{content:'';width:3px;height:14px;background:var(--purple);border-radius:2px;}
+table{width:100%;border-collapse:separate;border-spacing:2px;font-size:.72rem;}
+th{background:rgba(124,58,237,.08);color:#94a3b8;font-weight:600;padding:6px 8px;text-align:left;letter-spacing:.5px;position:sticky;top:0;}
+td{padding:6px 8px;background:rgba(30,41,59,.5);color:#cbd5e1;vertical-align:middle;}
+tr:hover td{background:rgba(30,41,59,.7);}
+.type-tag{display:inline-block;padding:2px 8px;border-radius:3px;font-size:.62rem;font-family:'JetBrains Mono',monospace;font-weight:600;}
+.type-daemon{background:rgba(14,165,233,.15);color:#38bdf8;border:1px solid rgba(14,165,233,.3);}
+.type-iceberg_domain{background:rgba(124,58,237,.15);color:#c4b5fd;border:1px solid rgba(124,58,237,.3);}
+.type-iceberg_self{background:rgba(22,163,74,.15);color:#4ade80;border:1px solid rgba(22,163,74,.3);}
+.type-role{background:rgba(245,158,11,.15);color:#fbbf24;border:1px solid rgba(245,158,11,.3);}
+.skill-key{font-family:'JetBrains Mono',monospace;color:#cbd5e1;font-weight:600;font-size:.7rem;}
+.skill-key.disabled{color:#f87171;text-decoration:line-through;opacity:.7;}
+
+/* TOGGLE */
+.switch{position:relative;width:36px;height:20px;display:inline-block;cursor:pointer;}
+.switch input{opacity:0;width:0;height:0;}
+.switch .slider{position:absolute;inset:0;background:#374151;border-radius:20px;transition:.2s;}
+.switch .slider::before{content:'';position:absolute;height:14px;width:14px;left:3px;top:3px;background:white;border-radius:50%;transition:.2s;}
+.switch input:checked + .slider{background:#16a34a;}
+.switch input:checked + .slider::before{transform:translateX(16px);}
+.source-badge{font-size:.58rem;padding:1px 6px;border-radius:2px;background:rgba(148,163,184,.08);color:#64748b;font-family:'JetBrains Mono',monospace;}
+
+/* DETAIL PANEL */
+.detail-row{padding:12px;background:rgba(15,23,42,.8);border-radius:8px;margin-bottom:8px;border:1px solid var(--border-dark);}
+.detail-row .k{font-size:.62rem;color:#64748b;letter-spacing:1px;text-transform:uppercase;}
+.detail-row .v{font-family:'JetBrains Mono',monospace;font-size:.72rem;color:#cbd5e1;margin-top:3px;word-break:break-all;}
+.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+@media(max-width:800px){.detail-grid{grid-template-columns:1fr;}}
+
+/* TOAST */
+.toast{position:fixed;bottom:20px;right:20px;padding:10px 16px;border-radius:7px;background:#1e293b;color:#f1f5f9;font-size:.78rem;z-index:200;transform:translateY(120%);transition:transform .25s;border-left:3px solid var(--purple);box-shadow:0 10px 30px rgba(0,0,0,.3);max-width:380px;}
+.toast.show{transform:translateY(0);}
+.toast.ok{border-left-color:var(--ok);}
+.toast.err{border-left-color:var(--danger);}
+
+/* ICEBERG NAV LINK */
+.iceberg-link{display:inline-block;margin-bottom:14px;padding:8px 14px;border-radius:6px;background:rgba(124,58,237,.1);border:1px solid rgba(124,58,237,.3);color:#c4b5fd;text-decoration:none;font-size:.72rem;letter-spacing:.5px;}
+.iceberg-link:hover{background:rgba(124,58,237,.2);}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<a class="iceberg-link" href="/iceberg/center">← 返回 🧊 冰山意识中心</a>
+
+<!-- HERO -->
+<div class="hero">
+  <h1>✨ Aurora <span>极光衍生维护系统</span></h1>
+  <p>v25.1 · 仙女座 × 冰山 之上的统一衍生维护层 · 54 能力 (34 daemon · 7 域 · 5 自 · 8 角色)</p>
+  <div class="hero-stats">
+    <span class="pill purple">🧊 UNIFIED REGISTRY</span>
+    <span class="pill">⚡ RUN-TIME TOGGLE</span>
+    <span class="pill purple">💾 DB-PERSISTED</span>
+    <span class="pill ok">🔒 ALL IN-AUDIT</span>
+    <span class="pill amber">🔄 FALLBACK 硬编码</span>
+  </div>
+</div>
+
+<!-- STATS -->
+<div class="stats">
+  <div class="stat purple"><div class="big" id="st-total">—</div><div class="lab">总能力</div></div>
+  <div class="stat ok"><div class="big" id="st-enabled">—</div><div class="lab">启用中</div></div>
+  <div class="stat danger"><div class="big" id="st-disabled">—</div><div class="lab">已禁用</div></div>
+  <div class="stat"><div class="big" id="st-daemon">—</div><div class="lab">⚙️ Daemon</div></div>
+  <div class="stat purple"><div class="big" id="st-domain">—</div><div class="lab">🧊 冰山域</div></div>
+  <div class="stat amber"><div class="big" id="st-role">—</div><div class="lab">👤 角色</div></div>
+</div>
+
+<!-- FILTER -->
+<div class="filter-bar">
+  <span style="font-size:.75rem;color:#cbd5e1;">筛选:</span>
+  <select id="f-type" onchange="render()">
+    <option value="">全部类型</option>
+    <option value="daemon">⚙️ Daemon (自动化进程)</option>
+    <option value="iceberg_domain">🧊 冰山域</option>
+    <option value="iceberg_self">💪 五自能力</option>
+    <option value="role">👤 角色</option>
+  </select>
+  <select id="f-enabled" onchange="render()">
+    <option value="">全部</option>
+    <option value="true">仅启用</option>
+    <option value="false">仅禁用</option>
+  </select>
+  <input id="f-search" placeholder="🔍 搜索 skill_key / 名称…" oninput="render()" style="flex:1;min-width:150px;">
+  <span style="flex:1;"></span>
+  <button class="btn btn-purple btn-sm" onclick="doSeed()">🔄 重新 Seed</button>
+  <button class="btn btn-ghost btn-sm" onclick="loadAll()">刷新</button>
+</div>
+
+<!-- TABLE -->
+<div class="card">
+  <h3>📋 Aurora 注册表 — 54 能力统一管理</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>类型</th>
+        <th>Skill Key</th>
+        <th>显示名</th>
+        <th>说明</th>
+        <th>Cycle / Driver</th>
+        <th>来源</th>
+        <th>状态</th>
+        <th>操作</th>
+      </tr>
+    </thead>
+    <tbody id="aurora-tbody"><tr><td colspan="8" style="color:#64748b;text-align:center;padding:20px;">加载中…</td></tr></tbody>
+  </table>
+</div>
+
+<!-- DETAIL PANEL -->
+<div class="card" id="detail-card" style="display:none;">
+  <h3>🔍 能力详情 <span id="detail-key" style="font-family:'JetBrains Mono',monospace;font-size:.72rem;color:#64748b;margin-left:8px;"></span></h3>
+  <div class="detail-grid" id="detail-body"></div>
+</div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let ALL = [], STATUS = {};
+const TYPE_ICON = {daemon:'⚙️', iceberg_domain:'🧊', iceberg_self:'💪', role:'👤'};
+const TYPE_LABEL = {daemon:'Daemon', iceberg_domain:'冰山域', iceberg_self:'五自', role:'角色'};
+
+function toast(msg,cls='info'){
+  const t=document.getElementById('toast');t.textContent=msg;
+  t.className='toast show '+(cls==='ok'?'ok':cls==='err'?'err':'');
+  clearTimeout(window._tt);window._tt=setTimeout(()=>t.className='toast',2400);
+}
+const API = {
+  list:(t)=>fetch('/api/aurora/list'+(t?('?type='+t):'')).then(x=>x.json()),
+  status:()=>fetch('/api/aurora/status').then(x=>x.json()),
+  toggle:(k,e,r='')=>fetch(`/api/aurora/${k}/toggle`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled:e,reason:r})}).then(x=>x.json()),
+  seed:()=>fetch('/api/aurora/seed',{method:'POST'}).then(x=>x.json()),
+  get:(k)=>fetch(`/api/aurora/${k}`).then(x=>x.json()),
+};
+
+async function loadAll(){
+  const [l,s] = await Promise.all([API.list(), API.status()]);
+  ALL = l.items; STATUS = s;
+  document.getElementById('st-total').textContent = s.total;
+  document.getElementById('st-enabled').textContent = s.enabled;
+  document.getElementById('st-disabled').textContent = s.disabled;
+  document.getElementById('st-daemon').textContent = s.by_type.daemon||0;
+  document.getElementById('st-domain').textContent = (s.by_type.iceberg_domain||0)+(s.by_type.iceberg_self||0);
+  document.getElementById('st-role').textContent = s.by_type.role||0;
+  render();
+}
+
+function render(){
+  const ft = document.getElementById('f-type').value;
+  const fe = document.getElementById('f-enabled').value;
+  const fs = document.getElementById('f-search').value.toLowerCase();
+  let rows = ALL;
+  if(ft) rows = rows.filter(r=>r.capability_type===ft);
+  if(fe==='true') rows = rows.filter(r=>r.enabled===1);
+  if(fe==='false') rows = rows.filter(r=>r.enabled===0);
+  if(fs) rows = rows.filter(r=>(r.skill_key+' '+r.name+' '+r.description).toLowerCase().includes(fs));
+  const tb = document.getElementById('aurora-tbody');
+  if(!rows.length){tb.innerHTML='<tr><td colspan="8" style="color:#64748b;text-align:center;padding:20px;">无匹配</td></tr>';return;}
+  tb.innerHTML = rows.map(r=>`
+    <tr>
+      <td><span class="type-tag type-${r.capability_type}">${TYPE_ICON[r.capability_type]||''} ${TYPE_LABEL[r.capability_type]||r.capability_type}</span></td>
+      <td><span class="skill-key ${r.enabled?'':'disabled'}">${r.skill_key}</span></td>
+      <td>${r.name}</td>
+      <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${r.description||''}">${r.description||'—'}</td>
+      <td>${r.cycle_s?r.cycle_s+'s':''} ${r.driver_daemon?`<br><span style="color:#38bdf8;font-size:.62rem;font-family:'JetBrains Mono',monospace;">${r.driver_daemon}</span>`:''}</td>
+      <td><span class="source-badge">${r.source||'—'}</span></td>
+      <td><label class="switch"><input type="checkbox" ${r.enabled?'checked':''} onchange="toggleRow('${r.skill_key}',this.checked,'${r.reason||''}')"><span class="slider"></span></label></td>
+      <td>
+        <button class="btn btn-ghost btn-sm" onclick="showDetail('${r.skill_key}')">🔍</button>
+        <button class="btn btn-danger btn-sm" style="padding:4px 8px;font-size:.62rem;" onclick="delRow('${r.skill_key}')">🗑️</button>
+      </td>
+    </tr>`).join('');
+}
+
+async function toggleRow(key,on,reason){
+  const r = await API.toggle(key,on,reason);
+  if(r.ok){toast(`✅ ${key} → ${on?'启用':'禁用'}`, 'ok');}
+  else toast('❌ 失败', 'err');
+  await loadAll();
+}
+
+async function delRow(key){
+  if(!confirm(`删除 ${key}?\n\n内置能力 (daemon/域/自/角色) 会被拒绝, 可禁用代替。`)) return;
+  const r = await fetch(`/api/aurora/${key}`,{method:'DELETE'}).then(x=>x.json());
+  toast(r.ok?'✅ 已删除':'❌ '+r.error, r.ok?'ok':'err');
+  await loadAll();
+}
+
+async function doSeed(){
+  if(!confirm('从散落硬编码重新 Seed (已存在的 skill_key 会 IGNORE, 新增的会 INSERT)?')) return;
+  toast('🔄 Seeding…');
+  const r = await API.seed();
+  if(r.ok) toast(`✅ Seed 完成 · 新增 ${r.inserted} 条`, 'ok');
+  await loadAll();
+}
+
+async function showDetail(key){
+  const r = await API.get(key);
+  if(!r.ok){toast('❌ 未找到','err');return;}
+  const d = r.item;
+  document.getElementById('detail-card').style.display='block';
+  document.getElementById('detail-key').textContent = d.skill_key;
+  const fmt = (v)=>{
+    if(v===null||v===undefined) return '<span style="color:#374151;">null</span>';
+    if(typeof v==='string' && v.startsWith('[') || v.startsWith('{')) try{return JSON.stringify(JSON.parse(v),null,2);}catch(e){return v;}
+    if(Array.isArray(v)) return v.join(', ');
+    return v;
+  };
+  const fields = [
+    ['skill_key','🔑 唯一键'],['capability_type','📦 类型'],['name','🏷️ 显示名'],['description','📝 说明'],
+    ['enabled','✅ 启用'],['version','🔖 版本'],['driver_daemon','⚙️ Driver Daemon'],['cycle_s','⏱️ 周期 (秒)'],
+    ['db_log','🗃️ 日志表'],['domain_key','🧊 域 Key'],['role_key','👤 角色 Key'],['iceberg_domain','🗺️ 绑定冰山域'],
+    ['health_override','🩺 健康覆盖'],['reason','💬 原因'],['source','📡 来源'],['tags','🏷️ Tags'],
+    ['created_at','📅 创建'],['updated_at','📅 更新'],
+  ];
+  document.getElementById('detail-body').innerHTML = fields.filter(([k])=>d[k]!==null && d[k]!==undefined && d[k]!=='').map(([k,label])=>`
+    <div class="detail-row"><div class="k">${label}</div><div class="v">${fmt(d[k])}</div></div>`).join('') +
+    (d.extra_json?`<div class="detail-row" style="grid-column:1/-1;"><div class="k">📦 Extra JSON</div><div class="v" style="white-space:pre-wrap;">${fmt(d.extra_json)}</div></div>`:'');
+}
+
+loadAll();
+setInterval(loadAll, 30000);
+</script>
+
+{% include 'andromeda_nav.html' %}
+</body>
+</html>

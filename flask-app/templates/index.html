@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="andromeda">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="MTSCOS AI System · 仙女座星系主题">
+    <title>{{ (footer_info.brand_name if footer_info else None) or t('home.title_brand') }} · {{ t('home.title_subtitle') }} · 仙女座</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20100%20100%22%3E%0A%3Cdefs%3E%0A%3ClinearGradient%20id%3D%22p%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%220%22%20y2%3D%221%22%3E%0A%3Cstop%20offset%3D%220%22%20stop-color%3D%22%23E0E7FF%22%2F%3E%0A%3Cstop%20offset%3D%220.5%22%20stop-color%3D%22%23818CF8%22%2F%3E%0A%3Cstop%20offset%3D%221%22%20stop-color%3D%22%23312E81%22%2F%3E%0A%3C%2FlinearGradient%3E%0A%3ClinearGradient%20id%3D%22u%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%220%22%20y2%3D%221%22%3E%0A%3Cstop%20offset%3D%220%22%20stop-color%3D%22%234338CA%22%2F%3E%0A%3Cstop%20offset%3D%221%22%20stop-color%3D%22%230F172A%22%2F%3E%0A%3C%2FlinearGradient%3E%0A%3C%2Fdefs%3E%0A%3Crect%20width%3D%22100%22%20height%3D%22100%22%20fill%3D%22%230B0A1E%22%2F%3E%0A%3C%21--%203%20%E9%A2%97%E4%BB%99%E5%A5%B3%E5%BA%A7%E6%98%9F%20%28%E5%85%B3%E8%81%94%E6%80%A7%21%29%20--%3E%0A%3Ccircle%20cx%3D%2250%22%20cy%3D%2214%22%20r%3D%222.5%22%20fill%3D%22%23FCD34D%22%2F%3E%0A%3Ccircle%20cx%3D%2240%22%20cy%3D%2220%22%20r%3D%221.2%22%20fill%3D%22%23A78BFA%22%2F%3E%0A%3Ccircle%20cx%3D%2260%22%20cy%3D%2220%22%20r%3D%221.2%22%20fill%3D%22%23A78BFA%22%2F%3E%0A%3Cline%20x1%3D%2250%22%20y1%3D%2216%22%20x2%3D%2250%22%20y2%3D%2228%22%20stroke%3D%22%23FCD34D%22%20stroke-width%3D%220.6%22%20opacity%3D%220.5%22%2F%3E%0A%3C%21--%20%E5%86%B0%E5%B1%B1%20Peak%20%2810%25%20%E5%8F%AF%E8%A7%81%29%20--%3E%0A%3Cpolygon%20points%3D%2250%2C28%2072%2C55%2028%2C55%22%20fill%3D%22url%28%23p%29%22%2F%3E%0A%3C%21--%20%E5%86%B0%E5%B1%B1%E6%B0%B4%E4%B8%8B%203%20%E5%B1%82%20%2890%25%20%E9%9A%90%E8%97%8F%29%20--%3E%0A%3Cpolygon%20points%3D%2232%2C55%2068%2C55%2060%2C72%2040%2C72%22%20fill%3D%22url%28%23u%29%22%20opacity%3D%220.92%22%2F%3E%0A%3Cpolygon%20points%3D%2240%2C72%2060%2C72%2055%2C86%2045%2C86%22%20fill%3D%22%231E1B4B%22%20opacity%3D%220.95%22%2F%3E%0A%3C%21--%20%E6%B0%B4%E9%9D%A2%E5%88%86%E9%9A%94%20--%3E%0A%3Cline%20x1%3D%2224%22%20y1%3D%2255%22%20x2%3D%2276%22%20y2%3D%2255%22%20stroke%3D%22%23A78BFA%22%20stroke-width%3D%220.5%22%20stroke-dasharray%3D%222%2C2%22%20opacity%3D%220.6%22%2F%3E%0A%3C%2Fsvg%3E">
+    <link rel="stylesheet" href="/assets/css/mtscos-design-system.css">
+    <link rel="stylesheet" href="/assets/font-awesome/css/all.min.css">
+    <script>
+        (function(){
+            try { var s = localStorage.getItem('mtscos-theme'); if(s) document.documentElement.setAttribute('data-theme', s); else document.documentElement.setAttribute('data-theme', 'andromeda'); } catch(e) {}
+        })();
+    </script>
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; }
+        :root {
+            --biz-radius: 12px;
+            --biz-shadow: 0 12px 40px -12px rgba(11,31,58,.22), 0 4px 14px rgba(155,89,182,.10);
+            --biz-shadow-soft: 0 6px 20px -10px rgba(11,31,58,.14), 0 2px 6px rgba(155,89,182,.06);
+            --biz-line: rgba(155,89,182,.12);
+            --andromeda-purple:#9B59B6; --andromeda-blue:#2E86DE; --andromeda-pink:#FF6B9D; --andromeda-gold:#FFD700; --andromeda-deep:#0B1F3A;
+            --andromeda-grad: linear-gradient(135deg,#0B1F3A 0%,#2E86DE 40%,#9B59B6 75%,#FF6B9D 100%);
+            --andromeda-grad-purple: linear-gradient(135deg,#9B59B6,#7D3C98);
+            --andromeda-grad-blue:   linear-gradient(135deg,#2E86DE,#1B4F72);
+            --andromeda-grad-pink:   linear-gradient(135deg,#FF6B9D,#C0392B);
+            --andromeda-grad-gold:   linear-gradient(135deg,#FFD700,#F39C12);
+            --andromeda-grad-fusion: linear-gradient(135deg,#FF6B9D,#9B59B6,#2E86DE);
+        }
+        html,body { height:100%; }
+        body {
+            font-family: var(--mtscos-font-sans,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif);
+            color: var(--mtscos-text-primary,#1f2d3d);
+            background: var(--mtscos-bg-page,#f6f8fa);
+            min-height:100vh; display:flex; line-height:1.6; -webkit-font-smoothing:antialiased;
+        }
+        a { text-decoration:none; color:inherit; }
+        .num-mono { font-family: var(--mtscos-font-mono,"SFMono-Regular",Menlo,monospace); }
+
+        /* ════════════ LEFT SIDEBAR 240px ════════════ */
+        .biz-sidebar {
+            width: 240px; flex-shrink:0;
+            background: var(--mtscos-bg-card,rgba(255,255,255,.92));
+            backdrop-filter: saturate(180%) blur(16px);
+            border-right: 1px solid var(--biz-line);
+            display:flex; flex-direction:column;
+            padding: 20px 16px;
+            position: sticky; top:0; height:100vh; overflow-y:auto;
+        }
+        .biz-sb-brand { display:flex; align-items:center; gap:12px; padding-bottom:16px; border-bottom:1px solid var(--biz-line); margin-bottom:16px; }
+        .biz-sb-logo {
+            width:40px; height:40px; border-radius:10px; flex-shrink:0;
+            background: linear-gradient(135deg, var(--mtscos-primary-base,#5B8FB9), var(--mtscos-secondary-base,#6FA88B));
+            display:flex; align-items:center; justify-content:center; color:#fff; font-size:18px;
+        }
+        .biz-sb-brand .n { font-size:15px; font-weight:800; }
+        .biz-sb-brand .s { font-size:10px; color:var(--mtscos-text-secondary); letter-spacing:2px; text-transform:uppercase; }
+
+        .biz-sb-section-title {
+            font-size: 10.5px; font-weight:700; letter-spacing:1.5px;
+            color: var(--mtscos-text-secondary); text-transform:uppercase;
+            margin: 14px 4px 8px;
+        }
+        .biz-sb-section-title:first-of-type { margin-top: 0; }
+
+        .biz-sb-mods { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+        .biz-sb-mod {
+            display:flex; flex-direction:column; align-items:center; gap:6px;
+            padding:12px 6px; border-radius:10px; text-align:center;
+            background: var(--mtscos-bg-page,#f0f3f6);
+            border:1px solid transparent;
+            transition: transform .15s, border-color .15s, background .15s;
+            cursor:pointer;
+        }
+        .biz-sb-mod:hover { transform: translateY(-2px); border-color: rgba(155,89,182,.28); background: var(--mtscos-bg-card); }
+        .biz-sb-mod .mi {
+            width:32px; height:32px; border-radius:9px;
+            display:flex; align-items:center; justify-content:center;
+            font-size:13px; color:#fff;
+        }
+        .biz-sb-mod .mt { font-size:11.5px; font-weight:700; line-height:1.25; }
+        .biz-sb-mod.admin .mi { background: var(--andromeda-grad-gold); }
+        .biz-sb-mod[data-star="alpheratz"] .mi { background: var(--andromeda-grad-purple); }
+        .biz-sb-mod[data-star="mirach"]     .mi { background: var(--andromeda-grad-blue); }
+        .biz-sb-mod[data-star="gamma"]      .mi { background: linear-gradient(135deg,#1ABC9C,#16A085); }
+        .biz-sb-mod[data-star="delta"]      .mi { background: var(--andromeda-grad-pink); }
+        .biz-sb-mod[data-star="eta"]        .mi { background: linear-gradient(135deg,#8E44AD,#6C3483); }
+        .biz-sb-mod[data-star="omega"]      .mi { background: linear-gradient(135deg,#D35400,#A04000); }
+        .biz-sb-mod[data-star="sigma"]      .mi { background: linear-gradient(135deg,#34495E,#2C3E50); }
+        .biz-sb-mod[data-star="iota"]       .mi { background: linear-gradient(135deg,#7F8C8D,#566573); }
+
+        /* 用户/登录区 */
+        .biz-sb-user { padding: 12px; border-radius:10px; background: var(--mtscos-bg-page,#f0f3f6); margin-top:4px; }
+        .biz-sb-user-logged { display:flex; align-items:center; gap:10px; }
+        .biz-sb-avatar {
+            width:36px; height:36px; border-radius:50%; flex-shrink:0;
+            background: linear-gradient(135deg, var(--mtscos-primary-base), var(--mtscos-primary-dark-2,#457295));
+            color:#fff; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700;
+        }
+        .biz-sb-user-meta .un { font-size:13px; font-weight:700; }
+        .biz-sb-user-meta .ur { font-size:11px; color:var(--mtscos-text-secondary); }
+        .biz-sb-user-meta a { font-size:12px; color:var(--mtscos-primary-base); font-weight:600; }
+        .biz-sb-login-mini { display:flex; gap:6px; }
+        .biz-sb-login-mini input {
+            flex:1; min-width:0; padding:7px 10px; font-size:12px;
+            border:1px solid var(--mtscos-border-base,#d6dde6); border-radius:7px;
+            background: var(--mtscos-bg-card,#fff); outline:none;
+        }
+        .biz-sb-login-mini input:focus { border-color: var(--mtscos-primary-base); }
+        .biz-sb-login-mini button {
+            padding:7px 12px; border:none; border-radius:7px; font-size:12px; font-weight:700;
+            background: linear-gradient(135deg, var(--mtscos-primary-base), var(--mtscos-secondary-base));
+            color:#fff; cursor:pointer; white-space:nowrap;
+        }
+        .biz-sb-login-msg { font-size:11px; margin-top:6px; min-height:14px; }
+        .biz-sb-login-msg.error { color:var(--mtscos-danger-base,#d15b5b); }
+        .biz-sb-login-msg.info { color:var(--mtscos-primary-base); }
+
+        /* 仙女座快捷操作 */
+        .biz-sb-andromeda {
+            padding:12px; border-radius:10px;
+            background: linear-gradient(135deg, rgba(11,31,58,.03), rgba(155,89,182,.05));
+            border:1px solid rgba(155,89,182,.15);
+        }
+        .biz-sb-andromeda .title {
+            display:flex; align-items:center; gap:8px; font-size:13px; font-weight:700; margin-bottom:8px;
+        }
+        .biz-sb-andromeda .orb {
+            width:16px; height:16px; border-radius:50%;
+            background: var(--andromeda-grad);
+            box-shadow: 0 0 10px rgba(155,89,182,.4);
+            animation: andPulse 3s ease-in-out infinite;
+        }
+        @keyframes andPulse {
+            0%,100% { box-shadow:0 0 10px rgba(155,89,182,.4); }
+            50%     { box-shadow:0 0 18px rgba(46,134,222,.6), 0 0 26px rgba(155,89,182,.3); }
+        }
+        .biz-sb-status {
+            font-size:11.5px; padding:6px 10px; border-radius:7px; font-weight:600;
+            display:flex; align-items:center; gap:6px; margin-bottom:8px;
+            border:1px solid;
+        }
+        .biz-sb-status.green  { background:rgba(34,197,94,.08); color:#166534; border-color:rgba(34,197,94,.3); }
+        .biz-sb-status.yellow { background:rgba(234,179,8,.08); color:#854d0e; border-color:rgba(234,179,8,.3); }
+        .biz-sb-status.red    { background:rgba(239,68,68,.08); color:#991b1b; border-color:rgba(239,68,68,.3); }
+        .biz-sb-status .dot { width:7px; height:7px; border-radius:50%; background:currentColor; animation:pulseDot 1.5s ease-in-out infinite; }
+        @keyframes pulseDot { 0%,100%{opacity:1;transform:scale(1);} 50%{opacity:.5;transform:scale(.7);} }
+        .biz-sb-mini-row { display:flex; gap:6px; font-size:11px; color:var(--mtscos-text-secondary); margin-bottom:6px; flex-wrap:wrap; }
+        .biz-sb-mini-row span { display:inline-flex; align-items:center; gap:3px; }
+        .biz-sb-trigger {
+            width:100%; padding:8px; border:none; border-radius:8px;
+            background: var(--andromeda-grad); color:#fff; font-size:12px; font-weight:700;
+            cursor:pointer; transition: transform .15s, box-shadow .15s;
+            box-shadow: 0 2px 10px -2px rgba(155,89,182,.4);
+            display:flex; align-items:center; justify-content:center; gap:6px;
+        }
+        .biz-sb-trigger:hover { transform: translateY(-1px); }
+        .biz-sb-trigger:disabled { opacity:.5; cursor:not-allowed; transform:none; }
+        .biz-sb-trigger .spin { display:none; width:12px; height:12px; border:2px solid rgba(255,255,255,.3); border-top-color:white; border-radius:50%; animation:nh-spin .8s linear infinite; }
+        .biz-sb-trigger.loading .spin { display:inline-block; }
+        @keyframes nh-spin { to { transform: rotate(360deg); } }
+
+        /* 时钟 + 主题 + 版本 (紧凑) */
+        .biz-sb-toolbar {
+            display:flex; align-items:center; gap:6px; font-size:11px; color:var(--mtscos-text-secondary);
+            padding: 10px 4px; border-bottom: 1px solid var(--biz-line); margin-bottom: 12px; flex-wrap:wrap;
+        }
+        .biz-sb-time { font-size:14px; font-weight:700; color:var(--mtscos-primary-base,#457295); letter-spacing:1px; font-family: var(--mtscos-font-mono,monospace); }
+        .biz-sb-date { font-size:10.5px; }
+        .biz-sb-version { font-size:10.5px; padding:3px 8px; border-radius:999px; background: var(--mtscos-primary-soft,rgba(91,143,185,.12)); color: var(--mtscos-primary-base); font-weight:700; }
+
+        /* 主题点 */
+        .biz-sb-theme { position:relative; margin-left:auto; display:flex; align-items:center; }
+        .biz-sb-theme .tdot {
+            width:22px; height:22px; border-radius:50%; cursor:pointer;
+            border:2px solid var(--mtscos-border-light,rgba(91,143,185,.2));
+            transition: transform .15s, box-shadow .15s;
+        }
+        .biz-sb-theme .tdot:hover { transform:scale(1.1); }
+        .biz-sb-theme-panel {
+            position:absolute; top:calc(100% + 8px); right:0; width:200px;
+            background: var(--mtscos-bg-card,#fff); border:1px solid var(--biz-line);
+            border-radius:10px; box-shadow: var(--biz-shadow); padding:8px;
+            display:none; grid-template-columns:repeat(4,1fr); gap:8px; z-index:80;
+        }
+        .biz-sb-theme-panel.open { display:grid; }
+        .biz-sb-theme-panel .pt { text-align:center; }
+        .biz-sb-theme-panel .pt .tdot { margin:0 auto; display:block; }
+        .biz-sb-theme-panel .pt .tl { font-size:10px; color:var(--mtscos-text-secondary); margin-top:3px; line-height:1.2; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+        /* 底部状态栏 */
+        .biz-sb-foot {
+            margin-top:auto; padding-top:12px; border-top:1px solid var(--biz-line);
+            font-size:10.5px; color:var(--mtscos-text-secondary);
+        }
+        .biz-sb-foot-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:4px; }
+        .biz-sb-foot .dot { width:6px; height:6px; border-radius:50%; background: var(--mtscos-success-base,#5C9A6F); display:inline-block; margin-right:4px; }
+
+        /* ════════════ MAIN CONTENT ════════════ */
+        .biz-main { flex:1; padding: 24px 32px 40px; min-width:0; max-width: 1200px; margin: 0 auto; width:100%; }
+
+        /* 🌌 HERO 仙女座银河图 */
+        .biz-hero { margin-bottom: 28px; }
+        .biz-hero-svg-wrap {
+            position: relative; width:100%; aspect-ratio: 2.2/1;
+            background: radial-gradient(ellipse at 50% 40%, rgba(155,89,182,.08) 0%, rgba(11,31,58,.04) 60%, transparent 100%);
+            border:1px solid var(--biz-line);
+            border-radius: 16px;
+            overflow:hidden;
+        }
+        .biz-hero-svg-wrap svg { width:100%; height:100%; display:block; }
+        .biz-hero-title {
+            position:absolute; top:16px; left:20px;
+            display:flex; align-items:center; gap:10px;
+            font-size:14px; font-weight:800; color: var(--andromeda-deep,#0B1F3A);
+        }
+        .biz-hero-title .orb {
+            width:22px; height:22px; border-radius:50%; background: var(--andromeda-grad);
+            box-shadow: 0 0 14px rgba(155,89,182,.4);
+            animation: andPulse 3s ease-in-out infinite;
+        }
+        .biz-hero-title .hint { font-size:11px; color: var(--mtscos-text-secondary); font-weight:400; }
+        .biz-hero-label {
+            position:absolute; top:18px; right:20px;
+            padding: 6px 14px; border-radius: 999px;
+            font-size:12px; font-weight:700; border:1px solid;
+            display:flex; align-items:center; gap:7px;
+        }
+        .biz-hero-label.green  { background:rgba(34,197,94,.08); color:#166534; border-color:rgba(34,197,94,.3); }
+        .biz-hero-label.yellow { background:rgba(234,179,8,.08); color:#854d0e; border-color:rgba(234,179,8,.3); }
+        .biz-hero-label.red    { background:rgba(239,68,68,.08); color:#991b1b; border-color:rgba(239,68,68,.3); }
+        .biz-hero-label .dot { width:7px; height:7px; border-radius:50%; background:currentColor; animation:pulseDot 1.5s ease-in-out infinite; }
+        .biz-hero-flow {
+            position:absolute; bottom:12px; left:0; right:0;
+            display:flex; justify-content:center; gap:20px; flex-wrap:wrap;
+            font-size:11px; color:var(--mtscos-text-secondary);
+        }
+        .biz-hero-flow span { display:inline-flex; align-items:center; gap:5px; }
+        .biz-hero-flow strong { color: var(--andromeda-purple,#9B59B6); font-weight:700; font-family: var(--mtscos-font-mono,monospace); }
+        .biz-hero-trigger {
+            position:absolute; bottom:10px; right:16px;
+            display:inline-flex; align-items:center; gap:6px; padding:7px 14px;
+            background: var(--andromeda-grad); color:white; font-size:11.5px; font-weight:700;
+            border:none; border-radius:8px; cursor:pointer;
+            box-shadow: 0 2px 12px -2px rgba(155,89,182,.4);
+            transition: transform .15s;
+        }
+        .biz-hero-trigger:hover { transform: translateY(-1px); }
+        .biz-hero-trigger:disabled { opacity:.5; cursor:not-allowed; transform:none; }
+        .biz-hero-trigger .spin { display:none; width:11px; height:11px; border:2px solid rgba(255,255,255,.3); border-top-color:white; border-radius:50%; animation:nh-spin .8s linear infinite; }
+        .biz-hero-trigger.loading .spin { display:inline-block; }
+
+        /* 🔖 版本 + 注册时间条 */
+        .biz-meta-bar {
+            display: flex; align-items: center; justify-content: space-between; gap: 12px;
+            padding: 12px 18px; margin-bottom: 16px;
+            background: var(--mtscos-bg-card,#fff);
+            border: 1px solid var(--biz-line, rgba(11,31,58,.08));
+            border-radius: 12px; font-size: 12px;
+        }
+        .biz-meta-bar .bm-left { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+        .biz-meta-bar .bm-item { display: inline-flex; align-items: center; gap: 6px; color: var(--mtscos-text-secondary); }
+        .biz-meta-bar .bm-item strong { color: var(--mtscos-text-primary,#0B1F3A); font-weight: 700; font-family: ui-monospace, monospace; }
+        .biz-meta-bar .bm-ver { display:inline-flex; align-items:center; gap:6px; padding:3px 10px; border-radius:999px; font-weight:700; font-size:11.5px;
+            background: linear-gradient(135deg, rgba(92,154,111,.12), rgba(111,168,139,.10)); color: #5C9A6F; border: 1px solid rgba(92,154,111,.25); }
+        .biz-meta-bar .bm-ver i { font-size:10px; }
+
+        /* 📊 精简统计条 */
+        .biz-stats-bar { display:grid; grid-template-columns: repeat(4,1fr); gap:10px; margin-bottom: 20px; }
+        .biz-stat-cell { display:flex; align-items:center; gap:8px; padding: 8px 12px; border-radius:10px; background: var(--mtscos-bg-card,#fff); border:1px solid var(--biz-line,rgba(11,31,58,.08)); }
+        .biz-stat-cell .lbl { font-size:11.5px; color:var(--mtscos-text-secondary); font-weight:600; }
+        .biz-stat-cell .num { font-size:15px; font-weight:800; color: var(--andromeda-deep,#0B1F3A); font-family: var(--mtscos-font-mono,monospace); }
+
+        .biz-mon-card:hover { box-shadow: 0 4px 16px -6px rgba(11,31,58,.12); }
+        .biz-mon-card.good { border-color: rgba(92,154,111,.35); }
+        .biz-mon-card.warn { border-color: rgba(234,179,8,.35); }
+        .biz-mon-card.bad  { border-color: rgba(239,68,68,.35); }
+        .biz-mon-ico {
+            width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center;
+            background: linear-gradient(135deg, rgba(155,89,182,.12), rgba(46,134,222,.10));
+            color: #9B59B6; font-size: 18px; flex-shrink: 0;
+        }
+        .biz-mon-card.good .biz-mon-ico { background: linear-gradient(135deg, rgba(92,154,111,.15), rgba(111,168,139,.10)); color: #5C9A6F; }
+        .biz-mon-card.bad  .biz-mon-ico { background: linear-gradient(135deg, rgba(239,68,68,.12), rgba(192,57,43,.10)); color: #C0392B; }
+        .biz-mon-body { flex: 1; min-width: 0; }
+        .biz-mon-title { font-size: 13px; font-weight: 700; color: var(--mtscos-text-primary,#0B1F3A); margin-bottom: 2px; display:flex; align-items:center; gap:8px; }
+        .biz-mon-status { font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 999px; }
+        .biz-mon-status.good { background: rgba(92,154,111,.12); color: #5C9A6F; }
+        .biz-mon-status.warn { background: rgba(234,179,8,.12); color: #B45309; }
+        .biz-mon-status.bad  { background: rgba(239,68,68,.12); color: #C0392B; }
+        .biz-mon-sub { font-size: 11.5px; color: var(--mtscos-text-secondary); display: flex; flex-wrap: wrap; gap: 10px; }
+        .biz-mon-sub span { display: inline-flex; align-items: center; gap: 4px; }
+        .biz-mon-sub strong { color: var(--mtscos-text-primary,#0B1F3A); font-family: ui-monospace, monospace; font-size: 11px; }
+        .biz-mon-sub .dot { width:6px; height:6px; border-radius:50%; display: inline-block; }
+        .biz-mon-sub .dot.good { background:#5C9A6F; box-shadow:0 0 6px rgba(92,154,111,.5); }
+        .biz-mon-sub .dot.warn { background:#EAB308; box-shadow:0 0 6px rgba(234,179,8,.5); }
+        .biz-mon-sub .dot.bad  { background:#EF4444; box-shadow:0 0 6px rgba(239,68,68,.5); }
+
+        /* 🌟 AI 天团 roster 面板 */
+        .at-title { display:flex; align-items:center; gap:10px; font-size:15px; font-weight:800; color: var(--andromeda-deep,#0B1F3A); }
+        .at-title .at-orb { width:20px; height:20px; border-radius:50%; background: var(--andromeda-grad); box-shadow: 0 0 12px rgba(155,89,182,.45); animation: andPulse 3s ease-in-out infinite; }
+        .at-sub { font-size:12px; font-weight:500; color: var(--mtscos-text-secondary,#6b7a8f); margin-left:6px; }
+        .at-filter { display:flex; gap:6px; }
+        .at-chip { padding:5px 12px; border-radius:999px; border:1px solid var(--andromeda-soft,rgba(155,89,182,.18)); background:var(--mtscos-bg-card,#fff); font-size:12px; font-weight:600; color:var(--mtscos-text-secondary); cursor:pointer; transition:all .18s; }
+        .at-chip:hover { border-color:#9B59B6; color:#9B59B6; }
+        .at-chip.active { background: var(--andromeda-grad); color:#fff; border-color:transparent; box-shadow: 0 2px 8px rgba(155,89,182,.3); }
+
+        .and-teams-grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap:12px; }
+        .at-card {
+            background: var(--mtscos-bg-card,#fff); border-radius:14px; padding:14px 14px 12px;
+            border:1px solid var(--andromeda-soft,rgba(155,89,182,.12)); transition: transform .18s, box-shadow .18s, border-color .18s;
+            cursor:pointer; position:relative; overflow:hidden;
+        }
+        .at-card::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; background: var(--team-color,#9B59B6); opacity:.9; }
+        .at-card:hover { transform: translateY(-2px); border-color: var(--team-color,#9B59B6); box-shadow: 0 6px 20px -6px rgba(11,31,58,.2); }
+        .at-card .at-name { font-size:14px; font-weight:800; color: var(--andromeda-deep,#0B1F3A); margin-bottom:4px; line-height:1.25; }
+        .at-card .at-count { font-size:11px; color: var(--mtscos-text-secondary); font-weight:600; margin-bottom:10px; }
+        .at-card .at-count strong { color: var(--team-color,#9B59B6); font-size:14px; font-family: monospace; }
+        .at-card .at-core { display:flex; gap:4px; flex-wrap:wrap; }
+        .at-card .at-chip-name {
+            font-size:10.5px; font-weight:600; padding:2px 7px; border-radius:999px;
+            background: var(--team-color-soft,rgba(155,89,182,.1));
+            color: var(--team-color,#9B59B6); white-space:nowrap;
+        }
+        .at-card .at-badge-core { position:absolute; top:8px; right:8px; font-size:10px; padding:2px 6px; border-radius:999px; background:rgba(255,215,0,.15); color:#B8860B; font-weight:700; }
+        .at-card[data-filter="tech"]   .at-badge-core { background:rgba(46,134,222,.12); color:#1B4F72; }
+        .at-card[data-filter="culture"].at-badge-core { background:rgba(230,126,34,.12); color:#CA6F1E; }
+
+        /* 银河星 tooltip (overrides old) */
+        .and-star-tooltip {
+            position: absolute; pointer-events: none;
+            padding: 6px 12px; border-radius: 8px;
+            background: rgba(11,31,58,.92); color: #fff;
+            font-size: 12px; font-weight: 700;
+            box-shadow: 0 6px 20px rgba(0,0,0,.25);
+            opacity: 0; transition: opacity .15s;
+            white-space: nowrap; z-index: 20;
+        }
+        .and-star-tooltip.show { opacity:1; }
+
+        /* 📊 带状统计条 */
+            display:flex; flex-direction:column; gap:4px;
+            padding: 14px 16px; border-radius:12px;
+            background: var(--mtscos-bg-card,#fff);
+            border:1px solid var(--biz-line);
+            box-shadow: var(--biz-shadow-soft);
+        }
+        .biz-stat-cell .lbl { font-size:11.5px; color:var(--mtscos-text-secondary); font-weight:600; }
+        .biz-stat-cell .num { font-size:22px; font-weight:800; color: var(--andromeda-deep,#0B1F3A); font-family: var(--mtscos-font-mono,monospace); }
+
+        /* 双列区: AI生态 | §14规则 */
+            background: var(--mtscos-bg-card,#fff);
+            border:1px solid var(--biz-line);
+            border-radius: 14px;
+            box-shadow: var(--biz-shadow-soft);
+            padding: 18px 20px;
+        }
+        .biz-card-title {
+            display:flex; align-items:center; gap:8px;
+            font-size:14px; font-weight:800; margin-bottom:14px;
+        }
+        .biz-card-title i { color: var(--andromeda-purple,#9B59B6); }
+        .biz-card-grid { display:grid; grid-template-columns: repeat(3,1fr); gap:10px; }
+        .biz-card-grid.eco-3 .cell { text-align:center; padding:14px 8px; border-radius:10px; background: var(--mtscos-bg-page,#f0f3f6); }
+        .biz-card-grid.eco-3 .cell i { font-size:18px; color:var(--mtscos-primary-base); margin-bottom:6px; }
+        .biz-card-grid.eco-3 .cell .v { font-size:20px; font-weight:800; font-family: var(--mtscos-font-mono,monospace); }
+        .biz-card-grid.eco-3 .cell .k { font-size:11.5px; color:var(--mtscos-text-secondary); margin-top:2px; }
+        .biz-card-grid.rules-6 { grid-template-columns: repeat(3,1fr); }
+        .biz-card-grid.rules-6 .cell { text-align:center; padding:12px 6px; border-radius:10px; }
+        .biz-card-grid.rules-6 .cell i { font-size:16px; color:var(--mtscos-primary-base); margin-bottom:4px; }
+        .biz-card-grid.rules-6 .cell .v { font-size:18px; font-weight:800; font-family: var(--mtscos-font-mono,monospace); }
+        .biz-card-grid.rules-6 .cell .k { font-size:11px; color:var(--mtscos-text-secondary); margin-top:2px; }
+        .biz-card-scan { margin-top:10px; font-size:12px; color:var(--mtscos-text-secondary); display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+        .biz-sa-clean { font-weight:700; color:var(--mtscos-success-base,#5C9A6F); }
+        .biz-sa-warn { font-weight:700; color:var(--mtscos-danger-base,#d15b5b); }
+
+        /* 🕐 农历日历条 */
+            border-top:1px solid var(--biz-line); padding:16px 0; margin-top: 28px;
+            display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;
+            font-size:12px; color:var(--mtscos-text-secondary);
+        }
+        .biz-footer .fl { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+        .biz-status-dot { width:7px; height:7px; border-radius:50%; background:var(--mtscos-success-base,#5C9A6F); box-shadow: 0 0 0 3px rgba(92,154,111,.15); }
+        .biz-footer .fr { display:flex; gap:12px; }
+        .biz-footer a:hover { color:var(--mtscos-primary-base); }
+
+        @media (max-width: 720px) {
+            .biz-sidebar { width: 64px; padding: 16px 10px; }
+            .biz-sb-brand .s, .biz-sb-brand .n { display:none; }
+            .biz-sb-mods { grid-template-columns:1fr; }
+            .biz-sb-mod .mt { display:none; }
+            .biz-sb-andromeda .title span:not(.orb):not(.num-mono) { display:none; }
+            .biz-sb-toolbar { flex-direction:column; align-items:flex-start; gap:4px; }
+            .biz-sb-theme { margin-left:0; }
+            .biz-main { padding: 20px 20px 30px; }
+        }
+        @media (max-width: 520px) {
+            .biz-sidebar { display:none; }
+            .biz-main { padding: 16px 14px 24px; }
+            .biz-hero-title { font-size:12px; }
+            .wb-login { flex-direction:column; align-items:stretch; }
+            .wb-field, .wb-btn { width:100%; }
+        }
+
+        /* ═══════ 欢迎+登录横幅 (突出未登录用户) ═══════ */
+        .biz-welcome-banner {
+            display:flex; align-items:stretch; gap:28px;
+            padding: 24px 28px; margin-bottom: 24px;
+            background: linear-gradient(135deg, rgba(11,31,58,.04), rgba(155,89,182,.08));
+            border: 1px solid rgba(155,89,182,.18);
+            border-radius: 18px;
+            box-shadow: 0 8px 32px -12px rgba(11,31,58,.12);
+        }
+        .biz-welcome-banner.logged { align-items:center; }
+        .biz-welcome-banner.logged { background: linear-gradient(135deg, rgba(92,154,111,.06), rgba(111,168,139,.08)); border-color: rgba(92,154,111,.2); }
+        .wb-left { display:flex; align-items:center; gap:18px; flex:1; min-width:0; padding: 6px 0; }
+        .wb-icon {
+            width:56px; height:56px; border-radius:14px; flex-shrink:0;
+            background: var(--andromeda-grad);
+            display:flex; align-items:center; justify-content:center;
+            color:#fff; font-size:22px;
+            box-shadow: 0 6px 20px -4px rgba(155,89,182,.5);
+        }
+        .wb-title { font-size:18px; font-weight:800; color: var(--andromeda-deep,#0B1F3A); margin-bottom:4px; letter-spacing:.3px; }
+        .wb-sub { font-size:13px; color: var(--mtscos-text-secondary,#4a5b6e); line-height:1.5; }
+
+        /* 🔐 登录卡 (强化版 — 垂直大卡片) */
+        .wb-login {
+            display:flex; flex-direction:column; gap:12px;
+            min-width: 280px; width: 300px; flex-shrink:0;
+            padding: 18px 20px 16px; border-radius:14px;
+            background: var(--mtscos-bg-card,#ffffff);
+            border:1px solid rgba(155,89,182,.18);
+            box-shadow: 0 8px 28px -8px rgba(11,31,58,.12);
+            position: relative; overflow: hidden;
+        }
+        .wb-login::before {
+            content:''; position:absolute; top:0; left:0; right:0; height:3px;
+            background: var(--andromeda-grad);
+        }
+        .wb-login-title {
+            font-size:13px; font-weight:700; color: var(--andromeda-deep,#0B1F3A);
+            display:flex; align-items:center; gap:8px; padding-bottom:6px;
+            border-bottom: 1px solid var(--biz-line, rgba(11,31,58,.06));
+        }
+        .wb-login-title::before {
+            content:''; width:4px; height:14px; border-radius:2px;
+            background: var(--andromeda-grad);
+        }
+        .wb-field { position:relative; display:flex; align-items:center; width: 100%; }
+        .wb-field i { position:absolute; left:12px; color: var(--mtscos-text-secondary,#9aa8b8); font-size:14px; z-index:1; }
+        .wb-field input {
+            padding: 11px 14px 11px 38px; font-size:14px; width: 100%;
+            border:1px solid var(--mtscos-border-base,#d6dde6); border-radius:10px;
+            background: var(--mtscos-bg-page,#f6f8fa); outline:none;
+            transition: border-color .18s, box-shadow .18s, background .18s;
+            box-sizing: border-box;
+        }
+        .wb-field input:focus {
+            border-color: var(--andromeda-purple,#9B59B6);
+            background: #fff;
+            box-shadow: 0 0 0 3px rgba(155,89,182,.12);
+        }
+        .wb-remember { font-size:12.5px; color:var(--mtscos-text-secondary); display:flex; align-items:center; gap:6px; cursor:pointer; user-select:none; }
+        .wb-remember input { accent-color: var(--andromeda-purple,#9B59B6); width:15px; height:15px; }
+
+        .wb-btn {
+            padding: 12px 22px; border:none; border-radius:10px;
+            background: var(--andromeda-grad);
+            color:#fff; font-size:14.5px; font-weight:800; letter-spacing:1px;
+            cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px;
+            box-shadow: 0 6px 20px -4px rgba(155,89,182,.45);
+            transition: transform .15s, box-shadow .2s;
+            width: 100%;
+        }
+        .wb-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 26px -4px rgba(155,89,182,.55); }
+        .wb-btn:active { transform: translateY(0); }
+        .wb-btn:disabled { opacity:.65; cursor:not-allowed; transform:none; box-shadow: none; }
+        .wb-btn .btn-text { /* 确保按钮文字不被吃掉 */ display:inline-block; line-height:1; }
+        .wb-msg { min-height:18px; font-size:12.5px; text-align:center; padding-top:2px; }
+        .wb-msg.error { color:var(--mtscos-danger-base,#d15b5b); font-weight:600; }
+        .wb-msg.info { color:var(--andromeda-purple,#9B59B6); font-weight:600; }
+        .wb-register-link { text-align:center; font-size:12.5px; color:var(--mtscos-text-secondary,#7a8aa0); padding-top:4px; }
+        .wb-register-link a { color:var(--andromeda-purple,#9B59B6); font-weight:600; text-decoration:none; }
+        .wb-register-link a:hover { text-decoration:underline; }
+    </style>
+    {# v24.3.3: 始终加载 SA 双密钥 CSS — 选择器限定 body.layout-mode-SA_PROPRIETARY，非 SA 态零影响 #}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/sa_proprietary.css') }}">
+</head>
+<body class="layout-mode-{{ layout_mode or 'STANDARD' }}{% if sa_proprietary %} sa-proprietary{% endif %}"
+      data-layout-mode="{{ layout_mode or 'STANDARD' }}"
+      data-dual-authenticated="{{ 'true' if dual_authenticated else 'false' }}">
+<!-- ═══════════════ LEFT SIDEBAR ═══════════════ -->
+<!-- ═══════════════ LEFT SIDEBAR (仙女座公共侧栏) ═══════════════ -->
+{% include '_partials/andromeda_sidebar.html' %}
+
+<!-- ═══════════════ MAIN CONTENT ═══════════════ -->
+<main class="biz-main">
+
+    <!-- 👋 欢迎 + 登录卡 (未登录时突出显示) -->
+    {% if not (is_authenticated() and current_user and current_user.username) %}
+    <section class="biz-welcome-banner" id="welcomeBanner">
+        <div class="wb-left">
+            <div class="wb-icon"><i class="fas fa-sparkles"></i></div>
+            <div>
+                <div class="wb-title">欢迎来到 <span style="color:var(--andromeda-purple,#9B59B6)">MTSCOS AI</span></div>
+                <div class="wb-sub" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+                    <span>🧠 Andromeda-Alpha 自演化引擎</span>
+                    <span class="num-mono" style="color:var(--andromeda-purple,#9B59B6)">cycle <strong id="evCycleLogin">—</strong></span>
+                    <span id="evDaemonLogin" style="opacity:.7">daemon —</span>
+                    <span id="evMiniLogin" style="opacity:.7">Mini —</span>
+                    <span id="evStatusLogin" style="padding:1px 8px;border-radius:999px;font-size:10px;font-weight:700;background:rgba(34,197,94,.1);color:#166534;border:1px solid rgba(34,197,94,.3)">● 引擎启动中</span>
+                </div>
+            </div>
+        </div>
+        <form class="wb-login" id="bizLoginFormMain" onsubmit="return false;">
+            <div class="wb-login-title"><i class="fas fa-user-shield" style="color:var(--andromeda-purple,#9B59B6);font-size:13px"></i> 安全登录 MTSCOS AI</div>
+            <input type="hidden" name="csrf_token" value="{{ page_csrf_token if page_csrf_token else (csrf_token if csrf_token else '') }}">
+            <div class="wb-field">
+                <i class="fas fa-user"></i>
+                <input type="text" id="bizUsernameMain" name="username" autocomplete="username" placeholder="{{ t('home.ph_username', default='请输入用户名') }}" required>
+            </div>
+            <div class="wb-field">
+                <i class="fas fa-lock"></i>
+                <input type="password" id="bizPasswordMain" name="password" autocomplete="current-password" placeholder="{{ t('home.ph_password', default='请输入密码') }}" required>
+            </div>
+            <label class="wb-remember"><input type="checkbox" id="bizRememberMain"> {{ t('home.remember_me', default='7 天内免登录') }}</label>
+            <button type="submit" class="wb-btn" id="bizLoginBtnMain">
+                <i class="fas fa-right-to-bracket"></i><span class="btn-text">{{ t('home.btn_login', default='登 录') }}</span>
+            </button>
+            <div class="wb-msg" id="bizLoginMsgMain"></div>
+            <div class="wb-register-link"><i class="fas fa-user-plus"></i> 没有账号？<a href="{{ url_for('auth.register') }}">立即注册 →</a></div>
+        </form>
+    </section>
+    {% else %}
+    <!-- 已登录欢迎条 -->
+    <section class="biz-welcome-banner logged">
+        <div class="wb-left">
+            <div class="wb-icon" style="background:linear-gradient(135deg,var(--mtscos-primary-base),var(--mtscos-secondary-base))">{{ current_user.username[0]|upper }}</div>
+            <div>
+                <div class="wb-title">{{ t('home.user.welcome_back') }}{{ get_role_name(current_user.role) if current_user.role else '用户' }}</div>
+                <div class="wb-sub">仙女座 · 全速运行 (score <span class="num-mono" id="andStatusMiniScore2">100</span>) · Ollama 5模型在线 · Mini 4ms</div>
+            </div>
+        </div>
+        <a href="/student_portal" class="wb-btn"><i class="fas fa-gauge-high"></i> {{ t('home.workspace', default='工作台') }}</a>
+    </section>
+    {% endif %}
+
+    <!-- 🔖 版本 + 注册时间 + 登录信息条 -->
+    <section class="biz-meta-bar">
+        <div class="bm-left">
+            <span class="bm-ver"><i class="fas fa-code-branch"></i> v{{ version | default('23.0.0') }}</span>
+            {% if current_user and current_user.is_authenticated and user_created_at %}
+                <span class="bm-item"><i class="fas fa-calendar-check"></i> 注册于 <strong>{{ user_created_at[:10] }}</strong>
+                    {% if user_register_days is not none %}· 已陪伴 <strong>{{ user_register_days }}</strong> 天{% endif %}
+                </span>
+            {% elif current_user and current_user.is_authenticated %}
+                <span class="bm-item"><i class="fas fa-user-circle"></i> 欢迎 <strong>{{ current_user.username }}</strong></span>
+            {% else %}
+                <span class="bm-item"><i class="fas fa-user-lock"></i> 未登录 · 登录后解锁全部功能</span>
+            {% endif %}
+        </div>
+    </section>
+
+    <!-- 📊 核心指标条 (6格, 真实数据, 冰山+仙女座+EigenFlux) -->
+    <section class="biz-stats-bar" style="grid-template-columns:repeat(6,1fr);">
+        <div class="biz-stat-cell"><span class="lbl">✨ 仙女座 AI 员工</span><span class="num num-mono" id="statAndEmp">{{ homepage_stats.ai_employees_count if homepage_stats else 0 }}</span></div>
+        <div class="biz-stat-cell"><span class="lbl">🏔️ 冰山文案矩阵</span><span class="num num-mono" id="statIceMat">{{ homepage_stats.ice_matrix_count if homepage_stats else 0 }}</span></div>
+        <div class="biz-stat-cell"><span class="lbl">✦ EigenFlux 专家</span><span class="num num-mono" id="statEigExp">{{ homepage_stats.eigenflux_expert_count if homepage_stats else 0 }}</span></div>
+        <div class="biz-stat-cell"><span class="lbl">📐 开发流程</span><span class="num num-mono" id="statDevFlow">{% if homepage_stats and homepage_stats.iron_violations == 0 %}OK{% else %}{{ homepage_stats.iron_violations if homepage_stats else 0 }}⛔{% endif %}</span></div>
+        <div class="biz-stat-cell"><span class="lbl">🚀 Daemon 运行</span><span class="num num-mono" id="statDaemon">{{ homepage_stats.daemon_running if homepage_stats else 0 }}/{{ homepage_stats.daemon_total if homepage_stats else 0 }}</span></div>
+        <div class="biz-stat-cell"><span class="lbl">🤝 握手状态</span><span class="num" id="statHS" style="font-size:13px;color:#9B59B6;font-family:var(--mtscos-font-mono,monospace);">{% if homepage_stats and homepage_stats.handshake_active > 0 %}● {{ homepage_stats.handshake_active }}活{% else %}○ 离线{% endif %}</span></div>
+    </section>
+
+    <!-- 🌟 双 Logo 品牌展示 + 冰山规则分层 -->
+    <section style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
+        <!-- 左: 双 Logo + 中心思想 -->
+        <div style="background:linear-gradient(135deg,rgba(11,31,58,.04),rgba(155,89,182,.06));border:1px solid rgba(155,89,182,.14);border-radius:14px;padding:20px 22px;">
+            <div style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:800;color:#0B1F3A;margin-bottom:14px;">
+                <span style="width:4px;height:14px;border-radius:2px;background:linear-gradient(180deg,#9B59B6,#2E86DE);"></span>
+                🌟 仙女座 × 冰山 · 双子引擎
+            </div>
+            <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:center;">
+                <div style="text-align:center;">
+                    <img src="/static/img/andromeda-logo.svg" width="72" height="72" style="border-radius:12px;">
+                    <div style="font-size:12px;font-weight:700;color:#9B59B6;margin-top:6px;">✨ ANDROMEDA</div>
+                    <div style="font-size:10px;color:#6b7a8f;letter-spacing:1px;">星系引擎</div>
+                </div>
+                <div style="display:flex;flex-direction:column;align-items:center;gap:6px;color:#9B59B6;">
+                    <div style="width:30px;height:30px;border-radius:50%;border:1px dashed rgba(155,89,182,.4);display:flex;align-items:center;justify-content:center;font-size:12px;">🔗</div>
+                    <div style="font-size:10px;color:#6b7a8f;text-align:center;">几何共享<br>父子支撑</div>
+                </div>
+                <div style="text-align:center;">
+                    <img src="/static/img/iceberg-logo.svg" width="72" height="72" style="border-radius:12px;">
+                    <div style="font-size:12px;font-weight:700;color:#2E86DE;margin-top:6px;">⛰️ ICEBERG</div>
+                    <div style="font-size:10px;color:#6b7a8f;letter-spacing:1px;">规则底座</div>
+                </div>
+            </div>
+            <div style="margin-top:14px;padding:10px 12px;background:rgba(155,89,182,.06);border-radius:8px;font-size:12px;color:#4a5b6e;line-height:1.6;">
+                <b style="color:#0B1F3A;">中心思想：</b>仙女座 25 颗域星（活跃执行）+ 冰山 4 层规则（沉默支撑）。冰山托举仙女座，双方共享同心圆+径向辐射几何语言。
+            </div>
+        </div>
+
+        <!-- 右: 冰山规则分层可视化 -->
+        <div style="background:linear-gradient(135deg,rgba(11,31,58,.04),rgba(46,134,222,.06));border:1px solid rgba(46,134,222,.14);border-radius:14px;padding:20px 22px;">
+            <div style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:800;color:#0B1F3A;margin-bottom:14px;">
+                <span style="width:4px;height:14px;border-radius:2px;background:linear-gradient(180deg,#EF4444,#312E81);"></span>
+                📐 冰山规则分层 (L0 → L1 → L2 → L3)
+            </div>
+            <div id="icebergLayers" style="display:flex;flex-direction:column;gap:6px;">
+                <!-- 动态填充 -->
+            </div>
+            <div style="margin-top:12px;display:flex;gap:10px;font-size:11px;color:#6b7a8f;">
+                <span>🎯 铁律违反 <b style="color:#C0392B;font-family:monospace;" id="iceVio">{{ homepage_stats.iron_violations if homepage_stats else 0 }}</b></span>
+                <span>• 规则告警 <b style="color:#B45309;font-family:monospace;" id="iceAlert">{{ homepage_stats.rule_alerts if homepage_stats else 0 }}</b></span>
+                <span>• 规则变更 <b style="color:#1B4F72;font-family:monospace;" id="iceChg">{{ homepage_stats.rule_changes if homepage_stats else 0 }}</b></span>
+            </div>
+        </div>
+    </section>
+
+    <!-- 🤝 系统状态实时面板 -->
+    <section style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:20px;">
+        <!-- Daemon 状态 -->
+        <div style="background:var(--mtscos-bg-card,#fff);border:1px solid var(--biz-line,rgba(11,31,58,.08));border-radius:14px;padding:16px 18px;">
+            <div style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:800;color:#0B1F3A;margin-bottom:10px;">
+                <span>🚀 Daemon 引擎</span>
+                <span id="daemonDot" style="width:8px;height:8px;border-radius:50%;background:#EAB308;margin-left:auto;animation:pulseDot 1.5s infinite;"></span>
+            </div>
+            <div id="daemonBox" style="font-size:12px;color:#4a5b6e;line-height:1.8;">{% if homepage_stats and homepage_stats.daemon_box_html %}{{ homepage_stats.daemon_box_html | safe }}{% else %}加载中…{% endif %}</div>
+        </div>
+
+        <!-- EigenFlux 通讯 -->
+        <div style="background:var(--mtscos-bg-card,#fff);border:1px solid var(--biz-line,rgba(11,31,58,.08));border-radius:14px;padding:16px 18px;">
+            <div style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:800;color:#0B1F3A;margin-bottom:10px;">
+                <span>✦ EigenFlux 专家网络</span>
+                <span style="font-size:10px;padding:2px 8px;border-radius:999px;background:rgba(155,89,182,.12);color:#9B59B6;font-weight:700;margin-left:auto;">LIVE</span>
+            </div>
+            <div id="eigenBox" style="font-size:12px;color:#4a5b6e;line-height:1.8;">{% if homepage_stats and homepage_stats.eigen_box_html %}{{ homepage_stats.eigen_box_html | safe }}{% else %}加载中…{% endif %}</div>
+        </div>
+
+        <!-- 握手 + 冰山运行 -->
+        <div style="background:var(--mtscos-bg-card,#fff);border:1px solid var(--biz-line,rgba(11,31,58,.08));border-radius:14px;padding:16px 18px;">
+            <div style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:800;color:#0B1F3A;margin-bottom:10px;">
+                <span>🤝 握手 + 冰山运行</span>
+            </div>
+            <div id="hsBox" style="font-size:12px;color:#4a5b6e;line-height:1.8;">{% if homepage_stats and homepage_stats.hs_box_html %}{{ homepage_stats.hs_box_html | safe }}{% else %}加载中…{% endif %}</div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="biz-footer">
+        <div class="fl">
+            <span class="biz-status-dot"></span>
+            <span>{{ footer_info.company if footer_info and footer_info.company else 'MTS Architecture' }} &copy; 2024-{{ footer_info.copyright_year if footer_info and footer_info.copyright_year else '2026' }}</span>
+            <span style="opacity:.4">|</span>
+            <span>v{{ version if version else system_version }}{% if latest_version and latest_version != version %}（最新 {{ latest_version }}）{% endif %}</span>
+        </div>
+        <div class="fr">
+            <a href="/"><i class="fas fa-house"></i> {{ t('home.home') }}</a>
+            <a href="/student_portal"><i class="fas fa-gauge-high"></i> {{ t('home.workspace') }}</a>
+            {% if is_super_admin or is_admin %}<a href="/admin_app/governance/"><i class="fas fa-crown"></i> 管理员</a>{% endif %}
+        </div>
+    </footer>
+</main>
+
+<script>
+    // ═══ 时钟 ═══
+    function pad(n){ return String(n).padStart(2,'0'); }
+    var WEEK = ['{{ t('home.sun') }}','{{ t('home.mon') }}','{{ t('home.tue') }}','{{ t('home.wed') }}','{{ t('home.thu') }}','{{ t('home.fri') }}','{{ t('home.sat') }}'];
+    function bizTick(){
+        var d = new Date();
+        var de = document.getElementById('bizDate'), te = document.getElementById('bizTime');
+        if (de) de.textContent = d.getFullYear()+'年'+(d.getMonth()+1)+'月'+d.getDate()+'日 '+WEEK[d.getDay()];
+        if (te) te.textContent = pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds());
+    }
+    bizTick(); setInterval(bizTick, 1000);
+
+    // ═══ 数字滚动 ═══
+    document.querySelectorAll('[data-count]').forEach(function(el){
+        var target = parseInt(el.getAttribute('data-count'), 10) || 0;
+        if (target <= 0) { el.textContent = '0'; return; }
+        var cur = 0, step = Math.max(1, Math.ceil(target/40));
+        var t = setInterval(function(){
+            cur += step;
+            if (cur >= target) { cur = target; clearInterval(t); }
+            el.textContent = cur.toLocaleString('zh-CN');
+        }, 24);
+    });
+
+    // ═══ 登录提交 (主区 banner + 侧栏 mini, 共用同一 POST /auth/login) ═══
+    function _doLogin(username, password, remember, btn, msg, _csrf) {
+        if (!username || !password) { msg.textContent = '{{ t('home.js_enter_creds') }}'; msg.classList.add('error'); return; }
+        btn.disabled = true; btn.textContent = '{{ t('home.js_logging_in') }}';
+        fetch('/auth/login', {
+            method:'POST', credentials:'same-origin',
+            headers: _csrf ? {'Content-Type':'application/json','X-CSRF-Token':_csrf} : {'Content-Type':'application/json'},
+            body: JSON.stringify({ username:username, password:password, remember_me:remember, fingerprint_data:'' })
+        }).then(function(resp){
+            var ct = resp.headers.get('content-type') || '';
+            if (!ct.includes('application/json')) throw new Error('{{ t('home.js_invalid_resp') }}');
+            return resp.json();
+        }).then(function(data){
+            if (data.success) { msg.textContent = '{{ t('home.js_login_ok') }}'; msg.classList.add('info'); window.location.href = data.redirect || '/index'; }
+            else { msg.textContent = data.message || '{{ t('home.js_login_fail') }}'; msg.classList.add('error'); btn.disabled = false; btn.innerHTML = '<i class="fas fa-right-to-bracket"></i> {{ t('home.btn_login') }}'; }
+        }).catch(function(err){
+            msg.textContent = '{{ t('home.js_net_err') }}' + err.message; msg.classList.add('error');
+            btn.disabled = false; btn.innerHTML = '<i class="fas fa-right-to-bracket"></i> {{ t('home.btn_login') }}';
+        });
+    }
+
+    // 主区 banner 登录
+    (function(){
+        var form = document.getElementById('bizLoginFormMain');
+        if (!form) return;
+        var _csrf = '{{ page_csrf_token if page_csrf_token else (csrf_token if csrf_token else "") }}';
+        form.addEventListener('submit', function(e){
+            e.preventDefault();
+            var u = document.getElementById('bizUsernameMain').value.trim();
+            var p = document.getElementById('bizPasswordMain').value;
+            var r = document.getElementById('bizRememberMain'); if(r) r = r.checked ? 1 : 0; else r = 0;
+            _doLogin(u, p, r, document.getElementById('bizLoginBtnMain'), document.getElementById('bizLoginMsgMain'), _csrf);
+        });
+    })();
+
+    // 侧栏 mini 登录
+    (function(){
+        var form = document.getElementById('bizLoginForm');
+        if (!form) return;
+        var _csrf = '{{ page_csrf_token if page_csrf_token else (csrf_token if csrf_token else "") }}';
+        form.addEventListener('submit', function(e){
+            e.preventDefault();
+            var u = document.getElementById('bizUsername').value.trim();
+            var p = document.getElementById('bizPassword').value;
+            _doLogin(u, p, 0, document.getElementById('bizLoginBtn'), document.getElementById('bizLoginMsg'), _csrf);
+        });
+    })();
+
+    // ═══ 主题切换 (侧栏紧凑型) ═══
+    (function(){
+        var panel = document.getElementById('themePanel');
+        var currentDot = document.getElementById('themeCurrentDot');
+        var defaultKey = {{ (theme_key if theme_key else 'aurora')|tojson }};
+        var _csrf = '{{ page_csrf_token if page_csrf_token else (csrf_token if csrf_token else "") }}';
+
+        function setActive(key, name, color){
+            document.querySelectorAll('#themePanel .tdot').forEach(function(d){
+                d.classList.toggle('active', d.getAttribute('data-theme-key') === key);
+            });
+            if (currentDot && color) currentDot.style.background = color;
+        }
+        var initDot = document.querySelector('#themePanel .tdot[data-theme-key="' + defaultKey + '"]')
+                     || document.querySelector('#themePanel .tdot.active');
+        if (initDot) setActive(initDot.getAttribute('data-theme-key'), '', initDot.style.background);
+
+        function togglePanel(open){
+            if (open === undefined) open = !panel.classList.contains('open');
+            panel.classList.toggle('open', open);
+        }
+        if (currentDot) currentDot.addEventListener('click', function(e){ e.stopPropagation(); togglePanel(); });
+        document.addEventListener('click', function(){ togglePanel(false); });
+        panel.addEventListener('click', function(e){ e.stopPropagation(); });
+
+        fetch('/api/theme/get', {credentials:'same-origin'}).then(function(r){return r.json();}).then(function(d){
+            if (d && d.success && d.theme) {
+                var dot = document.querySelector('#themePanel .tdot[data-theme-key="' + d.theme + '"]');
+                if (dot) setActive(d.theme, '', dot.style.background);
+            }
+        }).catch(function(){});
+
+        document.querySelectorAll('#themePanel .tdot').forEach(function(dot){
+            dot.addEventListener('click', async function(e){
+                e.stopPropagation();
+                var key = dot.getAttribute('data-theme-key');
+                var sid = dot.getAttribute('data-scheme-id');
+                if (dot.title && dot.title.indexOf('公祭日') >= 0) { alert('{{ t('home.js_memorial_lock') }}'); return; }
+                try {
+                    var r = await fetch('/api/theme/set', {
+                        method:'POST', credentials:'same-origin',
+                        headers: _csrf ? {'Content-Type':'application/json','X-CSRF-Token':_csrf} : {'Content-Type':'application/json'},
+                        body: JSON.stringify({ theme:key, scheme_id:sid })
+                    });
+                    var d = await r.json();
+                    if (d && d.success) { setActive(key, '', dot.style.background); togglePanel(false); location.reload(); }
+                } catch(err) {}
+            });
+        });
+    })();
+    (function(){
+        var bh = document.getElementById('bhGroup');
+        if (bh) {
+            var ang = 0;
+            setInterval(function(){ ang = (ang + 0.5) % 360; bh.style.transform = 'rotate(' + ang + 'deg)'; }, 50);
+        }
+    })();
+
+    // 星 hover tooltip (SVG 银河已删除, 保留空壳防 null)
+    (function(){
+        var tip = document.getElementById('andStarTip');
+        var stars = document.querySelectorAll('#starsGroup .star');
+        if (!tip || !stars.length) return;
+        stars.forEach(function(s){
+            s.addEventListener('mouseenter', function(){
+                var key = s.getAttribute('data-key');
+                var valEl = s.querySelector('.val');
+                var lbl = s.getAttribute('data-label');
+                var v = valEl ? valEl.textContent : '—';
+                tip.textContent = lbl + ': ' + v;
+                tip.classList.add('show');
+            });
+            s.addEventListener('mousemove', function(e){
+                var wrap = document.getElementById('bizGalaxyWrap');
+                if (!wrap) return;
+                var rect = wrap.getBoundingClientRect();
+                var x = e.clientX - rect.left + 12;
+                var y = e.clientY - rect.top - 32;
+                tip.style.left = x + 'px'; tip.style.top = y + 'px';
+            });
+            s.addEventListener('mouseleave', function(){ tip.classList.remove('show'); });
+        });
+    })();
+
+    // 侧栏手动触发演化 (andromeda_sidebar.html 按钮使用)
+
+    // ═══ 🌟 AI 天团入驻仙女座 ═══
+</script>
+
+<script src="{{ url_for('static', filename='js/arduino_global_hotplug.js') }}?v=20260928-clean" defer></script>
+
+<!-- 认知画像 -->
+<script>
+(function(){
+    var profile = {{ cognitive_profile | tojson }};
+    if (!profile || !profile.cognitive_level) return;
+    var level = profile.cognitive_level || "auto";
+    var levelStyles = {
+        "beginner":     { accent:"#4ade80", label:"🌱 入门模式" },
+        "intermediate": { accent:"#60a5fa", label:"📚 进阶模式" },
+        "advanced":     { accent:"#a78bfa", label:"🚀 高级模式" },
+        "expert":       { accent:"#f472b6", label:"💎 专家模式" }
+    };
+    var style = levelStyles[level] || levelStyles["intermediate"];
+    document.documentElement.style.setProperty("--cognitive-accent", style.accent);
+    var badge = document.createElement("div");
+    badge.style.cssText = "position:fixed;bottom:12px;left:12px;z-index:9999;padding:4px 10px;background:" + style.accent + ";color:#fff;border-radius:14px;font-size:11px;font-family:system-ui;box-shadow:0 2px 8px rgba(0,0,0,.2)";
+    badge.textContent = style.label + " · " + (profile.learning_style || "auto");
+    document.body.appendChild(badge);
+})();
+</script>
+
+<link rel="stylesheet" href="{{ url_for('static', filename='css/lang_fab.css') }}">
+<div class="lang-bar" id="langBar">
+{% for lang in available_langs %}
+{% set code, name = lang %}
+<button class="lang-bar__opt" data-lang="{{ code }}">
+  {% if code == "zh_CN" %}🇨🇳{% elif code == "zh_TW" %}🇹🇼{% elif code == "ja_JP" %}🇯🇵{% elif code == "en_US" %}🇺🇸{% else %}{{ name }}{% endif %}
+</button>
+{% endfor %}
+</div>
+<script>
+(function(){
+  var bar = document.getElementById('langBar'); if(!bar) return;
+  fetch('/api/i18n/current', {credentials:'same-origin'}).then(function(r){return r.json()}).then(function(d){
+    var cur = d.lang || 'zh_CN';
+    bar.querySelectorAll('.lang-bar__opt').forEach(function(b){ b.classList.toggle('is-active', b.dataset.lang === cur); });
+  }).catch(function(){});
+  bar.addEventListener('click', function(e){
+    var btn = e.target.closest('.lang-bar__opt');
+    if(!btn || btn.classList.contains('is-active')) return;
+    var target = btn.dataset.lang;
+    fetch('/api/i18n/set_lang?lang=' + target, {credentials:'same-origin'}).then(function(){ location.reload(); });
+  });
+})();
+</script>
+    {# v24.3.3: 始终加载 SA 双密钥 JS — 中途插钥/登录后前端轮询自动跳转 /sa/dashboard #}
+    <script src="{{ url_for('static', filename='js/sa_proprietary.js') }}?v=24.3.3"></script>
+</body>
+</html>
