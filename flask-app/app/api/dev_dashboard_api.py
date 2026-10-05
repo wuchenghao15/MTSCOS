@@ -424,18 +424,25 @@ def _aggregate():
                 mini['brain_logs'] = remote.get('brain_logs', 0)
                 # qbank: 优先从 Mini DB 真实查 (5 表合计), handshake capabilities 里只有成人 2862
                 try:
-                    import subprocess as _sp
+                    import subprocess as _sp, sys as _sys
                     _mini_db = '~/MTSCOS_AI_Project/flask-app/database/app.db'
                     _sql = "SELECT COUNT(*) FROM adult_education_questions UNION ALL SELECT COUNT(*) FROM professional_exam_questions UNION ALL SELECT COUNT(*) FROM mt_exam_questions_pool UNION ALL SELECT COUNT(*) FROM mt_exam_australian_questions UNION ALL SELECT COUNT(*) FROM ai_maintenance_questions"
-                    _r = _sp.run(['/usr/bin/ssh', '-o', 'ConnectTimeout=2', '-o', 'StrictHostKeyChecking=no',
-                                  'wuchenghao@192.168.31.9', f'/usr/bin/sqlite3 {_mini_db} "{_sql}"'],
-                                 capture_output=True, text=True, timeout=8)
+                    _cmd = ['/usr/bin/ssh', '-o', 'ConnectTimeout=2', '-o', 'StrictHostKeyChecking=no',
+                            'wuchenghao@192.168.31.9', f'/usr/bin/sqlite3 {_mini_db} "{_sql}"']
+                    _r = _sp.run(_cmd, capture_output=True, text=True, timeout=8)
+                    _sys.stderr.write(f'[dev_dashboard] Mini qbank ssh rc={_r.returncode} stdout="{_r.stdout.strip()}" stderr="{_r.stderr.strip()[:200]}"\n')
                     if _r.returncode == 0:
-                        mini['qbank_items'] = sum(int(x) for x in _r.stdout.strip().split('\n') if x.strip().isdigit())
+                        _lines = _r.stdout.strip().split('\n')
+                        _nums = [int(x) for x in _lines if x.strip().isdigit()]
+                        _sys.stderr.write(f'[dev_dashboard] Mini qbank _lines={_lines} _nums={_nums} sum={sum(_nums) if _nums else "NO_NUMS"}\n')
+                        mini['qbank_items'] = sum(_nums) if _nums else (remote.get('qbank', 0) or 0)
+                        _sys.stderr.write(f'[dev_dashboard] Mini qbank FINAL mini["qbank_items"]={mini["qbank_items"]}\n')
                     else:
-                        mini['qbank_items'] = remote.get('qbank', 0) or remote.get('qbank_items', 0)
-                except Exception:
-                    mini['qbank_items'] = remote.get('qbank', 0) or remote.get('qbank_items', 0)
+                        mini['qbank_items'] = remote.get('qbank', 0) or 0
+                except Exception as _e:
+                    import sys as _sys2
+                    _sys2.stderr.write(f'[dev_dashboard] Mini qbank ssh EXCEPTION: {_e}\n')
+                    mini['qbank_items'] = remote.get('qbank', 0) or 0
         except Exception: pass
         
         # --- Mini 在线状态 (用最近握手时间判断) ---
