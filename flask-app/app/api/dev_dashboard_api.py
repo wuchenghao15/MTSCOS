@@ -167,8 +167,12 @@ def _aggregate():
             reports = [dict(r) for r in cur.fetchall()]
             data['handshake']['reports'] = reports
             # 🆕 2026-10-05: 补齐顶部 metric 需要的字段 (之前前端拿到 undefined)
-            data['handshake']['total'] = len(reports)
-            data['handshake']['count'] = len(reports)
+            # total 用 DB count (不是 limit=5 的 reports 长度)
+            try:
+                data['handshake']['total'] = conn.execute("SELECT COUNT(*) FROM mt_handshake_reports").fetchone()[0]
+            except:
+                data['handshake']['total'] = len(reports)
+            data['handshake']['count'] = data['handshake']['total']
             data['handshake']['host_node'] = reports[0]['host_node'] if reports else '?'
             data['handshake']['guest_node'] = reports[0]['guest_node'] if reports else '?'
             data['handshake']['guest_host'] = reports[0]['guest_host'] if reports else ''
@@ -240,12 +244,23 @@ def _aggregate():
         ble = {}
         # USB 设备
         try:
-            usb_devices = []
-            for path in ['/dev/cu.usbmodem101', '/dev/cu.usbserial']:
-                if os.path.exists(path):
-                    usb_devices.append(path)
-            ble['usb_devices'] = usb_devices
-            ble['usb_count'] = len(usb_devices)
+            import glob as _glob
+            usb_devices = sorted(set(
+                _glob.glob('/dev/cu.usbmodem*') +
+                _glob.glob('/dev/tty.usbmodem*') +
+                _glob.glob('/dev/cu.usbserial*') +
+                _glob.glob('/dev/tty.usbserial*')
+            ))
+            # 过滤蓝牙 + 按 basename 去重
+            _seen = set(); usb_devices_clean = []
+            for p in usb_devices:
+                if 'Bluetooth' in p: continue
+                bn_clean = p.split('/')[-1].replace('cu.', '').replace('tty.', '')
+                if bn_clean not in _seen:
+                    _seen.add(bn_clean)
+                    usb_devices_clean.append(p)
+            ble['usb_devices'] = usb_devices_clean
+            ble['usb_count'] = len(usb_devices_clean)
         except: pass
         # Ollama
         try:
