@@ -87,9 +87,26 @@ RUNTIME_DIR = os.environ.get(
 CHECKPOINT_FILE = os.path.join(RUNTIME_DIR, 'evolution_checkpoint.json')
 
 # --- Ollama 配置 ---
-# 🆕 2026-09-17: 统一 11435 (launch agent 原生 Ollama, Metal iGPU + q8_0 KV cache)
-# 之前默认 11434 走 CLI 实例, embedding 慢 35 倍 (0.4s vs 14.2s)
-OLLAMA_HOST = os.environ.get('OLLAMA_HOST', 'http://localhost:11435')
+# 🆕 2026-10-05: 自动检测可用端口 (11435 launch agent, 11434 CLI)
+# 两者可能互相切换/挂, 先试哪个活用哪个
+def _detect_ollama_host() -> str:
+    """自动检测 Ollama 可用端口, 优先用户显式指定"""
+    if 'OLLAMA_HOST' in os.environ:
+        return os.environ['OLLAMA_HOST']
+    for port in [11435, 11434]:
+        try:
+            import urllib.request as _ur
+            req = _ur.Request(f'http://localhost:{port}/api/tags')
+            with _ur.urlopen(req, timeout=2) as _resp:
+                if _resp.status == 200:
+                    logger.info(f'[OLLAMA] 检测到活跃端口: {port}')
+                    return f'http://localhost:{port}'
+        except Exception:
+            continue
+    logger.warning('[OLLAMA] 11435/11434 均无响应, 默认 11434')
+    return 'http://localhost:11434'
+
+OLLAMA_HOST = _detect_ollama_host()
 EMBED_MODEL = os.environ.get('OLLAMA_EMBED_MODEL', 'nomic-embed-text')
 OLLAMA_TIMEOUT = 120  # 大模型推理慢
 
@@ -871,6 +888,30 @@ def auto_derive(associations: List[Tuple[str, str, float]],
                 ))
                 written += 1
 
+                # 🆕 2026-10-05: 同步写 mt_derived_knowledge (结构化衍生知识)
+                # 让仪表盘和演化历史能正确展示
+                try:
+                    subject_match = conn.execute(
+                        "SELECT subject FROM k12_knowledge_points WHERE concept LIKE ? LIMIT 1",
+                        (f'%{title[:20]}%',)
+                    ).fetchone()
+                    subject = subject_match[0] if subject_match else 'general'
+                    conn.execute(
+                        'INSERT OR IGNORE INTO mt_derived_knowledge '
+                        '(concept, subject, derivation_chain, confidence, model_used, source, user_id) '
+                        'VALUES (?, ?, ?, ?, ?, ?, ?)',
+                        (
+                            title[:200], subject,
+                            f'{src_kid}→{tgt_kid} (sim={round(sim,3)})',
+                            round(sim, 3),
+                            DERIVE_MODEL,
+                            'andromeda_derive',
+                            'system',
+                        )
+                    )
+                except sqlite3.Error as _mk_err:
+                    logger.debug(f'[Stage4-derive] mt_derived_knowledge 写入跳过: {_mk_err}')
+
                 # 🆕 反向驱动: 衍生知识 → EigenFlux 消息表 (给 AI 员工讨论!)
                 # 写入 eigenflux_comm_messages, knowledge_tags_json 包含 'auto_derived'
                 # eigenflux_ingest 的防循环: knowledge_tags_json LIKE '%auto_derived%' 时跳过
@@ -1469,6 +1510,33 @@ def run_cycle() -> Dict[str, Any]:
                 f'reinforced={stats["reinforced"]}, expand={stats["expand"]}')
     logger.info(f'  totals: vectors={cp["total_vectors"]}, associations={cp["total_associations"]}, '
                 f'derived={cp["total_derived"]}')
+
+    # 🆕 2026-10-05: 写入 mt_evolution_runs (演化历史可追溯)
+    try:
+        _db_path = os.environ.get('ANDROMEDA_DB',
+            os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'database', 'app.db'))
+        _conn = sqlite3.connect(_db_path)
+        _conn.execute('PRAGMA journal_mode=WAL')
+        _conn.execute(
+            'INSERT INTO mt_evolution_runs '
+            '(loop, started_at, finished_at, duration_s, items_processed, items_ok, suggestion_count, notes) '
+            'VALUES (?, datetime(\'now\',\'localtime\'), datetime(\'now\',\'localtime\'), ?, ?, ?, ?, ?)',
+            (
+                'andromeda_7stage',
+                round(elapsed / 1000.0, 2),
+                stats.get('detect', 0),
+                stats.get('derived', 0) + stats.get('reinforced', 0),
+                stats.get('associations', 0),
+                json.dumps({k: v for k, v in stats.items()
+                           if k not in ('stages', 'elapsed_ms') and isinstance(v, (int, float, str))},
+                          ensure_ascii=False),
+            )
+        )
+        _conn.commit()
+        _conn.close()
+        logger.info(f'[Cycle #{cycle_num}] ✅ mt_evolution_runs 已记录')
+    except Exception as _e:
+        logger.warning(f'[Cycle #{cycle_num}] mt_evolution_runs 写入失败(不影响主流程): {_e}')
 
     return stats
 
