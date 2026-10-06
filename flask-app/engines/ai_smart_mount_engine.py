@@ -62,7 +62,7 @@ AI_ENGINES_DIR = os.path.join(ROOT, "ai_engines")
 _DB_CANDIDATES = [
     os.path.join(ROOT, "database", "app.db"),                                   # ✅ 活跃主库 (MacBook Pro)
     os.path.join(PROJECT_ROOT, "flask-app", "database", "app.db"),              # 兜底
-    os.path.join(PROJECT_ROOT, "_runtime", "databases", "Database", "app.db"),  # Mac mini 旧库(缺表!)
+    os.path.join(PROJECT_ROOT, "flask-app", "database", "app.db"),  # Mac mini 旧库(缺表!)
     os.path.join(PROJECT_ROOT, "Database", "app.db"),                           # 旧兼容
     os.path.join(AI_ENGINES_DIR, "app.db"),                                     # 最后兜底
 ]
@@ -335,7 +335,7 @@ except Exception as _e:
         "duty": "拉马努金自动推导(错题→Ollama→严格净化→confidence+verification)",
         "work_body": """
 import sqlite3, os, sys, time, random, urllib.request, json, re
-APP_DB = os.environ.get("APP_DB", os.path.join(os.path.dirname(__file__), "..", "..", "_runtime", "databases", "Database", "app.db"))
+APP_DB = os.environ.get("APP_DB", os.path.join(os.path.dirname(__file__), "..", "..", "flask-app", "database", "app.db"))
 conn = sqlite3.connect(APP_DB, timeout=10); conn.execute("PRAGMA busy_timeout=5000")
 row = conn.execute("SELECT subject, error_concept FROM mt_error_thinking_chain ORDER BY created_at DESC LIMIT 1").fetchone()
 if not row:
@@ -441,7 +441,7 @@ conn.close()
         "duty": "AI导师自动学习(错题统计→认知画像更新)",
         "work_body": """
 import sqlite3, os
-APP_DB = os.environ.get("APP_DB", os.path.join(os.path.dirname(__file__), "..", "..", "_runtime", "databases", "Database", "app.db"))
+APP_DB = os.environ.get("APP_DB", os.path.join(os.path.dirname(__file__), "..", "..", "flask-app", "database", "app.db"))
 conn = sqlite3.connect(APP_DB, timeout=10); conn.execute("PRAGMA busy_timeout=5000")
 rows = conn.execute("SELECT user_id, subject, COUNT(*) as cnt FROM mt_error_thinking_chain WHERE created_at > datetime('now','localtime','-1 day') GROUP BY user_id, subject").fetchall()
 if rows:
@@ -459,7 +459,7 @@ conn.close()
         "duty": "错题消化(Ollama生成思维链回填)",
         "work_body": """
 import sqlite3, os, urllib.request, json
-APP_DB = os.environ.get("APP_DB", os.path.join(os.path.dirname(__file__), "..", "..", "_runtime", "databases", "Database", "app.db"))
+APP_DB = os.environ.get("APP_DB", os.path.join(os.path.dirname(__file__), "..", "..", "flask-app", "database", "app.db"))
 conn = sqlite3.connect(APP_DB, timeout=10); conn.execute("PRAGMA busy_timeout=5000")
 rows = conn.execute("SELECT chain_id, subject, error_concept FROM mt_error_thinking_chain WHERE thinking_chain IS NULL ORDER BY created_at DESC LIMIT 3").fetchall()
 if rows:
@@ -482,7 +482,7 @@ conn.close()
         "duty": "密钥自动轮换(每天03:00)",
         "work_body": """
 import datetime, sqlite3, os, hashlib
-APP_DB = os.environ.get("APP_DB", os.path.join(os.path.dirname(__file__), "..", "..", "_runtime", "databases", "Database", "app.db"))
+APP_DB = os.environ.get("APP_DB", os.path.join(os.path.dirname(__file__), "..", "..", "flask-app", "database", "app.db"))
 conn = sqlite3.connect(APP_DB, timeout=10); conn.execute("PRAGMA busy_timeout=5000")
 today = datetime.datetime.now().strftime("%Y-%m-%d")
 last = conn.execute("SELECT policy_value FROM mt_system_policy WHERE policy_key='crypto_last_rotate'").fetchone()
@@ -501,7 +501,7 @@ conn.commit(); print(f"[密钥轮换] OK hash={h[:8]}"); conn.close()
         "duty": "14矩阵协同扫描",
         "work_body": """
 import sqlite3, os
-APP_DB = os.environ.get("APP_DB", os.path.join(os.path.dirname(__file__), "..", "..", "_runtime", "databases", "Database", "app.db"))
+APP_DB = os.environ.get("APP_DB", os.path.join(os.path.dirname(__file__), "..", "..", "flask-app", "database", "app.db"))
 conn = sqlite3.connect(APP_DB, timeout=10); conn.execute("PRAGMA busy_timeout=5000")
 try:
     conn.execute("CREATE TABLE IF NOT EXISTS mt_ai_matrix_members (matrix_name TEXT, member_name TEXT, role TEXT, created_at TEXT)")
@@ -523,7 +523,7 @@ conn.close()
         "duty": "认知画像周期刷新",
         "work_body": """
 import sqlite3, os
-APP_DB = os.environ.get("APP_DB", os.path.join(os.path.dirname(__file__), "..", "..", "_runtime", "databases", "Database", "app.db"))
+APP_DB = os.environ.get("APP_DB", os.path.join(os.path.dirname(__file__), "..", "..", "flask-app", "database", "app.db"))
 conn = sqlite3.connect(APP_DB, timeout=10); conn.execute("PRAGMA busy_timeout=5000")
 try:
     active = conn.execute("SELECT DISTINCT user_id FROM mt_error_thinking_chain WHERE created_at > datetime('now','localtime','-7 days')").fetchall()
@@ -543,7 +543,7 @@ conn.close()
         "duty": "知识图谱构建(跨表概念关联发现)",
         "work_body": """
 import sqlite3, os, json
-APP_DB = os.environ.get("APP_DB", os.path.join(os.path.dirname(__file__), "..", "..", "_runtime", "databases", "Database", "app.db"))
+APP_DB = os.environ.get("APP_DB", os.path.join(os.path.dirname(__file__), "..", "..", "flask-app", "database", "app.db"))
 conn = sqlite3.connect(APP_DB, timeout=10); conn.execute("PRAGMA busy_timeout=5000")
 try:
     # 从错题 + 拉马努金推导 + 脑库发现概念关联
@@ -575,7 +575,7 @@ conn.close()
         "duty": "EigenFlux自动配对(同专业交友推荐)",
         "work_body": """
 import sqlite3, os, random
-APP_DB = os.environ.get("APP_DB", os.path.join(os.path.dirname(__file__), "..", "..", "_runtime", "databases", "Database", "app.db"))
+APP_DB = os.environ.get("APP_DB", os.path.join(os.path.dirname(__file__), "..", "..", "flask-app", "database", "app.db"))
 conn = sqlite3.connect(APP_DB, timeout=10); conn.execute("PRAGMA busy_timeout=5000")
 try:
     # 活跃 EigenFlux 专家
@@ -605,7 +605,7 @@ conn.close()
         "duty": "预测性维护(从历史故障预测风险)",
         "work_body": """
 import sqlite3, os
-APP_DB = os.environ.get("APP_DB", os.path.join(os.path.dirname(__file__), "..", "..", "_runtime", "databases", "Database", "app.db"))
+APP_DB = os.environ.get("APP_DB", os.path.join(os.path.dirname(__file__), "..", "..", "flask-app", "database", "app.db"))
 conn = sqlite3.connect(APP_DB, timeout=10); conn.execute("PRAGMA busy_timeout=5000")
 try:
     # 统计过去 1h FAILED daemon
@@ -628,7 +628,7 @@ conn.close()
         "duty": "集群快照(daemon状态汇总→policy)",
         "work_body": """
 import sqlite3, os, re
-APP_DB = os.environ.get("APP_DB", os.path.join(os.path.dirname(__file__), "..", "..", "_runtime", "databases", "Database", "app.db"))
+APP_DB = os.environ.get("APP_DB", os.path.join(os.path.dirname(__file__), "..", "..", "flask-app", "database", "app.db"))
 conn = sqlite3.connect(APP_DB, timeout=10); conn.execute("PRAGMA busy_timeout=5000")
 try:
     # 扫描 mt_ai_smart_mount_processes 表 + mt_daemon_registry
@@ -648,7 +648,7 @@ conn.close()
         "duty": "IoT设备集群(Arduino等设备状态汇总)",
         "work_body": """
 import sqlite3, os
-APP_DB = os.environ.get("APP_DB", os.path.join(os.path.dirname(__file__), "..", "..", "_runtime", "databases", "Database", "app.db"))
+APP_DB = os.environ.get("APP_DB", os.path.join(os.path.dirname(__file__), "..", "..", "flask-app", "database", "app.db"))
 conn = sqlite3.connect(APP_DB, timeout=10); conn.execute("PRAGMA busy_timeout=5000")
 try:
     arduino = conn.execute("SELECT board_model, COUNT(*) FROM mt_arduino_device_events WHERE event_type='insert' GROUP BY board_model").fetchall()
@@ -669,7 +669,7 @@ conn.close()
         "duty": "脑库投喂(新错题→经验自动回流)",
         "work_body": """
 import sqlite3, os
-APP_DB = os.environ.get("APP_DB", os.path.join(os.path.dirname(__file__), "..", "..", "_runtime", "databases", "Database", "app.db"))
+APP_DB = os.environ.get("APP_DB", os.path.join(os.path.dirname(__file__), "..", "..", "flask-app", "database", "app.db"))
 conn = sqlite3.connect(APP_DB, timeout=10); conn.execute("PRAGMA busy_timeout=5000")
 try:
     # 新错题 → 投喂脑库
@@ -692,7 +692,7 @@ conn.close()
         "duty": "安全态势扫描(违规/SA密钥/实时监控)",
         "work_body": """
 import sqlite3, os
-APP_DB = os.environ.get("APP_DB", os.path.join(os.path.dirname(__file__), "..", "..", "_runtime", "databases", "Database", "app.db"))
+APP_DB = os.environ.get("APP_DB", os.path.join(os.path.dirname(__file__), "..", "..", "flask-app", "database", "app.db"))
 conn = sqlite3.connect(APP_DB, timeout=10); conn.execute("PRAGMA busy_timeout=5000")
 try:
     # 最近 5min 系统错误
@@ -717,7 +717,7 @@ conn.close()
         "duty": "资源调度器(CPU/内存自适应)",
         "work_body": """
 import sqlite3, os
-APP_DB = os.environ.get("APP_DB", os.path.join(os.path.dirname(__file__), "..", "..", "_runtime", "databases", "Database", "app.db"))
+APP_DB = os.environ.get("APP_DB", os.path.join(os.path.dirname(__file__), "..", "..", "flask-app", "database", "app.db"))
 conn = sqlite3.connect(APP_DB, timeout=10); conn.execute("PRAGMA busy_timeout=5000")
 try:
     # CPU/内存
@@ -736,7 +736,7 @@ conn.close()
         "duty": "画像融合(多维度用户画像重新定级)",
         "work_body": """
 import sqlite3, os
-APP_DB = os.environ.get("APP_DB", os.path.join(os.path.dirname(__file__), "..", "..", "_runtime", "databases", "Database", "app.db"))
+APP_DB = os.environ.get("APP_DB", os.path.join(os.path.dirname(__file__), "..", "..", "flask-app", "database", "app.db"))
 conn = sqlite3.connect(APP_DB, timeout=10); conn.execute("PRAGMA busy_timeout=5000")
 try:
     profiles = conn.execute("SELECT user_id FROM mt_user_cognitive_profile WHERE last_assessed < datetime('now','localtime','-7 days') OR cognitive_level IS NULL LIMIT 10").fetchall()
@@ -758,7 +758,7 @@ conn.close()
         "duty": "经验回流(脑库投喂日统计)",
         "work_body": """
 import sqlite3, os
-APP_DB = os.environ.get("APP_DB", os.path.join(os.path.dirname(__file__), "..", "..", "_runtime", "databases", "Database", "app.db"))
+APP_DB = os.environ.get("APP_DB", os.path.join(os.path.dirname(__file__), "..", "..", "flask-app", "database", "app.db"))
 conn = sqlite3.connect(APP_DB, timeout=10); conn.execute("PRAGMA busy_timeout=5000")
 try:
     feeds = conn.execute("SELECT COUNT(*) FROM mt_ai_brain_feed_log WHERE created_at > datetime('now','localtime','-1 day')").fetchone()[0]
@@ -779,7 +779,7 @@ conn.close()
         "duty": "知识沉淀(拉马努金推导周统计)",
         "work_body": """
 import sqlite3, os
-APP_DB = os.environ.get("APP_DB", os.path.join(os.path.dirname(__file__), "..", "..", "_runtime", "databases", "Database", "app.db"))
+APP_DB = os.environ.get("APP_DB", os.path.join(os.path.dirname(__file__), "..", "..", "flask-app", "database", "app.db"))
 conn = sqlite3.connect(APP_DB, timeout=10); conn.execute("PRAGMA busy_timeout=5000")
 try:
     # 拉马努金推导置信度统计
@@ -801,7 +801,7 @@ conn.close()
         "duty": "规则自动学习(违规统计+知识沉淀)",
         "work_body": """
 import sqlite3, os
-APP_DB = os.environ.get("APP_DB", os.path.join(os.path.dirname(__file__), "..", "..", "_runtime", "databases", "Database", "app.db"))
+APP_DB = os.environ.get("APP_DB", os.path.join(os.path.dirname(__file__), "..", "..", "flask-app", "database", "app.db"))
 conn = sqlite3.connect(APP_DB, timeout=10); conn.execute("PRAGMA busy_timeout=5000")
 try:
     violations = conn.execute("SELECT COUNT(*), severity FROM mt_iron_rule_violations WHERE created_at > datetime('now','localtime','-1 day') GROUP BY severity").fetchall()

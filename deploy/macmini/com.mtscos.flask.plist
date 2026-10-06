@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  MTSCOS AI — Mac mini Flask :8888 launchd 守护 (SLAVE 节点)
+  ============================================================
+  
+  版本: v2.0 (2026-10-06)
+  修复: Address already in use 重启风暴 + OneDrive TCC 锁
+  
+  设计决策:
+    1) 用本地副本 ~/MTSCOS_AI_Project 绕过 OneDrive TCC
+       (macOS 禁止 Python 直接执行 OneDrive 同步目录下的 .py 文件)
+    2) bash -c 内联脚本 (单一 PID, launchd 正确跟踪)
+    3) 启动前 kill -9 僵尸进程 + sleep 1 (避免 Address already in use)
+    4) KeepAlive(SuccessfulExit=false, Crashed=true) 自动拉起
+    5) ThrottleInterval=10s (比旧 15s 更积极)
+  
+  安装:
+    cp deploy/macmini/com.mtscos.flask.plist ~/Library/LaunchAgents/
+    launchctl bootout gui/$(id -u) ~/Library/LaunchAgents/com.mtscos.flask.plist 2>/dev/null
+    launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.mtscos.flask.plist
+  
+  验证:
+    launchctl list | grep flask          # 应该 exit 0
+    lsof -i :8888 -sTCP:LISTEN           # 应该 LISTEN
+    curl http://127.0.0.1:8888/          # 应该 200 或 302
+  
+  日志:
+    /tmp/mtscos_flask.log  (stdout)
+    /tmp/mtscos_flask.err  (stderr)
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.mtscos.flask</string>
+    
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>-c</string>
+        <string>
+set -e
+export HOME=/Users/wuchenghao
+export PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/Library/Developer/CommandLineTools/usr/bin:/opt/homebrew/bin"
+
+# 清理僵尸进程避免 Address already in use (旧 Flask 可能 TIME_WAIT 占端口)
+for p in $(lsof -i :8888 -t 2>/dev/null); do kill -9 "$p" 2>/dev/null; done || true
+sleep 1
+
+# 用本地副本绕过 OneDrive TCC 锁
+# macOS SIP 禁止 Python 直接执行 OneDrive 同步目录下的 .py 文件
+# 解决: ~/MTSCOS_AI_Project 为本地副本 (git clone 或 rsync)
+cd /Users/wuchenghao/MTSCOS_AI_Project/flask-app
+exec /usr/bin/python3 -B modular_start.py
+        </string>
+    </array>
+    
+    <key>WorkingDirectory</key>
+    <string>/Users/wuchenghao/MTSCOS_AI_Project/flask-app</string>
+    
+    <key>RunAtLoad</key>
+    <true/>
+    
+    <key>KeepAlive</key>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+        <key>Crashed</key>
+        <true/>
+    </dict>
+    
+    <key>ThrottleInterval</key>
+    <integer>10</integer>
+    
+    <key>StandardOutPath</key>
+    <string>/tmp/mtscos_flask.log</string>
+    
+    <key>StandardErrorPath</key>
+    <string>/tmp/mtscos_flask.err</string>
+    
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>HOME</key>
+        <string>/Users/wuchenghao</string>
+        <key>PATH</key>
+        <string>/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/Library/Developer/CommandLineTools/usr/bin:/opt/homebrew/bin</string>
+        <key>PYTHONDONTWRITEBYTECODE</key>
+        <string>1</string>
+        <key>PYTHONUNBUFFERED</key>
+        <string>1</string>
+    </dict>
+</dict>
+</plist>
