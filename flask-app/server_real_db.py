@@ -2376,6 +2376,8 @@ _CSRF_EXEMPT_PATHS = [
     '/api/neuralhub/arduino_compile_assist',
     '/api/neuralhub/routes',               # POST 动态注册 (无后缀)
     '/api/neuralhub/rollback',              # POST SA 回滚
+    # v22.10.12: 仙女座自动诊断与自愈 (daemon 重启/握手重连, 运维级 API, 绕过 CSRF 用 launchctl 操作)
+    '/api/server/auto-diagnose',
 ]
 # 指纹认证API路径前缀（CSRF豁免：登录前需调用指纹硬件）
 _CSRF_EXEMPT_PREFIXES = [
