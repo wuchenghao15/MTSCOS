@@ -2378,6 +2378,13 @@ _CSRF_EXEMPT_PATHS = [
     '/api/neuralhub/rollback',              # POST SA 回滚
     # v22.10.12: 仙女座自动诊断与自愈 (daemon 重启/握手重连, 运维级 API, 绕过 CSRF 用 launchctl 操作)
     '/api/server/auto-diagnose',
+    # v22.10.13: 仙女座 MCP Bridge — 运维 daemon 重启/握手/健康检查 (无 CSRF token, 内部调用)
+    '/api/server/daemon-action',
+    '/api/server/vikey-status',
+    '/api/server/users',
+    '/api/handshake/status',
+    '/api/db/stats',
+    '/api/health',
 ]
 # 指纹认证API路径前缀（CSRF豁免：登录前需调用指纹硬件）
 _CSRF_EXEMPT_PREFIXES = [
