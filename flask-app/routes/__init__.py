@@ -268,22 +268,25 @@ def _root_redirect():
 
 # ───────────────────────────────────────────────────────────────
 # 🔧 SERVER 模式路由 override (v22.10.6)
-#   覆盖 auth_bp /auth/login GET — 不重定向到 /index#login-card
-#   而是返回纯 HTML 登录面板 (不走 render_template)
+#   auth_bp 先注册了 /auth/login GET, home_bp 后注册被忽略
+#   → 用 before_request 钩子拦截 (在 routes/__init__.py 被 register_all_blueprints 调用时挂载)
 # ───────────────────────────────────────────────────────────────
-@home_bp.route('/auth/login', methods=['GET'])
-def _server_auth_login_get():
-    """SERVER 模式: /auth/login GET → 内嵌登录面板; 其他模式 → 正常 auth_bp 处理"""
+def _install_server_overrides(app):
+    """SERVER 模式专属 before_request 钩子 — 覆盖 auth_bp /auth/login GET"""
     try:
         from app.node_role import is_server as _is_srv
-        if _is_srv:
-            return _server_login_panel()
+        if not _is_srv:
+            return  # DEV/CLIENT 不需要装
     except ImportError:
-        pass
-    # 非 SERVER 模式 → 交给 auth_bp 处理 (302 /index#login-card)
-    # 但因为我们已经注册了 home_bp 这个 route, Flask 会优先匹配
-    # 所以这里需要自己 redirect 到原始行为
-    return _redirect('/index#login-card')
+        return
+    
+    @app.before_request
+    def _server_auth_login_override():
+        """拦截 GET /auth/login → 返回内嵌登录面板 (不走 render_template)"""
+        from flask import request
+        if request.method == 'GET' and request.path == '/auth/login':
+            return _server_login_panel()
+        return None  # 不拦截, 继续正常路由
 
 @home_bp.route('/index', methods=['GET'])
 def _index_entry():
@@ -582,6 +585,8 @@ def register_all_blueprints(app):
       3. 关键：import 阶段可能触发已注册 blueprint 的 @bp.route 装饰器抛 AssertionError，
          所以 import 也在 try 块内
     """
+    # 🔧 v22.10.6: SERVER 模式专属 before_request 钩子 (运维面板 + 登录面板)
+    _install_server_overrides(app)
     # (模块名, blueprint 变量名)
     _modules = [
         ('auth_routes', 'auth_bp'),
