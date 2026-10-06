@@ -898,20 +898,6 @@ class VikeyEnforcementMiddleware:
             result['reason'] = 'terminal_not_bound_remote_access_blocked'
             return result
 
-        # 🔧 SERVER 模式短路 v22.10.6:
-        # Mac mini (SERVER) 是固定运维服务器 — 本机访问 = 管理员维护, 跳过 VIKEY 加密狗检测
-        # 远程访问 (CLIENT) 必须走正常登录 → 仍然需要双密钥
-        try:
-            from app.node_role import is_server as _is_server_node
-            if _is_server_node:
-                result['should_redirect'] = True
-                result['reason'] = 'SERVER_MODE_LOOPBACK_BYPASS'
-                result['dual_ok'] = True   # SERVER 模式假设硬件可信
-                result['auth_stage'] = 'pre_auth'
-                return result
-        except ImportError:
-            pass
-
         # ① 双密钥原子校验（threading.Lock + 双线程，provider 内建短缓存）
         #    该校验为机器级硬件状态，与会话登录无关：guest 在线同样返回 True
         dual_ok = False
