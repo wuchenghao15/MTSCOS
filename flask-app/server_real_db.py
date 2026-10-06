@@ -765,9 +765,15 @@ class _FriendlyUndefined(_JinjaUndefined):
         return ''
 
 
+from app.node_role import NODE_ROLE, ALLOW_TEMPLATE, ALLOW_STATIC
+_tpl_folder = None if not ALLOW_TEMPLATE else os.path.join(BASE_DIR, 'templates')
+_static_folder = None if not ALLOW_STATIC else os.path.join(BASE_DIR, 'static')
 app = Flask(__name__,
-            template_folder=os.path.join(BASE_DIR, 'templates'),
-            static_folder=os.path.join(BASE_DIR, 'static'))
+            template_folder=_tpl_folder,
+            static_folder=_static_folder)
+if NODE_ROLE != "DEV":
+    print(f"[NODE_ROLE={NODE_ROLE}] static_folder={'✅ enabled' if _static_folder else '🚫 disabled'}, "
+          f"template_folder={'✅ enabled' if _tpl_folder else '🚫 disabled'}")
 app.url_map.strict_slashes = False  # 全局: /foo ↔ /foo/ 等价, 避免 catch-all 路由 404
 # v22.39.0: secret_key 固定不变 (之前是 + time.time() 导致每次 Flask 重启所有登录 session 失效)
 # 登录态由 mtscos_sid + Flask session cookie 双重保证, secret_key 变 = Flask session cookie 全部作废

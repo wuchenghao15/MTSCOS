@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  MTSCOS AI — Mac mini smart_mount daemon launchd 守护
+  ===================================================
+  版本: v1.0 (2026-10-06)
+  
+  为什么需要:
+    smart_mount 自身是所有子 daemon 的守护进程, 但自己之前没被 launchd 守护.
+    一旦 smart_mount 崩溃, 所有 15 个子 daemon (auto_repair/eigenflux/eigenflux_network...)
+    全部无人看管, 整个仙女座自动修复闭环彻底瘫痪.
+  
+  安装:
+    cp deploy/macmini/com.mtscos.smart_mount.plist ~/Library/LaunchAgents/
+    launchctl bootout gui/$(id -u) ~/Library/LaunchAgents/com.mtscos.smart_mount.plist 2>/dev/null
+    launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.mtscos.smart_mount.plist
+  
+  验证:
+    launchctl list | grep smart_mount
+    lsof -i :8888 -sTCP:LISTEN  # 间接看 Flask 还活着 (smart_mount 挂了 Flask 也容易崩)
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.mtscos.smart_mount</string>
+    
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>-c</string>
+        <string>
+set -e
+export HOME=/Users/wuchenghao
+export NODE_ROLE=SERVER
+export PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/Library/Developer/CommandLineTools/usr/bin:/opt/homebrew/bin"
+
+# 清理僵尸 + stale PID 文件
+rm -f /Users/wuchenghao/MTSCOS_AI_Project/_runtime/pids/ai_smart_mount_engine.pid 2>/dev/null || true
+for p in $(lsof -i :8888 -t 2>/dev/null); do kill -0 "$p" 2>/dev/null && true; done || true
+
+# 本地副本 (OneDrive TCC 绕过)
+cd /Users/wuchenghao/MTSCOS_AI_Project/flask-app/engines
+exec /usr/bin/python3 -B ai_smart_mount_engine.py start
+        </string>
+    </array>
+    
+    <key>WorkingDirectory</key>
+    <string>/Users/wuchenghao/MTSCOS_AI_Project/flask-app/engines</string>
+    
+    <key>RunAtLoad</key>
+    <true/>
+    
+    <key>KeepAlive</key>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+        <key>Crashed</key>
+        <true/>
+        <key>NetworkState</key>
+        <true/>
+    </dict>
+    
+    <key>ThrottleInterval</key>
+    <integer>10</integer>
+    
+    <key>StandardOutPath</key>
+    <string>/tmp/mtscos_smart_mount.log</string>
+    
+    <key>StandardErrorPath</key>
+    <string>/tmp/mtscos_smart_mount.err</string>
+    
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>HOME</key>
+        <string>/Users/wuchenghao</string>
+        <key>PATH</key>
+        <string>/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/Library/Developer/CommandLineTools/usr/bin:/opt/homebrew/bin</string>
+        <key>NODE_ROLE</key>
+        <string>SERVER</string>
+        <key>PYTHONDONTWRITEBYTECODE</key>
+        <string>1</string>
+    </dict>
+</dict>
+</plist>

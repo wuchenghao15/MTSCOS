@@ -55,7 +55,7 @@ is_client   = NODE_ROLE == "CLIENT"
 # ── 能力矩阵 (谁能做什么) ─────────────────────────────────────────
 #                    DEV   SERVER   CLIENT
 ALLOW_TEMPLATE      = is_dev                    # render_template / 前端页面
-ALLOW_STATIC        = True                      # static 静态文件 (全角色)
+ALLOW_STATIC        = is_dev or is_client       # static 静态文件 (SERVER 纯 API 不需要)
 ALLOW_ENGINES       = is_dev or is_server       # ai_engines / smart_mount / eigenflux daemon
 ALLOW_DEV_PANEL     = is_dev                    # dev_dashboard / debug 路由
 ALLOW_SYNC          = is_dev or is_server       # handshake 双向同步
@@ -102,7 +102,7 @@ def _startup_banner():
 ║  {'✅' if ALLOW_ENGINES else '🚫'} AI engines daemon:   15 个          (DEV/SERVER)
 ║  {'✅' if ALLOW_SYNC else '🚫'} 双向握手同步:       Mac mini SSH    (DEV/SERVER)
 ║  {'✅' if ALLOW_LOCAL_AI else '🚫'} 本地推理零 token:        qwen2.5          (DEV/SERVER)
-║  ✅ static 静态文件:    21MB           (全角色)
+║  {'✅' if ALLOW_STATIC else '🚫'} static 静态文件:    21MB           (DEV/CLIENT)
 ║  ✅ BLE Passport:      TRAECARD UUID  (全角色)
 ╚═══════════════════════════════════════════════════════════╝
 """)
