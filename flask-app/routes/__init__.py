@@ -313,83 +313,174 @@ def _server_ops_panel():
 
 
 def _server_login_panel(error_msg=""):
-    """SERVER 模式内嵌登录面板 (纯 HTML, POST /auth/login)"""
+    """SERVER 模式内嵌登录面板 v22.10.9 (毛玻璃背景 + 安全徽章 + 密码切换 + loading 态)"""
+    import time as _t
     try:
         from app.node_role import NODE_ROLE
     except ImportError:
         NODE_ROLE = "SERVER"
     
-    error_html = f'<div class="err">{error_msg}</div>' if error_msg else ""
+    now = _t.strftime('%H:%M:%S')
+    error_html = f'<div class="err">⚠ {error_msg}</div>' if error_msg else ""
     
     panel = f"""<!DOCTYPE html>
 <html><head>
 {_SERVER_CSS_VARS}
 <title>MTSCOS AI · Server Login</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
-body{{display:flex;align-items:center;justify-content:center;padding:40px 20px;min-height:100vh}}
-.login-card{{
-  background:linear-gradient(160deg,var(--card),var(--card-2));
-  border:1px solid var(--border);border-radius:var(--radius);
-  padding:36px 32px;width:400px;max-width:100%;
-  box-shadow:var(--shadow);position:relative;overflow:hidden;
+/* ═══ 毛玻璃背景 + 装饰光晕 ═══ */
+body{{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(ellipse at 15% 15%,rgba(78,201,176,.12) 0%,transparent 50%),
+             radial-gradient(ellipse at 85% 85%,rgba(86,156,214,.12) 0%,transparent 50%),
+             linear-gradient(135deg,#080a0e,#0f1115);
+  padding:40px 20px;overflow:hidden;position:relative;font-family:var(--sans)}}
+body::before,body::after{{content:"";position:absolute;border-radius:50%;filter:blur(90px);opacity:.35;pointer-events:none;z-index:0}}
+body::before{{width:380px;height:380px;background:var(--ok);top:-120px;left:-100px;animation:Float 22s ease-in-out infinite}}
+body::after{{width:320px;height:320px;background:var(--accent);bottom:-100px;right:-80px;animation:Float 26s ease-in-out infinite reverse}}
+@keyframes Float{{0%,100%{{transform:translate(0,0)}}50%{{transform:translate(30px,-25px)}}}}
+
+/* ═══ 卡片 ═══ */
+.lw{{position:relative;z-index:1;width:420px;max-width:100%;animation:FadeUp .5s ease-out}}
+@keyframes FadeUp{{from{{opacity:0;transform:translateY(20px)}}to{{opacity:1;transform:translateY(0)}}}}
+.lc{{
+  background:rgba(26,29,36,.85);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);
+  border:1px solid rgba(255,255,255,.06);border-radius:18px;
+  padding:40px 34px 28px;box-shadow:0 24px 64px rgba(0,0,0,.55);
+  position:relative;overflow:hidden;
 }}
-.login-card::before{{
-  content:"";position:absolute;top:0;left:0;right:0;height:3px;
-  background:linear-gradient(90deg,var(--ok),var(--accent));
+.lc::before{{
+  content:"";position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,var(--ok),var(--accent),var(--ok));
+  background-size:200% 100%;animation:Shimmer 4s linear infinite;
 }}
-.brand{{display:flex;align-items:center;gap:14px;margin-bottom:26px}}
+@keyframes Shimmer{{0%{{background-position:200% 0}}100%{{background-position:-200% 0}}}}
+
+/* ═══ Brand ═══ */
+.brand{{display:flex;align-items:center;gap:14px;margin-bottom:22px}}
 .brand-logo{{
-  width:44px;height:44px;border-radius:10px;
+  width:54px;height:54px;border-radius:14px;
   background:linear-gradient(135deg,var(--ok),var(--accent));
   display:flex;align-items:center;justify-content:center;
-  color:#0f1115;font-weight:800;font-size:20px;
-  box-shadow:0 4px 16px rgba(78,201,176,.3);
+  color:#0a0d12;font-weight:900;font-size:24px;
+  box-shadow:0 10px 28px rgba(78,201,176,.4);
+  position:relative;overflow:hidden;flex-shrink:0;
 }}
-.brand-text h1{{font-size:16px;font-weight:600;color:var(--text);margin:0}}
-.brand-text p{{font-size:12px;color:var(--text-dim);margin:2px 0 0;font-family:var(--mono)}}
-.field{{margin-bottom:14px}}
-.field label{{display:block;font-size:11px;font-weight:600;color:var(--text-dim);letter-spacing:.05em;text-transform:uppercase;margin-bottom:6px}}
+.brand-logo::after{{content:"";position:absolute;inset:0;border-radius:14px;background:linear-gradient(135deg,rgba(255,255,255,.35),transparent 55%)}}
+.brand-text h1{{font-size:19px;font-weight:700;color:var(--text);margin:0;letter-spacing:-.01em}}
+.brand-text p{{font-size:11px;color:var(--text-dim);margin:4px 0 0;font-family:var(--mono);letter-spacing:.05em}}
+
+/* ═══ 安全徽章 ═══ */
+.badges{{display:flex;gap:7px;margin-bottom:22px;flex-wrap:wrap}}
+.badge{{display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border-radius:20px;font-size:10.5px;font-weight:600;font-family:var(--mono);letter-spacing:.05em}}
+.badge.ok{{background:rgba(78,201,176,.1);color:var(--ok);border:1px solid rgba(78,201,176,.22)}}
+.badge.info{{background:rgba(86,156,214,.1);color:var(--accent);border:1px solid rgba(86,156,214,.22)}}
+.badge.warn{{background:rgba(220,170,80,.1);color:var(--warn,var(--accent));border:1px solid rgba(220,170,80,.22)}}
+.bd{{width:6px;height:6px;border-radius:50%;background:currentColor;animation:Pulse 2.5s ease-in-out infinite}}
+@keyframes Pulse{{0%,100%{{opacity:1}}50%{{opacity:.3}}}}
+
+/* ═══ 字段 ═══ */
+.field{{margin-bottom:15px;position:relative}}
+.field label{{display:block;font-size:10.5px;font-weight:700;color:var(--text-dim);letter-spacing:.08em;text-transform:uppercase;margin-bottom:7px}}
+.fwrap{{position:relative}}
 .field input{{
-  width:100%;padding:11px 14px;background:var(--bg);border:1px solid var(--border-2);
-  color:var(--text);border-radius:var(--radius-sm);font-size:14px;
-  transition:border-color .15s,box-shadow .15s;box-sizing:border-box;
-  font-family:var(--sans);
+  width:100%;padding:12px 46px 12px 14px;background:rgba(10,13,18,.7);
+  border:1px solid var(--border-2);color:var(--text);border-radius:9px;
+  font-size:14px;transition:all .18s;box-sizing:border-box;font-family:var(--sans);
 }}
-.field input:focus{{outline:none;border-color:var(--ok);box-shadow:0 0 0 3px var(--ok-dim)}}
-.submit-btn{{
+.field input:focus{{outline:none;border-color:var(--ok);box-shadow:0 0 0 3px var(--ok-dim);background:#0a0d12}}
+.fi{{position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--text-dim);font-size:15px;cursor:pointer;user-select:none;padding:4px;border-radius:4px;transition:color .15s,background .15s}}
+.fi:hover{{color:var(--accent);background:rgba(86,156,214,.1)}}
+
+/* ═══ Options ═══ */
+.opts{{display:flex;justify-content:space-between;align-items:center;margin:4px 0 20px;font-size:12px}}
+.remember{{display:flex;align-items:center;gap:7px;color:var(--text-dim);cursor:pointer;user-select:none}}
+.remember input{{accent-color:var(--ok);width:14px;height:14px;cursor:pointer}}
+.forgot{{color:var(--accent);text-decoration:none;transition:color .15s}}
+.forgot:hover{{color:var(--ok)}}
+
+/* ═══ Submit ═══ */
+.sbtn{{
   width:100%;padding:13px;background:linear-gradient(135deg,var(--ok),#3dd3a1);
-  color:var(--bg);border:none;border-radius:var(--radius-sm);
-  font-size:14px;font-weight:700;cursor:pointer;margin-top:8px;
-  transition:transform .15s,box-shadow .15s;
+  color:#0a0d12;border:none;border-radius:9px;
+  font-size:14px;font-weight:800;cursor:pointer;
+  transition:transform .12s,box-shadow .2s,opacity .15s;letter-spacing:.03em;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  position:relative;overflow:hidden;
 }}
-.submit-btn:hover{{transform:translateY(-1px);box-shadow:0 6px 20px rgba(78,201,176,.35)}}
-.submit-btn:active{{transform:translateY(0)}}
-.err{{color:var(--bad);font-size:12px;background:var(--bad-dim);padding:10px 14px;border-radius:var(--radius-sm);margin-bottom:14px;border:1px solid rgba(244,135,113,.2)}}
-.back{{display:flex;align-items:center;gap:6px;color:var(--text-dim);font-size:12px;text-decoration:none;margin-top:20px;transition:color .15s}}
+.sbtn::before{{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.25),transparent);transform:translateX(-100%);transition:transform .55s}}
+.sbtn:hover::before{{transform:translateX(100%)}}
+.sbtn:hover{{transform:translateY(-1px);box-shadow:0 10px 28px rgba(78,201,176,.42)}}
+.sbtn:active{{transform:translateY(0);box-shadow:0 2px 8px rgba(78,201,176,.3)}}
+.sbtn:disabled{{opacity:.6;cursor:not-allowed;transform:none;box-shadow:none}}
+
+/* ═══ Error ═══ */
+.err{{color:var(--bad);font-size:12px;background:rgba(244,135,113,.08);padding:10px 14px;border-radius:8px;margin-bottom:16px;border:1px solid rgba(244,135,113,.22);animation:FadeUp .3s ease-out}}
+
+/* ═══ Hint + Footer ═══ */
+.hint{{color:var(--text-mute);font-size:11px;margin:14px 0 0;text-align:center;font-family:var(--mono);line-height:1.5}}
+.ft{{margin-top:24px;padding-top:16px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--text-mute)}}
+.back{{color:var(--text-dim);text-decoration:none;display:flex;align-items:center;gap:5px;transition:color .15s}}
 .back:hover{{color:var(--accent)}}
+.ver{{font-family:var(--mono);letter-spacing:.04em}}
 </style></head><body>
-<div class="login-card">
+<div class="lw">
+<div class="lc">
+
   <div class="brand">
     <div class="brand-logo">M</div>
     <div class="brand-text">
       <h1>Server Login</h1>
-      <p>NODE_ROLE={NODE_ROLE}</p>
+      <p>MTSCOS AI · {NODE_ROLE} · {now}</p>
     </div>
   </div>
+
+  <div class="badges">
+    <span class="badge ok"><span class="bd"></span>SECURE</span>
+    <span class="badge info">SSL/TLS</span>
+    <span class="badge warn">VIKEY optional</span>
+  </div>
+
   {error_html}
-  <form method="POST" action="/auth/login">
+
+  <form method="POST" action="/auth/login" id="lf">
     <div class="field">
       <label>Username</label>
-      <input type="text" name="username" placeholder="admin / wuchenghao15" required autofocus autocomplete="username">
+      <div class="fwrap">
+        <input type="text" name="username" id="u" placeholder="admin / wuchenghao15" required autofocus autocomplete="username">
+        <span class="fi" onclick="document.getElementById('u').focus()" title="Username">👤</span>
+      </div>
     </div>
     <div class="field">
       <label>Password</label>
-      <input type="password" name="password" placeholder="••••••" required autocomplete="current-password">
+      <div class="fwrap">
+        <input type="password" name="password" id="p" placeholder="••••••••" required autocomplete="current-password">
+        <span class="fi" onclick="tp()" id="pt" title="Toggle visibility">👁</span>
+      </div>
     </div>
-    <button type="submit" class="submit-btn">Sign In</button>
+
+    <div class="opts">
+      <label class="remember"><input type="checkbox" name="remember" value="1"> Remember me</label>
+      <a class="forgot" href="#" onclick="return false">Forgot?</a>
+    </div>
+
+    <button type="submit" class="sbtn" id="sb"><span class="bt">Sign In →</span></button>
   </form>
-  <a href="/" class="back">← Back to Ops Panel</a>
+
+  <p class="hint">Admin role · super_admin needs VIKEY · this server allows admin login without hardware</p>
+
+  <div class="ft">
+    <a class="back" href="/">← Ops Panel</a>
+    <span class="ver">v22.10.9 · {NODE_ROLE}</span>
+  </div>
+
 </div>
+</div>
+
+<script>
+function tp(){{var p=document.getElementById('p'),t=document.getElementById('pt');if(p.type==='password'){{p.type='text';t.textContent='🙈'}}else{{p.type='password';t.textContent='👁'}}}}
+document.getElementById('lf').addEventListener('submit',function(){{var b=document.getElementById('sb');b.disabled=true;b.querySelector('.bt').textContent='Authenticating...'}});
+</script>
 </body></html>"""
     return Response(panel, mimetype='text/html; charset=utf-8', status=200)
 
