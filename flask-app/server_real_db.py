@@ -3760,6 +3760,9 @@ _MT_HOTLINK_WHITELIST_PATHS = {
     '/', '/index', '/favicon.ico', '/robots.txt',
     '/login', '/auth/login', '/auth/register', '/logout', '/forgot_password', '/register', '/auth/logout', '/auth/forgot_password',
     '/auth/session_health', '/auth/check_username',
+    # 🔧 2026-10-06 SERVER 模式本机直进后台: /sa/dashboard 无 Referer 直达放行
+    # (Mac mini loopback 本机访问由 check_sa_redirect 的 SERVER 短路已验证可信)
+    '/sa/dashboard',
 }
 _MT_HOTLINK_WHITELIST_PREFIXES = (
     '/static/', '/assets/', '/auth/', '/_ui/', '/api/auth/',
