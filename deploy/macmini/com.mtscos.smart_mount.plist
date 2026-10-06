@@ -36,7 +36,7 @@ export PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/Library/Developer/Com
 
 # 清理僵尸 + stale PID 文件
 rm -f /Users/wuchenghao/MTSCOS_AI_Project/_runtime/pids/ai_smart_mount_engine.pid 2>/dev/null || true
-for p in $(lsof -i :8888 -t 2>/dev/null); do kill -0 "$p" 2>/dev/null && true; done || true
+for p in $(lsof -i :8888 -t 2>/dev/null); do kill -0 "$p" 2>/dev/null &amp;&amp; true; done || true
 
 # 本地副本 (OneDrive TCC 绕过)
 cd /Users/wuchenghao/MTSCOS_AI_Project/flask-app/engines
