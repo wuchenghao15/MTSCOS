@@ -1072,14 +1072,26 @@ def _install_server_overrides(app):
         PORT = 8888
         port_conflict = False
         try:
+            # 找 :8888 LISTEN 的进程
             r = subprocess.run(['/usr/sbin/lsof','-iTCP:%d'%PORT,'-sTCP:LISTEN','-nP'],
                              capture_output=True, text=True, timeout=5)
             listeners = [l for l in r.stdout.splitlines()[1:] if l.strip()]
+            
+            # 正确找 Flask PID — 从 launchctl 读 com.mtscos.flask 的 PID!
             flask_pids = set()
-            # 找 Flask PID
-            r2 = subprocess.run(['pgrep','-f','python.*server_real_db\|python.*run_flask\|python.*app'],
-                               capture_output=True, text=True, timeout=3)
-            flask_pids = set(r2.stdout.strip().split())
+            try:
+                r2 = subprocess.run(['launchctl','list'], capture_output=True, text=True, timeout=5)
+                for line in r2.stdout.splitlines():
+                    if 'com.mtscos.flask' in line:
+                        parts = line.split()
+                        if len(parts) >= 3 and parts[0].isdigit():
+                            flask_pids.add(parts[0])
+            except Exception: pass
+            
+            if not flask_pids:
+                # 兜底: 用 os.getpid() — auto-diagnose 就在 Flask 进程里!
+                flask_pids.add(str(os.getpid()))
+            
             for l in listeners:
                 parts = l.split()
                 if len(parts) >= 2:
