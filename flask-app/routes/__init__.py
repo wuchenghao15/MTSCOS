@@ -1122,7 +1122,7 @@ def _install_server_overrides(app):
     @app.route('/api/server/mcp-status', methods=['GET'])
     def _server_api_mcp_status():
         """MCP Hub :18899 状态 + tools 统计 + 调用量 — 冰山 Ops Console 面板用"""
-        import urllib.request, urllib.error
+        import urllib.request, urllib.error, json
         result = {'hub_ok': False, 'hub_url': 'http://127.0.0.1:18899',
                   'version': None, 'tools_total': 0, 'sources': {},
                   'dependencies': {}, 'stats': {}, 'uptime_seconds': 0}
