@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- 仙女座 MCP Bridge — Marvis ↔ Andromeda 运维网关 (loopback 18899)
+     纯 stdlib, 零依赖. 暴露 11 个运维 tools.
+     ⚠️ 注意: RunAtLoad + KeepAlive. 重启 Mac mini 自动恢复. -->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.mtscos.andromeda-mcp</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/bin/python3</string>
+        <string>/Users/wuchenghao/MTSCOS_AI_Project/flask-app/engines/andromeda_mcp_bridge.py</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/wuchenghao/MTSCOS_AI_Project/flask-app</string>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>/tmp/andromeda_mcp.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/tmp/andromeda_mcp.log</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PYTHONUNBUFFERED</key>
+        <string>1</string>
+        <key>NODE_ROLE</key>
+        <string>SERVER</string>
+    </dict>
+</dict>
+</plist>
