@@ -154,91 +154,112 @@ def _server_ops_panel():
     
     panel = f"""<!DOCTYPE html>
 <html><head>
-{_SERVER_CSS_VARS}
-<title>MTSCOS AI · Server Ops</title>
+<title>MTSCOS AI · Ops Console</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
-.layout{{max-width:1100px;margin:0 auto;padding:24px 28px 60px}}
+/* ═══ SA 专用配色 v22.10.10 (深紫底 + 金色) ═══ */
+:root{{
+  --sa-bg:#0B0A1E;--sa-panel:rgba(255,255,255,.04);--sa-gold:#d4a017;
+  --sa-line:rgba(212,160,23,.45);--sa-text:#f8fafc;
+  --sa-text-dim:rgba(248,250,252,.65);--sa-green:#6ee7b7;--sa-red:#fca5a5;
+  --sa-radius:18px;--mono:ui-monospace,"SF Mono","JetBrains Mono",monospace;
+}}
+*{{margin:0;padding:0;box-sizing:border-box}}
+body{{
+  font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+  color:var(--sa-text);
+  background:radial-gradient(ellipse at 20% 0%,rgba(59,130,246,.12),transparent 50%),
+              radial-gradient(ellipse at 80% 100%,rgba(168,85,247,.10),transparent 50%),
+              var(--sa-bg);
+  min-height:100vh;padding:0}}
+.layout{{max-width:1200px;margin:0 auto;padding:20px 28px 60px}}
 
-/* ── 顶部健康度条 ── */
+/* ── Topbar (sticky + 金色底边) ── */
 .topbar{{
-  background:linear-gradient(135deg,var(--card),var(--card-2));
-  border:1px solid var(--border);border-radius:var(--radius);
-  padding:16px 22px;margin-bottom:20px;
   display:flex;align-items:center;gap:22px;flex-wrap:wrap;
-  box-shadow:var(--shadow);
+  padding:14px 28px;margin-bottom:24px;
+  background:linear-gradient(90deg,rgba(11,10,30,.95),rgba(40,30,60,.95));
+  border-bottom:2px solid var(--sa-gold);border-radius:var(--sa-radius);
+  box-shadow:0 4px 30px -8px rgba(212,160,23,.35);position:sticky;top:8px;z-index:50;
 }}
-.topbar-title{{font-size:15px;font-weight:600;color:var(--text)}}
-.topbar-sub{{font-size:12px;color:var(--text-dim);margin-top:2px;font-family:var(--mono)}}
-.health-bar{{flex:1;min-width:180px;height:8px;background:var(--bg-2);border-radius:4px;overflow:hidden}}
-.health-fill{{height:100%;border-radius:4px;transition:width .4s;background:{health_color}}}
-.health-pct{{font-family:var(--mono);font-size:13px;color:{health_color};font-weight:600}}
+.topbar .brand{{display:flex;align-items:center;gap:14px}}
+.topbar .badge{{
+  font-size:10px;font-weight:700;letter-spacing:2px;padding:4px 12px;border-radius:999px;
+  background:linear-gradient(90deg,var(--sa-gold),#ffe08a,var(--sa-gold));
+  color:#1f1500;box-shadow:0 2px 12px -3px var(--sa-gold);
+}}
+.topbar-title{{font-size:16px;font-weight:700;color:var(--sa-text)}}
+.topbar-sub{{font-size:11px;color:var(--sa-text-dim);margin-top:2px;font-family:var(--mono)}}
+.health-bar{{flex:1;min-width:160px;height:8px;background:rgba(255,255,255,.08);border-radius:4px;overflow:hidden}}
+.health-fill{{height:100%;border-radius:4px;transition:width .4s;background:{health_color};box-shadow:0 0 8px {health_color}}}
+.health-pct{{font-family:var(--mono);font-size:13px;color:{health_color};font-weight:600;min-width:56px;text-align:right}}
 
-/* ── Grid 卡片 ── */
-.grid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-bottom:20px}}
+/* ── Grid 卡片 (sa-panel 毛玻璃) ── */
+.grid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px;margin-bottom:20px}}
 .card{{
-  background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
-  padding:18px 20px;box-shadow:var(--shadow);
+  background:var(--sa-panel);border:1px solid var(--sa-line);border-radius:var(--sa-radius);
+  padding:20px 22px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  box-shadow:0 8px 28px -12px rgba(0,0,0,.6);
 }}
-.card-title{{font-size:11px;font-weight:700;color:var(--text-dim);letter-spacing:.08em;text-transform:uppercase;margin-bottom:14px;display:flex;align-items:center;gap:8px}}
-.card-title::before{{content:"";width:3px;height:12px;background:var(--accent);border-radius:2px}}
+.card-title{{font-size:11px;font-weight:700;letter-spacing:1.5px;color:var(--sa-gold);text-transform:uppercase;margin-bottom:14px;display:flex;align-items:center;gap:8px}}
+.card-title::before{{content:"";width:3px;height:12px;background:var(--sa-gold);border-radius:2px;box-shadow:0 0 6px var(--sa-gold)}}
 
 /* ── Stat 行 ── */
-.stat{{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)}}
+.stat{{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:13px}}
 .stat:last-child{{border-bottom:none}}
-.stat-label{{font-size:13px;color:var(--text-dim)}}
-.stat-val{{font-family:var(--mono);font-size:13px;color:var(--text);display:flex;align-items:center;gap:8px}}
+.stat-label{{color:var(--sa-text-dim)}}
+.stat-val{{font-family:var(--mono);font-size:13px;color:var(--sa-text);display:flex;align-items:center;gap:8px}}
 .dot{{width:8px;height:8px;border-radius:50%;display:inline-block}}
-.dot-ok{{background:var(--ok);box-shadow:0 0 6px var(--ok)}}
-.dot-bad{{background:var(--bad);box-shadow:0 0 6px var(--bad)}}
+.dot-ok{{background:var(--sa-green);box-shadow:0 0 6px var(--sa-green)}}
+.dot-bad{{background:var(--sa-red);box-shadow:0 0 6px var(--sa-red)}}
 
-/* ── 磁盘进度 ── */
-.disk-bar{{height:6px;background:var(--bg-2);border-radius:3px;overflow:hidden;margin-top:6px}}
+/* ── Disk 进度 ── */
+.disk-bar{{height:6px;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden;margin-top:8px}}
 .disk-fill{{height:100%;border-radius:3px;background:{disk_color};width:{disk_pct}%}}
-.disk-label{{font-size:11px;color:var(--text-mute);font-family:var(--mono);margin-top:4px}}
+.disk-label{{font-size:11px;color:rgba(248,250,252,.5);font-family:var(--mono);margin-top:5px}}
 
 /* ── Daemon 列表 ── */
 .daemon-list{{max-height:340px;overflow-y:auto}}
 .daemon-list::-webkit-scrollbar{{width:6px}}
-.daemon-list::-webkit-scrollbar-thumb{{background:var(--border-2);border-radius:3px}}
-.daemon-row{{display:flex;align-items:stretch;margin-bottom:6px;border-radius:var(--radius-sm);overflow:hidden;background:var(--bg-2);border:1px solid var(--border);transition:border-color .15s}}
-.daemon-row:hover{{border-color:var(--border-2)}}
+.daemon-list::-webkit-scrollbar-thumb{{background:rgba(212,160,23,.3);border-radius:3px}}
+.daemon-row{{display:flex;align-items:stretch;margin-bottom:6px;border-radius:10px;overflow:hidden;background:rgba(255,255,255,.03);border:1px solid rgba(212,160,23,.2);transition:border-color .15s}}
+.daemon-row:hover{{border-color:rgba(212,160,23,.5)}}
 .daemon-bar{{width:3px;flex-shrink:0}}
 .daemon-body{{flex:1;display:flex;align-items:center;gap:10px;padding:8px 12px;font-size:12px}}
 .daemon-badge{{font-size:10px;line-height:1}}
-.daemon-label{{flex:1;color:var(--text);font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}
-.daemon-pid{{color:var(--text-dim);width:44px;text-align:right}}
+.daemon-label{{flex:1;color:var(--sa-text);font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}
+.daemon-pid{{color:var(--sa-text-dim);width:44px;text-align:right}}
 .daemon-exit{{width:28px;text-align:right}}
 
-/* ── Quick Links ── */
+/* ── Quick Links (chip 风格) ── */
 .link-grid{{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}}
 .link-btn{{
-  display:flex;align-items:center;gap:10px;
-  padding:12px 14px;background:var(--bg-2);border:1px solid var(--border);
-  border-radius:var(--radius-sm);color:var(--text);text-decoration:none;
+  display:flex;align-items:center;gap:10px;padding:10px 14px;
+  background:rgba(255,255,255,.03);border:1px solid rgba(212,160,23,.3);
+  border-radius:10px;color:var(--sa-text);text-decoration:none;
   font-size:13px;transition:all .15s;
 }}
-.link-btn:hover{{border-color:var(--accent);background:var(--accent-dim);transform:translateY(-1px)}}
-.link-btn .ico{{width:22px;height:22px;display:flex;align-items:center;justify-content:center;border-radius:6px;background:var(--accent-dim);color:var(--accent);font-size:12px}}
-.link-btn.primary{{border-color:var(--ok);background:var(--ok-dim);color:var(--ok)}}
-.link-btn.primary:hover{{background:var(--ok);color:var(--bg)}}
+.link-btn:hover{{border-color:var(--sa-gold);background:rgba(212,160,23,.1);transform:translateY(-1px)}}
+.link-btn .ico{{width:22px;height:22px;display:flex;align-items:center;justify-content:center;border-radius:6px;background:rgba(212,160,23,.15);color:var(--sa-gold);font-size:12px}}
+.link-btn.primary{{border-color:var(--sa-gold);background:rgba(212,160,23,.1);color:var(--sa-gold)}}
 
 /* ── Footer ── */
-.footer{{text-align:center;color:var(--text-mute);font-size:11px;margin-top:30px;font-family:var(--mono)}}
+.footer{{text-align:center;color:rgba(248,250,252,.4);font-size:11px;margin-top:30px;font-family:var(--mono);letter-spacing:.05em}}
 
 /* ── 响应式 ── */
-@media(max-width:600px){{
-  .link-grid{{grid-template-columns:1fr}}
-  .topbar{{gap:12px}}
-}}
+@media(max-width:600px){{.link-grid{{grid-template-columns:1fr}}.topbar{{gap:12px}}}}
 </style></head>
 <body>
 <div class="layout">
 
 <!-- 顶部健康度条 -->
 <div class="topbar">
-  <div>
-    <div class="topbar-title">🖥️ MTSCOS AI · Server Ops</div>
-    <div class="topbar-sub">{hostname} · {ip} · {role_label} · {now_str}</div>
+  <div class="brand">
+    <span class="badge">MTSCOS AI</span>
+    <div>
+      <div class="topbar-title">Ops Console</div>
+      <div class="topbar-sub">{hostname} · {ip} · {role_label} · {now_str}</div>
+    </div>
   </div>
   <div class="health-bar"><div class="health-fill" style="width:{health_pct}%"></div></div>
   <div class="health-pct">{healthy_count}/{total_daemons}</div>
@@ -250,46 +271,30 @@ def _server_ops_panel():
   <!-- System -->
   <div class="card">
     <div class="card-title">System</div>
-    <div class="stat">
-      <span class="stat-label">Flask API</span>
-      <span class="stat-val">
-        <span class="dot {'dot-ok' if flask_ok else 'dot-bad'}"></span>
-        {'Running' if flask_ok else 'Down'}
-      </span>
-    </div>
-    <div class="stat">
-      <span class="stat-label">HTTP Check</span>
-      <span class="stat-val {'color:var(--ok)' if http_ok else 'color:var(--bad)'}">{http_code}</span>
-    </div>
-    <div class="stat">
-      <span class="stat-label">Role</span>
-      <span class="stat-val">{role_label}</span>
-    </div>
-    <div class="stat">
-      <span class="stat-label">Hostname</span>
-      <span class="stat-val">{hostname}</span>
-    </div>
+    <div class="stat"><span class="stat-label">Flask API</span><span class="stat-val"><span class="dot {'dot-ok' if flask_ok else 'dot-bad'}"></span>{'Running' if flask_ok else 'Down'}</span></div>
+    <div class="stat"><span class="stat-label">HTTP Check</span><span class="stat-val {'color:'+health_color if http_ok else 'color:'+('var(--sa-green)' if http_ok else 'var(--sa-red)')}">{http_code}</span></div>
+    <div class="stat"><span class="stat-label">Role</span><span class="stat-val" style="color:var(--sa-gold)">{role_label}</span></div>
+    <div class="stat"><span class="stat-label">Hostname</span><span class="stat-val">{hostname}</span></div>
   </div>
 
   <!-- Storage -->
   <div class="card">
     <div class="card-title">Storage</div>
-    <div class="stat">
-      <span class="stat-label">Disk /</span>
-      <span class="stat-val">{disk_used}/{disk_total}</span>
-    </div>
+    <div class="stat"><span class="stat-label">Disk /</span><span class="stat-val">{disk_used}/{disk_total}</span></div>
     <div class="disk-bar"><div class="disk-fill"></div></div>
     <div class="disk-label">usage {disk_pct}%</div>
   </div>
 
   <!-- Quick Links -->
-  <div class="card" style="grid-column:span 1">
+  <div class="card">
     <div class="card-title">Quick Links</div>
     <div class="link-grid">
-      <a class="link-btn" href="/"><span class="ico">🖥</span> Ops Panel</a>
-      <a class="link-btn primary" href="/auth/login"><span class="ico">🔐</span> Login</a>
-      <a class="link-btn" href="/api/health" target="_blank"><span class="ico">♥</span> /api/health</a>
+      <a class="link-btn primary" href="/"><span class="ico">🖥</span> Ops</a>
+      <a class="link-btn" href="/auth/login"><span class="ico">🔐</span> Login</a>
+      <a class="link-btn" href="/api/health" target="_blank"><span class="ico">♥</span> Health</a>
       <a class="link-btn" href="/api/handshake/status" target="_blank"><span class="ico">⚡</span> Handshake</a>
+      <a class="link-btn" href="/api/system/info" target="_blank"><span class="ico">📊</span> System Info</a>
+      <a class="link-btn" href="/api/db/stats" target="_blank"><span class="ico">🗄</span> DB Stats</a>
     </div>
   </div>
 
@@ -303,9 +308,7 @@ def _server_ops_panel():
   </div>
 </div>
 
-<div class="footer">
-  SERVER 模式 · zero frontend dependency · last refresh {now_str}
-</div>
+<div class="footer">Ops Console · zero frontend dep · last refresh {now_str}</div>
 
 </div>
 </body></html>"""
@@ -594,11 +597,11 @@ def _sa_preauth_redirect():
 
 @home_bp.route('/', methods=['GET'])
 def _root_redirect():
-    """根路径 `/` → SERVER 模式运维面板 / 其他模式跳 /index。"""
-    # 🔧 v22.10.6: SERVER 模式 — 纯后端机器, 本机打开直接显示运维状态面板
+    """根路径 `/` → DEV/SERVER 模式 Ops Panel / 其他模式跳 /index。"""
+    # v22.10.10: DEV (智能开发机) + SERVER 都返回运维状态面板
     try:
-        from app.node_role import is_server as _is_srv
-        if _is_srv:
+        from app.node_role import is_server as _is_srv, is_dev as _is_dev
+        if _is_srv or _is_dev:
             return _server_ops_panel()
     except ImportError:
         pass
