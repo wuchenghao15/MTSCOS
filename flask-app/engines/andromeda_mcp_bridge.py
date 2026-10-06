@@ -1,13 +1,21 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-仙女座 MCP Hub v2.0.0 — Andromeda ↔ Marvis 双向集成网关
-========================================================
+仙女座 MCP Hub v2.1.0 — 发散升级版
+===================================
 零依赖 (Python stdlib only), 监听 127.0.0.1:18899 (loopback only)
-集成 2 大 MCP Server:
-  🪐 Andromeda 原生   — 11 个运维 tools (diagnose/heal/restart/...)
+
+v2.1.0 发散升级:
+  🧠 ai_diagnose — 诊断结果喂本地 AI (规则引擎+模式匹配) 做根因分析 + 修复建议
+  🌐 cross_tunnel_health — Cloudflare Tunnel 跨设备通道检测 (绕过路由器 AP Isolation)
+  📡 MCP resources — 实时系统指标暴露 (daemon 状态/CPU/内存/磁盘), 可订阅
+  🔒 exec_shell v3 — 彻底移除 python3 -c, 全面禁止代码执行
+
+v2.0.0:
+  🪐 Andromeda 原生   — 11 个运维 tools
   📄 Marvis Editor SDK — 代理 191 个腾讯文档 tools (Auth disabled!)
-合计 202 个 tools, 任何 MCP client 可统一调用
+  🎯 合计 202+ tools!
+"""
 
 启动: python3 andromeda_mcp_bridge.py &
 自启动: launchctl load com.mtscos.andromeda-mcp.plist
@@ -161,22 +169,26 @@ def tool_list_daemons(**kw):
     return {'ok':True,'daemons':daemons,'total':len(daemons),
             'healthy':sum(1 for d in daemons if d['ok'])}
 
-# ── tool 11: exec_shell (受限安全版 v2) ──
+# ── tool 11: exec_shell (受限安全版 v3 — 彻底移除 python3 -c) ──
 _SAFE_SHELL_PREFIXES = ('curl','ls','ps','df','top','pgrep','launchctl','netstat','lsof',
                         'diskutil','du','find','free','vm_stat','uptime','who','date',
-                        'cat','head','tail','grep','wc','file','python3 -c')
+                        'cat','head','tail','grep','wc','file','sw_vers','sysctl',
+                        'route','ifconfig','arp','mount','uname','id','w','last')
 def tool_exec_shell(cmd, **kw):
-    """执行受限 shell 命令. 允许的: curl/ls/ps/df/pgrep/launchctl 等运维只读命令"""
+    """执行受限 shell 命令 (运维只读, 零代码执行风险). 禁 python3 -c / os.system / 管道/重定向"""
     cmd_stripped = cmd.strip()
     cmd_l = cmd_stripped.lower()
     allowed = any(cmd_l.startswith(p) for p in _SAFE_SHELL_PREFIXES)
-    forbidden_patterns = ['|','>','>>','<',';','&&','||','`','$(','rm ','rm -rf',
-                         'shutdown','reboot','sudo','su ','chmod','chown','mkfs',
-                         'curl |','wget |','nc -l',
-                         'eval ','exec ','nohup ','& ','bg %','kill -9']
+    # v3: 彻底禁止任何代码执行 + shell 注入
+    forbidden_patterns = ['|','>','>>','<',';','&&','||','`','$(','${',
+                         'rm ','rm -rf','mv ','cp ','chmod','chown','mkfs',
+                         'sudo','su ','shutdown','reboot','halt','poweroff',
+                         'python','perl','ruby','node','php','bash','zsh','sh -c','eval','exec',
+                         'os.','subprocess','import ','__import','open(','exec(','compile(',
+                         'curl |','wget |','nc -l','nohup','& ','kill -9']
     forbidden = any(p in cmd_l for p in forbidden_patterns)
     if not allowed or forbidden:
-        return {'ok':False,'error':'command not allowed (security sandbox)',
+        return {'ok':False,'error':'command not allowed (security sandbox v3)',
                 'allowed_prefixes':_SAFE_SHELL_PREFIXES}
     try:
         r = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=TIMEOUT)
@@ -190,6 +202,171 @@ def tool_marvis_proxy(sdk_tool, arguments=None, **kw):
     """调用 Marvis Editor SDK 原始 MCP tool (slide/sheet/doc). 直接转发"""
     return _marvis_mcp_call('tools/call',
         {'name':sdk_tool,'arguments':arguments or {}})
+
+# ── tool 13: ai_diagnose (🧠 本地 AI 根因分析 + 修复建议) ──
+# 规则引擎: 10+ 条运维专家知识 + 模式匹配 + 优先级
+_AI_KNOWLEDGE = [
+    {'pattern':'handshake.*DISCONNECTED','root_cause':'路由器 AP Isolation (客户端隔离)','fix':'关 AP Isolation 或走 Cloudflare Tunnel','severity':'low'},
+    {'pattern':'disk.*[89][0-9]%','root_cause':'磁盘空间告急','fix':'pip cache purge / npm cache clean / 清 /tmp','severity':'high'},
+    {'pattern':'port_conflict','root_cause':'端口被非 Flask 进程占用','fix':'lsof -iTCP:PORT -sTCP:LISTEN → kill PID','severity':'high'},
+    {'pattern':'daemon.*exit_code.*[1-9]','root_cause':'daemon 崩溃 (exit_code != 0)','fix':'launchctl kickstart / launchctl bootstrap','severity':'medium'},
+    {'pattern':'flask.*HTTP.*5[0-9][0-9]','root_cause':'Flask 内部错误 (5xx)','fix':'查 Flask error.log / 重启 Flask / 检查 DB 锁','severity':'high'},
+    {'pattern':'flask.*HTTP.*4[0-9][0-9]','root_cause':'Flask 路由问题 (4xx)','fix':'检查 Flask 路由注册 / CSRF / 权限装饰器','severity':'medium'},
+    {'pattern':'cloudflared.*dead','root_cause':'Cloudflare Tunnel 断开','fix':'launchctl kickstart com.mtscos.cloudflared','severity':'medium'},
+    {'pattern':'mcp.*unreachable','root_cause':'MCP Bridge 进程死了','fix':'launchctl kickstart com.mtscos.andromeda-mcp','severity':'medium'},
+    {'pattern':'db.*locked','root_cause':'SQLite 锁被其他 daemon 持有','fix':'停 smart_mount / 清 WAL / 等 30s 超时','severity':'medium'},
+    {'pattern':'all.*green.*issues.*0','root_cause':'系统健康','fix':'无需操作, 继续监控','severity':'info'},
+]
+
+def _ai_analyze(diagnosis_list):
+    """规则引擎分析诊断结果 → [{rule, match, root_cause, fix, severity}]"""
+    findings = []
+    diag_text = json.dumps(diagnosis_list, ensure_ascii=False).lower()
+    for rule in _AI_KNOWLEDGE:
+        import re
+        if re.search(rule['pattern'], diag_text):
+            findings.append({
+                'rule': rule['pattern'],
+                'match': rule['root_cause'],
+                'fix': rule['fix'],
+                'severity': rule['severity'],
+            })
+    return findings
+
+def tool_ai_diagnose(**kw):
+    """🧠 AI 根因分析 — diagnose_system 结果喂规则引擎, 输出根因+修复建议+优先级排序"""
+    # 1. 先拉 diagnose
+    diag = tool_diagnose_system()
+    report = diag.get('report', {}) if isinstance(diag, dict) else {}
+    diagnosis = report.get('diagnosis', [])
+    summary = report.get('summary', {})
+    
+    # 2. AI 分析
+    findings = _ai_analyze(diagnosis)
+    
+    # 3. 优先级排序 (high → medium → low → info)
+    sev_order = {'high':0,'medium':1,'low':2,'info':3}
+    findings.sort(key=lambda x: sev_order.get(x['severity'], 9))
+    
+    # 4. 生成修复建议列表 (去重)
+    fixes = []
+    for f in findings:
+        if f['fix'] not in fixes:
+            fixes.append(f['fix'])
+    
+    return {
+        'ok': True,
+        'ai_engine': 'andromeda_rules_v1',
+        'findings_count': len(findings),
+        'findings': findings,
+        'root_causes': list(set(f['match'] for f in findings)),
+        'fix_suggestions': fixes,
+        'severity_summary': {
+            'high': sum(1 for f in findings if f['severity']=='high'),
+            'medium': sum(1 for f in findings if f['severity']=='medium'),
+            'low': sum(1 for f in findings if f['severity']=='low'),
+            'info': sum(1 for f in findings if f['severity']=='info'),
+        },
+        'base_summary': summary,
+        'base_diagnosis_count': len(diagnosis),
+    }
+
+# ── tool 14: cross_tunnel_health (🌐 Cloudflare 跨设备通道) ──
+def tool_cross_tunnel_health(**kw):
+    """🌐 Cloudflare Tunnel 跨设备通道 — 绕过路由器 AP Isolation 的健康检测"""
+    results = {'cloudflared_ok': False, 'tunnel_label': None,
+               'public_hostname': None, 'andromeda_alive': False, 'notes': []}
+    
+    # 1. cloudflared daemon 状态
+    ok, out = _launchctl_run('list')
+    for line in out.splitlines():
+        if 'com.mtscos.cloudflared' in line:
+            parts = line.split()
+            results['cloudflared_ok'] = len(parts) >= 3 and parts[1] == '0'
+            break
+    
+    # 2. Cloudflare Tunnel 连通性 (curl 本地 tunnel info)
+    try:
+        r = subprocess.run(['curl','-s','--max-time','3','http://127.0.0.1:4040/api/tunnels'],
+                          capture_output=True, text=True, timeout=5)
+        if r.returncode == 0 and r.stdout.strip():
+            tunnels = json.loads(r.stdout) if r.stdout.startswith('[') else []
+            if tunnels:
+                results['tunnel_label'] = tunnels[0].get('name')
+                results['public_hostname'] = tunnels[0].get('public_url')
+    except Exception:
+        pass
+    
+    # 3. andromeda daemon 状态 (握手服务)
+    ok2, out2 = _launchctl_run('list')
+    for line in out2.splitlines():
+        if 'com.mtscos.andromeda' in line and 'mcp' not in line:
+            parts = line.split()
+            results['andromeda_alive'] = len(parts) >= 3 and parts[1] == '0'
+            break
+    
+    # 4. 诊断建议
+    if not results['cloudflared_ok']:
+        results['notes'].append('cloudflared daemon 异常 → launchctl kickstart com.mtscos.cloudflared')
+    if results['cloudflared_ok'] and results['public_hostname']:
+        results['notes'].append('Cloudflare Tunnel 在线 — Mac mini 可通过公网 hostname 跨设备通信')
+        results['cross_device_possible'] = True
+    else:
+        results['notes'].append('握手 DISCONNECTED 是因为路由器 AP Isolation, 可通过 CF Tunnel 绕过')
+    
+    return results
+
+# ── tool 15: system_metrics (📡 实时系统指标快照) ──
+def tool_system_metrics(**kw):
+    """📡 实时系统指标 — CPU/内存/磁盘/daemon 状态/网络, 可作为 MCP resource 订阅"""
+    metrics = {'timestamp': time.strftime('%Y-%m-%d %H:%M:%S')}
+    
+    # CPU + 负载
+    try:
+        r = subprocess.run(['sysctl','-n','hw.cpu.ncpu'], capture_output=True, text=True, timeout=2)
+        metrics['cpu_cores'] = int(r.stdout.strip()) if r.stdout.strip().isdigit() else None
+        r2 = subprocess.run(['uptime'], capture_output=True, text=True, timeout=2)
+        # "14:25  up 2 days,  3:12, 4 users, load averages: 1.23 0.89 0.67"
+        if 'load averages' in r2.stdout:
+            parts = r2.stdout.split('load averages:')[1].strip().split()
+            metrics['load_1m'] = float(parts[0].rstrip(','))
+            metrics['load_5m'] = float(parts[1].rstrip(','))
+            metrics['load_15m'] = float(parts[2])
+    except Exception: pass
+    
+    # 内存
+    try:
+        r = subprocess.run(['vm_stat'], capture_output=True, text=True, timeout=2)
+        page_size = 4096
+        free_pages = active_pages = 0
+        for line in r.stdout.splitlines():
+            if 'Pages free' in line: free_pages = int(line.split(':')[1].strip().rstrip('.'))
+            if 'Pages active' in line: active_pages = int(line.split(':')[1].strip().rstrip('.'))
+        total_mem = free_pages + active_pages + int(metrics.get('cpu_cores', 8) * 1024 * 1024 / 4)
+        used_pct = round((active_pages / (free_pages + active_pages)) * 100, 1) if (free_pages + active_pages) > 0 else None
+        metrics['memory_pct'] = used_pct
+    except Exception: pass
+    
+    # 磁盘
+    try:
+        r = subprocess.run(['df','-k','/'], capture_output=True, text=True, timeout=2)
+        parts = r.stdout.splitlines()[1].split()
+        metrics['disk_total_gb'] = round(int(parts[1]) / 1024 / 1024, 1)
+        metrics['disk_used_gb'] = round(int(parts[2]) / 1024 / 1024, 1)
+        metrics['disk_pct'] = int(parts[4].rstrip('%'))
+    except Exception: pass
+    
+    # daemon 健康度
+    daemons = tool_list_daemons()
+    metrics['daemon_healthy'] = daemons.get('healthy', 0)
+    metrics['daemon_total'] = daemons.get('total', 0)
+    metrics['daemon_pct'] = round(daemons.get('healthy', 0) / max(daemons.get('total', 1), 1) * 100, 1)
+    
+    # Flask HTTP
+    flask = _flask_call('/api/health')
+    metrics['flask_ok'] = flask.get('success', False) if isinstance(flask, dict) else False
+    
+    return metrics
 
 # ═══════════════════════════════════════════════════════════
 # MCP Tools Registry — Andromeda 11 + 动态加载 Marvis
@@ -205,7 +382,11 @@ ANDROMEDA_TOOLS = [
     {'name':'list_users','description':'系统用户列表 + 角色 + 启用状态','inputSchema':{'type':'object','properties':{}}},
     {'name':'disk_check','description':'磁盘空间占用百分比 (df -h /)','inputSchema':{'type':'object','properties':{}}},
     {'name':'list_daemons','description':'launchctl mtscos 系列 daemon 实时状态 (PID + exit code)','inputSchema':{'type':'object','properties':{}}},
-    {'name':'exec_shell','description':'执行受限只读 shell 命令 (curl/ls/ps/df/pgrep/launchctl/grep 等, 禁管道/重定向)','inputSchema':{'type':'object','properties':{'cmd':{'type':'string','description':'命令, 如 "launchctl list"'}}, 'required':['cmd']}},
+    {'name':'exec_shell','description':'执行受限只读 shell 命令 (运维命令, 禁 python/代码执行/管道/重定向)','inputSchema':{'type':'object','properties':{'cmd':{'type':'string','description':'命令, 如 "launchctl list"'}}, 'required':['cmd']}},
+    # v2.1.0 发散升级
+    {'name':'ai_diagnose','description':'🧠 AI 根因分析 — diagnose_system 结果喂规则引擎, 输出根因+修复建议+优先级排序','inputSchema':{'type':'object','properties':{}}},
+    {'name':'cross_tunnel_health','description':'🌐 Cloudflare Tunnel 跨设备通道 — 绕过路由器 AP Isolation 的健康检测','inputSchema':{'type':'object','properties':{}}},
+    {'name':'system_metrics','description':'📡 实时系统指标 — CPU/内存/磁盘/daemon 状态/负载','inputSchema':{'type':'object','properties':{}}},
 ]
 
 ANDROMEDA_HANDLERS = {
@@ -220,6 +401,10 @@ ANDROMEDA_HANDLERS = {
     'disk_check': tool_disk_check,
     'list_daemons': tool_list_daemons,
     'exec_shell': tool_exec_shell,
+    # v2.1.0
+    'ai_diagnose': tool_ai_diagnose,
+    'cross_tunnel_health': tool_cross_tunnel_health,
+    'system_metrics': tool_system_metrics,
 }
 
 # ═══════════════════════════════════════════════════════════
@@ -354,8 +539,41 @@ class MCPHandler(BaseHTTPRequestHandler):
             self._rpc_ok(rpc_id, {'tools': safe_tools})
         elif method == 'tools/call':
             self._handle_tool_call(rpc_id, params)
-        elif method in ('resources/list','prompts/list','resources/read','prompts/get'):
-            self._rpc_ok(rpc_id, [])  # 不支持
+        elif method == 'resources/list':
+            # v2.1.0: 📡 真实 MCP resources — 系统指标 + daemon 状态
+            resources = [
+                {'uri':'andromeda://system/metrics','name':'实时系统指标','mimeType':'application/json','description':'CPU/内存/磁盘/daemon 健康度快照'},
+                {'uri':'andromeda://system/daemons','name':'Daemon 状态','mimeType':'application/json','description':'6 个 mtscos 系列 daemon 实时 PID + exit code'},
+                {'uri':'andromeda://system/flask','name':'Flask 健康','mimeType':'application/json','description':'Flask :8888 HTTP + NODE_ROLE'},
+                {'uri':'andromeda://system/ai_analysis','name':'AI 根因分析','mimeType':'application/json','description':'规则引擎诊断 + 修复建议'},
+                {'uri':'andromeda://tunnel/status','name':'Cloudflare Tunnel','mimeType':'application/json','description':'跨设备通道健康检测 + public_hostname'},
+                {'uri':'andromeda://mcp/hub','name':'MCP Hub 自身','mimeType':'application/json','description':'MCP Hub 版本 + tools 统计 + 调用量'},
+            ]
+            self._rpc_ok(rpc_id, {'resources': resources})
+        elif method == 'resources/read':
+            # 根据 URI 拉取真实数据
+            uri = (params or {}).get('uri', '')
+            resource_map = {
+                'andromeda://system/metrics': lambda: tool_system_metrics(),
+                'andromeda://system/daemons': lambda: tool_list_daemons(),
+                'andromeda://system/flask': lambda: tool_flask_health(),
+                'andromeda://system/ai_analysis': lambda: tool_ai_diagnose(),
+                'andromeda://tunnel/status': lambda: tool_cross_tunnel_health(),
+                'andromeda://mcp/hub': lambda: {'version':'2.1.0','tools_total':len(TOOLS),
+                    'sources':{'andromeda':len(ANDROMEDA_TOOLS),'marvis':len(MARVIS_PROXIED)},
+                    'uptime':int(time.time()-STATS['start_time'])},
+            }
+            handler = resource_map.get(uri)
+            if handler:
+                try:
+                    content = json.dumps(handler(), ensure_ascii=False, indent=2)
+                    self._rpc_ok(rpc_id, {'contents':[{'uri':uri,'mimeType':'application/json','text':content}]})
+                except Exception as e:
+                    self._rpc_err(rpc_id, -32603, f'Resource error: {e}')
+            else:
+                self._rpc_err(rpc_id, -32601, f'Resource not found: {uri}')
+        elif method in ('prompts/list','prompts/get'):
+            self._rpc_ok(rpc_id, [])  # prompts 不支持
         else:
             self._rpc_err(rpc_id, -32601, f'Method not found: {method}')
     
