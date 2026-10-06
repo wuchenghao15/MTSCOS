@@ -916,6 +916,193 @@ def _install_server_overrides(app):
         
         return jsonify({'success': True, 'action': action, 'results': results})
     
+    # ── 仙女座自动诊断与自愈 (一键智能化) ──
+    @app.route('/api/server/auto-diagnose', methods=['POST','GET'])
+    def _server_api_auto_diagnose():
+        """一键诊断 + 自动修复. GET 只诊断, POST 诊断+自愈."""
+        from flask import request as _rq
+        do_heal = (_rq.method == 'POST')
+        
+        report = {
+            'timestamp': time.strftime('%Y-%m-%d %H:%M:%S'),
+            'hostname': socket.gethostname(),
+            'node_role': os.environ.get('NODE_ROLE','SERVER'),
+            'diagnosis': [],
+            'fixes': [],
+            'summary': {'issues_found': 0, 'fixed': 0, 'failed': 0},
+        }
+        
+        AG = os.path.expanduser('~/Library/LaunchAgents')
+        UID = os.getuid()
+        
+        def _launchctl(label, verb):
+            """执行 launchctl 操作, 返回 (ok, output)"""
+            plist = os.path.join(AG, f'{label}.plist')
+            if not os.path.exists(plist):
+                return False, 'plist missing'
+            try:
+                r = subprocess.run(
+                    ['launchctl', verb, f'gui/{UID}', plist],
+                    capture_output=True, text=True, timeout=10
+                )
+                return r.returncode == 0, (r.stdout + r.stderr).strip()[:100]
+            except Exception as e:
+                return False, str(e)[:100]
+        
+        def _restart(label, wait=2.0):
+            """重启一个 daemon (bootout + bootstrap)"""
+            _launchctl(label, 'bootout')
+            time.sleep(wait)
+            return _launchctl(label, 'bootstrap')
+        
+        # ═══ 诊断 1: daemon 健康度 ═══
+        try:
+            r = subprocess.run(['launchctl','list'], capture_output=True, text=True, timeout=5)
+            mtscos_lines = [l for l in r.stdout.splitlines() if 'mtscos' in l.lower()]
+            for line in mtscos_lines:
+                parts = line.split()
+                if len(parts) < 3: continue
+                pid, ec, label = parts[0], parts[1], parts[2]
+                if pid == '-': pid = None
+                ec_int = int(ec) if ec.isdigit() else 999
+                ok = (ec_int == 0)
+                issue = None
+                if not ok:
+                    issue = {'type': 'daemon_crashed','label':label,'exit_code':ec_int,'pid':pid,
+                            'severity': 'high' if ec_int in (1,126,127) else 'med'}
+                    report['summary']['issues_found'] += 1
+                report['diagnosis'].append({
+                    'type': 'daemon','label':label,'pid':pid,'exit_code':ec_int,
+                    'ok':ok,'issue':issue
+                })
+                
+                # ── 自愈: 崩溃的 daemon 自动重启 ──
+                if do_heal and not ok:
+                    # 白名单 (不重启 Flask 自身)
+                    if 'flask' in label and 'smart' not in label:
+                        report['fixes'].append({'label':label,'action':'SKIP','reason':'flask self-preserve'})
+                    else:
+                        healed, msg = _restart(label)
+                        report['fixes'].append({'label':label,'action':'RESTART',
+                                                'ok':healed,'msg':msg})
+                        if healed: report['summary']['fixed'] += 1
+                        else: report['summary']['failed'] += 1
+        except Exception as e:
+            report['diagnosis'].append({'type':'error','msg':f'launchctl:{e}'})
+        
+        # ═══ 诊断 2: Flask HTTP 自测 ═══
+        flask_ok = False; flask_code = None
+        try:
+            r = subprocess.run(['curl','-s','-o','/dev/null','-w','%{http_code}','--max-time','3',
+                               'http://127.0.0.1:8888/api/health'],
+                             capture_output=True, text=True, timeout=5)
+            flask_code = int(r.stdout.strip()) if r.stdout.strip().isdigit() else None
+            flask_ok = (flask_code == 200)
+        except Exception: pass
+        
+        if not flask_ok:
+            report['diagnosis'].append({'type':'flask_dead','http_code':flask_code,
+                                        'severity':'critical','issue':{'type':'flask_dead'}})
+            report['summary']['issues_found'] += 1
+            if do_heal:
+                healed, msg = _restart('com.mtscos.flask', wait=3.0)
+                report['fixes'].append({'label':'com.mtscos.flask','action':'RESTART',
+                                        'ok':healed,'msg':msg})
+                if healed: report['summary']['fixed'] += 1
+                else: report['summary']['failed'] += 1
+        else:
+            report['diagnosis'].append({'type':'flask','http_code':flask_code,'ok':True})
+        
+        # ═══ 诊断 3: 仙女座握手状态 ═══
+        handshake_state = None
+        try:
+            r = subprocess.run(['curl','-s','--max-time','3',
+                               'http://127.0.0.1:8888/api/handshake/status'],
+                             capture_output=True, text=True, timeout=5)
+            import json as _j
+            hs = _j.loads(r.stdout) if r.stdout.strip() else {}
+            handshake_state = hs.get('state') or hs.get('data',{}).get('state')
+        except Exception: pass
+        
+        if handshake_state and handshake_state.upper() == 'DISCONNECTED':
+            report['diagnosis'].append({'type':'handshake_disconnected','state':handshake_state,
+                                        'severity':'high','issue':{'type':'handshake_disconnected'}})
+            report['summary']['issues_found'] += 1
+            if do_heal:
+                # 重启 andromeda-tunnel + andromeda 触发重连
+                for svc in ['com.mtscos.andromeda-tunnel','com.mtscos.andromeda']:
+                    healed, msg = _restart(svc, wait=1.5)
+                    report['fixes'].append({'label':svc,'action':'RESTART',
+                                            'ok':healed,'msg':msg})
+                    if healed: report['summary']['fixed'] += 1
+                    else: report['summary']['failed'] += 1
+        else:
+            report['diagnosis'].append({'type':'handshake','state':handshake_state,'ok':handshake_state not in ('DISCONNECTED',None)})
+        
+        # ═══ 诊断 4: 磁盘空间 ═══
+        try:
+            r = subprocess.run(['df','-k','/'], capture_output=True, text=True, timeout=3)
+            parts = r.stdout.splitlines()[1].split()
+            pct = int(parts[4].rstrip('%')) if len(parts)>4 and parts[4].rstrip('%').isdigit() else None
+            if pct is not None:
+                if pct > 90:
+                    report['diagnosis'].append({'type':'disk_full','pct':pct,'severity':'critical',
+                                                'issue':{'type':'disk_full'}})
+                    report['summary']['issues_found'] += 1
+                    # 清理临时文件 + pip cache
+                    if do_heal:
+                        try:
+                            subprocess.run(['rm','-rf', os.path.expanduser('~/.cache/pip/*')],
+                                         capture_output=True, timeout=5)
+                        except Exception: pass
+                        report['fixes'].append({'label':'disk_cleanup','action':'CLEAN_PIP_CACHE',
+                                                'ok':True,'msg':f'pip cache cleaned'})
+                        report['summary']['fixed'] += 1
+                elif pct > 70:
+                    report['diagnosis'].append({'type':'disk_warn','pct':pct,'severity':'low'})
+                else:
+                    report['diagnosis'].append({'type':'disk','pct':pct,'ok':True})
+        except Exception as e:
+            report['diagnosis'].append({'type':'error','msg':f'disk:{e}'})
+        
+        # ═══ 诊断 5: 端口冲突 ═══
+        PORT = 8888
+        port_conflict = False
+        try:
+            r = subprocess.run(['/usr/sbin/lsof','-iTCP:%d'%PORT,'-sTCP:LISTEN','-nP'],
+                             capture_output=True, text=True, timeout=5)
+            listeners = [l for l in r.stdout.splitlines()[1:] if l.strip()]
+            flask_pids = set()
+            # 找 Flask PID
+            r2 = subprocess.run(['pgrep','-f','python.*server_real_db\|python.*run_flask\|python.*app'],
+                               capture_output=True, text=True, timeout=3)
+            flask_pids = set(r2.stdout.strip().split())
+            for l in listeners:
+                parts = l.split()
+                if len(parts) >= 2:
+                    proc_pid = parts[1]
+                    if proc_pid not in flask_pids:
+                        port_conflict = True
+                        report['diagnosis'].append({'type':'port_conflict','port':PORT,
+                                                    'pid':proc_pid,'severity':'high'})
+                        report['summary']['issues_found'] += 1
+                        break
+            if not port_conflict:
+                report['diagnosis'].append({'type':'port','port':PORT,'ok':True,
+                                            'listeners':len(listeners)})
+        except Exception: pass
+        
+        # ═══ 总结 + 建议 ═══
+        report['summary']['auto_heal'] = do_heal
+        report['summary']['status'] = (
+            'HEALED' if (do_heal and report['summary']['failed'] == 0 and report['summary']['issues_found'] > 0)
+            else 'PARTIAL' if (do_heal and report['summary']['failed'] > 0)
+            else 'ISSUES_FOUND' if report['summary']['issues_found'] > 0
+            else 'ALL_GREEN'
+        )
+        
+        return jsonify({'success': True, 'report': report})
+    
     # ── 简化版 admin 面板 (admin 角色就能进, 不走 SA 双硬件) ──
     @app.route('/ops/admin', methods=['GET'])
     def _server_ops_admin():
