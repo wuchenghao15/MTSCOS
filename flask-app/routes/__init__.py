@@ -611,8 +611,11 @@ def _install_server_overrides(app):
     @app.route('/api/health', methods=['GET'])
     def _server_api_health():
         """健康检查 (SERVER 模式短路认证)"""
+        try:
+            from app.node_role import NODE_ROLE as _nr
+        except ImportError: _nr = "SERVER"
         return jsonify({
-            'success': True, 'status': 'ok', 'node_role': getattr(__import__('app.node_role','from app.node_role import NODE_ROLE').NODE_ROLE,'NODE_ROLE',NODE_ROLE),
+            'success': True, 'status': 'ok', 'node_role': _nr,
             'time': time.strftime('%Y-%m-%d %H:%M:%S'),
         })
     
