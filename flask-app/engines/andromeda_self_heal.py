@@ -1,22 +1,19 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-仙女座自愈引擎 (Andromeda Self-Heal Engine)
-===========================================
-独立进程 — 不嵌入 Flask, 避免之前 ANDROMEDA-EVOL 在 Flask 内拉垮主进程的问题
+仙女座自愈引擎 (Andromeda Self-Heal Engine) v2.0.0
+===================================================
+独立进程 — 不嵌入 Flask, 避免 ANDROMEDA-EVOL 在 Flask 内拉垮主进程的问题
+
+v2.0.0 升级: 优先调用仙女座 MCP Hub heal_system 统一自愈入口
+  - 127.0.0.1:18899/tools/call: heal_system (POST)
+  - MCP Bridge 不可达时 → fallback 到 self_heal 原有手动逻辑
 
 职责:
-  1. 每 30s 检查 Flask 健康 (PID 存活 + HTTP /index 200)
-  2. 发现异常 → 匹配特征库 → 执行修复脚本 → 记录结果
+  1. 每 30s 检查 Flask 健康
+  2. 发现异常 → 优先调 MCP heal_system → 不行才手动修复
   3. 健康心跳 → 写入 andromeda_health_heartbeat
   4. Flask 启动/退出追踪 → 写入 andromeda_flask_uptime
-  5. 异常经验 → 写入/更新 andromeda_self_heal_log (frequency++, last_seen)
-
-启动: python3 engines/andromeda_self_heal.py &
-停止: kill -TERM <pid>
-
-作者: Andromeda AI (仙女座)
-版本: v1.0.0 (2026-09-20)
 """
 import os, sys, time, json, signal, subprocess, sqlite3, re, urllib.request, urllib.error
 from datetime import datetime
@@ -29,7 +26,11 @@ PORT      = 8888
 HEALTHY   = 'http://localhost:%d/index' % PORT
 INTERVAL  = 30          # 心跳间隔 (秒)
 HTTP_TIMEOUT = 5
-MAX_RESTARTS_PER_HOUR = 5   # 1 小时内最多重启次数 (避免无限 loop)
+MAX_RESTARTS_PER_HOUR = 5   # 1 小时内最多重启次数
+
+# v2.0.0: 仙女座 MCP Hub — 统一自愈入口
+MCP_HUB = 'http://127.0.0.1:18899/mcp'
+USE_MCP_FIRST = True  # SERVER 模式下优先 MCP
 
 # ========== 优雅退出 ==========
 _SHUTDOWN = False
@@ -58,7 +59,7 @@ def _log_anomaly(anomaly_type, severity, description, auto_fix_applied='', fix_m
         now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         if existing:
             conn.execute("""
-                UPDATE andromeda_self_heal_log 
+                UPDATE andromeda_self_heal_log
                 SET frequency=frequency+1, last_seen=?, description=COALESCE(?,description),
                     success=? WHERE id=?
             """, (now, description or None, success, existing['id']))
@@ -237,9 +238,60 @@ def _start_flask():
         time.sleep(1)
     return None
 
-# ========== 自愈主逻辑 ==========
+# ========== MCP Hub 统一自愈入口 (v2.0.0 新增) ==========
+def _mcp_call(tool_name, arguments=None, timeout=10):
+    """调仙女座 MCP Hub tool — 返回 (ok, result_dict_or_error_msg)"""
+    try:
+        body = json.dumps({'jsonrpc':'2.0','method':'tools/call',
+                          'params':{'name':tool_name,'arguments':arguments or {}},
+                          'id':int(time.time()*1000)%100000}).encode()
+        req = urllib.request.Request(MCP_HUB, data=body, method='POST',
+                                      headers={'Content-Type':'application/json'})
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            resp = json.loads(r.read())
+        content = resp.get('result',{}).get('content',[{}])
+        text = content[0].get('text','') if content else ''
+        is_err = resp.get('result',{}).get('isError', False)
+        if is_err:
+            return False, text[:300]
+        try:
+            return True, json.loads(text) if text else {}
+        except json.JSONDecodeError:
+            return True, {'raw': text[:300]}
+    except urllib.error.URLError as e:
+        return False, f'MCP unreachable: {e.reason}'
+    except Exception as e:
+        return False, f'MCP error: {str(e)[:120]}'
+
+def _try_mcp_heal():
+    """v2.0.0: 优先用 MCP heal_system 统一自愈. 返回 (used_mcp, ok, summary)"""
+    ok_d, diag = _mcp_call('diagnose_system', timeout=12)
+    if not ok_d:
+        return False, False, f'MCP diagnose failed: {diag}'
+    summary = diag.get('report',{}).get('summary',{}) if isinstance(diag, dict) else {}
+    issues = summary.get('issues_found', 0)
+    if issues == 0:
+        return True, True, f'MCP diagnose → 0 issues, nothing to heal'
+    
+    ok_h, heal = _mcp_call('heal_system', timeout=15)
+    if not ok_h:
+        return True, False, f'MCP heal failed: {heal}'
+    h_summary = heal.get('report',{}).get('summary',{}) if isinstance(heal, dict) else {}
+    return True, True, f'MCP heal → issues={h_summary.get("issues_found")} fixed={h_summary.get("fixed")} failed={h_summary.get("failed")}'
+
+# ========== 自愈主逻辑 (v2.0.0 改: 优先 MCP) ==========
 def attempt_recovery():
-    """匹配特征库 → 执行修复"""
+    """匹配特征库 → 执行修复 (v2.0.0: 优先 MCP heal_system)"""
+    # v2.0.0: 先试 MCP Hub 统一入口
+    if USE_MCP_FIRST:
+        used_mcp, ok_mcp, msg = _try_mcp_heal()
+        if used_mcp:
+            icon = '✅' if ok_mcp else '⚠️'
+            print(f"[ANROMEDA] {icon} MCP Hub: {msg}")
+            if ok_mcp:
+                return  # MCP 已处理, 不再走手动路径
+            # MCP 失败 → 继续下面的手动 fallback
+            print(f"[ANROMEDA] 🔄 MCP 不可用, fallback 到 self_heal 手动修复")
     conn = _db()
     try:
         # 1. Flask 死了
@@ -265,7 +317,7 @@ def attempt_recovery():
 
             # 查特征库找修复脚本
             seed = conn.execute("""
-                SELECT * FROM andromeda_self_heal_log 
+                SELECT * FROM andromeda_self_heal_log
                 WHERE anomaly_type=? AND resolved=0 ORDER BY frequency DESC LIMIT 1
             """, (atype,)).fetchone()
 
