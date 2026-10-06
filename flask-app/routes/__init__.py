@@ -28,107 +28,286 @@ from flask import Blueprint, Response
 from app.middlewares.system_container import system_container
 
 # ───────────────────────────────────────────────────────────────
-# 🔧 SERVER 模式后端运维状态面板 (v22.10.6)
+# 🔧 SERVER 模式后端运维状态面板 (v22.10.6 → v22.10.7 美化)
 # Mac mini 是纯后端服务器 — 不需要首页/登录页/SA dashboard
 # 本机打开浏览器 → 直接显示后端健康状态 (纯 HTML, 不走模板)
+# 设计: 暗色主题 / CSS Grid 卡片 / daemon 色条 / 顶部健康度条
+# 约束: 零外部依赖 (无 CDN/JS), 纯内联 CSS
 # ───────────────────────────────────────────────────────────────
+
+# ── 共享 CSS 变量 (Ops Panel + Login Panel 共用) ──────────────
+_SERVER_CSS_VARS = """
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0f1115">
+<style>
+:root{
+  --bg:#0f1115;--bg-2:#141821;--card:#1a1d24;--card-2:#222730;
+  --border:#2a2f3a;--border-2:#3a4050;
+  --text:#d4d4d4;--text-dim:#8892a6;--text-mute:#5a6478;
+  --ok:#4ec9b0;--ok-dim:rgba(78,201,176,.15);
+  --bad:#f48771;--bad-dim:rgba(244,135,113,.15);
+  --warn:#dcdcaa;--warn-dim:rgba(220,220,170,.15);
+  --accent:#569cd6;--accent-dim:rgba(86,156,214,.15);
+  --radius:10px;--radius-sm:6px;
+  --shadow:0 2px 12px rgba(0,0,0,.4);
+  --mono:-apple-system,'SF Mono','Menlo','Consolas',monospace;
+  --sans:-apple-system,'SF Pro Display','PingFang SC',system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);margin:0;min-height:100vh;-webkit-font-smoothing:antialiased}
+code,.mono{font-family:var(--mono);font-size:12px;background:var(--bg-2);padding:2px 6px;border-radius:3px}
+</style>
+"""
+
 def _server_ops_panel():
     """SERVER 模式下 / 和 /index 返回后端运维状态面板 (纯 HTML, 无前端依赖)"""
     try:
-        from app.node_role import NODE_ROLE, is_server, is_dev, is_client, NODE_INFO
+        from app.node_role import NODE_ROLE, is_server, is_dev, is_client
     except ImportError:
         NODE_ROLE = "SERVER"
     
     import os, time, socket, subprocess
     
-    # 收集状态
-    daemon_rows = ""
+    # ── 收集状态 ──
+    daemon_items = []
+    healthy_count = 0
     try:
-        result = subprocess.run(
-            ['launchctl', 'list'], capture_output=True, text=True, timeout=5
-        )
+        result = subprocess.run(['launchctl', 'list'], capture_output=True, text=True, timeout=5)
         for line in result.stdout.splitlines():
-            if 'mtscos' in line.lower():
-                parts = line.split()
-                if len(parts) >= 3:
-                    pid = parts[0] if parts[0] != '-' else '-'
-                    exit_code = parts[1]
-                    label = parts[2]
-                    status = "🟢" if exit_code == "0" else "🔴"
-                    pid_display = pid if pid != '-' else '—'
-                    daemon_rows += f'<tr><td>{status}</td><td>{label}</td><td>{pid_display}</td><td>{exit_code}</td></tr>\n'
+            if 'mtscos' not in line.lower(): continue
+            parts = line.split()
+            if len(parts) < 3: continue
+            pid = parts[0]; exit_code = parts[1]; label = parts[2]
+            is_healthy = (exit_code == "0")
+            if is_healthy: healthy_count += 1
+            daemon_items.append({
+                'pid': pid if pid != '-' else '—',
+                'exit': exit_code,
+                'label': label,
+                'ok': is_healthy,
+            })
     except Exception:
-        daemon_rows = '<tr><td colspan="4">launchctl 不可用</td></tr>'
+        pass
+    
+    total_daemons = len(daemon_items) if daemon_items else 1
+    health_pct = int(healthy_count * 100 / total_daemons)
+    health_color = "var(--ok)" if health_pct >= 80 else "var(--warn)" if health_pct >= 50 else "var(--bad)"
     
     # Flask 进程
-    flask_info = "—"
+    flask_ok = False
     try:
         result = subprocess.run(['ps', 'aux'], capture_output=True, text=True, timeout=3)
-        for line in result.stdout.splitlines():
-            if 'server_real_db' in line or 'modular_start' in line:
-                flask_info = "🟢 Flask 进程运行中"
-                break
-    except Exception:
-        pass
+        flask_ok = any(('server_real_db' in l or 'modular_start' in l) for l in result.stdout.splitlines())
+    except Exception: pass
+    
+    # HTTP 可达性自测
+    http_ok = False
+    http_code = "—"
+    try:
+        result = subprocess.run(['curl','-s','-o','/dev/null','-w','%{http_code}','--max-time','2','http://127.0.0.1:8888/'],
+                                capture_output=True, text=True, timeout=5)
+        http_code = result.stdout.strip()
+        http_ok = http_code in ('200','302','301')
+    except Exception: pass
     
     # 磁盘
-    disk_str = "—"
+    disk_pct = 0; disk_used = ""; disk_total = ""
     try:
-        result = subprocess.run(['df', '-h', '/'], capture_output=True, text=True, timeout=3)
+        result = subprocess.run(['df','-h','/'], capture_output=True, text=True, timeout=3)
         lines = result.stdout.splitlines()
         if len(lines) >= 2:
-            disk_str = lines[1].strip()
-    except Exception:
-        pass
+            parts = lines[1].split()
+            disk_total = parts[1] if len(parts) > 1 else ""
+            disk_used = parts[2] if len(parts) > 2 else ""
+            disk_pct = int(parts[4].rstrip('%')) if len(parts) > 4 and parts[4].rstrip('%').isdigit() else 0
+    except Exception: pass
+    disk_color = "var(--ok)" if disk_pct < 80 else "var(--warn)" if disk_pct < 95 else "var(--bad)"
     
     # 主机
-    try:
-        hostname = socket.gethostname()
-    except Exception:
-        hostname = "—"
+    try: hostname = socket.gethostname()
+    except Exception: hostname = "—"
+    try: ip = socket.gethostbyname(socket.gethostname())
+    except Exception: ip = "—"
+    uptime_sec = int(time.time() - os.stat('/proc/uptime').st_atime if os.path.exists('/proc/uptime') else time.time())
+    
+    # daemon 行 (左色条)
+    daemon_rows = ""
+    for d in daemon_items:
+        bar = "var(--ok)" if d['ok'] else "var(--bad)"
+        badge = "●" if d['ok'] else "○"
+        badge_color = "var(--ok)" if d['ok'] else "var(--bad)"
+        exit_style = 'color:var(--ok)' if d['ok'] else 'color:var(--bad)'
+        daemon_rows += f"""
+<div class="daemon-row">
+  <div class="daemon-bar" style="background:{bar}"></div>
+  <div class="daemon-body">
+    <span class="daemon-badge" style="color:{badge_color}">{badge}</span>
+    <span class="daemon-label mono">{d['label']}</span>
+    <span class="daemon-pid mono">{d['pid']}</span>
+    <span class="daemon-exit mono" style="{exit_style}">{d['exit']}</span>
+  </div>
+</div>"""
+    
+    role_label = {'SERVER':'🖥️','DEV':'💻','CLIENT':'📱'}.get(NODE_ROLE,'❓') + f" {NODE_ROLE}"
+    now_str = time.strftime('%H:%M:%S')
     
     panel = f"""<!DOCTYPE html>
-<html><head><meta charset="utf-8">
-<title>MTSCOS AI · SERVER Ops Panel</title>
+<html><head>
+{_SERVER_CSS_VARS}
+<title>MTSCOS AI · Server Ops</title>
 <style>
-body{{font-family:-apple-system,'SF Mono','Courier New',monospace;background:#0f1115;color:#d4d4d4;margin:20px}}
-h1{{color:#4ec9b0;border-bottom:1px solid #333;padding-bottom:8px}}
-h2{{color:#569cd6;margin-top:30px}}
-table{{border-collapse:collapse;width:100%;margin:10px 0}}
-th,td{{padding:8px 12px;text-align:left;border-bottom:1px solid #2a2a2a}}
-th{{color:#9cdcfe;background:#1a1d24;font-size:13px}}
-.ok{{color:#4ec9b0}}.bad{{color:#f48771}}.warn{{color:#dcdcaa}}
-code{{background:#1a1d24;padding:2px 6px;border-radius:3px}}
-</style></head><body>
+.layout{{max-width:1100px;margin:0 auto;padding:24px 28px 60px}}
 
-<h1>🖥️ MTSCOS AI · Server Ops Panel</h1>
-<p><code>NODE_ROLE={NODE_ROLE}</code> &nbsp; <code>host={hostname}</code> &nbsp; <code>time={time.strftime('%Y-%m-%d %H:%M:%S')}</code></p>
+/* ── 顶部健康度条 ── */
+.topbar{{
+  background:linear-gradient(135deg,var(--card),var(--card-2));
+  border:1px solid var(--border);border-radius:var(--radius);
+  padding:16px 22px;margin-bottom:20px;
+  display:flex;align-items:center;gap:22px;flex-wrap:wrap;
+  box-shadow:var(--shadow);
+}}
+.topbar-title{{font-size:15px;font-weight:600;color:var(--text)}}
+.topbar-sub{{font-size:12px;color:var(--text-dim);margin-top:2px;font-family:var(--mono)}}
+.health-bar{{flex:1;min-width:180px;height:8px;background:var(--bg-2);border-radius:4px;overflow:hidden}}
+.health-fill{{height:100%;border-radius:4px;transition:width .4s;background:{health_color}}}
+.health-pct{{font-family:var(--mono);font-size:13px;color:{health_color};font-weight:600}}
 
-<h2>📊 System</h2>
-<table>
-<tr><th>Check</th><th>Status</th></tr>
-<tr><td>Flask API</td><td class="ok">{flask_info}</td></tr>
-<tr><td>Disk /</td><td><code>{disk_str}</code></td></tr>
-<tr><td>Role</td><td>{'🖥️ SERVER 服务器' if is_server else '💻 DEV 开发机' if is_dev else '📱 CLIENT 客户机'}</td></tr>
-</table>
+/* ── Grid 卡片 ── */
+.grid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-bottom:20px}}
+.card{{
+  background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
+  padding:18px 20px;box-shadow:var(--shadow);
+}}
+.card-title{{font-size:11px;font-weight:700;color:var(--text-dim);letter-spacing:.08em;text-transform:uppercase;margin-bottom:14px;display:flex;align-items:center;gap:8px}}
+.card-title::before{{content:"";width:3px;height:12px;background:var(--accent);border-radius:2px}}
 
-<h2>🔧 launchctl Daemons</h2>
-<table>
-<tr><th>Status</th><th>Label</th><th>PID</th><th>Exit</th></tr>
+/* ── Stat 行 ── */
+.stat{{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)}}
+.stat:last-child{{border-bottom:none}}
+.stat-label{{font-size:13px;color:var(--text-dim)}}
+.stat-val{{font-family:var(--mono);font-size:13px;color:var(--text);display:flex;align-items:center;gap:8px}}
+.dot{{width:8px;height:8px;border-radius:50%;display:inline-block}}
+.dot-ok{{background:var(--ok);box-shadow:0 0 6px var(--ok)}}
+.dot-bad{{background:var(--bad);box-shadow:0 0 6px var(--bad)}}
+
+/* ── 磁盘进度 ── */
+.disk-bar{{height:6px;background:var(--bg-2);border-radius:3px;overflow:hidden;margin-top:6px}}
+.disk-fill{{height:100%;border-radius:3px;background:{disk_color};width:{disk_pct}%}}
+.disk-label{{font-size:11px;color:var(--text-mute);font-family:var(--mono);margin-top:4px}}
+
+/* ── Daemon 列表 ── */
+.daemon-list{{max-height:340px;overflow-y:auto}}
+.daemon-list::-webkit-scrollbar{{width:6px}}
+.daemon-list::-webkit-scrollbar-thumb{{background:var(--border-2);border-radius:3px}}
+.daemon-row{{display:flex;align-items:stretch;margin-bottom:6px;border-radius:var(--radius-sm);overflow:hidden;background:var(--bg-2);border:1px solid var(--border);transition:border-color .15s}}
+.daemon-row:hover{{border-color:var(--border-2)}}
+.daemon-bar{{width:3px;flex-shrink:0}}
+.daemon-body{{flex:1;display:flex;align-items:center;gap:10px;padding:8px 12px;font-size:12px}}
+.daemon-badge{{font-size:10px;line-height:1}}
+.daemon-label{{flex:1;color:var(--text);font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}
+.daemon-pid{{color:var(--text-dim);width:44px;text-align:right}}
+.daemon-exit{{width:28px;text-align:right}}
+
+/* ── Quick Links ── */
+.link-grid{{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}}
+.link-btn{{
+  display:flex;align-items:center;gap:10px;
+  padding:12px 14px;background:var(--bg-2);border:1px solid var(--border);
+  border-radius:var(--radius-sm);color:var(--text);text-decoration:none;
+  font-size:13px;transition:all .15s;
+}}
+.link-btn:hover{{border-color:var(--accent);background:var(--accent-dim);transform:translateY(-1px)}}
+.link-btn .ico{{width:22px;height:22px;display:flex;align-items:center;justify-content:center;border-radius:6px;background:var(--accent-dim);color:var(--accent);font-size:12px}}
+.link-btn.primary{{border-color:var(--ok);background:var(--ok-dim);color:var(--ok)}}
+.link-btn.primary:hover{{background:var(--ok);color:var(--bg)}}
+
+/* ── Footer ── */
+.footer{{text-align:center;color:var(--text-mute);font-size:11px;margin-top:30px;font-family:var(--mono)}}
+
+/* ── 响应式 ── */
+@media(max-width:600px){{
+  .link-grid{{grid-template-columns:1fr}}
+  .topbar{{gap:12px}}
+}}
+</style></head>
+<body>
+<div class="layout">
+
+<!-- 顶部健康度条 -->
+<div class="topbar">
+  <div>
+    <div class="topbar-title">🖥️ MTSCOS AI · Server Ops</div>
+    <div class="topbar-sub">{hostname} · {ip} · {role_label} · {now_str}</div>
+  </div>
+  <div class="health-bar"><div class="health-fill" style="width:{health_pct}%"></div></div>
+  <div class="health-pct">{healthy_count}/{total_daemons}</div>
+</div>
+
+<!-- Grid 卡片 -->
+<div class="grid">
+
+  <!-- System -->
+  <div class="card">
+    <div class="card-title">System</div>
+    <div class="stat">
+      <span class="stat-label">Flask API</span>
+      <span class="stat-val">
+        <span class="dot {'dot-ok' if flask_ok else 'dot-bad'}"></span>
+        {'Running' if flask_ok else 'Down'}
+      </span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">HTTP Check</span>
+      <span class="stat-val {'color:var(--ok)' if http_ok else 'color:var(--bad)'}">{http_code}</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">Role</span>
+      <span class="stat-val">{role_label}</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">Hostname</span>
+      <span class="stat-val">{hostname}</span>
+    </div>
+  </div>
+
+  <!-- Storage -->
+  <div class="card">
+    <div class="card-title">Storage</div>
+    <div class="stat">
+      <span class="stat-label">Disk /</span>
+      <span class="stat-val">{disk_used}/{disk_total}</span>
+    </div>
+    <div class="disk-bar"><div class="disk-fill"></div></div>
+    <div class="disk-label">usage {disk_pct}%</div>
+  </div>
+
+  <!-- Quick Links -->
+  <div class="card" style="grid-column:span 1">
+    <div class="card-title">Quick Links</div>
+    <div class="link-grid">
+      <a class="link-btn" href="/"><span class="ico">🖥</span> Ops Panel</a>
+      <a class="link-btn primary" href="/auth/login"><span class="ico">🔐</span> Login</a>
+      <a class="link-btn" href="/api/health" target="_blank"><span class="ico">♥</span> /api/health</a>
+      <a class="link-btn" href="/api/handshake/status" target="_blank"><span class="ico">⚡</span> Handshake</a>
+    </div>
+  </div>
+
+</div>
+
+<!-- Daemons -->
+<div class="card">
+  <div class="card-title">Daemons</div>
+  <div class="daemon-list">
 {daemon_rows}
-</table>
+  </div>
+</div>
 
-<h2>📚 Quick Links</h2>
-<p>
-  <a href="/api/health" style="color:#569cd6">/api/health</a> &nbsp;|&nbsp;
-  <a href="/api/handshake/status" style="color:#569cd6">/api/handshake/status</a> &nbsp;|&nbsp;
-  <a href="/auth/login" style="color:#4ec9b0">🔐 登录</a> &nbsp;|&nbsp;
-  <a href="/admin/dashboard" style="color:#569cd6">/admin/dashboard</a>
-</p>
+<div class="footer">
+  SERVER 模式 · zero frontend dependency · last refresh {now_str}
+</div>
 
-<p style="color:#666;font-size:12px;margin-top:40px">
-  SERVER 模式: 无前端, 无 SA dashboard, 纯后端运维面板
-</p>
+</div>
 </body></html>"""
     return Response(panel, mimetype='text/html; charset=utf-8', status=200)
 
@@ -140,33 +319,76 @@ def _server_login_panel(error_msg=""):
     except ImportError:
         NODE_ROLE = "SERVER"
     
-    error_html = f'<div style="color:#f48771;margin:10px 0">{error_msg}</div>' if error_msg else ""
+    error_html = f'<div class="err">{error_msg}</div>' if error_msg else ""
     
     panel = f"""<!DOCTYPE html>
-<html><head><meta charset="utf-8">
+<html><head>
+{_SERVER_CSS_VARS}
 <title>MTSCOS AI · Server Login</title>
 <style>
-body{{font-family:-apple-system,'SF Mono','Courier New',monospace;background:#0f1115;color:#d4d4d4;margin:40px;display:flex;justify-content:center}}
-.card{{background:#1a1d24;border:1px solid #2a2a2a;border-radius:10px;padding:30px;width:360px;max-width:90vw}}
-h1{{color:#4ec9b0;font-size:18px;margin:0 0 20px}}
-input{{width:100%;padding:10px;background:#0f1115;border:1px solid #3a3a3a;color:#d4d4d4;border-radius:5px;margin:6px 0 14px;font-size:14px;box-sizing:border-box}}
-input:focus{{outline:none;border-color:#4ec9b0}}
-button{{width:100%;padding:12px;background:#4ec9b0;color:#0f1115;border:none;border-radius:5px;font-size:14px;font-weight:700;cursor:pointer}}
-button:hover{{background:#3dd3a1}}
-code{{background:#0f1115;padding:2px 6px;border-radius:3px;color:#9cdcfe;font-size:12px}}
-.back{{color:#569cd6;font-size:12px;text-decoration:none;display:inline-block;margin-top:15px}}
-.err{{color:#f48771;margin:10px 0;font-size:13px}}
+body{{display:flex;align-items:center;justify-content:center;padding:40px 20px;min-height:100vh}}
+.login-card{{
+  background:linear-gradient(160deg,var(--card),var(--card-2));
+  border:1px solid var(--border);border-radius:var(--radius);
+  padding:36px 32px;width:400px;max-width:100%;
+  box-shadow:var(--shadow);position:relative;overflow:hidden;
+}}
+.login-card::before{{
+  content:"";position:absolute;top:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,var(--ok),var(--accent));
+}}
+.brand{{display:flex;align-items:center;gap:14px;margin-bottom:26px}}
+.brand-logo{{
+  width:44px;height:44px;border-radius:10px;
+  background:linear-gradient(135deg,var(--ok),var(--accent));
+  display:flex;align-items:center;justify-content:center;
+  color:#0f1115;font-weight:800;font-size:20px;
+  box-shadow:0 4px 16px rgba(78,201,176,.3);
+}}
+.brand-text h1{{font-size:16px;font-weight:600;color:var(--text);margin:0}}
+.brand-text p{{font-size:12px;color:var(--text-dim);margin:2px 0 0;font-family:var(--mono)}}
+.field{{margin-bottom:14px}}
+.field label{{display:block;font-size:11px;font-weight:600;color:var(--text-dim);letter-spacing:.05em;text-transform:uppercase;margin-bottom:6px}}
+.field input{{
+  width:100%;padding:11px 14px;background:var(--bg);border:1px solid var(--border-2);
+  color:var(--text);border-radius:var(--radius-sm);font-size:14px;
+  transition:border-color .15s,box-shadow .15s;box-sizing:border-box;
+  font-family:var(--sans);
+}}
+.field input:focus{{outline:none;border-color:var(--ok);box-shadow:0 0 0 3px var(--ok-dim)}}
+.submit-btn{{
+  width:100%;padding:13px;background:linear-gradient(135deg,var(--ok),#3dd3a1);
+  color:var(--bg);border:none;border-radius:var(--radius-sm);
+  font-size:14px;font-weight:700;cursor:pointer;margin-top:8px;
+  transition:transform .15s,box-shadow .15s;
+}}
+.submit-btn:hover{{transform:translateY(-1px);box-shadow:0 6px 20px rgba(78,201,176,.35)}}
+.submit-btn:active{{transform:translateY(0)}}
+.err{{color:var(--bad);font-size:12px;background:var(--bad-dim);padding:10px 14px;border-radius:var(--radius-sm);margin-bottom:14px;border:1px solid rgba(244,135,113,.2)}}
+.back{{display:flex;align-items:center;gap:6px;color:var(--text-dim);font-size:12px;text-decoration:none;margin-top:20px;transition:color .15s}}
+.back:hover{{color:var(--accent)}}
 </style></head><body>
-<div class="card">
-<h1>🔐 MTSCOS AI · Server Login</h1>
-<p><code>NODE_ROLE={NODE_ROLE}</code> &nbsp; <span style="color:#666;font-size:12px">Mac mini 后端登录</span></p>
-{error_html}
-<form method="POST" action="/auth/login">
-<input type="text" name="username" placeholder="用户名" required autofocus>
-<input type="password" name="password" placeholder="密码" required>
-<button type="submit">登录</button>
-</form>
-<a href="/" class="back">← 返回运维面板</a>
+<div class="login-card">
+  <div class="brand">
+    <div class="brand-logo">M</div>
+    <div class="brand-text">
+      <h1>Server Login</h1>
+      <p>NODE_ROLE={NODE_ROLE}</p>
+    </div>
+  </div>
+  {error_html}
+  <form method="POST" action="/auth/login">
+    <div class="field">
+      <label>Username</label>
+      <input type="text" name="username" placeholder="admin / wuchenghao15" required autofocus autocomplete="username">
+    </div>
+    <div class="field">
+      <label>Password</label>
+      <input type="password" name="password" placeholder="••••••" required autocomplete="current-password">
+    </div>
+    <button type="submit" class="submit-btn">Sign In</button>
+  </form>
+  <a href="/" class="back">← Back to Ops Panel</a>
 </div>
 </body></html>"""
     return Response(panel, mimetype='text/html; charset=utf-8', status=200)
