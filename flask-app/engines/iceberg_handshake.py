@@ -744,12 +744,27 @@ class HandshakeEngine:
                         except Exception as _je:
                             print(f"  ⚠️ {tbl}: PULL json 解析失败 {_je}")
                     if pulled:
-                        sql = f"INSERT OR IGNORE INTO {tbl} ({','.join(col_names)}) VALUES ({','.join(['?']*len(col_names))})"
-                        mydb.executemany(sql, pulled)
-                        mydb.commit()
-                        print(f"  ↑ {tbl:35s} PULL {len(pulled):4d} rows (base64 json)")
-                        if not push_pks:
-                            stats[tbl] = {"direction": "pull", "rows": len(pulled)}
+                        # 🔧 v24.3.7 schema 漂移容错: 本地 22 列 vs 远端可能 13 列
+                        # 远端 pull 回来的 row tuple 列数不一定匹配本地 col_names
+                        # 修复: 动态取 pulled 第一条的实际列数, 只插前 N 个公共列
+                        try:
+                            remote_cols = len(pulled[0])  # 远端实际列数
+                            if remote_cols != len(col_names):
+                                _common_cols = col_names[:remote_cols]
+                                print(f"  🔧 {tbl}: schema mismatch local={len(col_names)} remote={remote_cols} → 对齐前 {remote_cols} 列")
+                            else:
+                                _common_cols = col_names
+                            sql = f"INSERT OR IGNORE INTO {tbl} ({','.join(_common_cols)}) VALUES ({','.join(['?']*len(_common_cols))})"
+                            # 确保每行列数对齐
+                            aligned = [tuple(r[:len(_common_cols)]) for r in pulled]
+                            mydb.executemany(sql, aligned)
+                            mydb.commit()
+                            print(f"  ↑ {tbl:35s} PULL {len(pulled):4d} rows (base64 json)")
+                            if not push_pks:
+                                stats[tbl] = {"direction": "pull", "rows": len(pulled)}
+                        except sqlite3.ProgrammingError as _pe:
+                            print(f"  ⚠️ {tbl}: PULL schema drift → skip ({_pe})")
+                            stats[tbl] = {"direction": "error", "error": f"schema_drift: {_pe}"}
 
                 if not push_pks and not pull_pks:
                     stats[tbl] = {"direction": "equal", "rows": 0}
