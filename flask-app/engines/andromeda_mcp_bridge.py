@@ -3,26 +3,24 @@
 """
 仙女座 MCP Hub v2.1.0 — 发散升级版
 ===================================
-零依赖 (Python stdlib only), 监听 127.0.0.1:18899 (loopback only)
+零依赖 Python stdlib only, 监听 127.0.0.1:18899 loopback only
 
 v2.1.0 发散升级:
-  🧠 ai_diagnose — 诊断结果喂本地 AI (规则引擎+模式匹配) 做根因分析 + 修复建议
-  🌐 cross_tunnel_health — Cloudflare Tunnel 跨设备通道检测 (绕过路由器 AP Isolation)
-  📡 MCP resources — 实时系统指标暴露 (daemon 状态/CPU/内存/磁盘), 可订阅
-  🔒 exec_shell v3 — 彻底移除 python3 -c, 全面禁止代码执行
+  ai_diagnose — 诊断结果喂本地 AI 规则引擎做根因分析 + 修复建议
+  cross_tunnel_health — Cloudflare Tunnel 跨设备通道检测
+  MCP resources — 实时系统指标暴露 (6 个 URI)
+  exec_shell v3 — 彻底移除 python3 -c, 全面禁止代码执行
 
 v2.0.0:
-  🪐 Andromeda 原生   — 11 个运维 tools
-  📄 Marvis Editor SDK — 代理 191 个腾讯文档 tools (Auth disabled!)
-  🎯 合计 202+ tools!
+  Andromeda 原生 — 14 个运维 tools
+  Marvis Editor SDK — 代理 191 个腾讯文档 tools
+  合计 205 tools!
 """
+# 启动: python3 andromeda_mcp_bridge.py &
+# 自启动: launchctl load com.mtscos.andromeda-mcp.plist
+# 作者: Andromeda AI 仙女座
+# 版本: v2.1.0 发散升级版 Oct 7 2026
 
-启动: python3 andromeda_mcp_bridge.py &
-自启动: launchctl load com.mtscos.andromeda-mcp.plist
-
-作者: Andromeda AI (仙女座)
-版本: v2.0.0 (2026-10-07) — Marvis Editor SDK 代理集成
-"""
 import json, os, sys, time, signal, socket, subprocess, sqlite3, threading
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.request import urlopen, Request
