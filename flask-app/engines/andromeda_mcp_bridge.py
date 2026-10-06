@@ -137,12 +137,18 @@ _SAFE_SHELL_PREFIXES = ('curl','ls','ps','df','top','pgrep','launchctl','netstat
                         'cat','head','tail','grep','wc','file','python3 -c')
 def tool_exec_shell(cmd, **kw):
     """执行受限 shell 命令. 允许的: curl/ls/ps/df/pgrep/launchctl 等运维只读命令"""
-    cmd_l = cmd.strip().lower()
+    cmd_stripped = cmd.strip()
+    cmd_l = cmd_stripped.lower()
     allowed = any(cmd_l.startswith(p) for p in _SAFE_SHELL_PREFIXES)
-    forbidden = any(x in cmd_l for x in ['rm -rf','shutdown','reboot','sudo','> /','| nc',';','&&','> ~/'])
+    # 通用安全禁令: 管道/重定向/复合命令/高危关键词/反引号/$()命令替换
+    forbidden_patterns = ['|','>','>>','<',';','&&','||','`','$(','rm ','rm -rf',
+                         'shutdown','reboot','sudo','su ','chmod','chown','mkfs',
+                         'curl |','wget |','nc -l',
+                         'eval ','exec ','nohup ','& ','bg %','kill -9']
+    forbidden = any(p in cmd_l for p in forbidden_patterns)
     if not allowed or forbidden:
-        return {'ok':False,'error':'command not allowed (security)',
-                'allowed_prefixes':_SAFE_SHELL_PREFIXES[:8]}
+        return {'ok':False,'error':'command not allowed (security sandbox)',
+                'allowed_prefixes':_SAFE_SHELL_PREFIXES}
     try:
         r = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=TIMEOUT)
         out = (r.stdout + r.stderr)[:2000]
