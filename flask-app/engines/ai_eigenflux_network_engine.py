@@ -38,11 +38,13 @@ _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 _FLASK_APP_DIR = os.path.abspath(os.path.join(_SCRIPT_DIR, ".."))
 _PROJECT_ROOT = os.path.abspath(os.path.join(_FLASK_APP_DIR, ".."))
 _DB_CANDIDATES = [
+    # 🔧 v5.4 加 flask-app/database/app.db (Flask 活跃库, 有 eigenflux 数据)
+    os.path.join(_PROJECT_ROOT, "flask-app", "database", "app.db"),
     os.path.join(_PROJECT_ROOT, "_runtime", "databases", "Database", "app.db"),
     os.path.join(_FLASK_APP_DIR, "app.db"),
     os.path.join(_PROJECT_ROOT, "app.db"),
 ]
-APP_DB = next((p for p in _DB_CANDIDATES if os.path.exists(p)), _DB_CANDIDATES[0])
+APP_DB = next((p for p in _DB_CANDIDATES if os.path.exists(p) and os.path.getsize(p) > 1_000_000), _DB_CANDIDATES[0])
 
 _PID_DIR = os.path.join(_PROJECT_ROOT, "_runtime", "pids")
 _LOG_DIR = os.path.join(_PROJECT_ROOT, "_runtime", "logs")
