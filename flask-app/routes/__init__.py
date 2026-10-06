@@ -980,9 +980,11 @@ def _install_server_overrides(app):
                 
                 # ── 自愈: 崩溃的 daemon 自动重启 ──
                 if do_heal and not ok:
-                    # 白名单 (不重启 Flask 自身)
+                    # 白名单 (不重启 Flask 自身 + SSH 反向隧道 — 会断连接!)
                     if 'flask' in label and 'smart' not in label:
                         report['fixes'].append({'label':label,'action':'SKIP','reason':'flask self-preserve'})
+                    elif 'tunnel' in label.lower():
+                        report['fixes'].append({'label':label,'action':'SKIP','reason':'tunnel self-preserve (would break SSH)'})
                     else:
                         healed, msg = _restart(label)
                         report['fixes'].append({'label':label,'action':'RESTART',
@@ -1031,13 +1033,12 @@ def _install_server_overrides(app):
                                         'severity':'high','issue':{'type':'handshake_disconnected'}})
             report['summary']['issues_found'] += 1
             if do_heal:
-                # 重启 andromeda-tunnel + andromeda 触发重连
-                for svc in ['com.mtscos.andromeda-tunnel','com.mtscos.andromeda']:
-                    healed, msg = _restart(svc, wait=1.5)
-                    report['fixes'].append({'label':svc,'action':'RESTART',
-                                            'ok':healed,'msg':msg})
-                    if healed: report['summary']['fixed'] += 1
-                    else: report['summary']['failed'] += 1
+                # 只重启 andromeda — 不重启 tunnel (会断 SSH 连接!)
+                healed, msg = _restart('com.mtscos.andromeda', wait=2.0)
+                report['fixes'].append({'label':'com.mtscos.andromeda','action':'RESTART',
+                                        'ok':healed,'msg':msg})
+                if healed: report['summary']['fixed'] += 1
+                else: report['summary']['failed'] += 1
         else:
             report['diagnosis'].append({'type':'handshake','state':handshake_state,'ok':handshake_state not in ('DISCONNECTED',None)})
         
