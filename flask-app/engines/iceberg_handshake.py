@@ -367,28 +367,28 @@ class HandshakeEngine:
         while not self._stop_flag.is_set():
             state = self.state()
             pong = self.ping_remote(timeout=2.0)
+            now_iso = time.strftime("%Y-%m-%d %H:%M:%S")  # 🔧 v24.3.8 统一时间戳变量
             if pong:
                 consecutive_fail = 0
                 last_pong_ts = time.time()
+                # 🔧 v24.3.8 每次收到 PONG 同时更新 heartbeat + pong (之前只有 else 分支更新 last_pong)
+                self.db.execute("UPDATE mt_handshake_state SET last_heartbeat=?, last_pong=?, updated_at=CURRENT_TIMESTAMP WHERE id=1",
+                                (now_iso, now_iso))
+                self.db.commit()
                 # 状态推进
                 if state in (NodeState.DISCONNECTED, NodeState.HANDSHAKING):
                     self._set_state(NodeState.CONNECTED,
                                     capabilities=pong.get("capabilities"),
-                                    rules_version=pong.get("rules_version"),
-                                    last_heartbeat=time.strftime("%Y-%m-%d %H:%M:%S"))
+                                    rules_version=pong.get("rules_version"))
                     # Phase 2: 首次握手成功 → 触发完整链路
                     threading.Thread(target=self._trigger_bidirectional_sync, args=(pong,), daemon=True).start()
                 elif state == NodeState.PENDING_SYNC:
                     # 🆕 重连成功 → drain 缓冲队列 → 完整链路
                     self._set_state(NodeState.CONNECTED,
-                                    capabilities=pong.get("capabilities"),
-                                    last_heartbeat=time.strftime("%Y-%m-%d %H:%M:%S"))
+                                    capabilities=pong.get("capabilities"))
                     threading.Thread(target=self._trigger_bidirectional_sync, args=(pong,), daemon=True).start()
                     threading.Thread(target=self.drain_queue, args=(pong,), daemon=True).start()
                 else:
-                    self.db.execute("UPDATE mt_handshake_state SET last_pong=?, updated_at=CURRENT_TIMESTAMP WHERE id=1",
-                                    (time.strftime("%Y-%m-%d %H:%M:%S"),))
-                    self.db.commit()
                     # 🆕 已在线 → 每 10 分钟周期性重同步一次 (保活数据新鲜度)
                     periodic_sync_counter += 1
                     if periodic_sync_counter >= 40:  # 15s × 40 = 600s
