@@ -53,11 +53,17 @@ is_server   = NODE_ROLE == "SERVER"
 is_client   = NODE_ROLE == "CLIENT"
 
 # ── 能力矩阵 (谁能做什么) ─────────────────────────────────────────
+# 🔧 v1.1 修正: static + template 全角色开放
+#   之前 ALLOW_STATIC=is_dev|is_client, ALLOW_TEMPLATE=is_dev — SERVER 禁了
+#   → Mac mini 登录页 CSS/JS 404, render_template 失败 → fallback 裸 HTML
+#   修正: SERVER 也需要 static/template (登录页/管理页是后台的一部分)
+#   SERVER 只禁 dev_dashboard / history blueprint (DEV 专用调试页)
+# ──────────────────────────────────────────────────────────────────
 #                    DEV   SERVER   CLIENT
-ALLOW_TEMPLATE      = is_dev                    # render_template / 前端页面
-ALLOW_STATIC        = is_dev or is_client       # static 静态文件 (SERVER 纯 API 不需要)
+ALLOW_TEMPLATE      = True                      # render_template (全角色: 登录/管理页)
+ALLOW_STATIC        = True                      # static 静态文件 (全角色: CSS/JS/图片)
 ALLOW_ENGINES       = is_dev or is_server       # ai_engines / smart_mount / eigenflux daemon
-ALLOW_DEV_PANEL     = is_dev                    # dev_dashboard / debug 路由
+ALLOW_DEV_PANEL     = is_dev                    # dev_dashboard / debug 路由 (DEV only)
 ALLOW_SYNC          = is_dev or is_server       # handshake 双向同步
 ALLOW_LOCAL_AI      = is_dev or is_server       # 本地推理引擎
 ALLOW_ADMIN         = is_dev or is_server       # admin 管理接口
