@@ -494,21 +494,255 @@ def _root_redirect():
 #   → 用 before_request 钩子拦截 (在 routes/__init__.py 被 register_all_blueprints 调用时挂载)
 # ───────────────────────────────────────────────────────────────
 def _install_server_overrides(app):
-    """SERVER 模式专属 before_request 钩子 — 覆盖 auth_bp /auth/login GET"""
+    """SERVER 模式专属: before_request 钩子 + 专属 API + 简化 admin 面板"""
     try:
         from app.node_role import is_server as _is_srv
-        if not _is_srv:
-            return  # DEV/CLIENT 不需要装
-    except ImportError:
-        return
+        if not _is_srv: return
+    except ImportError: return
     
+    # ── before_request: /auth/login GET → 内嵌登录面板 ──
     @app.before_request
     def _server_auth_login_override():
-        """拦截 GET /auth/login → 返回内嵌登录面板 (不走 render_template)"""
         from flask import request
         if request.method == 'GET' and request.path == '/auth/login':
             return _server_login_panel()
-        return None  # 不拦截, 继续正常路由
+    
+    # ── SERVER 专属 API (不走 auth_bp / api_bp, 无额外依赖) ──
+    import os, time, socket, sqlite3, subprocess
+    from flask import jsonify
+    
+    def _find_main_db():
+        """定位活跃主库 (server_real_db 用的那个)"""
+        try:
+            import server_real_db as _sdb
+            for attr in ['DB_PATH','APP_DB','MAIN_DB']:
+                p = getattr(_sdb, attr, None)
+                if p and os.path.exists(p): return p
+        except Exception: pass
+        # 兜底候选
+        for p in [
+            os.path.join(os.path.dirname(__file__),'database','app.db'),
+            os.path.join(os.path.dirname(os.path.abspath(__file__)),'database','app.db'),
+            os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),'database','app.db'),
+        ]:
+            if os.path.exists(p): return p
+        return None
+    
+    @app.route('/api/db/stats', methods=['GET'])
+    def _server_api_db_stats():
+        """DB 表数量 / 行数 Top 10 / 大小"""
+        db = _find_main_db()
+        if not db: return jsonify({'error':'db_not_found'}), 503
+        try:
+            conn = sqlite3.connect(db, timeout=5)
+            cur = conn.cursor()
+            cur.execute("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
+            tables = [r[0] for r in cur.fetchall()]
+            table_rows = []
+            for t in tables[:80]:  # 前80个表算行数 (避免 370+ 表太慢)
+                try:
+                    cur.execute(f'SELECT COUNT(*) FROM "{t}"')
+                    c = cur.fetchone()[0]
+                    table_rows.append((t, c))
+                except Exception: pass
+            table_rows.sort(key=lambda x: -x[1])
+            total_rows = sum(r[1] for r in table_rows)
+            size = os.path.getsize(db)
+            conn.close()
+            return jsonify({
+                'success': True,
+                'db_path': db,
+                'db_size_bytes': size,
+                'db_size_human': f'{size/1024/1024:.1f}MB',
+                'table_count': len(tables),
+                'total_rows': total_rows,
+                'top_tables': [{'name':t,'rows':r} for t,r in table_rows[:15]],
+                'timestamp': time.strftime('%Y-%m-%d %H:%M:%S'),
+            })
+        except Exception as e:
+            return jsonify({'error':str(e)[:100]}), 500
+    
+    @app.route('/api/system/info', methods=['GET'])
+    def _server_api_system_info():
+        """系统版本 / NODE_ROLE / daemon 健康度 / 磁盘"""
+        try:
+            from app.node_role import NODE_ROLE, is_server, is_dev, is_client
+        except ImportError: NODE_ROLE = "SERVER"
+        hostname = socket.gethostname()
+        # daemon 状态
+        daemons = []; healthy = 0; total = 0
+        try:
+            r = subprocess.run(['launchctl','list'], capture_output=True, text=True, timeout=5)
+            for line in r.stdout.splitlines():
+                if 'mtscos' not in line.lower(): continue
+                parts = line.split()
+                if len(parts) < 3: continue
+                pid = parts[0]; ec = parts[1]; label = parts[2]
+                ok = (ec == '0'); total += 1
+                if ok: healthy += 1
+                daemons.append({'label':label,'pid':pid if pid!='-' else None,'exit':int(ec),'ok':ok})
+        except Exception: pass
+        # Flask HTTP 自测
+        http_code = None
+        try:
+            r = subprocess.run(['curl','-s','-o','/dev/null','-w','%{http_code}','--max-time','2','http://127.0.0.1:8888/'],
+                               capture_output=True, text=True, timeout=5)
+            http_code = int(r.stdout.strip()) if r.stdout.strip().isdigit() else None
+        except Exception: pass
+        # 磁盘
+        disk_used = disk_total = disk_pct = None
+        try:
+            r = subprocess.run(['df','-h','/'], capture_output=True, text=True, timeout=3)
+            parts = r.stdout.splitlines()[1].split()
+            disk_total = parts[1]; disk_used = parts[2]
+            disk_pct = int(parts[4].rstrip('%')) if len(parts)>4 and parts[4].rstrip('%').isdigit() else None
+        except Exception: pass
+        return jsonify({
+            'success': True,
+            'node_role': NODE_ROLE,
+            'hostname': hostname,
+            'ip': socket.gethostbyname(hostname) if True else None,
+            'daemons': {'total':total,'healthy':healthy,'health_pct':int(healthy*100/total) if total else 0,'items':daemons},
+            'http_probe': http_code,
+            'disk': {'used':disk_used,'total':disk_total,'pct':disk_pct},
+            'timestamp': time.strftime('%Y-%m-%d %H:%M:%S'),
+        })
+    
+    @app.route('/api/health', methods=['GET'])
+    def _server_api_health():
+        """健康检查 (SERVER 模式短路认证)"""
+        return jsonify({
+            'success': True, 'status': 'ok', 'node_role': getattr(__import__('app.node_role','from app.node_role import NODE_ROLE').NODE_ROLE,'NODE_ROLE',NODE_ROLE),
+            'time': time.strftime('%Y-%m-%d %H:%M:%S'),
+        })
+    
+    # ── 简化版 admin 面板 (admin 角色就能进, 不走 SA 双硬件) ──
+    @app.route('/ops/admin', methods=['GET'])
+    def _server_ops_admin():
+        """SERVER 模式后端管理面板 (简化版, admin 角色)"""
+        from flask import request, redirect, make_response
+        # 检查登录态 (session 有 username + role != guest)
+        username = request.cookies.get('mtscos_uid','')
+        session_id = request.cookies.get('mtscos_sid','')
+        if not username or username == 'guest-' or not session_id:
+            return redirect('/auth/login')
+        # admin 角色放行 (server_real_db login 写入 cookie)
+        # 简化版: 已登录就能看, 不强制 super_admin
+        return _server_admin_panel(username)
+
+
+def _server_admin_panel(username):
+    """简化版后端管理面板 (纯 HTML, 不走 SA 双硬件)"""
+    # 拿 system + db 数据
+    import urllib.request, json
+    def _fetcher(url):
+        try:
+            with urllib.request.urlopen(url, timeout=3) as r: return json.loads(r.read())
+        except Exception: return None
+    sys_info = _fetcher('http://127.0.0.1:8888/api/system/info') or {}
+    db_info = _fetcher('http://127.0.0.1:8888/api/db/stats') or {}
+    
+    daemons = sys_info.get('daemons',{}).get('items',[])
+    daemon_rows = "".join(
+        f'<div class="daemon-row"><div class="daemon-bar" style="background:{"var(--ok)" if d.get("ok") else "var(--bad)"}"></div>'
+        f'<div class="daemon-body"><span class="daemon-label mono">{d.get("label","?")}</span>'
+        f'<span class="daemon-pid mono">{d.get("pid") or "—"}</span>'
+        f'<span class="daemon-exit mono" style="color:{"var(--ok)" if d.get("ok") else "var(--bad)"}">{d.get("exit","?")}</span>'
+        f'</div></div>' for d in daemons
+    )
+    top_tables = db_info.get('top_tables',[])
+    table_rows = "".join(
+        f'<tr><td class="mono">{t["name"]}</td><td class="mono" style="text-align:right">{t["rows"]:,}</td></tr>'
+        for t in top_tables[:12]
+    )
+    tables = db_info.get('table_count','?')
+    db_size = db_info.get('db_size_human','?')
+    health_pct = sys_info.get('daemons',{}).get('health_pct',0)
+    hostname = sys_info.get('hostname','?')
+    role = sys_info.get('node_role','SERVER')
+    disk_pct = sys_info.get('disk',{}).get('pct',0)
+    now = __import__('time').strftime('%H:%M:%S')
+    
+    panel = f"""<!DOCTYPE html>
+<html><head>
+{_SERVER_CSS_VARS}
+<title>MTSCOS AI · Admin</title>
+<style>
+.layout{{max-width:1100px;margin:0 auto;padding:24px 28px 60px}}
+.topbar{{background:linear-gradient(135deg,var(--card),var(--card-2));border:1px solid var(--border);border-radius:var(--radius);padding:16px 22px;margin-bottom:20px;display:flex;align-items:center;gap:22px;flex-wrap:wrap;box-shadow:var(--shadow)}}
+.topbar-title{{font-size:15px;font-weight:600;color:var(--text)}}
+.topbar-sub{{font-size:12px;color:var(--text-dim);margin-top:2px;font-family:var(--mono)}}
+.topbar-user{{margin-left:auto;font-family:var(--mono);font-size:12px;color:var(--accent)}}
+.grid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:20px}}
+.card{{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px;box-shadow:var(--shadow)}}
+.card-title{{font-size:11px;font-weight:700;color:var(--text-dim);letter-spacing:.08em;text-transform:uppercase;margin-bottom:14px;display:flex;align-items:center;gap:8px}}
+.card-title::before{{content:"";width:3px;height:12px;background:var(--accent);border-radius:2px}}
+.stat{{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)}}
+.stat:last-child{{border-bottom:none}}
+.stat-label{{font-size:13px;color:var(--text-dim)}}
+.stat-val{{font-family:var(--mono);font-size:13px;color:var(--text)}}
+table{{width:100%;border-collapse:collapse}}
+th,td{{padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);font-size:12px}}
+th{{color:var(--text-dim);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.06em}}
+td.mono{{font-family:var(--mono)}}
+td.num{{text-align:right;font-family:var(--mono)}}
+.daemon-list{{max-height:300px;overflow-y:auto}}
+.daemon-row{{display:flex;align-items:stretch;margin-bottom:6px;border-radius:var(--radius-sm);overflow:hidden;background:var(--bg-2);border:1px solid var(--border)}}
+.daemon-bar{{width:3px;flex-shrink:0}}
+.daemon-body{{flex:1;display:flex;align-items:center;gap:10px;padding:8px 12px;font-size:12px}}
+.daemon-label{{flex:1;color:var(--text);font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}
+.daemon-pid{{color:var(--text-dim);width:44px;text-align:right}}
+.daemon-exit{{width:28px;text-align:right}}
+.progress{{height:6px;background:var(--bg-2);border-radius:3px;overflow:hidden;margin-top:6px}}
+.progress-fill{{height:100%;border-radius:3px}}
+.btns{{display:flex;gap:10px;margin-top:14px}}
+.btn{{flex:1;padding:10px;background:var(--bg-2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);text-decoration:none;font-size:12px;text-align:center;transition:all .15s}}
+.btn:hover{{border-color:var(--accent);color:var(--accent)}}
+.btn.primary{{border-color:var(--ok);color:var(--ok);background:var(--ok-dim)}}
+.btn.primary:hover{{background:var(--ok);color:var(--bg)}}
+</style></head><body>
+<div class="layout">
+
+<div class="topbar">
+  <div>
+    <div class="topbar-title">⚙️ MTSCOS AI · Admin Panel</div>
+    <div class="topbar-sub">{hostname} · 🖥️ {role} · {now}</div>
+  </div>
+  <div class="topbar-user">👤 {username}</div>
+</div>
+
+<div class="grid">
+  <div class="card">
+    <div class="card-title">Daemons</div>
+    <div style="font-family:var(--mono);font-size:24px;color:var(--ok)">{health_pct}%</div>
+    <div class="progress"><div class="progress-fill" style="width:{health_pct}%;background:var(--ok)"></div></div>
+    <div class="daemon-list" style="margin-top:14px">{daemon_rows or '<p style="color:var(--text-mute);font-size:12px">launchctl 不可用</p>'}</div>
+  </div>
+  <div class="card">
+    <div class="card-title">Database</div>
+    <div class="stat"><span class="stat-label">Tables</span><span class="stat-val">{tables}</span></div>
+    <div class="stat"><span class="stat-label">Size</span><span class="stat-val">{db_size}</span></div>
+    <div class="stat"><span class="stat-label">Disk /</span><span class="stat-val">{disk_pct}%</span></div>
+    <div class="progress"><div class="progress-fill" style="width:{disk_pct}%;background:var(--warn) if {disk_pct}<95 else var(--bad)"></div></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Top Tables</div>
+    <table>
+    <tr><th>Table</th><th style="text-align:right">Rows</th></tr>
+    {table_rows or '<tr><td colspan="2" style="color:var(--text-mute)">DB not accessible</td></tr>'}
+    </table>
+  </div>
+</div>
+
+<div class="btns">
+  <a class="btn primary" href="/">← Ops Panel</a>
+  <a class="btn" href="/api/system/info" target="_blank">/api/system/info</a>
+  <a class="btn" href="/api/db/stats" target="_blank">/api/db/stats</a>
+  <a class="btn" href="/api/health" target="_blank">/api/health</a>
+</div>
+
+</div></body></html>"""
+    return Response(panel, mimetype='text/html; charset=utf-8', status=200)
 
 @home_bp.route('/index', methods=['GET'])
 def _index_entry():
