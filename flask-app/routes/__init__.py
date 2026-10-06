@@ -417,6 +417,18 @@ body::after{{width:320px;height:320px;background:var(--accent);bottom:-100px;rig
 /* ═══ Error ═══ */
 .err{{color:var(--bad);font-size:12px;background:rgba(244,135,113,.08);padding:10px 14px;border-radius:8px;margin-bottom:16px;border:1px solid rgba(244,135,113,.22);animation:FadeUp .3s ease-out}}
 
+/* ═══ 双密钥状态 ═══ */
+.keystatus{{background:rgba(10,13,18,.5);border:1px solid var(--border-2);border-radius:8px;padding:12px 14px;margin-bottom:16px;display:flex;flex-direction:column;gap:6px}}
+.ks-item{{display:flex;align-items:center;gap:8px;font-size:11px;font-family:var(--mono)}}
+.ks-dot{{width:8px;height:8px;border-radius:50%;flex-shrink:0;transition:background .3s}}
+.ks-dim{{background:#4a5060}}
+.ks-on{{background:var(--ok);box-shadow:0 0 6px var(--ok)}}
+.ks-off{{background:var(--bad)}}
+.ks-label{{color:var(--text-dim);width:90px}}
+.ks-val{{color:var(--text);margin-left:auto}}
+.ks-note{{color:var(--text-mute);font-size:10px;margin-top:4px;line-height:1.5}}
+.lock-tag{{color:var(--bad);font-size:9px;font-weight:700;background:rgba(244,135,113,.1);border:1px solid rgba(244,135,113,.25);padding:2px 6px;border-radius:4px;margin-left:6px;font-family:var(--mono);letter-spacing:.04em}}
+
 /* ═══ Hint + Footer ═══ */
 .hint{{color:var(--text-mute);font-size:11px;margin:14px 0 0;text-align:center;font-family:var(--mono);line-height:1.5}}
 .ft{{margin-top:24px;padding-top:16px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--text-mute)}}
@@ -441,14 +453,21 @@ body::after{{width:320px;height:320px;background:var(--accent);bottom:-100px;rig
     <span class="badge warn">VIKEY optional</span>
   </div>
 
+  <div class="keystatus" id="keystatus">
+    <span class="ks-item" id="ks-vikey"><span class="ks-dot ks-dim"></span><span class="ks-label">VIKEY USB</span><span class="ks-val">detecting...</span></span>
+    <span class="ks-item" id="ks-touch"><span class="ks-dot ks-dim"></span><span class="ks-label">Touch ID</span><span class="ks-val">detecting...</span></span>
+    <span class="ks-note" id="ks-note">双密钥仅展示 · 不阻断登录 · super_admin 需在 DEV 端走双硬件</span>
+  </div>
+
   {error_html}
 
   <form method="POST" action="/auth/login" id="lf">
     <div class="field">
-      <label>Username</label>
+      <label>Username <span class="lock-tag" title="SERVER 模式仅允许 admin 角色登录">🔒 LOCKED</span></label>
       <div class="fwrap">
-        <input type="text" name="username" id="u" placeholder="admin / wuchenghao15" required autofocus autocomplete="username">
-        <span class="fi" onclick="document.getElementById('u').focus()" title="Username">👤</span>
+        <input type="text" name="username" id="u" value="admin" readonly required autocomplete="username"
+               style="background:rgba(30,35,45,.9);cursor:not-allowed;color:var(--accent);font-weight:600">
+        <span class="fi" style="cursor:not-allowed" title="Locked to admin in SERVER mode">�</span>
       </div>
     </div>
     <div class="field">
@@ -480,6 +499,25 @@ body::after{{width:320px;height:320px;background:var(--accent);bottom:-100px;rig
 <script>
 function tp(){{var p=document.getElementById('p'),t=document.getElementById('pt');if(p.type==='password'){{p.type='text';t.textContent='🙈'}}else{{p.type='password';t.textContent='👁'}}}}
 document.getElementById('lf').addEventListener('submit',function(){{var b=document.getElementById('sb');b.disabled=true;b.querySelector('.bt').textContent='Authenticating...'}});
+
+// ── 双密钥状态轮询 (只读展示, 不阻断登录) ──
+function _ks(el, cls, val){{el.className='ks-dot '+cls;el.parentElement.querySelector('.ks-val').textContent=val}}
+async function pollVikey(){{
+  try{{
+    var r=await fetch('/api/server/vikey-status',{{signal:AbortSignal.timeout(4000)}});
+    if(!r.ok)return;var d=await r.json();
+    var vu=document.getElementById('ks-vikey'),tu=document.getElementById('ks-touch');
+    if(d.vikey_usb.online){{_ks(vu.querySelector('.ks-dot'),'ks-on','CONNECTED');}}
+    else{{_ks(vu.querySelector('.ks-dot'),'ks-off','not detected');}}
+    if(d.touch_id.available){{_ks(tu.querySelector('.ks-dot'),'ks-on','available');}}
+    else{{_ks(tu.querySelector('.ks-dot'),'ks-off','not available');}}
+  }}catch(e){{
+    var vu=document.getElementById('ks-vikey'),tu=document.getElementById('ks-touch');
+    _ks(vu.querySelector('.ks-dot'),'ks-off','api fail');
+    _ks(tu.querySelector('.ks-dot'),'ks-off','api fail');
+  }}
+}}
+pollVikey();setInterval(pollVikey,15000);
 </script>
 </body></html>"""
     return Response(panel, mimetype='text/html; charset=utf-8', status=200)
@@ -710,6 +748,130 @@ def _install_server_overrides(app):
             'time': time.strftime('%Y-%m-%d %H:%M:%S'),
         })
     
+    # ── 双密钥检测 (只读展示, 不阻断登录) ──
+    @app.route('/api/server/vikey-status', methods=['GET'])
+    def _server_api_vikey():
+        """VIKEY USB + Touch ID 双密钥在线状态 (只读, 仅展示)"""
+        # VIKEY USB 检测
+        vikey_usb = {'online': False, 'serial': None, 'vendor': None}
+        try:
+            r = subprocess.run(['ioreg','-p','IOUSB','-l'], capture_output=True, text=True, timeout=5)
+            raw = r.stdout
+            # 匹配 MTSCOS VIKEY / 常见 USBKey VID
+            import re as _re
+            vid_match = _re.search(r'kUSBVendorID.*?0x([0-9a-fA-F]+)', raw)
+            product_match = _re.search(r'"idProduct"\s*=\s*0x([0-9a-fA-F]+)', raw)
+            if any(kw in raw.upper() for kw in ['VIKEY','MTSCOS','SAFEM','TOKEN','KEY']):
+                vikey_usb['online'] = True
+                vikey_usb['vendor'] = 'MTSCOS Vikey'
+                vikey_usb['serial'] = vid_match.group(1) if vid_match else None
+            elif vid_match and product_match:
+                # 有任何 USB HID 设备, 可能是 VIKEY (Mac mini 没插 VIKEY 会空)
+                pass
+        except Exception: pass
+        # Touch ID 检测 (TouchBar / Apple Silicon)
+        touch_id = {'available': False, 'type': None}
+        try:
+            r = subprocess.run(['system_profiler','SPTouchBarDataType'], capture_output=True, text=True, timeout=5)
+            if 'Touch Bar' in r.stdout:
+                touch_id['available'] = True; touch_id['type'] = 'Touch Bar'
+        except Exception: pass
+        try:
+            r2 = subprocess.run(['ioreg','-r','-c','AppleBiometric'], capture_output=True, text=True, timeout=3)
+            if r2.stdout.strip():
+                touch_id['available'] = True; touch_id['type'] = 'Apple Silicon Biometric'
+        except Exception: pass
+        # 综合状态
+        both_online = vikey_usb['online'] and touch_id['available']
+        return jsonify({
+            'success': True,
+            'dual_key': {'required': False, 'both_online': both_online},
+            'vikey_usb': vikey_usb,
+            'touch_id': touch_id,
+            'note': 'SERVER 模式双密钥仅展示, 不阻断登录. super_admin 需在 DEV 端走双硬件.',
+        })
+    
+    # ── 用户管理 (权限管理卡片) ──
+    @app.route('/api/server/users', methods=['GET'])
+    def _server_api_users():
+        """用户列表 + 角色 + 启用状态 (admin 面板权限管理用)"""
+        db = _find_main_db()
+        if not db: return jsonify({'error':'db_not_found'}), 503
+        try:
+            conn = sqlite3.connect(db, timeout=5)
+            cur = conn.cursor()
+            cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users'")
+            if not cur.fetchone():
+                conn.close(); return jsonify({'users':[], 'note':'users table not found'})
+            cur.execute("PRAGMA table_info(users)")
+            cols = [c[1] for c in cur.fetchall()]
+            select_cols = ['username']
+            for c in ['role','is_active','enabled','super_admin_approved','last_login','created_at']:
+                if c in cols: select_cols.append(c)
+            cur.execute(f'SELECT {",".join(select_cols)} FROM users ORDER BY username')
+            rows = [dict(zip(select_cols, r)) for r in cur.fetchall()]
+            conn.close()
+            # 补角色推断
+            for u in rows:
+                role = u.get('role','')
+                if not role:
+                    if u['username'] == 'wuchenghao15': role = 'super_admin'
+                    elif u['username'] == 'admin': role = 'admin'
+                    else: role = 'user'
+                u['role'] = role
+                active = u.get('is_active', u.get('enabled', 1))
+                u['enabled'] = bool(int(active)) if active is not None else True
+            return jsonify({'success': True, 'users': rows})
+        except Exception as e:
+            return jsonify({'error':str(e)[:100]}), 500
+    
+    # ── daemon 控制 (仙女座维护) ──
+    @app.route('/api/server/daemon-action', methods=['POST'])
+    def _server_api_daemon_action():
+        """重启单个 daemon / 重启所有 / handshake reconnect. 排除 Flask 自身."""
+        from flask import request as _rq
+        try:
+            data = _rq.get_json(silent=True) or {}
+            action = data.get('action','')
+            target = data.get('target','')
+        except Exception:
+            action = _rq.args.get('action','')
+            target = _rq.args.get('target','')
+        
+        results = []
+        AG = os.path.expanduser('~/Library/LaunchAgents')
+        
+        def _do(label, op='restart'):
+            plist = os.path.join(AG, f'{label}.plist')
+            if not os.path.exists(plist):
+                return {'label':label,'ok':False,'msg':'plist not found'}
+            try:
+                subprocess.run(['launchctl','bootout',f'gui/{os.getuid()}',plist],
+                             capture_output=True, timeout=5)
+                time.sleep(1.5)
+                r = subprocess.run(['launchctl','bootstrap',f'gui/{os.getuid()}',plist],
+                                  capture_output=True, text=True, timeout=8)
+                return {'label':label,'ok':r.returncode==0,'msg':(r.stdout+r.stderr).strip()[:80]}
+            except Exception as e:
+                return {'label':label,'ok':False,'msg':str(e)[:80]}
+        
+        # 白名单 (排除 com.mtscos.flask — 自杀式重启会断连接)
+        ALLOWED = ['com.mtscos.smart_mount','com.mtscos.andromeda','com.mtscos.andromeda-tunnel',
+                   'com.mtscos.cloudflared','com.mtscos.sys_auto_repair']
+        
+        if action == 'restart_all':
+            for d in ALLOWED: results.append(_do(d))
+        elif action == 'restart_one' and target in ALLOWED:
+            results.append(_do(target))
+        elif action == 'handshake_reconnect':
+            # 只重启 andromeda + tunnel, 触发重连
+            results.append(_do('com.mtscos.andromeda-tunnel'))
+            results.append(_do('com.mtscos.andromeda'))
+        else:
+            return jsonify({'error':'invalid action or target not allowed','allowed':ALLOWED}), 400
+        
+        return jsonify({'success': True, 'action': action, 'results': results})
+    
     # ── 简化版 admin 面板 (admin 角色就能进, 不走 SA 双硬件) ──
     @app.route('/ops/admin', methods=['GET'])
     def _server_ops_admin():
@@ -726,15 +888,16 @@ def _install_server_overrides(app):
 
 
 def _server_admin_panel(username):
-    """简化版后端管理面板 (纯 HTML, 不走 SA 双硬件)"""
-    # 拿 system + db 数据
+    """后端管理面板 v22.10.10 (用户管理 + 仙女座维护)"""
     import urllib.request, json
-    def _fetcher(url):
+    def _fetch(url):
         try:
             with urllib.request.urlopen(url, timeout=3) as r: return json.loads(r.read())
         except Exception: return None
-    sys_info = _fetcher('http://127.0.0.1:8888/api/system/info') or {}
-    db_info = _fetcher('http://127.0.0.1:8888/api/db/stats') or {}
+    sys_info = _fetch('http://127.0.0.1:8888/api/system/info') or {}
+    db_info = _fetch('http://127.0.0.1:8888/api/db/stats') or {}
+    users_data = _fetch('http://127.0.0.1:8888/api/server/users') or {}
+    users = users_data.get('users',[])
     
     daemons = sys_info.get('daemons',{}).get('items',[])
     daemon_rows = "".join(
@@ -743,6 +906,26 @@ def _server_admin_panel(username):
         f'<span class="daemon-pid mono">{d.get("pid") or "—"}</span>'
         f'<span class="daemon-exit mono" style="color:{"var(--ok)" if d.get("ok") else "var(--bad)"}">{d.get("exit","?")}</span>'
         f'</div></div>' for d in daemons
+    )
+    # 仙女座专用 daemon 过滤
+    ANDROMEDA_SET = {'com.mtscos.smart_mount','com.mtscos.andromeda','com.mtscos.andromeda-tunnel',
+                     'com.mtscos.cloudflared','com.mtscos.sys_auto_repair'}
+    andr_rows = "".join(
+        f'<div class="daemon-row"><div class="daemon-bar" style="background:{"var(--ok)" if d.get("ok") else "var(--bad)"}"></div>'
+        f'<div class="daemon-body"><span class="daemon-label mono">{d.get("label","?")}</span>'
+        f'<span class="daemon-pid mono">{d.get("pid") or "—"}</span>'
+        f'<span class="daemon-exit mono" style="color:{"var(--ok)" if d.get("ok") else "var(--bad)"}">{d.get("exit","?")}</span>'
+        f'<button class="act-btn" onclick="restartDaemon(\'{d.get("label","")}\')" title="Restart">↻</button>'
+        f'</div></div>' for d in daemons if d.get('label') in ANDROMEDA_SET
+    )
+    # 用户表
+    role_badge = {'super_admin':'var(--warn)','admin':'var(--ok)','user':'var(--text-dim)'}
+    user_rows = "".join(
+        f'<tr><td class="mono">{u["username"]}</td>'
+        f'<td><span class="role-chip" style="background:{role_badge.get(u.get("role","user"),"var(--text-dim)")}22;color:{role_badge.get(u.get("role","user"),"var(--text-dim)")};border-color:{role_badge.get(u.get("role","user"),"var(--text-dim)")}">{u.get("role","user")}</span></td>'
+        f'<td style="color:{"var(--ok)" if u.get("enabled") else "var(--bad)"}">{"● active" if u.get("enabled") else "○ disabled"}</td>'
+        f'<td class="mono">{u.get("last_login","—") or "—"}</td></tr>'
+        for u in users[:20]
     )
     top_tables = db_info.get('top_tables',[])
     table_rows = "".join(
@@ -753,21 +936,24 @@ def _server_admin_panel(username):
     db_size = db_info.get('db_size_human','?')
     health_pct = sys_info.get('daemons',{}).get('health_pct',0)
     hostname = sys_info.get('hostname','?')
-    role = sys_info.get('node_role','SERVER')
+    node_role = sys_info.get('node_role','SERVER')
     disk_pct = sys_info.get('disk',{}).get('pct',0)
     now = __import__('time').strftime('%H:%M:%S')
+    super_admin_count = sum(1 for u in users if u.get('role') == 'super_admin')
+    admin_count = sum(1 for u in users if u.get('role') == 'admin')
     
     panel = f"""<!DOCTYPE html>
 <html><head>
 {_SERVER_CSS_VARS}
 <title>MTSCOS AI · Admin</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
-.layout{{max-width:1100px;margin:0 auto;padding:24px 28px 60px}}
+.layout{{max-width:1200px;margin:0 auto;padding:24px 28px 60px}}
 .topbar{{background:linear-gradient(135deg,var(--card),var(--card-2));border:1px solid var(--border);border-radius:var(--radius);padding:16px 22px;margin-bottom:20px;display:flex;align-items:center;gap:22px;flex-wrap:wrap;box-shadow:var(--shadow)}}
 .topbar-title{{font-size:15px;font-weight:600;color:var(--text)}}
 .topbar-sub{{font-size:12px;color:var(--text-dim);margin-top:2px;font-family:var(--mono)}}
 .topbar-user{{margin-left:auto;font-family:var(--mono);font-size:12px;color:var(--accent)}}
-.grid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:20px}}
+.grid{{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:16px}}
 .card{{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px;box-shadow:var(--shadow)}}
 .card-title{{font-size:11px;font-weight:700;color:var(--text-dim);letter-spacing:.08em;text-transform:uppercase;margin-bottom:14px;display:flex;align-items:center;gap:8px}}
 .card-title::before{{content:"";width:3px;height:12px;background:var(--accent);border-radius:2px}}
@@ -789,53 +975,109 @@ td.num{{text-align:right;font-family:var(--mono)}}
 .daemon-exit{{width:28px;text-align:right}}
 .progress{{height:6px;background:var(--bg-2);border-radius:3px;overflow:hidden;margin-top:6px}}
 .progress-fill{{height:100%;border-radius:3px}}
-.btns{{display:flex;gap:10px;margin-top:14px}}
-.btn{{flex:1;padding:10px;background:var(--bg-2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);text-decoration:none;font-size:12px;text-align:center;transition:all .15s}}
+.btns{{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}}
+.btn{{flex:1;padding:10px;background:var(--bg-2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);text-decoration:none;font-size:12px;text-align:center;transition:all .15s;cursor:pointer}}
 .btn:hover{{border-color:var(--accent);color:var(--accent)}}
 .btn.primary{{border-color:var(--ok);color:var(--ok);background:var(--ok-dim)}}
 .btn.primary:hover{{background:var(--ok);color:var(--bg)}}
+.btn.danger{{border-color:var(--warn);color:var(--warn);background:rgba(220,170,80,.08)}}
+.btn.danger:hover{{background:var(--warn);color:var(--bg)}}
+.btn.sm{{flex:none;padding:6px 10px;font-size:11px}}
+.role-chip{{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;border:1px solid;letter-spacing:.05em;text-transform:uppercase}}
+.act-btn{{background:var(--bg);border:1px solid var(--border);color:var(--accent);border-radius:4px;width:22px;height:22px;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0}}
+.act-btn:hover{{background:var(--accent);color:var(--bg);border-color:var(--accent)}}
+.msg{{font-size:11px;margin-top:8px;padding:8px 10px;border-radius:6px;font-family:var(--mono);display:none}}
+.msg.show{{display:block}}
+.msg.ok{{background:rgba(78,201,176,.1);color:var(--ok);border:1px solid rgba(78,201,176,.2)}}
+.msg.err{{background:rgba(244,135,113,.1);color:var(--bad);border:1px solid rgba(244,135,113,.2)}}
 </style></head><body>
 <div class="layout">
 
 <div class="topbar">
   <div>
     <div class="topbar-title">⚙️ MTSCOS AI · Admin Panel</div>
-    <div class="topbar-sub">{hostname} · 🖥️ {role} · {now}</div>
+    <div class="topbar-sub">{hostname} · 🖥️ {node_role} · {now} · <a href="/ops/admin" style="color:var(--accent);text-decoration:none" onclick="location.reload()">↻ refresh</a></div>
   </div>
   <div class="topbar-user">👤 {username}</div>
 </div>
 
 <div class="grid">
+  <!-- Daemons -->
   <div class="card">
-    <div class="card-title">Daemons</div>
-    <div style="font-family:var(--mono);font-size:24px;color:var(--ok)">{health_pct}%</div>
+    <div class="card-title">Daemons · {health_pct}%</div>
     <div class="progress"><div class="progress-fill" style="width:{health_pct}%;background:var(--ok)"></div></div>
     <div class="daemon-list" style="margin-top:14px">{daemon_rows or '<p style="color:var(--text-mute);font-size:12px">launchctl 不可用</p>'}</div>
   </div>
+  <!-- Database -->
   <div class="card">
     <div class="card-title">Database</div>
     <div class="stat"><span class="stat-label">Tables</span><span class="stat-val">{tables}</span></div>
     <div class="stat"><span class="stat-label">Size</span><span class="stat-val">{db_size}</span></div>
     <div class="stat"><span class="stat-label">Disk /</span><span class="stat-val">{disk_pct}%</span></div>
-    <div class="progress"><div class="progress-fill" style="width:{disk_pct}%;background:var(--warn) if {disk_pct}<95 else var(--bad)"></div></div>
+    <div class="progress"><div class="progress-fill" style="width:{disk_pct}%;background:{"var(--bad)" if disk_pct and disk_pct>90 else "var(--ok)"}"></div></div>
+    <div style="margin-top:14px"><div class="card-title" style="margin-bottom:8px">Top Tables</div><table><tr><th>Table</th><th style="text-align:right">Rows</th></tr>{table_rows or '<tr><td colspan="2" style="color:var(--text-mute)">DB not accessible</td></tr>'}</table></div>
   </div>
+  <!-- ⭐ 用户管理 (权限管理) -->
   <div class="card">
-    <div class="card-title">Top Tables</div>
-    <table>
-    <tr><th>Table</th><th style="text-align:right">Rows</th></tr>
-    {table_rows or '<tr><td colspan="2" style="color:var(--text-mute)">DB not accessible</td></tr>'}
-    </table>
+    <div class="card-title">权限管理 · Users ({len(users)})</div>
+    <div style="display:flex;gap:12px;margin-bottom:10px;font-size:11px;font-family:var(--mono)">
+      <span style="color:var(--warn)">● super_admin: {super_admin_count}</span>
+      <span style="color:var(--ok)">● admin: {admin_count}</span>
+      <span style="color:var(--text-dim)">● user: {len(users)-super_admin_count-admin_count}</span>
+    </div>
+    <div style="max-height:280px;overflow-y:auto">
+      <table><tr><th>User</th><th>Role</th><th>State</th><th>Last Login</th></tr>
+      {user_rows or '<tr><td colspan="4" style="color:var(--text-mute)">no users</td></tr>'}</table>
+    </div>
+    <p style="font-size:10px;color:var(--text-mute);margin-top:8px">SERVER 模式仅允许 admin 角色登录 · super_admin 需在 DEV 端走双硬件</p>
   </div>
+</div>
+
+<!-- ⭐ 仙女座维护 -->
+<div class="card" style="margin-bottom:16px">
+  <div class="card-title">🧜 Andromeda Maintenance · 仙女座维护</div>
+  <div class="daemon-list" style="margin-bottom:14px">{andr_rows or '<p style="color:var(--text-mute);font-size:12px">no andromeda daemons</p>'}</div>
+  <div class="btns">
+    <button class="btn danger sm" onclick="doAction('handshake_reconnect')">🔗 Handshake Reconnect</button>
+    <button class="btn sm" onclick="doAction('restart_one','com.mtscos.andromeda-tunnel')">↻ Tunnel</button>
+    <button class="btn sm" onclick="doAction('restart_one','com.mtscos.andromeda')">↻ Andromeda</button>
+    <button class="btn sm" onclick="doAction('restart_one','com.mtscos.smart_mount')">↻ Smart Mount</button>
+    <button class="btn sm" onclick="doAction('restart_all')">↻ Restart All</button>
+  </div>
+  <div class="msg" id="daemon-msg"></div>
+  <p style="font-size:10px;color:var(--text-mute);margin-top:8px">⚠ com.mtscos.flask 被白名单排除 (自杀式重启会断当前连接) · SSH tunnel 重建需 5s</p>
 </div>
 
 <div class="btns">
   <a class="btn primary" href="/">← Ops Panel</a>
-  <a class="btn" href="/api/system/info" target="_blank">/api/system/info</a>
-  <a class="btn" href="/api/db/stats" target="_blank">/api/db/stats</a>
-  <a class="btn" href="/api/health" target="_blank">/api/health</a>
+  <a class="btn" href="/auth/login">🔐 Login</a>
+  <a class="btn" href="/api/system/info" target="_blank">System Info</a>
+  <a class="btn" href="/api/db/stats" target="_blank">DB Stats</a>
+  <a class="btn" href="/api/server/users" target="_blank">Users API</a>
+  <a class="btn" href="/api/server/vikey-status" target="_blank">VIKEY</a>
 </div>
 
-</div></body></html>"""
+</div>
+
+<script>
+async function _daemonAction(action,target){{
+  var msg=document.getElementById('daemon-msg');msg.className='msg';msg.textContent='⏳ 执行中...';msg.classList.add('show');
+  var b=document.querySelectorAll('.btns .btn,button');b.forEach(x=>x.disabled=true);
+  try{{
+    var body={{action:action}};if(target)body.target=target;
+    var r=await fetch('/api/server/daemon-action',{{method:'POST',headers:{{'Content-Type':'application/json'}},body:JSON.stringify(body),signal:AbortSignal.timeout(30000)}});
+    var d=await r.json();
+    if(d.success){{
+      var lines=d.results.map(x=>x.ok?'✅ '+x.label:'❌ '+x.label+' '+x.msg).join('\\n');
+      msg.className='msg ok';msg.textContent='✅ 完成\\n'+lines;
+    }}else{{msg.className='msg err';msg.textContent='❌ '+JSON.stringify(d).slice(0,120);}}
+  }}catch(e){{msg.className='msg err';msg.textContent='❌ '+e.message;}}
+  b.forEach(x=>x.disabled=false);
+}}
+function doAction(a,t){{_daemonAction(a,t)}}
+function restartDaemon(label){{if(confirm('Restart '+label+'?'))doAction('restart_one',label)}}
+</script>
+</body></html>"""
     return Response(panel, mimetype='text/html; charset=utf-8', status=200)
 
 @home_bp.route('/index', methods=['GET'])
