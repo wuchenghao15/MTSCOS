@@ -1242,12 +1242,22 @@ def generate_daemon_script(process_name: str, duty: str,
     # 终极根因: Python str.format() 对多行 replacement 只给第一行加模板前导空格
     # 后续行从 0 空格开始 → IndentationError
     # 修复: 模板 {work_body} 前导 0 空格, _indent_body 对 dedent 后的每行统一加 12 空格
+    # v5.5 作用域陷阱修复: 去掉 work_body 里的 import 行 (模板顶部已全局导入)
+    # 否则函数体内的 import 会把 os 变成局部变量 → UnboundLocalError
     import textwrap as _tw
+    _TEMPLATE_IMPORTS = {'os','sys','time','signal','sqlite3','json','glob','subprocess',
+                         'logging','datetime','textwrap','random','tempfile','os.path'}
     def _indent_body(body: str, indent: int = 12) -> str:
         dedented = _tw.dedent(body.strip("\n"))
+        lines = dedented.split("\n")
+        # 去掉开头连续的 import 行 (模板顶部已导入)
+        while lines and lines[0].strip().startswith("import "):
+            lines.pop(0)
+        while lines and lines[0].strip().startswith("from "):
+            lines.pop(0)
         return "\n".join(
             (" " * indent + ln) if ln.strip() else ""
-            for ln in dedented.split("\n")
+            for ln in lines
         )
     
     safe_name = process_name.replace(" ", "_").replace("-", "_")
