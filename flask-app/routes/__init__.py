@@ -917,6 +917,8 @@ def _install_server_overrides(app):
         return jsonify({'success': True, 'action': action, 'results': results})
     
     # ── 仙女座自动诊断与自愈 (一键智能化) ──
+    # CSRF 已在 server_real_db._CSRF_EXEMPT_PATHS 豁免 (/api/server/auto-diagnose)
+    
     @app.route('/api/server/auto-diagnose', methods=['POST','GET'])
     def _server_api_auto_diagnose():
         """一键诊断 + 自动修复. GET 只诊断, POST 诊断+自愈."""
