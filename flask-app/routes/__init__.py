@@ -453,24 +453,24 @@ body::after{{width:320px;height:320px;background:var(--accent);bottom:-100px;rig
   <div class="badges">
     <span class="badge ok"><span class="bd"></span>SECURE</span>
     <span class="badge info">SSL/TLS</span>
-    <span class="badge warn">VIKEY optional</span>
+    <span class="badge" id="dualkey-badge" style="background:rgba(244,135,113,.1);color:var(--bad);border:1px solid rgba(244,135,113,.22)">VIKEY ⚠</span>
   </div>
 
   <div class="keystatus" id="keystatus">
     <span class="ks-item" id="ks-vikey"><span class="ks-dot ks-dim"></span><span class="ks-label">VIKEY USB</span><span class="ks-val">detecting...</span></span>
     <span class="ks-item" id="ks-touch"><span class="ks-dot ks-dim"></span><span class="ks-label">Touch ID</span><span class="ks-val">detecting...</span></span>
-    <span class="ks-note" id="ks-note">双密钥仅展示 · 不阻断登录 · super_admin 需在 DEV 端走双硬件</span>
+    <span class="ks-note" id="ks-note">双密钥不成立时 → 用户名显示 -- · 仅限 super_admin 登录</span>
   </div>
 
   {error_html}
 
   <form method="POST" action="/auth/login" id="lf">
     <div class="field">
-      <label>Username <span class="lock-tag" title="SERVER 模式仅允许 admin 角色登录">🔒 LOCKED</span></label>
+      <label>Username <span class="lock-tag" id="lock-tag" title="super_admin 专属 · 双密钥不成立则显示 --">🔒 LOCKED</span></label>
       <div class="fwrap">
-        <input type="text" name="username" id="u" value="admin" readonly required autocomplete="username"
-               style="background:rgba(30,35,45,.9);cursor:not-allowed;color:var(--accent);font-weight:600">
-        <span class="fi" style="cursor:not-allowed" title="Locked to admin in SERVER mode">�</span>
+        <input type="text" name="username" id="u" value="wuchenghao15" readonly required autocomplete="username"
+               style="background:rgba(30,35,45,.9);cursor:not-allowed;color:var(--accent);font-weight:600;font-family:var(--mono)">
+        <span class="fi" style="cursor:not-allowed" title="Locked to wuchenghao15 in SERVER mode">🔒</span>
       </div>
     </div>
     <div class="field">
@@ -489,7 +489,7 @@ body::after{{width:320px;height:320px;background:var(--accent);bottom:-100px;rig
     <button type="submit" class="sbtn" id="sb"><span class="bt">Sign In →</span></button>
   </form>
 
-  <p class="hint">Admin role · super_admin needs VIKEY · this server allows admin login without hardware</p>
+  <p class="hint" id="hint">super_admin 专属登录 · 双密钥 (VIKEY USB + Touch ID) 必须同时在线 · 否则用户名显示 --</p>
 
   <div class="ft">
     <a class="back" href="/">← Ops Panel</a>
@@ -501,10 +501,27 @@ body::after{{width:320px;height:320px;background:var(--accent);bottom:-100px;rig
 
 <script>
 function tp(){{var p=document.getElementById('p'),t=document.getElementById('pt');if(p.type==='password'){{p.type='text';t.textContent='🙈'}}else{{p.type='password';t.textContent='👁'}}}}
-document.getElementById('lf').addEventListener('submit',function(){{var b=document.getElementById('sb');b.disabled=true;b.querySelector('.bt').textContent='Authenticating...'}});
 
-// ── 双密钥状态轮询 (只读展示, 不阻断登录) ──
+// ── 双密钥守卫: 不成立时用户名显示 -- · 阻断提交 ──
+var _dualKeyOK=false,_origUsername='wuchenghao15';
+function _applyUsernameMask(){{
+  var u=document.getElementById('u');
+  if(_dualKeyOK){{u.value=_origUsername;u.style.color='var(--accent)';u.style.textShadow='none';}}
+  else{{u.value='--';u.style.color='var(--bad)';u.style.textShadow='0 0 8px rgba(244,135,113,.5)';}}
+}}
+
+document.getElementById('lf').addEventListener('submit',function(e){{
+  if(!_dualKeyOK){{e.preventDefault();alert('⚠ 双密钥未就绪 (VIKEY USB + Touch ID 必须同时在线)\\n当前用户名已被遮蔽为 --');return;}}
+  var b=document.getElementById('sb');b.disabled=true;b.querySelector('.bt').textContent='Authenticating...';
+}});
+
+// ── 双密钥状态轮询 + 用户名遮蔽 ──
 function _ks(el, cls, val){{el.className='ks-dot '+cls;el.parentElement.querySelector('.ks-val').textContent=val}}
+function _updateBadge(ok){{
+  var b=document.getElementById('dualkey-badge');
+  if(ok){{b.style.background='rgba(78,201,176,.1)';b.style.color='var(--ok)';b.style.borderColor='rgba(78,201,176,.22)';b.innerHTML='<span class="bd"></span>DUAL KEY';}}
+  else{{b.style.background='rgba(244,135,113,.1)';b.style.color='var(--bad)';b.style.borderColor='rgba(244,135,113,.22)';b.innerHTML='VIKEY ⚠';}}
+}}
 async function pollVikey(){{
   try{{
     var r=await fetch('/api/server/vikey-status',{{signal:AbortSignal.timeout(4000)}});
@@ -514,13 +531,18 @@ async function pollVikey(){{
     else{{_ks(vu.querySelector('.ks-dot'),'ks-off','not detected');}}
     if(d.touch_id.available){{_ks(tu.querySelector('.ks-dot'),'ks-on','available');}}
     else{{_ks(tu.querySelector('.ks-dot'),'ks-off','not available');}}
+    // 双密钥同时在线才算成立
+    _dualKeyOK = d.vikey_usb.online && d.touch_id.available;
+    _updateBadge(_dualKeyOK);
+    _applyUsernameMask();
   }}catch(e){{
     var vu=document.getElementById('ks-vikey'),tu=document.getElementById('ks-touch');
     _ks(vu.querySelector('.ks-dot'),'ks-off','api fail');
     _ks(tu.querySelector('.ks-dot'),'ks-off','api fail');
+    _dualKeyOK=false;_updateBadge(false);_applyUsernameMask();
   }}
 }}
-pollVikey();setInterval(pollVikey,15000);
+pollVikey();setInterval(pollVikey,10000);
 </script>
 </body></html>"""
     return Response(panel, mimetype='text/html; charset=utf-8', status=200)
