@@ -2385,6 +2385,8 @@ _CSRF_EXEMPT_PATHS = [
     '/api/handshake/status',
     '/api/db/stats',
     '/api/health',
+    # v22.10.14: 冰山 Ops Console — MCP Hub 状态面板数据源
+    '/api/server/mcp-status',
 ]
 # 指纹认证API路径前缀（CSRF豁免：登录前需调用指纹硬件）
 _CSRF_EXEMPT_PREFIXES = [
