@@ -1209,7 +1209,7 @@ def main_loop():
     while _running:
         try:
             # === daemon工作循环 ===
-            {work_body}
+{work_body}
             _heartbeat()
             # 🆕 v5.1 参数热生效: 每轮循环刷新 CYCLE — mt_params 改了不用重启 daemon
             CYCLE = _param(CYCLE_GROUP, CYCLE_KEY, CYCLE)
@@ -1238,12 +1238,16 @@ def generate_daemon_script(process_name: str, duty: str,
     🔧 v5.2 缩进根因修复: work_body 是顶层缩进(0空格)三引号字符串,
     模板占位符 {work_body} 插在 try: 块内需要 12 空格缩进, 自动补缩进
     """
-    # === 缩进根因修复: work_body 顶层 → 12空格缩进 ===
+    # === 缩进根因修复 v5.4: dedent + 逐行加 12 空格 ===
+    # 终极根因: Python str.format() 对多行 replacement 只给第一行加模板前导空格
+    # 后续行从 0 空格开始 → IndentationError
+    # 修复: 模板 {work_body} 前导 0 空格, _indent_body 对 dedent 后的每行统一加 12 空格
+    import textwrap as _tw
     def _indent_body(body: str, indent: int = 12) -> str:
-        lines = body.strip("\n").split("\n")
+        dedented = _tw.dedent(body.strip("\n"))
         return "\n".join(
             (" " * indent + ln) if ln.strip() else ""
-            for ln in lines
+            for ln in dedented.split("\n")
         )
     
     safe_name = process_name.replace(" ", "_").replace("-", "_")
