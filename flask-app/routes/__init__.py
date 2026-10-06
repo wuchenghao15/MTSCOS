@@ -597,12 +597,24 @@ def _sa_preauth_redirect():
 
 @home_bp.route('/', methods=['GET'])
 def _root_redirect():
-    """根路径 `/` → DEV/SERVER 模式 Ops Panel / 其他模式跳 /index。"""
-    # v22.10.10: DEV (智能开发机) + SERVER 都返回运维状态面板
+    """根路径 `/` → 本机访问 Ops Console / 外部访问正常 index.html。"""
+    # v22.10.11: DEV 模式 → 全短路 Ops Console
+    #            SERVER 模式 → 仅本机 (127.0.0.1/::1/localhost) 短路 Ops Console,
+    #                         外部客户端 (iPhone/MacBook) 走正常 index.html
     try:
         from app.node_role import is_server as _is_srv, is_dev as _is_dev
-        if _is_srv or _is_dev:
+        if _is_dev:
             return _server_ops_panel()
+        if _is_srv:
+            # 本机访问: remote_addr 是 127.0.0.1 / ::1 / localhost
+            _ra = _request.remote_addr or ''
+            _via_local = _ra in ('127.0.0.1','::1','localhost') or _ra.startswith('169.254.')
+            _ua = _request.headers.get('User-Agent','')
+            # CLI curl / wget / Python urllib → 也显示 Ops Console
+            _is_cli = any(t in _ua.lower() for t in ['curl','wget','python-urllib','insomnia'])
+            if _via_local or _is_cli:
+                return _server_ops_panel()
+            # 外部访问者 → 走正常 index.html (首页)
     except ImportError:
         pass
     # Arduino 设备插入：透传参数到 /login（Arduino 引导逻辑在 login.html，index.html 不处理该参数）
