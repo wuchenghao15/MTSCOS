@@ -1233,7 +1233,19 @@ def generate_daemon_script(process_name: str, duty: str,
                           suggestion_id: int, mount_score: float,
                           work_body: str = "pass  # TODO: 实现具体工作逻辑",
                           inspect_cycle: int = 60) -> str:
-    """自动生成daemon Python脚本（OneDrive 兼容：重试+fallback到临时目录）"""
+    """自动生成daemon Python脚本（OneDrive 兼容：重试+fallback到临时目录）
+    
+    🔧 v5.2 缩进根因修复: work_body 是顶层缩进(0空格)三引号字符串,
+    模板占位符 {work_body} 插在 try: 块内需要 12 空格缩进, 自动补缩进
+    """
+    # === 缩进根因修复: work_body 顶层 → 12空格缩进 ===
+    def _indent_body(body: str, indent: int = 12) -> str:
+        lines = body.strip("\n").split("\n")
+        return "\n".join(
+            (" " * indent + ln) if ln.strip() else ""
+            for ln in lines
+        )
+    
     safe_name = process_name.replace(" ", "_").replace("-", "_")
     script_content = DAEMON_SCRIPT_TEMPLATE.format(
         process_name=process_name,
@@ -1243,7 +1255,7 @@ def generate_daemon_script(process_name: str, duty: str,
         duty=duty,
         pid_filename=f"{safe_name}.pid",
         log_filename=f"{safe_name}.log",
-        work_body=work_body,
+        work_body=_indent_body(work_body),  # 🔧 v5.2 自动缩进
         inspect_cycle=inspect_cycle,
     )
     primary_path = os.path.join(DAEMON_SCRIPTS_DIR, f"{safe_name}.py")
@@ -1346,9 +1358,17 @@ def mount_process(process_name: str, duty: str, script_path: str,
 
 
 def _start_subprocess(process_name: str, script_path: str) -> Optional[int]:
-    """用subprocess启动daemon脚本"""
+    """用subprocess启动daemon脚本
+    
+    🔧 v5.2 DB路径根因修复: 显式传 APP_DB 环境变量到子进程
+    — 不让 work_body 里的 os.environ.get('APP_DB', 旧库default) 走到 default
+    """
     safe_name = process_name.replace(" ", "_").replace("-", "_")
     log_file = os.path.join(LOG_DIR, f"{safe_name}.log")
+
+    # 🔧 v5.2: 显式注入 APP_DB — 子进程不会再走 work_body 里的 default 旧库路径
+    _proc_env = os.environ.copy()
+    _proc_env['APP_DB'] = APP_DB
 
     try:
         with open(log_file, "a") as lf:
@@ -1357,6 +1377,7 @@ def _start_subprocess(process_name: str, script_path: str) -> Optional[int]:
                 stdout=lf, stderr=lf,
                 cwd=os.path.dirname(script_path),
                 start_new_session=True,  # 独立进程组
+                env=_proc_env,  # 🔧 v5.2: 注入 APP_DB
             )
         # 记录PID
         with _LOCK:
