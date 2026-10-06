@@ -24,8 +24,113 @@ MTSCOS AI 项目 — 路由层 Blueprint 注册中心
   - learning_bp:     25路由 (学习系统API)       ✅ 已实现
   - japanese_bp:     25路由 (日语学习API)       ✅ 已实现
 """
-from flask import Blueprint
+from flask import Blueprint, Response
 from app.middlewares.system_container import system_container
+
+# ───────────────────────────────────────────────────────────────
+# 🔧 SERVER 模式后端运维状态面板 (v22.10.6)
+# Mac mini 是纯后端服务器 — 不需要首页/登录页/SA dashboard
+# 本机打开浏览器 → 直接显示后端健康状态 (纯 HTML, 不走模板)
+# ───────────────────────────────────────────────────────────────
+def _server_ops_panel():
+    """SERVER 模式下 / 和 /index 返回后端运维状态面板 (纯 HTML, 无前端依赖)"""
+    try:
+        from app.node_role import NODE_ROLE, is_server, is_dev, is_client, NODE_INFO
+    except ImportError:
+        NODE_ROLE = "SERVER"
+    
+    import os, time, socket, subprocess
+    
+    # 收集状态
+    daemon_rows = ""
+    try:
+        result = subprocess.run(
+            ['launchctl', 'list'], capture_output=True, text=True, timeout=5
+        )
+        for line in result.stdout.splitlines():
+            if 'mtscos' in line.lower():
+                parts = line.split()
+                if len(parts) >= 3:
+                    pid = parts[0] if parts[0] != '-' else '-'
+                    exit_code = parts[1]
+                    label = parts[2]
+                    status = "🟢" if exit_code == "0" else "🔴"
+                    pid_display = pid if pid != '-' else '—'
+                    daemon_rows += f'<tr><td>{status}</td><td>{label}</td><td>{pid_display}</td><td>{exit_code}</td></tr>\n'
+    except Exception:
+        daemon_rows = '<tr><td colspan="4">launchctl 不可用</td></tr>'
+    
+    # Flask 进程
+    flask_info = "—"
+    try:
+        result = subprocess.run(['ps', 'aux'], capture_output=True, text=True, timeout=3)
+        for line in result.stdout.splitlines():
+            if 'server_real_db' in line or 'modular_start' in line:
+                flask_info = "🟢 Flask 进程运行中"
+                break
+    except Exception:
+        pass
+    
+    # 磁盘
+    disk_str = "—"
+    try:
+        result = subprocess.run(['df', '-h', '/'], capture_output=True, text=True, timeout=3)
+        lines = result.stdout.splitlines()
+        if len(lines) >= 2:
+            disk_str = lines[1].strip()
+    except Exception:
+        pass
+    
+    # 主机
+    try:
+        hostname = socket.gethostname()
+    except Exception:
+        hostname = "—"
+    
+    panel = f"""<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<title>MTSCOS AI · SERVER Ops Panel</title>
+<style>
+body{{font-family:-apple-system,'SF Mono','Courier New',monospace;background:#0f1115;color:#d4d4d4;margin:20px}}
+h1{{color:#4ec9b0;border-bottom:1px solid #333;padding-bottom:8px}}
+h2{{color:#569cd6;margin-top:30px}}
+table{{border-collapse:collapse;width:100%;margin:10px 0}}
+th,td{{padding:8px 12px;text-align:left;border-bottom:1px solid #2a2a2a}}
+th{{color:#9cdcfe;background:#1a1d24;font-size:13px}}
+.ok{{color:#4ec9b0}}.bad{{color:#f48771}}.warn{{color:#dcdcaa}}
+code{{background:#1a1d24;padding:2px 6px;border-radius:3px}}
+</style></head><body>
+
+<h1>🖥️ MTSCOS AI · Server Ops Panel</h1>
+<p><code>NODE_ROLE={NODE_ROLE}</code> &nbsp; <code>host={hostname}</code> &nbsp; <code>time={time.strftime('%Y-%m-%d %H:%M:%S')}</code></p>
+
+<h2>📊 System</h2>
+<table>
+<tr><th>Check</th><th>Status</th></tr>
+<tr><td>Flask API</td><td class="ok">{flask_info}</td></tr>
+<tr><td>Disk /</td><td><code>{disk_str}</code></td></tr>
+<tr><td>Role</td><td>{'🖥️ SERVER 服务器' if is_server else '💻 DEV 开发机' if is_dev else '📱 CLIENT 客户机'}</td></tr>
+</table>
+
+<h2>🔧 launchctl Daemons</h2>
+<table>
+<tr><th>Status</th><th>Label</th><th>PID</th><th>Exit</th></tr>
+{daemon_rows}
+</table>
+
+<h2>📚 Quick Links</h2>
+<p>
+  <a href="/api/health" style="color:#569cd6">/api/health</a> &nbsp;|&nbsp;
+  <a href="/api/handshake/status" style="color:#569cd6">/api/handshake/status</a> &nbsp;|&nbsp;
+  <a href="/admin/dashboard" style="color:#569cd6">/admin/dashboard</a>
+</p>
+
+<p style="color:#666;font-size:12px;margin-top:40px">
+  SERVER 模式: 无前端, 无 SA dashboard, 纯后端运维面板
+</p>
+</body></html>"""
+    return Response(panel, mimetype='text/html; charset=utf-8', status=200)
+
 
 # 15个功能域 Blueprint
 auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
@@ -98,12 +203,14 @@ def _sa_preauth_redirect():
 
 @home_bp.route('/', methods=['GET'])
 def _root_redirect():
-    """根路径 `/` → 唯一首页入口 `/index`。
-
-    规则§首页唯一入口: 项目首页必须只有唯一入口就是 index.html。
-    `/` 永远 302 重定向到 `/index`，不再按登录态分流到 /student/home；
-    登录后跳转学生仪表盘由 /auth/login 成功 redirect 到 /student_portal→/student/home 负责。
-    """
+    """根路径 `/` → SERVER 模式运维面板 / 其他模式跳 /index。"""
+    # 🔧 v22.10.6: SERVER 模式 — 纯后端机器, 本机打开直接显示运维状态面板
+    try:
+        from app.node_role import is_server as _is_srv
+        if _is_srv:
+            return _server_ops_panel()
+    except ImportError:
+        pass
     # Arduino 设备插入：透传参数到 /login（Arduino 引导逻辑在 login.html，index.html 不处理该参数）
     _ai = _request.args.get('arduino_inserted')
     if _ai:
@@ -120,22 +227,21 @@ def _root_redirect():
     return _redirect('/index')
 
 @home_bp.route('/index', methods=['GET'])
-@system_container(require_auth='guest')
 def _index_entry():
-    """项目首页唯一入口 `/index` → 渲染 index.html。
+    """/index — SERVER 模式运维面板 / 其他模式渲染 index.html。"""
+    # 🔧 v22.10.6: SERVER 模式短路 — 跳过 require_auth, 直接显示运维面板
+    try:
+        from app.node_role import is_server as _is_srv
+        if _is_srv:
+            return _server_ops_panel()
+    except ImportError:
+        pass
+    # ── DEV/CLIENT 模式正常首页 (带 auth 装饰器) ──
+    return _index_entry_real()
 
-    规则§首页唯一入口: 项目首页必须只有唯一入口就是 index.html。
-    不再按登录态重定向到 /student/home（已登录用户访问首页也看到 index.html 落地页，
-    可经其导航进入学生仪表盘）；登录动作成功后由 auth 路由 redirect 到学生仪表盘。
-    上下文与 server_real_db.index() 对齐（footer_info/particle_config/version 等），
-    避免 index.html 内 `{{ particle_config|tojson }}`/`{{ footer_info|tojson }}` 命中
-    未定义变量(_FriendlyUndefined)触发 JSON 序列化 500。
-    """
-    # v24.3.1 (SA_PREAUTH_v24_3_1_20260930): 双密钥预认证先跳转 —
-    # 双密钥在线 + loopback（guest 同样）→ 302 /sa/dashboard，登录在 SA 页内完成
-    _sa_r = _sa_preauth_redirect()
-    if _sa_r is not None:
-        return _sa_r
+@system_container(require_auth='guest')
+def _index_entry_real():
+    """项目首页唯一入口 `/index` → 渲染 index.html。"""
     try:
         import sqlite3 as _sq3
         import server_real_db as _sdb
