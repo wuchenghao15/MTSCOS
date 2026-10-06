@@ -378,7 +378,7 @@ def attempt_recovery():
 # ========== 主循环 ==========
 def main():
     print("=" * 60)
-    print("🛰️ 仙女座自愈引擎 v1.0.0 启动")
+    print("🛰️ 仙女座自愈引擎 v2.0.0 启动 (MCP Hub 统一自愈)")
     print(f"   DB:      {DB_PATH}")
     print(f"   PID:     {PID_FILE}")
     print(f"   Port:    {PORT}")
