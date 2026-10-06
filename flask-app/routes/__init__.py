@@ -122,12 +122,52 @@ code{{background:#1a1d24;padding:2px 6px;border-radius:3px}}
 <p>
   <a href="/api/health" style="color:#569cd6">/api/health</a> &nbsp;|&nbsp;
   <a href="/api/handshake/status" style="color:#569cd6">/api/handshake/status</a> &nbsp;|&nbsp;
+  <a href="/auth/login" style="color:#4ec9b0">🔐 登录</a> &nbsp;|&nbsp;
   <a href="/admin/dashboard" style="color:#569cd6">/admin/dashboard</a>
 </p>
 
 <p style="color:#666;font-size:12px;margin-top:40px">
   SERVER 模式: 无前端, 无 SA dashboard, 纯后端运维面板
 </p>
+</body></html>"""
+    return Response(panel, mimetype='text/html; charset=utf-8', status=200)
+
+
+def _server_login_panel(error_msg=""):
+    """SERVER 模式内嵌登录面板 (纯 HTML, POST /auth/login)"""
+    try:
+        from app.node_role import NODE_ROLE
+    except ImportError:
+        NODE_ROLE = "SERVER"
+    
+    error_html = f'<div style="color:#f48771;margin:10px 0">{error_msg}</div>' if error_msg else ""
+    
+    panel = f"""<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<title>MTSCOS AI · Server Login</title>
+<style>
+body{{font-family:-apple-system,'SF Mono','Courier New',monospace;background:#0f1115;color:#d4d4d4;margin:40px;display:flex;justify-content:center}}
+.card{{background:#1a1d24;border:1px solid #2a2a2a;border-radius:10px;padding:30px;width:360px;max-width:90vw}}
+h1{{color:#4ec9b0;font-size:18px;margin:0 0 20px}}
+input{{width:100%;padding:10px;background:#0f1115;border:1px solid #3a3a3a;color:#d4d4d4;border-radius:5px;margin:6px 0 14px;font-size:14px;box-sizing:border-box}}
+input:focus{{outline:none;border-color:#4ec9b0}}
+button{{width:100%;padding:12px;background:#4ec9b0;color:#0f1115;border:none;border-radius:5px;font-size:14px;font-weight:700;cursor:pointer}}
+button:hover{{background:#3dd3a1}}
+code{{background:#0f1115;padding:2px 6px;border-radius:3px;color:#9cdcfe;font-size:12px}}
+.back{{color:#569cd6;font-size:12px;text-decoration:none;display:inline-block;margin-top:15px}}
+.err{{color:#f48771;margin:10px 0;font-size:13px}}
+</style></head><body>
+<div class="card">
+<h1>🔐 MTSCOS AI · Server Login</h1>
+<p><code>NODE_ROLE={NODE_ROLE}</code> &nbsp; <span style="color:#666;font-size:12px">Mac mini 后端登录</span></p>
+{error_html}
+<form method="POST" action="/auth/login">
+<input type="text" name="username" placeholder="用户名" required autofocus>
+<input type="password" name="password" placeholder="密码" required>
+<button type="submit">登录</button>
+</form>
+<a href="/" class="back">← 返回运维面板</a>
+</div>
 </body></html>"""
     return Response(panel, mimetype='text/html; charset=utf-8', status=200)
 
@@ -225,6 +265,25 @@ def _root_redirect():
     if _sa_r is not None:
         return _sa_r
     return _redirect('/index')
+
+# ───────────────────────────────────────────────────────────────
+# 🔧 SERVER 模式路由 override (v22.10.6)
+#   覆盖 auth_bp /auth/login GET — 不重定向到 /index#login-card
+#   而是返回纯 HTML 登录面板 (不走 render_template)
+# ───────────────────────────────────────────────────────────────
+@home_bp.route('/auth/login', methods=['GET'])
+def _server_auth_login_get():
+    """SERVER 模式: /auth/login GET → 内嵌登录面板; 其他模式 → 正常 auth_bp 处理"""
+    try:
+        from app.node_role import is_server as _is_srv
+        if _is_srv:
+            return _server_login_panel()
+    except ImportError:
+        pass
+    # 非 SERVER 模式 → 交给 auth_bp 处理 (302 /index#login-card)
+    # 但因为我们已经注册了 home_bp 这个 route, Flask 会优先匹配
+    # 所以这里需要自己 redirect 到原始行为
+    return _redirect('/index#login-card')
 
 @home_bp.route('/index', methods=['GET'])
 def _index_entry():
