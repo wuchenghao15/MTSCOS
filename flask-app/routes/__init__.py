@@ -1118,6 +1118,32 @@ def _install_server_overrides(app):
         
         return jsonify({'success': True, 'report': report})
     
+    # ═══ v22.10.14: 仙女座 MCP Hub 状态 (冰山 Ops Console 数据源) ═══
+    @app.route('/api/server/mcp-status', methods=['GET'])
+    def _server_api_mcp_status():
+        """MCP Hub :18899 状态 + tools 统计 + 调用量 — 冰山 Ops Console 面板用"""
+        import urllib.request, urllib.error
+        result = {'hub_ok': False, 'hub_url': 'http://127.0.0.1:18899',
+                  'version': None, 'tools_total': 0, 'sources': {},
+                  'dependencies': {}, 'stats': {}, 'uptime_seconds': 0}
+        try:
+            req = urllib.request.Request('http://127.0.0.1:18899/health',
+                                         headers={'X-Flask':'probe','X-Server':'1'})
+            with urllib.request.urlopen(req, timeout=4) as r:
+                data = json.loads(r.read())
+            result.update({
+                'hub_ok': data.get('ok', False),
+                'version': data.get('version'),
+                'tools_total': data.get('tools_total', 0),
+                'sources': data.get('sources', {}),
+                'dependencies': data.get('dependencies', {}),
+                'stats': data.get('stats', {}),
+                'uptime_seconds': data.get('uptime_seconds', 0),
+            })
+        except (urllib.error.URLError, Exception) as e:
+            result['error'] = str(e)[:120]
+        return jsonify({'success': True, 'mcp': result})
+    
     # ── 简化版 admin 面板 (admin 角色就能进, 不走 SA 双硬件) ──
     @app.route('/ops/admin', methods=['GET'])
     def _server_ops_admin():
