@@ -46,7 +46,7 @@ SYNC_TABLES = [              # 仅同步业务表 (跳过 784MB 全库) · v25.2
     ('mt_upgrade_reports', 'report_id'),
     ('mt_upgrade_overviews', 'overview_id'),
     ('mt_andromeda_contributor_persona', 'persona_id'),
-    ('mt_iron_rule_violations', 'violation_id'),
+    ('mt_iron_rule_violations', 'viol_id'),
 
     # ── 🧊 冰山意识中心 (v25.2) ──
     ('mt_iceberg_consciousness_runs', 'id'),
