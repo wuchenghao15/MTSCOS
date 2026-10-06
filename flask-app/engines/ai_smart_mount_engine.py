@@ -55,16 +55,26 @@ PROJECT_ROOT = os.path.dirname(ROOT)  # 项目根
 # 🔧 2026-09-10 仙女座修复: 主库从 flask-app/ai_engines/app.db → Database/app.db
 # 清理前的旧副本 488KB 不包含 15 daemon 注册表、AI 员工 33,525 人、25 恒星域
 AI_ENGINES_DIR = os.path.join(ROOT, "ai_engines")
-# 🔧 仙女座 v5.2 路径修复 (2026-09-13):
-# Mac mini 真实主库在 _runtime/databases/Database/app.db (9.8GB, 220 表)
-# PROJECT_ROOT/Database/app.db 是本地 Flask 注册时的路径漂移
-# 统一: 先找 _runtime/databases/Database/app.db → fallback 旧路径
-APP_DB = os.path.join(PROJECT_ROOT, "_runtime", "databases", "Database", "app.db")
-if not os.path.exists(APP_DB):
-    # fallback: 本地开发机 / 旧版本兼容
-    _alt1 = os.path.join(PROJECT_ROOT, "Database", "app.db")
-    _alt2 = os.path.join(AI_ENGINES_DIR, "app.db")
-    APP_DB = _alt1 if os.path.exists(_alt1) else _alt2
+# 🔧 仙女座 v5.2 路径修复 (2026-10-06):
+# MacBook Pro 真实主库在 flask-app/database/app.db (1.6GB, 有 mt_daemon_registry 60条)
+# Mac mini 旧库在 _runtime/databases/Database/app.db (7GB, 无 mt_daemon_registry — 不可用!)
+# 统一: 取 flask-app/database/app.db 优先 (Flask 正在用的活跃库)
+_DB_CANDIDATES = [
+    os.path.join(ROOT, "database", "app.db"),                                   # ✅ 活跃主库 (MacBook Pro)
+    os.path.join(PROJECT_ROOT, "flask-app", "database", "app.db"),              # 兜底
+    os.path.join(PROJECT_ROOT, "_runtime", "databases", "Database", "app.db"),  # Mac mini 旧库(缺表!)
+    os.path.join(PROJECT_ROOT, "Database", "app.db"),                           # 旧兼容
+    os.path.join(AI_ENGINES_DIR, "app.db"),                                     # 最后兜底
+]
+APP_DB = next((p for p in _DB_CANDIDATES 
+               if os.path.exists(p) and os.path.getsize(p) > 1000000),  # 至少 1MB
+              _DB_CANDIDATES[0])
+# 如果取到了 _runtime 的旧库但它没有关键表，强制用 flask-app/database
+if "_runtime" in APP_DB:
+    _flask_db = os.path.join(ROOT, "database", "app.db")
+    if os.path.exists(_flask_db):
+        APP_DB = _flask_db
+print(f"[SMART_MOUNT] ✅ APP_DB = {APP_DB} (exists={os.path.exists(APP_DB)} size={os.path.getsize(APP_DB) if os.path.exists(APP_DB) else 0})")
 RUNTIME_DIR = os.path.join(ROOT, "..", "_runtime")
 LOG_DIR = os.path.join(RUNTIME_DIR, "logs")
 PID_DIR = os.path.join(RUNTIME_DIR, "pids")
@@ -1352,9 +1362,14 @@ def _start_subprocess(process_name: str, script_path: str) -> Optional[int]:
         with _LOCK:
             conn = _get_conn()
             c = conn.cursor()
+            now_iso = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             c.execute(
                 "UPDATE mt_ai_smart_mount_processes SET pid=?, current_state='RUNNING', heartbeat_at=?, updated_at=? WHERE process_name=?",
-                (proc.pid, _now(), _now(), process_name))
+                (proc.pid, now_iso, now_iso, process_name))
+            # 同步写 mt_daemon_registry 的 pid + last_heartbeat (根因修复: 之前 daemon_registry 永远无 pid)
+            c.execute(
+                "UPDATE mt_daemon_registry SET pid=?, last_heartbeat=?, updated_at=? WHERE process_name=?",
+                (proc.pid, now_iso, now_iso, process_name))
             conn.commit()
             conn.close()
         _log(f"[START] {process_name} pid={proc.pid}")
@@ -1387,6 +1402,7 @@ def heartbeat_check() -> Dict:
     for r in rows:
         result["checked"] += 1
         pid = r["pid"]
+        pname = r["process_name"]
 
         # 检查进程是否存活
         alive = False
@@ -1405,17 +1421,27 @@ def heartbeat_check() -> Dict:
                     hb_ts = datetime.fromisoformat(hb).timestamp()
                     if now_ts - hb_ts > HEARTBEAT_TIMEOUT:
                         alive = False
-                        _log(f"[TIMEOUT] {r['process_name']} pid={pid} heartbeat_stale>{HEARTBEAT_TIMEOUT}s")
+                        _log(f"[TIMEOUT] {pname} pid={pid} heartbeat_stale>{HEARTBEAT_TIMEOUT}s")
                 except Exception:
                     pass
 
         if alive:
             result["alive"] += 1
+            # ✅ 每次心跳检查同步 daemon_registry 的 pid + last_heartbeat (根因补全)
+            try:
+                with _LOCK:
+                    _c2 = _get_conn().cursor()
+                    _c2.execute("UPDATE mt_daemon_registry SET pid=?, last_heartbeat=?, status='RUNNING', updated_at=? WHERE process_name=?",
+                                (pid, now_str, now_str, pname))
+                    _c2.connection.commit()
+                    _c2.connection.close()
+            except Exception:
+                pass
             # IDLE但存活的进程 → 不重启，标记为 RUNNING 便于进入正常心跳循环
             if r["current_state"] == "IDLE":
-                _update_process_state(r["process_name"], "RUNNING")
+                _update_process_state(pname, "RUNNING")
                 try:
-                    daemon_transition(r["process_name"], "RUNNING")
+                    daemon_transition(pname, "RUNNING")
                 except Exception:
                     pass
             continue
@@ -1425,9 +1451,16 @@ def heartbeat_check() -> Dict:
             with _LOCK:
                 _c = _get_conn().cursor()
                 _c.execute("UPDATE mt_ai_smart_mount_processes SET pid=NULL WHERE process_name=?",
-                           (r["process_name"],))
+                           (pname,))
                 _c.connection.commit()
                 _c.connection.close()
+            # ✅ 同步清理 daemon_registry 的 pid
+            with _LOCK:
+                _c2 = _get_conn().cursor()
+                _c2.execute("UPDATE mt_daemon_registry SET pid=NULL WHERE process_name=?",
+                            (pname,))
+                _c2.connection.commit()
+                _c2.connection.close()
         except Exception:
             pass
 
