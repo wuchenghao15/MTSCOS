@@ -1636,20 +1636,94 @@ def _index_entry_real():
                 {'scheme_id': 'dawn', 'name': '晨曦橙', 'preset_key': 'dawn', 'primary': 'var(--mtscos-accent-base)', 'is_memorial': False},
             ]
 
-        # ---- 认知画像注入 (仙女座 §三 v5.5) ----
+        # ---- 认知画像注入 (仙女座 §三 v5.5 + v5.7) ----
+        # v5.7 修复: Flask session cookie 恢复失败时读 mtscos_uid 自定义 cookie 双保险
+        # v5.7b 修复: session user_id 是数字(2) 但 cognitive_profile.user_id 是字符串('caopw')
+        #              先查 mtscos.db users 表把数字 id 转成 username
         cognitive_profile = {}
+        personalized = False
+        role_hero = {}
+        recommendations = []
         try:
             _cp_sdb = getattr(_sdb, 'APP_DB', None)
             if _cp_sdb:
+                # 双保险: session + mtscos_uid cookie
+                _ck_uid = _request.cookies.get('mtscos_uid', '')
+                _session_uid = _session.get('user_id', 'guest')
+                _session_uname = _session.get('username', '')
+                # 优先用非 guest 的 uid
+                _uid = _session_uid if (_session_uid and _session_uid != 'guest') else (_ck_uid if (_ck_uid and _ck_uid not in ('','guest')) else 'guest')
+                _uname = _session_uname or _request.cookies.get('mtscos_user', '') or ''
+
+                # 🔴 关键修复: 数字 id → username 转换
+                if _uid and str(_uid).isdigit() and not _uname:
+                    # 从 mtscos.db 或 app.db 的 users 表查 username
+                    for _db_path in [getattr(_sdb, 'DATA_MTSCOS_DB', None), _cp_sdb]:
+                        if not _db_path:
+                            continue
+                        try:
+                            _uconn = _sq3.connect(_db_path, timeout=8)
+                            _uconn.execute('PRAGMA busy_timeout=8000')
+                            _urow = _uconn.execute("SELECT username FROM users WHERE id=?", (int(_uid),)).fetchone()
+                            if _urow and _urow[0]:
+                                _uname = _urow[0]
+                                break
+                            _uconn.close()
+                        except Exception:
+                            continue
+
                 _cp_c = _sq3.connect(_cp_sdb, timeout=8)
-                _cp_row = _cp_c.execute(
-                    "SELECT cognitive_level, learning_style, focus_subjects, weak_subjects, "
-                    "pace_setting, preferred_output, ai_tutor_type FROM mt_user_cognitive_profile "
-                    "WHERE user_id=?", (_session.get('user_id', 'guest'),)).fetchone()
-                cognitive_profile = dict(_cp_row) if _cp_row else {}
+                _cp_c.execute('PRAGMA busy_timeout=8000')
+                # 四保险: user_id(数字/字符串) / username / cookie_uid
+                _cp_sql = (
+                    "SELECT username, cognitive_level, learning_style, focus_subjects, weak_subjects, "
+                    "pace_setting, preferred_output, ai_tutor_type, role, iceberg_layer FROM mt_user_cognitive_profile "
+                    "WHERE user_id=? OR username=? OR user_id=? OR username=? LIMIT 1"
+                )
+                _cp_params = (str(_uid), _uname or str(_uid), str(_ck_uid), _session_uname or str(_ck_uid))
+                _cp_row = _cp_c.execute(_cp_sql, _cp_params).fetchone()
+                if _cp_row:
+                    # 🔧 关键修复: sqlite3 Row 不能直接 dict() — 手动映射列名
+                    _cp_cols = [d[0] for d in _cp_c.execute(_cp_sql, _cp_params).description] if hasattr(_cp_c.execute(_cp_sql, _cp_params), 'description') else []
+                    # 简化: 已知列顺序
+                    _cp_cols = ['username','cognitive_level','learning_style','focus_subjects','weak_subjects',
+                                'pace_setting','preferred_output','ai_tutor_type','role','iceberg_layer']
+                    cognitive_profile = dict(zip(_cp_cols, _cp_row))
                 _cp_c.close()
         except Exception:
             pass
+
+        # v5.7 千人千面个性化渲染
+        _ck_uid = _request.cookies.get('mtscos_uid', '')
+        _session_uid = _session.get('user_id', '')
+        _auth = (_session_uid and _session_uid != 'guest') or \
+                (_ck_uid and _ck_uid not in ('', 'guest'))
+        personalized = _auth and bool(cognitive_profile)
+        _cog = cognitive_profile or {}
+
+        # 🔴 DEBUG
+        print(f"[ANDROMEDA-DEBUG] session_uid={_session_uid!r} cookie_uid={_ck_uid!r} auth={_auth} cog={bool(cognitive_profile)} cog_rows_keys={list(_cog.keys())[:6]} personalized={personalized}", flush=True)
+
+        # role_hero: 根据认知画像生成角色欢迎语
+        _role = _cog.get('learning_style') or 'user'
+        _level = _cog.get('cognitive_level') or 'intermediate'
+        _rh_map = {
+            'visual':     {'greeting': '你好, 视觉型学习者', 'subtitle': '图形化思维, 适合隐喻发散'},
+            'auditory':   {'greeting': '你好, 听觉型学习者', 'subtitle': '语音对话友好, 适合 Socratic 提问'},
+            'kinesthetic':{'greeting': '你好, 动手型学习者', 'subtitle': '实操导向, 适合 Arduino/IoT'},
+            'reading':    {'greeting': '你好, 阅读型学习者', 'subtitle': '深度阅读, 适合知识图谱构建'},
+        }
+        role_hero = _rh_map.get(_role, {'greeting': '你好', 'subtitle': f'仙女座, 认知水平 {_level}'}) if personalized else {}
+
+        # recommendations
+        if personalized:
+            import json as _jj
+            try:
+                _subjs = _jj.loads(_cog.get('focus_subjects') or '[]')
+            except Exception:
+                _subjs = []
+            for _s in (_subjs or ['综合学习']):
+                recommendations.append(f'{_s} 深度探索')
 
         return _render_template('index.html',
                                 version=version,
@@ -1663,7 +1737,10 @@ def _index_entry_real():
                                 sa_rules=sa_rules,
                                 theme_schemes=theme_schemes,
                                 page_csrf_token=_session.get('csrf_token', ''),
-                                cognitive_profile=cognitive_profile)
+                                cognitive_profile=cognitive_profile,
+                                personalized=personalized,
+                                role_hero=role_hero,
+                                recommendations=recommendations)
     except Exception:
         # 模板不可用时返回简单提示页，禁止重定向回 /login（会导致死循环）
         return ('<html><head><meta charset="utf-8"><title>MTSCOS AI</title>'
