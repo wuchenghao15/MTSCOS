@@ -634,16 +634,25 @@ def _root_redirect():
     if _is_dev:
         return _server_ops_panel()
     
-    # ── SERVER (后端服务器): 仅本机 127.0.0.1 显示 Ops Console, 外部一律走首页 ──
+    # ── SERVER (后端服务器): 仅真本机 (非 Cloudflare Tunnel) 显示 Ops Console ──
     if _is_srv:
         _ra = _request.remote_addr or ''
-        _via_local = _ra in ('127.0.0.1','::1','localhost') or _ra.startswith('169.254.')
         _ua = _request.headers.get('User-Agent','')
-        # CLI curl/wget/urllib 运维工具 → 也显示 Ops Console
+        # 🌩️ Cloudflare Tunnel 转发检测: 有 CF-Connecting-IP header = 公网请求, 即使 remote_addr=127.0.0.1 也跳过 Ops Console
+        _cf_ip = _request.headers.get('CF-Connecting-IP', '') or _request.headers.get('X-Forwarded-For', '')
         _is_cli = any(t in _ua.lower() for t in ['curl','wget','python-urllib','insomnia'])
-        if _via_local or _is_cli:
+        _is_real_local = _ra in ('127.0.0.1','::1','localhost') or _ra.startswith('169.254.')
+        # 真本机 Ops Console = 无 Cloudflare header + (真本地 IP 或 CLI 工具)
+        if not _cf_ip and (_is_real_local or _is_cli):
             return _server_ops_panel()
-        # 外部访问者 (iPhone/MacBook/iPad/其他) → 走正常首页
+        # 已登录用户也跳过 Ops Console
+        try:
+            _uid_cf = _request.cookies.get('mtscos_uid', '')
+            if _uid_cf and _uid_cf not in ('', 'guest'):
+                pass  # 已登录 → 不走 Ops Console, 继续走下面的 redirect('/index')
+        except Exception:
+            pass
+        # 公网访问者 (iPhone/MacBook/iPad/Cloudflare Tunnel) → 走正常首页
     
     # ── CLIENT (所有其他终端) / SERVER 外部访问者 → 正常 /index → index.html ──
     # Arduino 设备插入：透传参数到 /login（Arduino 引导逻辑在 login.html，index.html 不处理该参数）
@@ -958,6 +967,19 @@ def _install_server_overrides(app):
             return _launchctl(label, 'bootstrap')
         
         # ═══ 诊断 1: daemon 健康度 ═══
+        def _pid_alive(pid_str):
+            """macOS launchd 坑: keepalive daemon 被 -k kill 后会自动重启,
+            但 launchctl list 里 exit_code 永远是上次被杀的 -9/-15, 不会变 0.
+            所以必须交叉验证 PID 是否真的在跑."""
+            if not pid_str or pid_str == '-':
+                return False
+            try:
+                p = int(pid_str)
+                os.kill(p, 0)  # signal 0 = 只检查进程是否存在, 不发信号
+                return True
+            except (ValueError, ProcessLookupError, PermissionError):
+                return False
+
         try:
             r = subprocess.run(['launchctl','list'], capture_output=True, text=True, timeout=5)
             mtscos_lines = [l for l in r.stdout.splitlines() if 'mtscos' in l.lower()]
@@ -966,8 +988,10 @@ def _install_server_overrides(app):
                 if len(parts) < 3: continue
                 pid, ec, label = parts[0], parts[1], parts[2]
                 if pid == '-': pid = None
-                ec_int = int(ec) if ec.isdigit() else 999
-                ok = (ec_int == 0)
+                ec_int = int(ec) if ec.lstrip('-').isdigit() else 999
+                # 健康判定: exit_code=0 或 PID 真实存活 (launchd keepalive 重启场景)
+                pid_ok = _pid_alive(pid) if pid else False
+                ok = (ec_int == 0) or pid_ok
                 issue = None
                 if not ok:
                     issue = {'type': 'daemon_crashed','label':label,'exit_code':ec_int,'pid':pid,
@@ -1355,14 +1379,26 @@ function restartDaemon(label){{if(confirm('Restart '+label+'?'))doAction('restar
 @home_bp.route('/index', methods=['GET'])
 def _index_entry():
     """/index — SERVER 模式运维面板 / 其他模式渲染 index.html。"""
-    # 🔧 v22.10.6: SERVER 模式短路 — 跳过 require_auth, 直接显示运维面板
+    # 🔧 v22.10.6 + v22.10.20: SERVER 模式 Ops Console 短路 — 仅真本机显示
     try:
         from app.node_role import is_server as _is_srv
         if _is_srv:
-            return _server_ops_panel()
+            # 🌩️ Cloudflare Tunnel 转发检测: 有 CF-Connecting-IP = 公网请求 → 跳过 Ops Console
+            _cf_ip = _request.headers.get('CF-Connecting-IP', '') or _request.headers.get('X-Forwarded-For', '')
+            if _cf_ip:
+                # 公网 → 走正常 index.html (未登录会被 guest 装饰器放行)
+                pass
+            else:
+                # 真本机 → Ops Console
+                _ua = _request.headers.get('User-Agent','')
+                _is_cli = any(t in _ua.lower() for t in ['curl','wget','python-urllib','insomnia'])
+                _ra = _request.remote_addr or ''
+                _is_local = _ra in ('127.0.0.1','::1','localhost') or _ra.startswith('169.254.')
+                if _is_local or _is_cli:
+                    return _server_ops_panel()
     except ImportError:
         pass
-    # ── DEV/CLIENT 模式正常首页 (带 auth 装饰器) ──
+    # ── DEV/CLIENT 模式 + SERVER 公网访问 → 正常首页 (带 auth 装饰器) ──
     return _index_entry_real()
 
 @system_container(require_auth='guest')
