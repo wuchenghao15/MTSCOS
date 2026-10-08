@@ -512,6 +512,13 @@
                     <span id="evMiniLogin" style="opacity:.7">Mini —</span>
                     <span id="evStatusLogin" style="padding:1px 8px;border-radius:999px;font-size:10px;font-weight:700;background:rgba(34,197,94,.1);color:#166534;border:1px solid rgba(34,197,94,.3)">● 引擎启动中</span>
                 </div>
+                <!-- 🌌 仙女座功能亮点 (未登录也能看到) -->
+                <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
+                    <span style="padding:3px 10px;border-radius:12px;font-size:11px;background:rgba(155,89,182,.1);color:#9B59B6;border:1px solid rgba(155,89,182,.25);">🧠 本地 Ollama · 零 token</span>
+                    <span style="padding:3px 10px;border-radius:12px;font-size:11px;background:rgba(46,134,222,.1);color:#2E86DE;border:1px solid rgba(46,134,222,.25);">💡 发散思维引擎</span>
+                    <span style="padding:3px 10px;border-radius:12px;font-size:11px;background:rgba(52,211,153,.1);color:#10B981;border:1px solid rgba(52,211,153,.25);">📚 永久化脑库</span>
+                    <span style="padding:3px 10px;border-radius:12px;font-size:11px;background:rgba(251,191,36,.1);color:#F59E0B;border:1px solid rgba(251,191,36,.25);">⚡ 15 daemon 集群</span>
+                </div>
             </div>
         </div>
         <form class="wb-login" id="bizLoginFormMain" onsubmit="return false;">
@@ -534,16 +541,34 @@
         </form>
     </section>
     {% else %}
-    <!-- 已登录欢迎条 -->
+    <!-- 已登录欢迎条 — 仙女座个性化 role_hero + 聊天入口 -->
     <section class="biz-welcome-banner logged">
         <div class="wb-left">
             <div class="wb-icon" style="background:linear-gradient(135deg,var(--mtscos-primary-base),var(--mtscos-secondary-base))">{{ current_user.username[0]|upper }}</div>
             <div>
+                {% if personalized and role_hero %}
+                <div class="wb-title" style="font-size:16px;">{{ role_hero.greeting|default('你好') }}, <span style="color:var(--andromeda-purple,#9B59B6);">{{ current_user.username }}</span>!</div>
+                <div class="wb-sub" style="line-height:1.6;">
+                    {% if role_hero.subtitle %}{{ role_hero.subtitle }} · {% endif %}
+                    <span style="opacity:.7;">仙女座 · 全速运行 (score <span class="num-mono" id="andStatusMiniScore2">100</span>) · Ollama 5模型在线 · Mini 4ms</span>
+                </div>
+                {% if recommendations %}
+                <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
+                    {% for rec in recommendations[:3] %}
+                    <span style="padding:3px 10px;border-radius:12px;font-size:11px;background:rgba(46,134,222,.1);color:#2E86DE;border:1px solid rgba(46,134,222,.25);">🎯 {{ rec }}</span>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                {% else %}
                 <div class="wb-title">{{ t('home.user.welcome_back') }}{{ get_role_name(current_user.role) if current_user.role else '用户' }}</div>
                 <div class="wb-sub">仙女座 · 全速运行 (score <span class="num-mono" id="andStatusMiniScore2">100</span>) · Ollama 5模型在线 · Mini 4ms</div>
+                {% endif %}
             </div>
         </div>
-        <a href="/student_portal" class="wb-btn"><i class="fas fa-gauge-high"></i> {{ t('home.workspace', default='工作台') }}</a>
+        <div style="display:flex;gap:8px;">
+            <a href="/local-chat" class="wb-btn" style="background:linear-gradient(135deg,#9B59B6,#2E86DE);color:#fff;"><i class="fas fa-brain"></i> 🧠 仙女座聊天</a>
+            <a href="/student_portal" class="wb-btn"><i class="fas fa-gauge-high"></i> {{ t('home.workspace', default='工作台') }}</a>
+        </div>
     </section>
     {% endif %}
 
