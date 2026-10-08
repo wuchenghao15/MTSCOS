@@ -2432,6 +2432,38 @@ _CSRF_EXEMPT_PREFIXES = [
     '/api/dev_flow/',
 ]
 
+# ════════════════════════════════════════════════════════════════════
+# 🛡️ SA 专属路径守卫 (v25.3) — 仅 super_admin 可访问
+# 普通登录页 /auth/login → 所有注册用户, 只验密码, 不要 VIKEY/双密钥
+# SA 专属 → 才触发双密钥检测
+# ════════════════════════════════════════════════════════════════════
+_SA_ONLY_PATH_PREFIXES = (
+    '/sa/',                    # SA dashboard + 预认证
+    '/api/hardware/',          # VIKEY/SZU100 硬件狗状态
+    '/api/server/vikey-status', # VIKEY 状态查询
+    '/admin_app/arduino_ide',  # Arduino IDE 管理 (SA 专属)
+)
+
+@app.before_request
+def _sa_path_guard():
+    """普通用户访问 SA 专属路径 → 403。只给 super_admin。"""
+    _p = request.path
+    if not any(_p.startswith(p) for p in _SA_ONLY_PATH_PREFIXES):
+        return None  # 非 SA 路径, 放行
+
+    _uid = session.get('user_id')
+    _role = session.get('role', '')
+    if not _uid or _uid == 'guest':
+        # 未登录 SA 路径 → 跳登录
+        from flask import redirect, url_for
+        return redirect(f'/auth/login?next={_p}', code=302)
+    if _role not in ('super_admin',):
+        # 普通用户 → 403
+        from flask import jsonify
+        return jsonify({'success': False, 'error': 'SA_ONLY', 'message': '该路径仅限超级管理员访问'}), 403
+    # super_admin → 放行 (后续 SA 页面内部的双密钥检测自己做)
+    return None
+
 @app.before_request
 def _mt_csrf_protection():
     # 兼容两种 header 格式: X-CSRF-Token (带连字符) 和 X-CSRFToken (无连字符)
@@ -9701,14 +9733,27 @@ def index():
     footer_info = _get_footer_info()
     particle_config = _get_particle_frontend_config()
 
-    # 🔧 §三 前端渲染: 认知画像 + AI 生态 + 规则状态 + 主题 + CSRF (仙女座 v5.5)
+    # 🔧 §三 前端渲染: 认知画像 + AI 生态 + 规则状态 + 主题 + CSRF (仙女座 v5.6)
+    # v5.7 修复: Flask session cookie 恢复失败时读 mtscos_uid 自定义 cookie
+    _cookie_uid = request.cookies.get('mtscos_uid', '')
+    _cookie_user = request.cookies.get('mtscos_user', '')
+    _fallback_user_id = None
+    if (not session.get("user_id") or session.get("user_id") == "guest") and _cookie_uid and _cookie_uid not in ('', 'guest'):
+        _fallback_user_id = _cookie_uid
+        try:
+            _uname_hint = _cookie_user or session.get("username", "") or ""
+            session["user_id"] = int(_cookie_uid) if _cookie_uid.isdigit() else _cookie_uid
+            if _uname_hint:
+                session["username"] = _uname_hint
+        except Exception:
+            pass
+
     cognitive_profile = {}
     try:
         _cp_conn = _get_conn()
-        # v5.6 修复: session['user_id'] 可能是数字 id 或字符串 username
-        # 加 username fallback — 双保险覆盖两种关联方式
-        _uid = session.get("user_id") or "guest"
-        _uname = session.get("username") or ""
+        # v5.7 修复: session['user_id'] 可能是数字 id 或字符串 username — 三保险
+        _uid = session.get("user_id") or _fallback_user_id or "guest"
+        _uname = session.get("username") or _cookie_user or ""
         _cp_row = _cp_conn.execute(
             "SELECT username, cognitive_level, learning_style, focus_subjects, weak_subjects, "
             "pace_setting, preferred_output, ai_tutor_type, role, iceberg_layer FROM mt_user_cognitive_profile "
@@ -9735,10 +9780,22 @@ def index():
         page_csrf_token = hashlib.sha256(f'mtscos-csrf-sess-{_tm.time()}-{_os.urandom(16)}'.encode()).hexdigest()
         session['csrf_token'] = page_csrf_token
 
-    # ============ v5.6 千人千面个性化渲染 ============
-    _is_auth = bool(session.get("user_id")) and session.get("user_id") != "guest"
+    # ============ v5.7 千人千面个性化渲染 ============
+    # v5.7 修复: 也检查 mtscos_uid cookie (session 恢复失败时也能个性化)
+    _session_ok = bool(session.get("user_id")) and session.get("user_id") != "guest"
+    _cookie_ok = bool(_cookie_uid) and _cookie_uid not in ('', 'guest')
+    _is_auth = _session_ok or _cookie_ok
     personalized = _is_auth and bool(cognitive_profile)
     _cog = cognitive_profile or {}
+
+    # 🔴 DEBUG: 仙女座个性化链路诊断日志
+    import logging as _dbg_log
+    _dbg_log.getLogger("andromeda").warning(
+        f"[ANDROMEDA-PERF] session_ok={_session_ok} cookie_ok={_cookie_ok} "
+        f"cookie_uid={_cookie_uid!r} session_uid={session.get('user_id')!r} "
+        f"cog_rows={bool(cognitive_profile)} personalized={personalized} "
+        f"cog={ {k: _cog.get(k) for k in ['username','learning_style','cognitive_level','role']} }"
+    )
     
     # role_hero: 根据认知画像生成角色欢迎语
     _role = _cog.get('learning_style') or session.get('role') or 'user'
