@@ -2398,6 +2398,8 @@ _CSRF_EXEMPT_PREFIXES = [
     '/api/neuralhub/routes/',
     # v22.40.1: 日语学习全部 API（端点已有 _check_login 强制登录保护 + session user_id 校验，CSRF 冗余）
     '/api/japanese/',
+    # v22.10.20: 本地聊天 — 仙女座发散思维引擎 (已有 @_login_required, CSRF 冗余 + SSE 流式无法带 CSRF header)
+    '/api/local-chat/',
     # §二/§四.5: 教育错题推理 + 大模型升级（daemon 也能调 + POST 无 CSRF token）
     '/api/edu/',
     '/api/model/',
@@ -2426,6 +2428,8 @@ _CSRF_EXEMPT_PREFIXES = [
     '/api/empower/',
     # v6.2: 深度集成 — Ollama embedding + 语义搜索 + daemon 编排验证 (供 daemon/内部调用, 无 CSRF token)
     '/api/ai/github-fusion/deep/',
+    # 🆕 §14 v2.3.0: 强制 12 步骤开发流程 API — /api/dev_flow/create|advance|* (preflight/MCP/daemon 调用, 无 CSRF token)
+    '/api/dev_flow/',
 ]
 
 @app.before_request
@@ -2845,6 +2849,14 @@ try:
     print('[🤝 Handshake] 🚀 守护线程已启动 — 心跳检测 Mac mini, 一旦握手成功自动触发双向同步 + 圆桌 + 完整报告')
 except Exception as _hs_err:
     print(f'[🤝 Handshake] ⚠️ 握手模块加载失败: {_hs_err}')
+
+# ── 本地聊天 Blueprint: /local-chat (仙女座发散思维引擎) ──
+try:
+    from blueprints.chat_local_bp import chat_local_bp
+    app.register_blueprint(chat_local_bp)
+    print('[CHAT-LOCAL] ✅ /local-chat + /api/local-chat/* Blueprint 已注册')
+except Exception as _cl_err:
+    print(f'[CHAT-LOCAL] ⚠️ 本地聊天模块加载失败: {_cl_err}')
 
 # 1) 注入 t() / t_kw() —— 冰山引擎已注入时跳过（避免覆盖）
 if inject_i18n_into_app is not None and 't' not in app.jinja_env.globals:
@@ -3789,6 +3801,8 @@ _MT_HOTLINK_WHITELIST_PREFIXES = (
     '/mobile/', '/iceberg/mobile',
     # v25.5: 🌌 仙女座仪表盘 (后台监控, 无 Referer 直达放行)
     '/andromeda/',
+    # v22.10.20: 🧠 本地聊天 — 仙女座发散思维引擎页面
+    '/local-chat', '/api/local-chat/',
 )
 # API 内部白名单 — 这些 /api/ 路径即使无 Referer 或外站 Referer 也允许访问 (状态检查类)
 _MT_HOTLINK_API_ALLOW_PREFIXES = (
@@ -3941,6 +3955,7 @@ def _mt_vikey_lock_check():
             '/api/health', '/favicon.ico',
             '/api/system_version', '/api/system_logo',
             '/settings',
+            '/local-chat',  # 🧠 本地聊天页 (仙女座发散思维引擎, 需登录后访问, 但先过 VIKEY)
         }
         if path in bypass_paths or path.startswith('/static/') or path.startswith('/assets/'):
             return None
@@ -9690,10 +9705,16 @@ def index():
     cognitive_profile = {}
     try:
         _cp_conn = _get_conn()
+        # v5.6 修复: session['user_id'] 可能是数字 id 或字符串 username
+        # 加 username fallback — 双保险覆盖两种关联方式
+        _uid = session.get("user_id") or "guest"
+        _uname = session.get("username") or ""
         _cp_row = _cp_conn.execute(
-            "SELECT cognitive_level, learning_style, focus_subjects, weak_subjects, "
-            "pace_setting, preferred_output, ai_tutor_type FROM mt_user_cognitive_profile "
-            "WHERE user_id=?", (session.get("user_id", "guest"),)).fetchone()
+            "SELECT username, cognitive_level, learning_style, focus_subjects, weak_subjects, "
+            "pace_setting, preferred_output, ai_tutor_type, role, iceberg_layer FROM mt_user_cognitive_profile "
+            "WHERE user_id=? OR username=? LIMIT 1",
+            (str(_uid), _uname or str(_uid))
+        ).fetchone()
         cognitive_profile = dict(_cp_row) if _cp_row else {}
         _cp_conn.close()
     except Exception:
@@ -9714,6 +9735,44 @@ def index():
         page_csrf_token = hashlib.sha256(f'mtscos-csrf-sess-{_tm.time()}-{_os.urandom(16)}'.encode()).hexdigest()
         session['csrf_token'] = page_csrf_token
 
+    # ============ v5.6 千人千面个性化渲染 ============
+    _is_auth = bool(session.get("user_id")) and session.get("user_id") != "guest"
+    personalized = _is_auth and bool(cognitive_profile)
+    _cog = cognitive_profile or {}
+    
+    # role_hero: 根据认知画像生成角色欢迎语
+    _role = _cog.get('learning_style') or session.get('role') or 'user'
+    _level = _cog.get('cognitive_level') or 'intermediate'
+    _role_hero_map = {
+        'visual':    {'greeting': '你好, 视觉型学习者', 'subtitle': '图形化思维, 适合隐喻发散'},
+        'auditory':  {'greeting': '你好, 听觉型学习者', 'subtitle': '语音对话友好, 适合 Socratic 提问'},
+        'kinesthetic': {'greeting': '你好, 动手型学习者', 'subtitle': '实操导向, 适合 Arduino/IoT'},
+        'reading':   {'greeting': '你好, 阅读型学习者', 'subtitle': '深度阅读, 适合知识图谱构建'},
+    }
+    role_hero = _role_hero_map.get(_role, {
+        'greeting': f'你好, {session.get("username","同学")}',
+        'subtitle': f'认知水平 {_level}, 仙女座集群矩阵 ×{_cog.get("pace_setting","normal")}'
+    }) if personalized else {}
+    
+    # recommendations: 根据 focus_subjects + cognitive_level 生成个性化方向
+    recommendations = []
+    if personalized:
+        import json as _jj
+        try:
+            subjects = _jj.loads(_cog.get('focus_subjects') or '[]')
+        except Exception:
+            subjects = []
+        for subj in (subjects or ['综合学习']):
+            recommendations.append({
+                'title': f'{subj} 深度探索',
+                'desc': f'基于你的认知画像, {_level} 水平 {_role} 风格',
+                'icon': '🧠',
+            })
+    # 也把 username 补进 cognitive_profile (模板需要)
+    if personalized and 'username' not in _cog:
+        _cog['username'] = session.get('username', '')
+        cognitive_profile = _cog
+
     return render_template('index.html',
                            version=version,
                            version_info=info,
@@ -9723,6 +9782,9 @@ def index():
                            footer_info=footer_info,
                            particle_config=particle_config,
                            cognitive_profile=cognitive_profile,
+                           personalized=personalized,
+                           role_hero=role_hero,
+                           recommendations=recommendations,
                            ai_eco=ai_eco,
                            sa_rules=sa_rules,
                            theme_schemes=theme_schemes,
