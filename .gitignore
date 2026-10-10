@@ -355,3 +355,4 @@ docs/
 # archive logs
 flask-app/core/services/archived_logs/
 *.archive
+MTSCOS_AI/
