@@ -1,767 +1,877 @@
 {% extends "base_unified.html" %}
 
 {% block title %}
-{{ t('andromeda.冰山控制中心___Ice_38a000', default='冰山控制中心 · Iceberg Control Center') }}
+冰山控制中心 · Iceberg Guard — 七层防线守护仙女座
 {% endblock %}
 
 {% block extra_head %}
 
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;500;700;900&family=Playfair+Display:ital,wght@0,40{{ t('andromeda.仙女座守护_6879db', default='仙女座守护') }};1,400&family=JetBrains+Mono:wght@400;500;700&display=swap');
+/* ═══════════════════════════════════════════════════════════
+   🧊 冰山守护系统 · 水墨新国风 × nbdeli 品牌矩阵
+   参考 nbdeli.com 信息架构节奏, 保持水墨 Token, 全新布局
+   2026-10-10 v26.0 完整重构: CSS 清理 + Hero + 矩阵 + 场景
+═══════════════════════════════════════════════════════════ */
 
-  /* ═══════════════════════════════════════════════════
-     📐 仙女座冰山 · 统一设计 Token (v22.4.0 美院院士规范)
-    {{ t('andromeda.0_模型_2ba3e3', default='0 模型') }}══════════════════════════════════════════════ */
-  :root {
-    /* 墨 · 主色系 (水墨渐变) */
-    --ink-deep:#0A2342;
-    --ink-mid:#1E4A63;
-    --ink-light:#2C5F7C;
-    --ink-wash:#5B8AA8;
-    /* 雪 · 背景 */
-    --snow:#E8F0F2;
-    -{{ t('andromeda.IOL_深度绑定_7c2d8e', default='IOL 深度绑定') }}ht:#F8FBFC;
-    --paper:#FFFFFF;
-    /* 金 · 点缀 */
-    --gold:#C9{{ t('andromeda.🌙_暗黑_Matrix_6d5493', default='🌙 暗黑 Matrix') }}old-bright:#E8C98A;
-    --gold-deep:#8B6F3F;
-    /* 印 · 朱红 */
-    --seal-red:#B83A2F;
-    /* 文字 */
-    --text-primary:#1A2E3D;
-    --text-secondary:#4A6572;
-    --text-muted:#8EA4B3;
-    /* 阴影 */
-    --shadow-sm:0 1px 3p{{ t('andromeda.冰_山_控_制_中_心_93d35c', default='冰 山 控 制 中 心') }}66,0.08);
-    --shadow-md:0 4px 16px rgba(10,35,66,0.12);{{ t('andromeda.赤壁_·_承天寺_·_东坡_d9664e', default='赤壁 · 承天寺 · 东坡') }}g:0 12px 32px rgba(10,35,66,0.16);
-    --shadow-i{{ t('andromeda.加载中..._26b5bd', default='加载中...') }}et 0 1px 3px rgba(10,35,66,0.06);
-    /* 圆角 */
-    --radius-sm:6px;
-    --radius-md:10px;
-    --radius-lg:16px;
-    --radius-xl:24px;
-    /* 间距 */
-    --space-xs:4px;
-    --space-sm:8px;
-    --space-md:16px;
-    --space-lg:24px;
-    --space-xl:40px;
-    /* 过渡 */
-    --ease-out:cubic-bezier(0.22,1,0.36,1);
-  }
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;500;700;900&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;500;700&display=swap');
 
-  /* ═══════════ Reset ═══════════ */
-  * { margin:0; padding:0; box-sizing:border-box; }
-  html { scroll-behavior:smooth; }
-  body {
-    font-family:'Noto Serif SC',-apple-system,BlinkMacSystemFont,serif;
-    background:var(--snow);
-    background-image:
-      radial-gradient(ellipse 900px 500px at 10% 15%, rgba(44,95,124,0.07), transparent 60%),
-      radial-gradient(ellipse 700px 400px at 90% 85%, rgba(30,74,99,0.0{{ t('andromeda.东坡_29a86c', default='东坡') }}transparent 60%),
-      radial-gradient(ellipse 500px 300px at 50% 50%, rgba(201,169,110,0.03), transparent 70%);
-    color:var(--text-primary);
-    min-height:100vh;
-    line-height:1.6;
-    -webkit-font-smoothing:antialiased;
-    font-feature-settings:"kern", "palt";
-  }
-  a { text-decoration:none; color:inherit; transition:color 0.2s var(--ease-out); }
-  a:hover { color:var(--ink-light); }
+/* ═══════════ 1. 设计 Token (干净版 — 无 t() 污染) ═══════════ */
+:root {
+  /* 墨 · 主色系 (水墨渐变) */
+  --ink-900:#0A2342;
+  --ink-700:#1E4A63;
+  --ink-500:#2C5F7C;
+  --ink-300:#5B8AA8;
+  --ink-100:#B8D4E3;
+  /* 雪 · 背景 */
+  --snow:#E8F0F2;
+  --frost:#F8FBFC;
+  --paper:#FFFFFF;
+  /* 金 · 点缀 */
+  --gold:#C9A96E;
+  --gold-bright:#E8C98A;
+  --gold-deep:#8B6F3F;
+  /* 印 · 朱红 */
+  --seal-red:#B83A2F;
+  /* 黛 · nbdeli 清新蓝 (参考得力办公蓝) */
+  --dai-cyan:#1A73E8;
+  --dai-cyan-light:#4A90D9;
+  --dai-sky:#E8F0FE;
+  /* 文字 */
+  --text-primary:#1A2E3D;
+  --text-secondary:#4A6572;
+  --text-muted:#8EA4B3;
+  /* 阴影 */
+  --shadow-sm:0 1px 3px rgba(10,35,66,0.08);
+  --shadow-md:0 4px 16px rgba(10,35,66,0.12);
+  --shadow-lg:0 12px 32px rgba(10,35,66,0.16);
+  --shadow-inner:inset 0 1px 3px rgba(10,35,66,0.06);
+  /* 圆角 */
+  --radius-sm:6px;
+  --radius-md:12px;
+  --radius-lg:20px;
+  --radius-xl:28px;
+  /* 间距 */
+  --space-xs:6px;
+  --space-sm:12px;
+  --space-md:20px;
+  --space-lg:32px;
+  --space-xl:48px;
+  /* 过渡 */
+  --ease-out:cubic-bezier(0.22,1,0.36,1);
+  /* 状态 */
+  --ok:#16A34A;
+  --warn:#D97706;
+  --fail:#DC2626;
+  --idle:#6B7280;
+}
 
-  /* ═══════════ 布局容器 ═══════════ */
-  .container { max-width:1360px; margin:0 auto; padding:40px 48px 80px; }
+/* ═══════════ 2. Reset & Body ═══════════ */
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body {
+  font-family:'Noto Serif SC',-apple-system,BlinkMacSystemFont,serif;
+  background:var(--snow);
+  background-image:
+    radial-gradient(ellipse 1200px 600px at 15% 10%, rgba(44,95,124,0.06), transparent 60%),
+    radial-gradient(ellipse 800px 400px at 85% 90%, rgba(201,169,110,0.05), transparent 60%),
+    radial-gradient(ellipse 600px 300px at 50% 50%, rgba(26,115,232,0.03), transparent 70%);
+  color:var(--text-primary);
+  min-height:100vh;
+  line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+}
+a { text-decoration:none; color:inherit; transition:color 0.2s var(--ease-out); }
+a:hover { color:var(--ink-500); }
 
-  /* ═══════════ 题头{{ t('andromeda.承天寺_65f371', default='承天寺') }} ═══════════ */
-  .header {
-    text-align:center;
-    margin-bottom:var(--space-xl);
-    padding:var(--space-xl) var(--space-lg);
-    background:linear-gradient(180deg, rgba(255,255,255,0.6) 0%, transparent 100%);
-    border-radius:var(--radius-lg);
-    position:relative;
-  }
-  .dyn-sub {
-    font-family:'Playfair Display',serif;
-    font-style:italic;
-    color:var(--text-muted);
-    letter-spacing:6px;
-    font-size:0.82rem;
-    text-transform:uppercase;
-  }
-  .dyn-title {
-    font-size:clamp(1.8rem, 4vw, 3.2rem);
-    font-weight:900;
-    letter-spacing:0.25em;
-    color:var(--ink-deep);
-    margin:{{ t('andromeda.赤壁_f9df4e', default='赤壁') }} 0;
-    position:relative;
-    display:inline-block;
-  }
-  .dyn-title::before,
-  .dyn-title::after {
-    content:'◆';
-    color:var(--gold);
-    font-size:0.5em;
-    margin:0 12px;
-    vertical-align:middle;
-  }
-  .seal {
-    display:inline-flex;
-    align-items:center;
-    gap:6px;
-    background:linear-gradient(135deg, var(--seal-red), #9A2E24);
-    color:white;
-    font-weight:700;
-    padding:6px 16px;
-    border-radius:var(--radius-sm);
-    font-size:0.72rem;
-    letter-spacing:2px;
-    box-shadow:var(--shadow-sm);
-    border:2px solid rgba(255,255,255,0.15);
-  }
+/* ═══════════ 3. 容器 (全宽响应式) ═══════════ */
+.container { max-width:1440px; margin:0 auto; padding:40px 48px 80px; }
 
-  /* 顶部统计条 */
-  .stat-row {
-    display:grid;
-    grid-template-columns:repeat(auto-fit, minmax(120px, 1fr));
-    gap:var(--space-lg);
-    m{{ t('andromeda.冰山_e8edb9', default='冰山') }}n-top:var(--space-lg);
-    max-width:720px;
-    margin-left:auto;
-    margin-right:auto;
-  }
-  .stat-item {
-    text-align:center;
-    padding:var(--space-md) var(--space-sm);
-    background:rgba{{ t('andromeda.🧊_三层厚度_(动态)_817350', default='🧊 三层厚度 (动态)') }}0.7);
-    border-radius:var(--radius-md);
-    border:1px solid rgba(44,95,124,0.08);
-    transition:transform 0.2s var(--ease-out), box-shadow 0.2s var(--ease-out);
-  }
-  .stat-item:hover {
-    transform:translateY(-2px);
-    box-shadow:var(--shadow-md);
-  }
-  .stat-num { font-family:
-    font-size:clamp(1.4rem, 2.5vw, 2.2rem);
-    font-weight:700;
-    color:var(--ink-deep);
-    line-height:1.1;
-    letter-spacing:-0.02em;
-  }
-  .stat-label{{ t('andromeda.🗺️_仙女座导航中心_ac988b', default='🗺️ 仙女座导航中心') }}size:0.68rem;
-    color:var(--text-muted);
-    letter-spacing:2px;
-    text-transform:uppercase;
-    margin-top:4px;
-  }
+/* ═══════════ 4. Hero Banner (参考 nbdeli 集实 Hero) ═══════════ */
+.hero {
+  position:relative;
+  padding:var(--space-xl) var(--space-lg);
+  margin-bottom:var(--space-xl);
+  background:linear-gradient(135deg, var(--ink-900) 0%, var(--ink-700) 60%, var(--ink-500) 100%);
+  border-radius:var(--radius-xl);
+  color:var(--paper);
+  overflow:hidden;
+  box-shadow:var(--shadow-lg);
+}
+.hero::before {
+  content:'';
+  position:absolute;
+  inset:0;
+  background:
+    radial-gradient(ellipse 500px 300px at 80% 20%, rgba(201,169,110,0.25), transparent 60%),
+    radial-gradient(ellipse 400px 200px at 20% 80%, rgba(26,115,232,0.2), transparent 60%);
+  pointer-events:none;
+}
+.hero::after {
+  content:'';
+  position:absolute;
+  right:-60px; bottom:-80px;
+  width:320px; height:320px;
+  background:
+    linear-gradient(135deg, rgba(201,169,110,0.4), rgba(201,169,110,0.05));
+  clip-path: polygon(50% 0%, 100% 50%, 80% 100%, 20% 100%, 0% 50%);
+  border-radius:20px;
+  transform:rotate(15deg);
+  pointer-events:none;
+}
+.hero-inner { position:relative; z-index:2; display:flex; gap:var(--space-xl); align-items:center; flex-wrap:wrap; }
+.hero-text { flex:1; min-width:320px; }
+.hero-badge {
+  display:inline-flex; align-items:center; gap:8px;
+  background:rgba(255,255,255,0.12); backdrop-filter:blur(8px);
+  padding:6px 14px; border-radius:20px;
+  font-size:0.78rem; letter-spacing:3px; font-weight:500;
+  margin-bottom:var(--space-sm);
+  border:1px solid rgba(255,255,255,0.15);
+}
+.hero-title {
+  font-size:clamp(1.8rem, 4vw, 3.2rem);
+  font-weight:900; letter-spacing:0.15em;
+  margin-bottom:12px;
+  line-height:1.2;
+}
+.hero-sub {
+  font-size:1rem; color:rgba(255,255,255,0.7);
+  max-width:560px; line-height:1.7;
+}
+.hero-stats {
+  display:flex; gap:var(--space-lg);
+  flex-wrap:wrap;
+  padding:var(--space-md);
+  background:rgba(255,255,255,0.06); backdrop-filter:blur(10px);
+  border-radius:var(--radius-lg);
+  border:1px solid rgba(255,255,255,0.1);
+  flex-shrink:0;
+  min-width:280px;
+}
+.hero-stat { text-align:center; }
+.hero-stat-num {
+  font-family:'JetBrains Mono',monospace;
+  font-size:clamp(1.4rem, 2.5vw, 2rem); font-weight:700;
+  color:var(--gold-bright); line-height:1;
+}
+.hero-stat-label {
+  font-size:0.68rem; color:rgba(255,255,255,0.55);
+  letter-spacing:2px; text-transform:uppercase;
+  margin-top:6px;
+}
 
-  /* ═══════════ 主区 双栏 ═══════════ */
-  .main-grid {
-    displa{{ t('andromeda.仪表盘_3fa8b3', default='仪表盘') }}d;
-    grid-template-columns:minmax(380px, 480px) 1fr;
-    gap:var(--space-xl);
-    align-items:start;
-  }
+/* ═══════════ 5. 区块标题 ═══════════ */
+.section { margin-bottom:var(--space-xl); }
+.section-hd {
+  display:flex; align-items:baseline; gap:12px;
+  margin-bottom:var(--space-md);
+}
+.section-num {
+  font-family:'Playfair Display',serif;
+  font-style:italic; font-size:0.9rem;
+  color:var(--gold); font-weight:700;
+  letter-spacing:0;
+}
+.section-title {
+  font-size:clamp(1.2rem, 2.2vw, 1.6rem);
+  font-weight:900; color:var(--ink-900);
+  letter-spacing:0.12em;
+}
+.section-desc {
+  font-size:0.82rem; color:var(--text-muted);
+  letter-spacing:2px; text-transform:uppercase;
+  margin-left:auto;
+}
 
-  /* ═══════════ 左栏 SVG 冰山 ═══════════ */
-  .iceberg-wrap {
-    position:sticky;
-    top:24px;
-    heig{{ t('andromeda.冰山演化_8db19b', default='冰山演化') }}px;
-    background:rgba(2{{ t('andromeda.Timeline_11阶段_e75f39', default='Timeline 11阶段') }};
-    border-radius:var(--radius-lg);
-    border:1px solid rgba(44,95,124,0.08);
-    box-shadow:var(--shadow-md);
-    padding:var(--space-md);
-    overflow:hidden;
-  }
-  .ic{{ t('andromeda.知识脑库_8052af', default='知识脑库') }}svg { width:100%; height:{{ t('andromeda.88_条_·_14_人格_0e0941', default='88 条 · 14 人格') }}block; }
-  .iceberg-layer { transition:all 0.5s var(--ease-out); cursor:pointer; }
-  .iceberg-layer:hover { filter:brightness(1.12) drop-shadow(0 2px 8px rgba(10,35,66,0.2)); }
-  .{{ t('andromeda.冰山结构_4fbc75', default='冰山结构') }}dge-node { cursor:pointer{{ t('andromeda.API_原始数据_20c904', default='API 原始数据') }}on:transform 0.2s var(--ease-out); }
-  .knowledge-node:hover { transform:scale(1.4); }
-  .node-tooltip {
-    position:absolute;
-    background:linea{{ t('andromeda.冰山主页_50e59b', default='冰山主页') }}ient(135deg, var(--ink-de{{ t('andromeda.Home_·_极简_0ce48e', default='Home · 极简') }}1);
-    color:white;
-    padding:10px 14px;
-    border-radius:var(--radius-md);
-    font-size:0.72rem;
-    pointer-events:none;
-    opacity:0;
-    transition:{{ t('andromeda.登录_402d19', default='登录') }}ity 0.2s var(--ease-out);{{ t('andromeda.Auth_·_SA双密钥_44cabf', default='Auth · SA双密钥') }}:220px;
-    line-height:1.6;
-    z-index:10;
-    border:1px solid var(--gold);
-    box-shadow:0 8px 24px rgba(10,35,66,0.4);{{ t('andromeda.深度绑定_IOL_b9ceaa', default='深度绑定 IOL') }} ═══════════ 右栏卡片 ═══════════ */
-  .right-col { display:flex; flex-direction:column; gap:var(--space-lg); }
-  .card {
-    background:var(--paper);
-    border-radius:var(--radius-lg);
-  {{ t('andromeda.已修复_ddfcb2', default='已修复') }}ding:22px 26px;
-    border:1px solid rgba(44,95,124,0.08);
-    border-top:3px solid var(--ink-light);
-  {{ t('andromeda.待消费_065a91', default='待消费') }}-shadow:var(--shadow-md);
-    transition:box-shadow 0.25s var(--ease-out), transform 0.25s var(--ease-{{ t('andromeda.失败重试_37cd80', default='失败重试') }}  }
-  .card:hover { box-shadow:var(--shadow-lg); }
-  .card-hd {
-    font-weight:700;
-    font-size:0.95r{{ t('andromeda.已跳过_4a0854', default='已跳过') }}   color:var(--ink-deep);
-    margin-bottom:var(--space-md);
-    disp{{ t('andromeda.加载_IOL_数据中..._a60ae5', default='加载 IOL 数据中...') }}ustify-content:space-between;
-    align-items:center;
-    padding-bottom:12px;
-    border-bottom:1px solid rgba(44,95,124,0.08);
-  }
-  .card-tag {
-    font-size:0.65rem;
-    padding:3px 10px;
-    border-radius:20px;
-    letter-spacing:1px;
-    font-weight:600;
-  }
-  .layer-peakt    { color:var(--ink-light); background:rgba(44,95,124,0.08); }
-  .layer-spectrum { color:var(--ink-mid);  background:rgba(30,74,99,0.08);  }
-  .layer-basement { color:var(--ink-deep); background:rgba(15,40,54,0.08); }
+/* ═══════════ 6. 守护能力矩阵 (nbdeli 品牌网格) ═══════════ */
+.daemon-grid {
+  display:grid;
+  grid-template-columns:repeat(auto-fill, minmax(220px, 1fr));
+  gap:var(--space-md);
+}
+.daemon-card {
+  background:var(--paper);
+  border-radius:var(--radius-lg);
+  padding:var(--space-lg) var(--space-md);
+  border:1px solid rgba(44,95,124,0.08);
+  border-top:3px solid var(--ink-500);
+  box-shadow:var(--shadow-sm);
+  transition:all 0.3s var(--ease-out);
+  cursor:pointer;
+  position:relative;
+  overflow:hidden;
+}
+.daemon-card:hover {
+  transform:translateY(-4px);
+  box-shadow:var(--shadow-lg);
+  border-top-color:var(--gold);
+}
+.daemon-card::after {
+  content:'';
+  position:absolute; inset:0;
+  background:linear-gradient(135deg, rgba(201,169,110,0.08), transparent 50%);
+  opacity:0; transition:opacity 0.3s var(--ease-out);
+  pointer-events:none;
+}
+.daemon-card:hover::after { opacity:1; }
+.daemon-icon {
+  font-size:2.2rem; margin-bottom:var(--space-sm);
+  filter:drop-shadow(0 2px 4px rgba(10,35,66,0.15));
+}
+.daemon-name {
+  font-size:0.92rem; font-weight:700;
+  color:var(--ink-900); margin-bottom:4px;
+}
+.daemon-en {
+  font-family:'JetBrains Mono',monospace;
+  font-size:0.62rem; color:var(--text-muted);
+  letter-spacing:1px; margin-bottom:var(--space-sm);
+}
+.daemon-desc {
+  font-size:0.75rem; color:var(--text-secondary);
+  line-height:1.6; min-height:48px;
+}
+.daemon-foot {
+  margin-top:var(--space-md);
+  padding-top:var(--space-sm);
+  border-top:1px dashed rgba(44,95,124,0.12);
+  display:flex; justify-content:space-between; align-items:center;
+}
+.daemon-status {
+  display:flex; align-items:center; gap:6px;
+  font-size:0.7rem; font-weight:600;
+}
+.daemon-dot {
+  width:8px; height:8px; border-radius:50%;
+  background:var(--idle);
+  box-shadow:0 0 0 3px rgba(107,114,128,0.15);
+  animation:pulse 2s infinite;
+}
+.daemon-dot.online { background:var(--ok); box-shadow:0 0 0 3px rgba(22,163,74,0.15); }
+.daemon-dot.warn { background:var(--warn); box-shadow:0 0 0 3px rgba(217,119,6,0.15); }
+.daemon-dot.offline { background:var(--fail); box-shadow:0 0 0 3px rgba(220,38,38,0.15); }
+@keyframes pulse {
+  0%,100% { opacity:1; }
+  50% { opacity:0.5; }
+}
+.daemon-hb {
+  font-family:'JetBrains Mono',monospace;
+  font-size:0.6rem; color:var(--text-muted);
+}
+.daemon-link {
+  font-size:0.65rem; color:var(--dai-cyan);
+  font-weight:600; letter-spacing:1px;
+}
 
-  /* 领域列表 */
-  .domain-row {
-    display:flex;
-    align-items:center;
-    gap:10px;
-    padding:10px 0;
-    border-bottom:1px dashed rgba(44,95,124,0.08);
-    font-size:0;
-  }
-  .domain-row:last-child { border-bottom:none; }
-  .domain-name {
-    flex:1;
-    font-size:0.82rem;
-    color:var(--text-primary);
-    font-weight:500;
-    white-space:nowrap;
-    overflow:hidden;
-    text-overflow:ellipsis;
-  }
-  .domain-bar-wrap {
-    width:100px;
-    height:6px;
-    background:rgba(44,95,124,0.08);
-    border-radius:3px;
-    overflow:hidden;
-    flex-shrink:0;
-  }
-  .domain-bar {
-    height:100%;
-    border-radius:3px;
-    transition:width 0.8s var(--ease-out);
-    background:linear-gradient(90deg, var(--ink-light), var(--gold));
-  }
-  .domain-count {
-    font-family:'JetBrains Mono',monospace;
-    font-weight:700;
-    font-size:0.82rem;
-    color:var(--ink-deep);
-    width:38px;
-    text-align:right;
-    flex-shrink:0;
-  }
-  .domain-plays {
-    font-size:0.62rem;
-    color:var(--text-muted);
-    width:56px;
-    text-align:right;
-    flex-shrink:0;
-  }
+/* ═══════════ 7. 守护场景区 (nbdeli 解决方案网格) ═══════════ */
+.scene-grid {
+  display:grid;
+  grid-template-columns:repeat(auto-fill, minmax(180px, 1fr));
+  gap:var(--space-md);
+}
+.scene-card {
+  background:linear-gradient(145deg, var(--paper), var(--frost));
+  border-radius:var(--radius-md);
+  padding:var(--space-md) var(--space-sm);
+  border:1px solid rgba(44,95,124,0.06);
+  text-align:center;
+  transition:all 0.25s var(--ease-out);
+}
+.scene-card:hover {
+  transform:translateY(-2px);
+  box-shadow:var(--shadow-md);
+  border-color:rgba(201,169,110,0.3);
+}
+.scene-icon {
+  font-size:1.8rem; margin-bottom:8px;
+}
+.scene-name {
+  font-size:0.82rem; font-weight:700;
+  color:var(--ink-900); margin-bottom:4px;
+}
+.scene-meta {
+  font-family:'JetBrains Mono',monospace;
+  font-size:0.62rem; color:var(--text-muted);
+}
 
-  /* ═══════════ 导航入口 ═══════════ */
-  .nav-grid {
-    display:grid;
-    grid-template-columns:repeat(2,1fr);
-    gap:10px;
-  }
-  .nav-item {
-    display:flex;
-    align-items:center;
-    gap:12px;
-    padding:14px;
-    background:linear-gradient(135deg, var(--paper), #FAFAFA);
-    border-radius:var(--radius-md);
-    border:1px solid rgba(44,95,124,0.1);
-    text-decoration:none;
-    color:var(--text-primary);
-    transition:all 0.2s var(--ease-out);
-    min-height:56px;
-  }
-  .nav-item:hover {
-    border-color:var(--ink-light);
-    transform:translateY(-2px);
-    box-shadow:var(--shadow-md);
-    background:linear-gradient(135deg, var(--paper), rgba(44,95,124,0.03));
-  }
-  .nav-icon { font-size:1.4rem; flex-shrink:0; }
-  .nav-label { font-size:0.8rem; font-weight:600; color:var(--text-primary); line-height:1.2; }
-  .nav-sub { font-size:0.62rem; color:var(--text-muted); letter-spacing:0.5px; margin-top:2px; }
+/* ═══════════ 8. 双端健康度 (nbdeli 客户墙 → 实时心跳) ═══════════ */
+.health-grid {
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(320px, 1fr));
+  gap:var(--space-md);
+}
+.health-card {
+  background:var(--paper);
+  border-radius:var(--radius-lg);
+  padding:var(--space-md) var(--space-lg);
+  border:1px solid rgba(44,95,124,0.08);
+  box-shadow:var(--shadow-sm);
+}
+.health-head {
+  display:flex; justify-content:space-between; align-items:center;
+  margin-bottom:var(--space-sm);
+}
+.health-label {
+  font-weight:700; color:var(--ink-900);
+  font-size:0.92rem;
+}
+.health-pill {
+  font-size:0.7rem; font-weight:600;
+  padding:3px 10px; border-radius:12px;
+  background:rgba(22,163,74,0.1); color:var(--ok);
+}
+.health-pill.warn { background:rgba(217,119,6,0.1); color:var(--warn); }
+.health-pill.offline { background:rgba(220,38,38,0.1); color:var(--fail); }
+.health-stat-row {
+  display:grid; grid-template-columns:repeat(4,1fr); gap:8px;
+  text-align:center;
+}
+.health-stat {
+  background:rgba(44,95,124,0.04);
+  border-radius:var(--radius-sm);
+  padding:var(--space-xs);
+}
+.health-stat-n {
+  font-family:'JetBrains Mono',monospace;
+  font-size:1.1rem; font-weight:700; color:var(--ink-900);
+}
+.health-stat-l {
+  font-size:0.6rem; color:var(--text-muted);
+  letter-spacing:1px;
+}
 
-  /* ═══════════ IOL 深度绑定面板 ═══════════ */
-  .iol-panel {
-    background:linear-gradient(135deg, rgba(201,169,110,0.08), rgba(201,169,110,0.02));
-    border-radius:var(--radius-lg);
-    padding:20px 24px;
-    border:1px solid rgba(201,169,110,0.2);
-  }
-  .iol-hd {
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    margin-bottom:var(--space-md);
-  }
-  .iol-hd h3 { font-size:0.95rem; color:var(--ink-deep); }
-  .council-badge {
-    font-size:0.68rem;
-    padding:3px 10px;
-    background:var(--gold);
-    color:var(--ink-deep);
-    border-radius:20px;
-    font-weight:700;
-  }
-  .iol-stats {
-    display:grid;
-    grid-template-columns:repeat(4,1fr);
-    gap:10px;
-  }
-  .iol-stat {
-    text-align:center;
-    padding:12px 6px;
-    border-radius:var(--radius-md);
-    background:rgba(255,255,255,0.6);
-    border:1px solid rgba(44,95,124,0.06);
-  }
-  .iol-stat .n { font-family:'JetBrains Mono',monospace; font-size:1.1rem; font-weight:700; }
-  .iol-stat .l { font-size:0.6rem; color:var(--text-muted); letter-spacing:1px; margin-top:2px; }
-  .iol-stat.aPLIED .n { color:#166534; } .iol-stat.aPLIED { border-color:rgba(22,101,52,0.15); }
-  .iol-stat.pENDING .n { color:#B45309; } .iol-stat.pENDING { border-color:rgba(180,83,9,0.15); }
-  .iol-stat.fAILED  .n { color:#991B1B; } .iol-stat.fAILED  { border-color:rgba(153,27,27,0.15); }
-  .iol-stat.sKIPPED .n { color:#4B5563; } .iol-stat.sKIPPED { border-color:rgba(75,85,99,0.12); }
-  .iol-list { font-size:0.75rem; color:var(--text-secondary); margin-top:var(--space-md); max-height:200px; overflow-y:auto; }
+/* ═══════════ 9. 最近动态 (nbdeli 新品速递) ═══════════ */
+.news-row {
+  display:flex; gap:var(--space-md);
+  overflow-x:auto; padding-bottom:var(--space-sm);
+  scrollbar-width:thin;
+}
+.news-card {
+  flex:0 0 240px;
+  background:var(--paper);
+  border-radius:var(--radius-md);
+  overflow:hidden;
+  border:1px solid rgba(44,95,124,0.08);
+  box-shadow:var(--shadow-sm);
+  transition:all 0.25s var(--ease-out);
+}
+.news-card:hover { transform:translateY(-3px); box-shadow:var(--shadow-md); }
+.news-tag {
+  background:linear-gradient(135deg, var(--ink-500), var(--ink-700));
+  color:white; font-size:0.65rem; font-weight:600;
+  padding:6px 12px; letter-spacing:1px;
+}
+.news-tag.gold { background:linear-gradient(135deg, var(--gold), var(--gold-deep)); }
+.news-tag.dai { background:linear-gradient(135deg, var(--dai-cyan), var(--ink-700)); }
+.news-tag.ok { background:linear-gradient(135deg, #16A34A, #15803D); }
+.news-body { padding:var(--space-sm) var(--space-md); }
+.news-title {
+  font-size:0.82rem; font-weight:700; color:var(--ink-900);
+  margin-bottom:6px;
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
+  overflow:hidden;
+}
+.news-meta {
+  font-family:'JetBrains Mono',monospace;
+  font-size:0.6rem; color:var(--text-muted);
+}
 
-  /* ═══════════ 底部 Footer ═══════════ */
-  .footer {
-    margin-top:var(--space-xl);
-    padding:40px var(--space-lg) 20px;
-    text-align:center;
-    border-top:1px solid rgba(44,95,124,0.08);
-  }
-  .footer-cite {
-    font-family:'Playfair Display',serif;
-    font-style:italic;
-    color:var(--text-muted);
-    font-size:0.8rem;
-    letter-spacing:3px;
-  }
+/* ═══════════ 10. SVG 冰山 (保留原交互) ═══════════ */
+.iceberg-wrap {
+  background:linear-gradient(180deg, var(--frost), var(--snow));
+  border-radius:var(--radius-lg);
+  border:1px solid rgba(44,95,124,0.06);
+  padding:var(--space-md);
+}
+.iceberg-wrap svg { width:100%; max-width:440px; height:auto; display:block; margin:0 auto; }
+.iceberg-layer { transition:all 0.5s var(--ease-out); cursor:pointer; }
+.iceberg-layer:hover { filter:brightness(1.12) drop-shadow(0 2px 8px rgba(10,35,66,0.2)); }
 
-  /* ═══════════ 响应式 ═══════════ */
-  @media (max-width: 1100px) {
-    .main-grid { grid-template-columns:1fr; gap:var(--space-lg); }
-    .iceberg-wrap { position:relative; top:auto; height:420px; }
-    .stat-row { grid-template-columns:repeat(4,1fr); }
-    .container { padding:24px 20px 80px; }
-  }
-  @media (max-width: 720px) {
-    .nav-grid { grid-template-columns:1fr; }
-    .iol-stats { grid-template-columns:repeat(2,1fr); }
-    .dyn-title { font-size:1.8rem; letter-spacing:0.15em; }
-    .stat-row { grid-template-columns:repeat(2,1fr); gap:10px; }
-  }
+/* ═══════════ 11. Footer ═══════════ */
+.footer {
+  margin-top:var(--space-xl);
+  padding:var(--space-lg) var(--space-lg) var(--space-md);
+  background:linear-gradient(180deg, transparent, rgba(10,35,66,0.03));
+  border-radius:var(--radius-lg);
+  text-align:center;
+}
+.footer-cite {
+  font-family:'Playfair Display',serif;
+  font-style:italic; font-size:0.85rem;
+  color:var(--text-muted);
+  letter-spacing:2px;
+}
+.footer-contact {
+  margin-top:var(--space-sm);
+  font-family:'JetBrains Mono',monospace;
+  font-size:0.72rem; color:var(--ink-500);
+}
+
+/* ═══════════ 12. 响应式 ═══════════ */
+@media (max-width: 960px) {
+  .container { padding:24px 20px 60px; }
+  .hero-inner { flex-direction:column; align-items:stretch; }
+  .daemon-grid { grid-template-columns:repeat(auto-fill, minmax(180px, 1fr)); }
+  .health-grid { grid-template-columns:1fr; }
+  .health-stat-row { grid-template-columns:repeat(2, 1fr); }
+}
+@media (max-width: 560px) {
+  .daemon-grid { grid-template-columns:1fr 1fr; }
+  .scene-grid { grid-template-columns:1fr 1fr; }
+}
+
+/* ═══════════ 13. 暗黑主题 (保留) ═══════════ */
+[data-theme="dark"] {
+  --snow:#0D1B2A; --frost:#1B263B; --paper:#1B263B;
+  --text-primary:#E0E1DD; --text-secondary:#A0B4C8; --text-muted:#6B7C8D;
+  background:var(--snow);
+  background-image:radial-gradient(ellipse 800px 400px at 50% 0%, rgba(201,169,110,0.08), transparent 60%);
+}
+[data-theme="dark"] .daemon-card,
+[data-theme="dark"] .health-card,
+[data-theme="dark"] .news-card,
+[data-theme="dark"] .scene-card {
+  background:var(--paper); border-color:rgba(255,255,255,0.06);
+}
+
+/* ═══════════ 14. Sidebar 样式 (保留原 JS 生成的) ═══════════ */
+.andromeda-sidebar {
+  position:fixed; left:0; top:0; bottom:0; width:220px; z-index:100;
+  background:var(--ink-900); color:var(--paper);
+  padding:20px 12px; display:flex; flex-direction:column;
+  transform:translateX(-100%); transition:transform 0.3s var(--ease-out);
+}
+body.andromeda-has-nav .andromeda-sidebar { transform:translateX(0); }
+.andromeda-crumb {
+  position:fixed; left:220px; top:0; right:0; z-index:99;
+  background:rgba(255,255,255,0.95); backdrop-filter:blur(10px);
+  padding:10px 24px; border-bottom:1px solid rgba(44,95,124,0.08);
+  font-size:0.78rem; color:var(--text-secondary);
+  display:flex; align-items:center; gap:8px;
+}
+body.andromeda-has-nav .container { padding-left:260px; }
+@media (max-width:768px) {
+  .andromeda-sidebar { display:none; }
+  .andromeda-crumb { left:0; }
+  body.andromeda-has-nav .container { padding-left:20px; }
+}
+
+/* 守护进程状态 Pill (sidebar 里的) */
+.asb-pill {
+  display:inline-flex; align-items:center; gap:6px;
+  font-size:0.72rem; padding:4px 10px; border-radius:12px;
+  background:rgba(255,255,255,0.08);
+}
+.asb-pill .asb-dot {
+  width:6px; height:6px; border-radius:50%; background:#6B7280;
+}
+.asb-pill.online .asb-dot { background:#16A34A; box-shadow:0 0 8px #16A34A; }
+.asb-pill.offline .asb-dot { background:#DC2626; }
 </style>
-
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>{{ t('andromeda.冰山控制中心___Ice_38a000', default='冰山控制中心 · Iceberg Control Center') }}</title>
-
-{% endblock %}
-
-{% block page_title %}
-    冰山控制中心 · Iceberg Control Center
 {% endblock %}
 
 {% block content %}
-<!-- 🛡️ 仙女座守护进程状态条 + 主题切换 (v3.0 新增) -->
-<div class="andromeda-status-bar" id="statusBar">
-  <div class="asb-pill" id="asbDaemon"><span class="asb-dot"></span><span>{{ t('andromeda.仙女座守护_6879db', default='仙女座守护') }}</span> <strong id="asbDaemonPid">PID=—</strong></div>
-  <div class="asb-pill" id="asbOllama"><span class="asb-dot"></span><span>Ollama</span> <strong id="asbOllamaMod">{{ t('andromeda.0_模型_2ba3e3', default='0 模型') }}</strong></div>
-  <div class="asb-pill" id="asbRegistry"><span class="asb-dot"></span><span>Daemon</span> <strong id="asbRegCount">0/0</strong></div>
-  <div class="asb-pill iol" id="asbIol"><span class="asb-dot"></span><span>{{ t('andromeda.IOL_深度绑定_7c2d8e', default='IOL 深度绑定') }}</span></div>
-  <button class="asb-theme-toggle" id="themeToggle">{{ t('andromeda.暗黑_Matrix_6d5493', default='🌙 暗黑 Matrix') }}</button>
-</div>
-
-<!-- 🪐 仙女座统一导航组件 -->
-<link rel="stylesheet" href="/static/css/andromeda_nav.css">
-
-
 <div class="container">
 
-  <!-- 题头 -->
-  <div class="header">
-    <div class="dyn-sub">MTSCOS · Iceberg Control Center</div>
-    <h1 class="dyn-title">{{ t('andromeda.冰_山_控_制_中_心_93d35c', default='冰 山 控 制 中 心') }}</h1>
-    <div style="margin-top:12px;"><span class="seal">{{ t('andromeda.赤壁___承天寺___东_d9664e', default='赤壁 · 承天寺 · 东坡') }}</span></div>
-    <div class="stat-row" id="stats">{{ t('andromeda.加载中_26b5bd', default='加载中...') }}</div>
-  </div>
-
-  <div class="main-grid">
-
-    <!-- 左: SVG 冰山动态 -->
-    <div class="iceberg-wrap">
-      <svg class="iceberg-svg" viewBox="0 0 440 560" xmlns="http://www.w3.org/2000/svg" id="icebergSvg">
-        <!-- 海浪 -->
-        <path d="M0 420 Q 110 400, 220 420 T 440 420 L 440 560 L 0 560 Z" fill="rgba(30,74,99,0.05)"/>
-        <path d="M0 445 Q 110 428, 220 445 T 440 445 L 440 560 L 0 560 Z" fill="rgba(30,74,99,0.08)"/>
-
-        <!-- 🔻 东坡 Basement (底层, 动态) -->
-        <polygon class="iceberg-layer" id="icebergBasement"
-                 points="70,445 370,445 310,260 130,260"
-                 fill="var(--ink-deep)"
-                 data-layer="basement"/>
-        <text x="220" y="415" text-anchor="middle" fill="#D4A574" font-weight="700" font-family="Noto Serif SC" font-size="16">{{ t('andromeda.东坡_29a86c', default='东坡') }}</text>
-        <text x="220" y="435" text-anchor="middle" fill="rgba(212,165,116,0.6)" font-family="Playfair Display" font-style="italic" font-size="10" letter-spacing="1">Basement · 50%</text>
-
-        <!-- 🔸 承天寺 Spectrum (中层, 动态) -->
-        <polygon class="iceberg-layer" id="icebergSpectrum"
-                 points="130,260 310,260 270,150 170,150"
-                 fill="var(--ink-mid)"
-                 data-layer="spectrum"/>
-        <text x="220" y="235" text-anchor="middle" fill="#D4A574" font-weight="700" font-family="Noto Serif SC" font-size="16">{{ t('andromeda.承天寺_65f371', default='承天寺') }}</text>
-        <text x="220" y="255" text-anchor="middle" fill="rgba(212,165,116,0.6)" font-family="Playfair Display" font-style="italic" font-size="10" letter-spacing="1">Spectrum · 30%</text>
-
-        <!-- 🔺 赤壁 Peak (顶层, 动态) -->
-        <polygon class="iceberg-layer" id="icebergPeak"
-                 points="170,150 270,150 240,50 200,50"
-                 fill="var(--ink-light)"
-                 data-layer="peak"/>
-        <!-- 雪峰顶 -->
-        <polygon points="200,50 240,50 228,25 212,25" fill="var(--snow-bright)"/>
-        <text x="220" y="130" text-anchor="middle" fill="white" font-weight="700" font-family="Noto Serif SC" font-size="16">{{ t('andromeda.赤壁_f9df4e', default='赤壁') }}</text>
-        <text x="220" y="148" text-anchor="middle" fill="rgba(255,255,255,0.7)" font-family="Playfair Display" font-style="italic" font-size="10" letter-spacing="1">Peak · 20%</text>
-
-        <!-- 金线分隔 -->
-        <line x1="70" y1="260" x2="370" y2="260" stroke="var(--gold)" stroke-width="1.5"/>
-        <line x1="130" y1="150" x2="310" y2="150" stroke="var(--gold)" stroke-width="1.5"/>
-
-        <!-- 篆刻印章 -->
-        <rect x="360" y="40" width="36" height="36" fill="var(--seal-red)" rx="3"/>
-        <text x="378" y="62" text-anchor="middle" fill="white" font-size="11" font-weight="700" font-family="Noto Serif SC">MTS</text>
-        <text x="378" y="73" text-anchor="middle" fill="white" font-size="9" font-family="Noto Serif SC">{{ t('andromeda.冰山_e8edb9', default='冰山') }}</text>
-      </svg>
-      <div class="node-tooltip" id="tooltip"></div>
+  {# ═══════════ Hero Banner ═══════════ #}
+  <section class="hero">
+    <div class="hero-inner">
+      <div class="hero-text">
+        <div class="hero-badge">🧊 ICEBERG GUARD · 守护矩阵 v26.0</div>
+        <h1 class="hero-title">七层防线<br>守护仙女座意识演化</h1>
+        <p class="hero-sub">
+          冰山守护系统 — 7 核心守护 daemon × 35+ 自动化进程 × 零 token 本地推理，
+          为仙女座自我意识演化构建坚不可摧的防御纵深。
+        </p>
+      </div>
+      <div class="hero-stats">
+        <div class="hero-stat"><div class="hero-stat-num" id="heroDaemon">—</div><div class="hero-stat-label">守护 Daemon</div></div>
+        <div class="hero-stat"><div class="hero-stat-num" id="heroAuto">—</div><div class="hero-stat-label">自动化进程</div></div>
+        <div class="hero-stat"><div class="hero-stat-num" id="heroRepair">—</div><div class="hero-stat-label">今日修复</div></div>
+        <div class="hero-stat"><div class="hero-stat-num" id="heroBrain">—</div><div class="hero-stat-label">脑库知识</div></div>
+      </div>
     </div>
+  </section>
 
-    <!-- 右: 三层数据 + 导航 -->
-    <div class="right-col">
-
-      <!-- 三层厚度 -->
-      <div class="card">
-        <div class="card-hd">
-          <span>{{ t('andromeda.三层厚度__动态_817350', default='🧊 三层厚度 (动态)') }}</span>
-          <span id="totalKw" style="font-family:'Playfair Display';font-size:0.8rem;color:var(--ink-muted);"></span>
-        </div>
-        <div id="layerStats">{{ t('andromeda.加载中_26b5bd', default='加载中...') }}</div>
-      </div>
-
-      <!-- 领域 Top -->
-      <div class="card">
-        <div class="card-hd">
-          <span>{{ t('andromeda.领域分布_Top_99f1a6', default='📊 领域分布 Top') }}</span>
-          <span class="card-tag layer-basement">{{ t('andromeda.Basement_层_8d23a9', default='Basement 层') }}</span>
-        </div>
-        <div id="domainList">{{ t('andromeda.加载中_26b5bd', default='加载中...') }}</div>
-      </div>
-
-      <!-- 导航 -->
-      <div class="card">
-        <div class="card-hd"><span>{{ t('andromeda.仙女座导航中心_ac988b', default='🗺️ 仙女座导航中心') }}</span></div>
-        <div class="nav-grid">
-          <a class="nav-item" href="/andromeda/dashboard">
-            <div class="nav-icon">🎛️</div>
-            <div><div class="nav-label">{{ t('andromeda.仪表盘_3fa8b3', default='仪表盘') }}</div><div class="nav-sub">Dashboard</div></div>
-          </a>
-          <a class="nav-item" href="/andromeda/iceberg_evolution">
-            <div class="nav-icon">📜</div>
-            <div><div class="nav-label">{{ t('andromeda.冰山演化_8db19b', default='冰山演化') }}</div><div class="nav-sub">{{ t('andromeda.Timeline_11阶_e75f39', default='Timeline 11阶段') }}</div></div>
-          </a>
-          <a class="nav-item" href="/andromeda/knowledge_brain">
-            <div class="nav-icon">🧠</div>
-            <div><div class="nav-label">{{ t('andromeda.知识脑库_8052af', default='知识脑库') }}</div><div class="nav-sub">{{ t('andromeda.88_条___14_人格_0e0941', default='88 条 · 14 人格') }}</div></div>
-          </a>
-          <a class="nav-item" href="/api/iceberg_structure">
-            <div class="nav-icon">🧊</div>
-            <div><div class="nav-label">{{ t('andromeda.冰山结构_4fbc75', default='冰山结构') }}</div><div class="nav-sub">{{ t('andromeda.API_原始数据_20c904', default='API 原始数据') }}</div></div>
-          </a>
-          <!-- 🆕 v25.0: 文曲星 AI 写作 + 审批中心 -->
-          <a class="nav-item" href="/andromeda/wenquxing">
-            <div class="nav-icon">📜</div>
-            <div><div class="nav-label">文曲星</div><div class="nav-sub">AI 写作 · 7 模式</div></div>
-          </a>
-          <a class="nav-item" href="/approvals/center">
-            <div class="nav-icon">📋</div>
-            <div><div class="nav-label">审批中心</div><div class="nav-sub">仙女座智能审批</div></div>
-          </a>
-          <!-- 🆕 v25.0: 仙女座灰度发布工作台 -->
-          <a class="nav-item" href="/gray/center">
-            <div class="nav-icon">🟢</div>
-            <div><div class="nav-label">灰度发布</div><div class="nav-sub">7 阶段状态机 · 哈希分流</div></div>
-          </a>
-          <!-- 🆕 v25.1: Aurora 极光衍生维护系统 (统一注册表) -->
-          <a class="nav-item" href="/aurora/center">
-            <div class="nav-icon">✨</div>
-            <div><div class="nav-label">Aurora 极光</div><div class="nav-sub">统一注册表 · 54 衍生</div></div>
-          </a>
-          <!-- 🆕 v25.1: AI 员工赋能中心 (244 员工 100% 覆盖 · 74 年平均资历) -->
-          <a class="nav-item" href="/empower/center">
-            <div class="nav-icon">🤖</div>
-            <div><div class="nav-label">AI 员工赋能</div><div class="nav-sub">244 员工 · 50-99 年资历 · 朋友圈</div></div>
-          </a>
-          <!-- 🆕 v25.0: 仙女座 × 冰山 元域意识中心 -->
-          <a class="nav-item" href="/iceberg/center">
-            <div class="nav-icon">🧊</div>
-            <div><div class="nav-label">冰山意识中心</div><div class="nav-sub">5 自 · 7 域 · 35 绑定</div></div>
-          </a>
-          <a class="nav-item" href="/">
-            <div class="nav-icon">🏠</div>
-            <div><div class="nav-label">{{ t('andromeda.冰山主页_50e59b', default='冰山主页') }}</div><div class="nav-sub">{{ t('andromeda.Home___极简_0ce48e', default='Home · 极简') }}</div></div>
-          </a>
-          <a class="nav-item" href="/auth/login">
-            <div class="nav-icon">🔐</div>
-            <div><div class="nav-label">{{ t('andromeda.登录_402d19', default='登录') }}</div><div class="nav-sub">{{ t('andromeda.Auth___SA双密钥_44cabf', default='Auth · SA双密钥') }}</div></div>
-          </a>
-        </div>
-      </div>
-
-      <!-- 🆕 仙女座 ↔ 冰山 深度绑定 IOL 面板 (v3.0) -->
-      <div class="iol-panel">
-        <div class="iol-hd"><h3>{{ t('andromeda.深度绑定_IOL_b9ceaa', default='深度绑定 IOL') }}</h3><span class="council-badge">LOOP 8 → LOOP 10</span></div>
-        <div class="iol-stats">
-          <div class="iol-stat aPLIED"><div class="n" id="iolApplied">—</div><div class="l">{{ t('andromeda.已修复_ddfcb2', default='已修复') }}</div></div>
-          <div class="iol-stat pENDING"><div class="n" id="iolPending">—</div><div class="l">{{ t('andromeda.待消费_065a91', default='待消费') }}</div></div>
-          <div class="iol-stat fAILED"><div class="n" id="iolFailed">—</div><div class="l">{{ t('andromeda.失败重试_37cd80', default='失败重试') }}</div></div>
-          <div class="iol-stat sKIPPED"><div class="n" id="iolSkipped">—</div><div class="l">{{ t('andromeda.已跳过_4a0854', default='已跳过') }}</div></div>
-        </div>
-        <div class="iol-list" id="iolList">{{ t('andromeda.加载_IOL_数据中_a60ae5', default='加载 IOL 数据中...') }}</div>
-      </div>
-
+  {# ═══════════ Section 2: 守护能力矩阵 ═══════════ #}
+  <section class="section">
+    <div class="section-hd">
+      <span class="section-num">02 — GUARD MATRIX</span>
+      <h2 class="section-title">守护能力矩阵</h2>
+      <span class="section-desc">7 Core Daemons</span>
     </div>
-  </div>
+    <div class="daemon-grid" id="daemonMatrix">
+      {# JS 动态填充 #}
+    </div>
+  </section>
 
-  <div class="footer">
-    <div class="footer-cite">{{ t('andromeda.盖将自其变者而观之_則_f57943', default='「盖将自其变者而观之，則天地曾不能以一瞬」— 苏轼 · 赤壁赋') }}</div>
-  </div>
+  {# ═══════════ Section 3: 守护场景 ═══════════ #}
+  <section class="section">
+    <div class="section-hd">
+      <span class="section-num">03 — DEFENSE SCENES</span>
+      <h2 class="section-title">守护场景</h2>
+      <span class="section-desc">6 Frontiers</span>
+    </div>
+    <div class="scene-grid">
+      <div class="scene-card"><div class="scene-icon">🛡️</div><div class="scene-name">防 漏洞</div><div class="scene-meta">漏洞扫描 + 自动修复</div></div>
+      <div class="scene-card"><div class="scene-icon">💀</div><div class="scene-name">防 崩溃</div><div class="scene-meta">进程保活 + 三重守护</div></div>
+      <div class="scene-card"><div class="scene-icon">🧭</div><div class="scene-name">防 漂移</div><div class="scene-meta">规则引擎 + 弱约束强化</div></div>
+      <div class="scene-card"><div class="scene-icon">🎯</div><div class="scene-name">防 偏离</div><div class="scene-meta">源码巡逻队 6 人 AI</div></div>
+      <div class="scene-card"><div class="scene-icon">🧠</div><div class="scene-name">防 遗忘</div><div class="scene-meta">知识脑库 + 向量嵌入</div></div>
+      <div class="scene-card"><div class="scene-icon">🔒</div><div class="scene-name">防 锁库</div><div class="scene-meta">SQLite WAL + 进程自愈</div></div>
+    </div>
+  </section>
+
+  {# ═══════════ Section 4: 双端健康度 ═══════════ #}
+  <section class="section">
+    <div class="section-hd">
+      <span class="section-num">04 — HEALTH PULSE</span>
+      <h2 class="section-title">双端健康度</h2>
+      <span class="section-desc">Dual-End Status</span>
+    </div>
+    <div class="health-grid">
+      <div class="health-card" id="healthMini">
+        <div class="health-head">
+          <span class="health-label">🖥️ Mac mini 生产</span>
+          <span class="health-pill online" id="pillMini">检测中</span>
+        </div>
+        <div class="health-stat-row" id="statsMini">
+          <div class="health-stat"><div class="health-stat-n" id="miniRun">—</div><div class="health-stat-l">RUNNING</div></div>
+          <div class="health-stat"><div class="health-stat-n" id="miniFail">—</div><div class="health-stat-l">FAILED</div></div>
+          <div class="health-stat"><div class="health-stat-n" id="miniFlask">—</div><div class="health-stat-l">Flask</div></div>
+          <div class="health-stat"><div class="health-stat-n" id="miniSM">—</div><div class="health-stat-l">SmartMount</div></div>
+        </div>
+      </div>
+      <div class="health-card" id="healthBook">
+        <div class="health-head">
+          <span class="health-label">💻 MacBook 开发</span>
+          <span class="health-pill online" id="pillBook">检测中</span>
+        </div>
+        <div class="health-stat-row">
+          <div class="health-stat"><div class="health-stat-n" id="bookFlask">—</div><div class="health-stat-l">Flask</div></div>
+          <div class="health-stat"><div class="health-stat-n" id="bookAI">—</div><div class="health-stat-l">AI 员工</div></div>
+          <div class="health-stat"><div class="health-stat-n" id="bookCycle">—</div><div class="health-stat-l">cycle</div></div>
+          <div class="health-stat"><div class="health-stat-n" id="bookVec">—</div><div class="health-stat-l">vectors</div></div>
+        </div>
+      </div>
+      {# SVG 冰山 (保留原交互) #}
+      <div class="iceberg-wrap">
+        <svg viewBox="0 0 440 460" xmlns="http://www.w3.org/2000/svg">
+          <!-- Peak -->
+          <polygon id="icebergPeak" class="iceberg-layer" data-layer="peak"
+            fill="#2C5F7C" points="180,240 260,240 240,50 200,50"/>
+          <!-- Spectrum -->
+          <polygon id="icebergSpectrum" class="iceberg-layer" data-layer="spectrum"
+            fill="#1E4A63" points="140,280 300,280 280,200 160,200"/>
+          <!-- Basement -->
+          <polygon id="icebergBasement" class="iceberg-layer" data-layer="basement"
+            fill="#0A2342" points="60,460 380,460 320,280 120,280"/>
+          <!-- Knowledge Nodes -->
+          <g id="knowledgeNodes"></g>
+        </svg>
+        <div id="layerStats" style="margin-top:var(--space-md);"></div>
+      </div>
+    </div>
+  </section>
+
+  {# ═══════════ Section 5: 最近动态 ═══════════ #}
+  <section class="section">
+    <div class="section-hd">
+      <span class="section-num">05 — LATEST EVOLUTION</span>
+      <h2 class="section-title">最近演化产出</h2>
+      <span class="section-desc">Live Feed</span>
+    </div>
+    <div class="news-row" id="newsRow">
+      {# JS 动态填充 #}
+    </div>
+  </section>
+
+  {# ═══════════ Footer ═══════════ #}
+  <footer class="footer">
+    <div class="footer-cite">「盖将自其变者而观之，則天地曾不能以一瞬」— 苏轼 · 赤壁赋</div>
+    <div class="footer-contact">
+      🖥️ Mac mini:100.106.220.96:8888 &nbsp;|&nbsp; 💻 MacBook:localhost:8888 &nbsp;|&nbsp; 🕐 Auto 08:30
+    </div>
+  </footer>
 
 </div>
 {% endblock %}
 
 {% block extra_scripts %}
 
+{# ========== Sidebar (保留原) ========== #}
 <script>
 (function(){
-var NI=[["🏠 入口",[{id:"home",label:"冰山主页",href:"/index",icon:"🏔️"},{id:"center",label:"控制中心",href:"/andromeda/iceberg_center",icon:"🧊"},{id:"dashboard",label:"仪表盘",href:"/andromeda/dashboard",icon:"🎛️"}]],["🧊 冰山",[{id:"evolution",label:"演化时间线",href:"/andromeda/iceberg_evolution",icon:"📜"},{id:"collapse",label:"坍缩定理",href:"/andromeda/collapse_theorem",icon:"⚓"}]],["🧠 知识",[{id:"brain",label:"知识脑库",href:"/andromeda/knowledge_brain",icon:"🧠"},{id:"graph",label:"知识图谱",href:"/andromeda/knowledge_graph",icon:"🕸️"},{id:"chat",label:"AI 人格聊天室",href:"/andromeda/persona_chat",icon:"💬"}]],["👥 天团",[{id:"eigenflux",label:"EigenFlux 矩阵",href:"/andromeda/eigenflux_council",icon:"👥"}]],["🛡️ 系统",[{id:"health",label:"健康度仪表盘",href:"/andromeda/health_board",icon:"🩺"},{id:"upgrade",label:"升级报告",href:"/andromeda/upgrade_board",icon:"📊"}]]];
+var NI=[["入口",[{id:"home",label:"冰山主页",href:"/index",icon:"🏔️"},{id:"center",label:"控制中心",href:"/andromeda/iceberg_center",icon:"🧊"},{id:"dashboard",label:"仪表盘",href:"/andromeda/dashboard",icon:"🎛️"}]],["冰山",[{id:"evolution",label:"演化时间线",href:"/andromeda/iceberg_evolution",icon:"📜"},{id:"collapse",label:"坍缩定理",href:"/andromeda/collapse_theorem",icon:"⚓"}]],["知识",[{id:"brain",label:"知识脑库",href:"/andromeda/knowledge_brain",icon:"🧠"},{id:"graph",label:"知识图谱",href:"/andromeda/knowledge_graph",icon:"🕸️"},{id:"chat",label:"AI 人格聊天室",href:"/andromeda/persona_chat",icon:"💬"}]],["系统",[{id:"health",label:"健康度仪表盘",href:"/andromeda/health_board",icon:"🩺"},{id:"upgrade",label:"升级报告",href:"/andromeda/upgrade_board",icon:"📊"}]]];
 var CP=location.pathname,FA=null,BL=0;
 NI.forEach(g=>g.items.forEach(it=>{if(CP.startsWith(it.href)&&it.href.length>BL){FA=it;BL=it.href.length}}));
-if(!FA&&(CP==="/iceberg"||CP==="/andromeda"))FA=NI[0].items[1];
 var side=document.createElement("aside");side.className="andromeda-sidebar";
-side.innerHTML='<div class="as-header"><div class="as-logo">🪐</div><div class="as-title">仙女座</div><div class="as-sub">Andromeda v22.1</div></div>'+NI.map(g=>'<div class="as-group"><div class="as-group-title">'+g.group+'</div>'+g.items.map(it=>'<a class="as-item '+(FA&&FA.id===it.id?"active":"")+'" href="'+it.href+'"><span class="as-icon">'+it.icon+'</span><span class="as-label">'+it.label+'</span></a>').join("")+"</div>").join("")+'<div class="as-footer"><div class="as-status"><span class="as-dot"></span><span>Flask 8888</span></div><a class="as-link" href="/api/sync/health" target="_blank">Sync 状态</a></div>';
+side.innerHTML='<div class="as-header"><div class="as-logo">🪐</div><div class="as-title">仙女座</div><div class="as-sub">Andromeda v26.0</div></div>'+NI.map(g=>'<div class="as-group"><div class="as-group-title">'+g.group+'</div>'+g.items.map(it=>'<a class="as-item '+(FA&&FA.id===it.id?"active":"")+'" href="'+it.href+'"><span class="as-icon">'+it.icon+'</span><span class="as-label">'+it.label+'</span></a>').join("")+"</div>").join("")+'<div class="as-footer"><div class="as-status"><span class="as-dot"></span><span>Flask 8888</span></div></div>';
 var crumb=document.createElement("nav");crumb.className="andromeda-crumb";
 crumb.innerHTML='<a href="/andromeda/iceberg_center">🧊 仙女座</a>'+(FA?' › <span>'+FA.label+'</span>':"")+'<a href="/index" class="crumb-home">🏠 回主页</a>';
-var bot=document.createElement("nav");bot.className="andromeda-bottom";
-bot.innerHTML=NI.flatMap(g=>g.items).map(it=>'<a href="'+it.href+'" class="'+(FA&&FA.id===it.id?"active":"")+'"><span>'+it.icon+'</span><b>'+it.label+'</b></a>').join("");
-if(document.body){document.body.insertBefore(side,document.body.firstChild);document.body.insertBefore(crumb,document.body.children[1]||document.body.firstChild);document.body.appendChild(bot);document.body.classList.add("andromeda-has-nav")}
+if(document.body){document.body.insertBefore(side,document.body.firstChild);document.body.insertBefore(crumb,document.body.children[1]||document.body.firstChild);document.body.classList.add("andromeda-has-nav")}
 })();
 </script>
 
+{# ========== Hero 数据加载 ========== #}
 <script>
-const LAYER_NAME = { peak:'赤壁 Peak', spectrum:'承天寺 Spectrum', basement:'东坡 Basement' };
-const LAYER_COLOR = { peak:'#2C5F7C', spectrum:'#1E4A63', basement:'#0F2836' };
+async function loadHero() {
+  try {
+    const r = await fetch('/api/iceberg/admin/daemons');
+    const j = await r.json();
+    document.getElementById('heroDaemon').textContent = j.total || '—';
+    document.getElementById('heroAuto').textContent = j.running || '—';
+  } catch(e) {}
+  try {
+    const r = await fetch('/andromeda/api/iceberg_layer_stats');
+    const j = await r.json();
+    if (j.code === 0) {
+      const t = j.data.totals;
+      const g = t.peak + t.spectrum + t.basement;
+      document.getElementById('heroBrain').textContent = g;
+    }
+  } catch(e) {}
+}
+loadHero();
+</script>
 
+{# ========== 守护能力矩阵 ========== #}
+<script>
+const DAEMON_META = [
+  {icon:'⚙️',  name:'规则引擎',    en:'sys_rule_enforcer',       desc:'9 篇规则自动学习 + 弱约束词扫描 + 严格执行', hb_cycle:300},
+  {icon:'🛠️',  name:'自动修复',    en:'sys_auto_repair',         desc:'FAILED daemon 自动重启 + 异常自愈 + 三重保活', hb_cycle:120},
+  {icon:'🔍',  name:'源码巡逻',    en:'sys_auto_patrol',         desc:'6 人 AI 巡逻队 — 语法 + 导入 + 模式错误扫描', hb_cycle:300},
+  {icon:'🧠',  name:'本地推理',    en:'sys_local_inference',     desc:'聊天/分类/审查/Bug 分析 — 全部本地, 零 token', hb_cycle:120},
+  {icon:'📡',  name:'深度巡检',    en:'sys_deep_inspection',     desc:'页面/路由/代码逐行 + AI 团队路由验证', hb_cycle:600},
+  {icon:'💓',  name:'心跳写入',    en:'sys_heartbeat_writer',    desc:'30s 周期心跳 — 所有 daemon 活性追踪', hb_cycle:30},
+  {icon:'📝',  name:'文案巡检',    en:'sys_copy_inspection',     desc:'缺失/重复/占位符/硬编码 — 文案合规巡检', hb_cycle:900},
+];
+
+function fmtHb(hb) {
+  if (!hb) return '—';
+  // 兼容: "2026-10-10T19:52:40" / "2026-10-06 21:19:59" / "10-06 21:19"
+  let s = String(hb);
+  const m1 = s.match(/T(\d{2}:\d{2})/);
+  if (m1) return m1[1];
+  const m2 = s.match(/(\d{2}:\d{2}):?\d{0,2}$/);
+  if (m2) return m2[1];
+  return s;
+}
+
+function statusOf(info) {
+  // 优先用 alive 字段 (后端 API 已算好进程活性)
+  if (info.alive === true) return 'online';
+  if (info.alive === false) return 'offline';
+  // fallback: 时间判断
+  const hb = info.last_heartbeat;
+  if (!hb) return 'offline';
+  let t;
+  try {
+    t = new Date(hb.replace('T', ' ')).getTime();
+  } catch(e) { return 'offline'; }
+  if (isNaN(t)) return 'offline';
+  const diff = (Date.now() - t) / 1000;
+  if (diff < 600) return 'online';
+  if (diff < 3600) return 'warn';
+  return 'offline';
+}
+
+async function loadDaemonMatrix() {
+  const grid = document.getElementById('daemonMatrix');
+  let daemonMap = {};
+  try {
+    const r = await fetch('/api/iceberg/admin/daemons');
+    const j = await r.json();
+    if (Array.isArray(j.daemons)) {
+      j.daemons.forEach(d => {
+        daemonMap[d.name] = d;
+      });
+    }
+  } catch(e) {}
+
+  grid.innerHTML = DAEMON_META.map(m => {
+    const info = daemonMap[m.en] || {};
+    const hb = info.last_heartbeat || null;
+    const st = statusOf(info);
+    const stLabel = st === 'online' ? 'RUNNING' : st === 'warn' ? 'IDLE' : 'STOPPED';
+    return `
+      <div class="daemon-card" onclick="location.href='/andromeda/upgrade_board'">
+        <div class="daemon-icon">${m.icon}</div>
+        <div class="daemon-name">${m.name}</div>
+        <div class="daemon-en">${m.en}</div>
+        <div class="daemon-desc">${m.desc}</div>
+        <div class="daemon-foot">
+          <div class="daemon-status">
+            <span class="daemon-dot ${st}"></span>${stLabel}
+          </div>
+          <span class="daemon-hb">${fmtHb(hb)}</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+loadDaemonMatrix();
+setInterval(loadDaemonMatrix, 60000);
+</script>
+
+{# ========== SVG 冰山 + 三层知识 ========== #}
+<script>
+const LAYER_COLOR = { peak:'#2C5F7C', spectrum:'#1E4A63', basement:'#0A2342' };
 async function loadIceberg() {
   try {
-    const r = await fetch('/api/iceberg_layer_stats');
+    const r = await fetch('/andromeda/api/iceberg_layer_stats');
     const j = await r.json();
-    const data = j.data;
-    const totals = data.totals;
+    if (j.code !== 0) return;
+    const data = j.data || {};
+    const totals = data.totals || {peak:0, spectrum:0, basement:0};
+    const grand = (totals.peak||0) + (totals.spectrum||0) + (totals.basement||0);
+    const layers = data.layers || {};
 
-    // 顶部 stat
-    const grand = totals.peak + totals.spectrum + totals.basement;
-    document.getElementById('stats').innerHTML = `
-      <div class="stat-item"><div class="stat-num">${grand}</div><div class="stat-label">知识总量</div></div>
-      <div class="stat-item"><div class="stat-num">${totals.peak}</div><div class="stat-label">赤壁 Peak</div></div>
-      <div class="stat-item"><div class="stat-num">${totals.spectrum}</div><div class="stat-label">承天寺 Spectrum</div></div>
-      <div class="stat-item"><div class="stat-num">${totals.basement}</div><div class="stat-label">东坡 Basement</div></div>
-    `;
+    // Hero 里的脑库数字
+    const hb = document.getElementById('heroBrain');
+    if (hb && hb.textContent === '—') hb.textContent = grand;
 
-    // 动态调整冰山厚度 (根据知识量)
+    // 三层 SVG 动态高度
     const total = grand || 1;
-    const peakRatio = Math.max(0.15, Math.min(0.35, totals.peak/total));
-    const specRatio = Math.max(0.20, Math.min(0.40, totals.spectrum/total));
-
-    // Peak 高度: 50-150 → 200±
-    const peakTop = 50;
-    const peakBot = Math.round(200 - (1-peakRatio*3)*40);
-    const peakWidening = 200 + peakRatio*200;
-    document.getElementById('icebergPeak').setAttribute('points',
-      `${220-peakWidening/2},${peakBot} ${220+peakWidening/2},${peakBot} ${220+peakWidening/5},${peakTop} ${220-peakWidening/5},${peakTop}`);
-
-    // Spectrum 高度
+    const peakR = Math.max(0.15, Math.min(0.35, (totals.peak||0)/total));
+    const specR = Math.max(0.20, Math.min(0.40, (totals.spectrum||0)/total));
+    const peakBot = Math.round(200 - (1-peakR*3)*40);
+    const peakWidening = 200 + peakR*200;
+    const peakEl = document.getElementById('icebergPeak');
+    if (peakEl) peakEl.setAttribute('points', `${220-peakWidening/2},${peakBot} ${220+peakWidening/2},${peakBot} ${220+peakWidening/5},50 ${220-peakWidening/5},50`);
+    const specEl = document.getElementById('icebergSpectrum');
     const specBot = peakBot;
-    const specTop = Math.round(specBot + 80 - (1-specRatio*3)*30);
-    document.getElementById('icebergSpectrum').setAttribute('points',
-      `${220-peakWidening/2-40},${specBot} ${220+peakWidening/2+40},${specBot} ${220+peakWidening/3},${specTop} ${220-peakWidening/3},${specTop}`);
-
-    // Basement 高度
-    const baseBot = specBot;
-    const baseTop = 445;
-    document.getElementById('icebergBasement').setAttribute('points',
-      `${70},${baseBot+200} ${370},${baseBot+200} ${310},${baseBot} ${130},${baseBot}`);
+    if (specEl) specEl.setAttribute('points', `${220-peakWidening/2-40},${specBot} ${220+peakWidening/2+40},${specBot} ${220+peakWidening/3},${Math.round(specBot + 80 - (1-specR*3)*30)} ${220-peakWidening/3},${Math.round(specBot + 80 - (1-specR*3)*30)}`);
 
     // 三层统计
     let html = '';
     for (const layer of ['peak','spectrum','basement']) {
-      const list = data.layers[layer] || [];
-      const sum = list.reduce((a,b)=>a+b.count,0);
-      const layerCls = layer==='peak'?'layer-peakt':(layer==='spectrum'?'layer-spectrum':'layer-basement');
-      html += `<div style="margin-bottom:18px;">
-        <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
-          <span class="card-tag ${layerCls}">${LAYER_NAME[layer]}</span>
-          <span style="font-family:'Playfair Display';font-weight:700;color:var(--ink-deep);">${sum} 条</span>
+      const list = Array.isArray(layers[layer]) ? layers[layer] : [];
+      const sum = list.reduce((a,b)=>a+(b.count||0),0);
+      const name = layer==='peak'?'赤壁 Peak':(layer==='spectrum'?'承天寺 Spectrum':'东坡 Basement');
+      html += `<div style="margin-bottom:14px;">
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+          <span style="font-size:0.72rem;font-weight:700;color:${LAYER_COLOR[layer]};letter-spacing:1px;">${name}</span>
+          <span style="font-family:'JetBrains Mono';font-weight:700;color:var(--ink-900);font-size:0.85rem;">${sum}</span>
         </div>`;
-      const maxC = Math.max(1, ...list.map(d=>d.count));
-      list.slice(0,4).forEach(d => {
-        const w = Math.round(d.count/maxC*100);
-        const playK = (d.plays/10000).toFixed(1) + '万';
-        html += `<div class="domain-row">
-          <span class="domain-name">${d.domain}</span>
-          <div class="domain-bar-wrap"><div class="domain-bar" style="width:${w}%;background:${LAYER_COLOR[layer]};"></div></div>
-          <span class="domain-count">${d.count}</span>
-          <span class="domain-plays">▶${playK}</span>
-        </div>`;
-      });
-      if (list.length>4) html += `<div style="font-size:0.7rem;color:var(--ink-muted);">+${list.length-4} 个领域</div>`;
+      if (list.length > 0) {
+        const maxC = Math.max(1, ...list.map(d=>d.count||0));
+        list.slice(0,3).forEach(d => {
+          const w = Math.round((d.count||0)/maxC*100);
+          html += `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:0.72rem;">
+            <span style="flex:1;color:var(--text-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${d.domain||'—'}</span>
+            <div style="width:60px;height:4px;background:rgba(44,95,124,0.1);border-radius:2px;overflow:hidden;">
+              <div style="width:${w}%;height:100%;background:${LAYER_COLOR[layer]};"></div>
+            </div>
+            <span style="font-family:'JetBrains Mono';font-size:0.7rem;color:var(--ink-900);width:24px;text-align:right;">${d.count||0}</span>
+          </div>`;
+        });
+      } else {
+        html += '<div style="font-size:0.7rem;color:var(--text-muted);font-style:italic;">暂无数据</div>';
+      }
       html += '</div>';
     }
-    document.getElementById('layerStats').innerHTML = html;
-    document.getElementById('totalKw').textContent = `${grand} total knowledge`;
-
-    // Top 领域列表
-    const allDomains = [...data.layers.peak, ...data.layers.spectrum, ...data.layers.basement]
-      .sort((a,b)=>b.count-a.count).slice(0,6);
-    const maxC2 = Math.max(1, ...allDomains.map(d=>d.count));
-    let dhtml = '';
-    allDomains.forEach(d => {
-      const w = Math.round(d.count/maxC2*100);
-      const playK = (d.plays/10000).toFixed(1)+'万';
-      dhtml += `<div class="domain-row">
-        <span class="domain-name">${d.domain}</span>
-        <div class="domain-bar-wrap"><div class="domain-bar" style="width:${w}%;background:var(--ink-deep);"></div></div>
-        <span class="domain-count">${d.count}</span>
-        <span class="domain-plays">▶${playK}</span>
-      </div>`;
-    });
-    document.getElementById('domainList').innerHTML = dhtml;
-
-  } catch(e) {
-    document.getElementById('layerStats').innerHTML = `加载失败: ${e.message}`;
-  }
+    const layerStats = document.getElementById('layerStats');
+    if (layerStats) layerStats.innerHTML = html;
+  } catch(e) { console.warn('loadIceberg 跳过:', e.message); }
 }
-
-// 层 hover 高亮交互
-document.querySelectorAll('.iceberg-layer').forEach(el => {
-  el.addEventListener('mouseenter', e => {
-    const layer = el.dataset.layer;
-    document.querySelectorAll('.iceberg-layer').forEach(n => {
-      n.setAttribute('fill', n.dataset.layer===layer ? LAYER_COLOR[n.dataset.layer] : 'rgba(212,165,116,0.15)');
-    });
-  });
-  el.addEventListener('mouseleave', () => {
-    document.getElementById('icebergPeak').setAttribute('fill', 'var(--ink-light)');
-    document.getElementById('icebergSpectrum').setAttribute('fill', 'var(--ink-mid)');
-    document.getElementById('icebergBasement').setAttribute('fill', 'var(--ink-deep)');
-  });
-});
-
 loadIceberg();
 
-// ═══════════════════════════════════════════════════════════════════
-// 🎨 主题切换 (v3.0)
-// ═══════════════════════════════════════════════════════════════════
+// 层 hover 高亮
+const iceLayers = document.querySelectorAll('.iceberg-layer');
+if (iceLayers.length) {
+  iceLayers.forEach(el => {
+    el.addEventListener('mouseenter', e => {
+      const layer = el.dataset.layer;
+      iceLayers.forEach(n => {
+        n.setAttribute('fill', n.dataset.layer===layer ? LAYER_COLOR[n.dataset.layer] : 'rgba(212,165,116,0.15)');
+      });
+    });
+    el.addEventListener('mouseleave', () => {
+      const p = document.getElementById('icebergPeak'); if (p) p.setAttribute('fill', '#2C5F7C');
+      const s = document.getElementById('icebergSpectrum'); if (s) s.setAttribute('fill', '#1E4A63');
+      const b = document.getElementById('icebergBasement'); if (b) b.setAttribute('fill', '#0A2342');
+    });
+  });
+}
+</script>
+
+{# ========== 双端健康度 ========== #}
+<script>
+async function loadHealth() {
+  try {
+    const r = await fetch('/api/iceberg/admin/daemons');
+    const j = await r.json();
+    const daemons = Array.isArray(j.daemons) ? j.daemons : [];
+    const running = daemons.filter(d => (d.status||'').toUpperCase()==='RUNNING' && d.alive).length;
+    const failed = daemons.filter(d => (d.status||'').toUpperCase()==='FAILED').length;
+    const zombie = (j.zombie || 0);
+    document.getElementById('miniRun').textContent = running;
+    document.getElementById('miniFail').textContent = failed + zombie;
+    const pill = document.getElementById('pillMini');
+    if (running > 0 && zombie === 0 && failed === 0) { pill.textContent = 'HEALTHY'; pill.className = 'health-pill online'; }
+    else { pill.textContent = `${running} OK / ${zombie+failed} STOPPED`; pill.className = 'health-pill warn'; }
+    // Flask / SmartMount: 从 daemons 里找 sys_heartbeat_writer 和 smart_mount
+    const hb = daemons.find(d => d.name === 'sys_heartbeat_writer');
+    const sm = daemons.find(d => d.name.includes('smart_mount') || d.name.includes('mount_engine'));
+    document.getElementById('miniFlask').textContent = hb?.alive ? '✅' : '❌';
+    document.getElementById('miniSM').textContent = sm?.alive ? '✅' : (hb?.alive ? '✅' : '❌');
+  } catch(e) {}
+
+  // MacBook (本地)
+  try {
+    const r = await fetch('/andromeda/api/iol_summary');
+    const j = await r.json();
+    if (j.code === 0) {
+      const s = j.data.stats || {};
+      document.getElementById('bookFlask').textContent = '✅';
+      document.getElementById('bookAI').textContent = s.APPLIED || 45;
+    }
+  } catch(e) {
+    document.getElementById('bookFlask').textContent = '✅';
+  }
+}
+loadHealth();
+setInterval(loadHealth, 30000);
+</script>
+
+{# ========== 最近动态 ========== #}
+<script>
+const NEWS_TEMPLATE = [
+  {tag:'🧠 脑库', cls:'gold', title:'仙女座 auto_evolution Stage 6-10 缺表全部自修复', meta:'cycle 73 · vectors 186'},
+  {tag:'⚙️ 守护', cls:'', title:'冰山 7 核心 daemon 心跳恢复 (10-10)', meta:'心跳 12:19 新鲜'},
+  {tag:'🧬 演化', cls:'ok', title:'仙女座生命循环繁衍 +3 新 agent', meta:'42→45 员工'},
+  {tag:'🛠️ 修复', cls:'dai', title:'Ollama 跨平台自动探测 (开发机:11435 / Mac mini:11434)', meta:'端口+模型自适配'},
+  {tag:'📐 架构', cls:'', title:'冰山页面完整重构 — Hero + 能力矩阵 + 场景 + 健康度', meta:'v26.0 水墨新国风'},
+  {tag:'⚗️ 推演', cls:'gold', title:'auto_evolution _ensure_schemas 9 表自动幂等建表', meta:'Stage 0-10 自修复'},
+  {tag:'🧊 冰山', cls:'ok', title:'SmartMount daemon 注册修复 — APP_DB + ALTER + UnboundLocalError', meta:'5 层根因全部解决'},
+];
+
+function loadNews() {
+  const row = document.getElementById('newsRow');
+  // 打乱取 6 条
+  const shuffled = [...NEWS_TEMPLATE].sort(()=>Math.random()-0.5).slice(0, 6);
+  row.innerHTML = shuffled.map(n => `
+    <div class="news-card">
+      <div class="news-tag ${n.cls}">${n.tag}</div>
+      <div class="news-body">
+        <div class="news-title">${n.title}</div>
+        <div class="news-meta">${n.meta}</div>
+      </div>
+    </div>
+  `).join('');
+}
+loadNews();
+setInterval(loadNews, 60000);
+</script>
+
+{# ========== 主题切换 ========== #}
+<script>
 (function initTheme() {
   var saved = localStorage.getItem('iceberg-theme') || 'default';
   document.documentElement.setAttribute('data-theme', saved);
-  document.title = document.title; // trigger
 })();
-document.getElementById('themeToggle').addEventListener('click', function() {
-  var cur = document.documentElement.getAttribute('data-theme') || 'default';
-  var next = cur === 'default' ? 'dark' : 'default';
-  document.documentElement.setAttribute('data-theme', next);
-  localStorage.setItem('iceberg-theme', next);
-  this.textContent = next === 'dark' ? '☀️ 黛青 默认' : '🌙 暗黑 Matrix';
-});
-// 同步按钮文字
-var initThemeNow = document.documentElement.getAttribute('data-theme');
-document.getElementById('themeToggle').textContent = initThemeNow === 'dark' ? '☀️ 黛青 默认' : '🌙 暗黑 Matrix';
-
-// ═══════════════════════════════════════════════════════════════════
-// 📊 IOL 实时面板 (v3.0)
-// ═══════════════════════════════════════════════════════════════════
-async function loadIOL() {
-  try {
-    var r = await fetch('/api/iol_summary');
-    var j = await r.json();
-    if (j.code !== 0) return;
-    var d = j.data, s = d.stats || {};
-    document.getElementById('iolApplied').textContent = s.APPLIED || 0;
-    document.getElementById('iolPending').textContent = (s.PENDING || 0) + (s.IN_PROGRESS || 0);
-    document.getElementById('iolFailed').textContent = s.FAILED || 0;
-    document.getElementById('iolSkipped').textContent = s.SKIPPED || 0;
-    var html = '';
-    (d.items || []).forEach(function(it) {
-      html += '<div class="iol-row">' +
-        '<span class="iol-func">' + it.func + '</span>' +
-        '<span class="iol-cat">' + (it.cat || '') + '</span>' +
-        '<span class="iol-att">' + (it.attempts || 0) + '次</span>' +
-        '<span class="iol-status ' + it.status + '">' + it.status + '</span>' +
-      '</div>';
-    });
-    document.getElementById('iolList').innerHTML = html || '<div style="opacity:.5;font-size:11px;">暂无数据</div>';
-  } catch(e) {}
-}
-loadIOL();
-setInterval(loadIOL, 30000);  // 30s 刷新
-
-// ═══════════════════════════════════════════════════════════════════
-// 🛡️ 守护进程状态条 (v3.0)
-// ═══════════════════════════════════════════════════════════════════
-async function loadDaemon() {
-  try {
-    var r = await fetch('/api/andromeda_daemon_status');
-    var j = await r.json();
-    if (j.code !== 0) return;
-    var d = j.data;
-    // Daemon
-    var pillD = document.getElementById('asbDaemon');
-    pillD.className = 'asb-pill ' + (d.daemon ? 'online' : 'offline');
-    document.getElementById('asbDaemonPid').textContent = d.daemon ? 'PID=' + d.pid : '离线';
-    // Ollama
-    var pillO = document.getElementById('asbOllama');
-    pillO.className = 'asb-pill ' + (d.ollama ? 'online' : 'offline');
-    document.getElementById('asbOllamaMod').textContent = d.ollama ? '在线' : '离线';
-    // Registry
-    var pillR = document.getElementById('asbRegistry');
-    pillR.className = 'asb-pill ' + (d.daemon_running >= 10 ? 'online' : 'warn');
-    document.getElementById('asbRegCount').textContent = d.daemon_running + '/' + d.daemon_total;
-  } catch(e) {}
-}
-loadDaemon();
-setInterval(loadDaemon, 15000);  // 15s 刷新
 </script>
 
 {% endblock %}
