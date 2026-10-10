@@ -634,25 +634,17 @@ def _root_redirect():
     if _is_dev:
         return _server_ops_panel()
     
-    # ── SERVER (后端服务器): 仅真本机 (非 Cloudflare Tunnel) 显示 Ops Console ──
+    # ── SERVER (后端服务器): 仅 CLI 工具显示 Ops Console, 浏览器走新版首页 ──
     if _is_srv:
         _ra = _request.remote_addr or ''
         _ua = _request.headers.get('User-Agent','')
-        # 🌩️ Cloudflare Tunnel 转发检测: 有 CF-Connecting-IP header = 公网请求, 即使 remote_addr=127.0.0.1 也跳过 Ops Console
         _cf_ip = _request.headers.get('CF-Connecting-IP', '') or _request.headers.get('X-Forwarded-For', '')
-        _is_cli = any(t in _ua.lower() for t in ['curl','wget','python-urllib','insomnia'])
+        _is_cli = any(t in _ua.lower() for t in ['curl','wget','python-urllib','insomnia','httpie'])
         _is_real_local = _ra in ('127.0.0.1','::1','localhost') or _ra.startswith('169.254.')
-        # 真本机 Ops Console = 无 Cloudflare header + (真本地 IP 或 CLI 工具)
-        if not _cf_ip and (_is_real_local or _is_cli):
+        # Ops Console 短路 = CLI 工具 (运维用 curl localhost 看状态面板)
+        # 浏览器 (含 localhost Safari) → 走新版首页
+        if not _cf_ip and _is_cli:
             return _server_ops_panel()
-        # 已登录用户也跳过 Ops Console
-        try:
-            _uid_cf = _request.cookies.get('mtscos_uid', '')
-            if _uid_cf and _uid_cf not in ('', 'guest'):
-                pass  # 已登录 → 不走 Ops Console, 继续走下面的 redirect('/index')
-        except Exception:
-            pass
-        # 公网访问者 (iPhone/MacBook/iPad/Cloudflare Tunnel) → 走正常首页
     
     # ── CLIENT (所有其他终端) / SERVER 外部访问者 → 正常 /index → index.html ──
     # Arduino 设备插入：透传参数到 /login（Arduino 引导逻辑在 login.html，index.html 不处理该参数）
