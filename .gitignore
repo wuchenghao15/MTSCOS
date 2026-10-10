@@ -105,7 +105,7 @@ flask-app/app/utils/*
 !flask-app/app/utils/b1_global_permission_guard.py
 !flask-app/app/utils/ai_emp_badge.py
 # 2026-08-20 v2.9.0 AI治理中心: 5页面+27API+3AI员工+3EigenFlux专家
-# 允许 flask-app/routes/ 下 7 个治理中心路由文件入库
+# 允许 flask-app/routes/ 下路由文件入库 (v22.2.0 冰山守护补齐)
 !flask-app/routes/
 flask-app/routes/*
 !flask-app/routes/__init__.py
@@ -116,7 +116,12 @@ flask-app/routes/*
 !flask-app/routes/devflow_routes.py
 !flask-app/routes/ai_routes.py
 !flask-app/routes/galaxy_routes.py
-# 允许 flask-app/templates/admin_app/ 下 5 个治理中心页面入库
+!flask-app/routes/mobile_iceberg_routes.py
+!flask-app/routes/readonly_inventory_routes.py
+!flask-app/routes/server_ops_routes.py
+!flask-app/routes/arduino_routes.py
+!flask-app/routes/port_guard_routes.py
+# 允许 flask-app/templates/ 下页面入库 (v22.2.0 冰山守护补齐)
 !flask-app/templates/
 flask-app/templates/*
 !flask-app/templates/admin_app/
@@ -126,6 +131,31 @@ flask-app/templates/admin_app/*
 !flask-app/templates/admin_app/dev_flow_dashboard.html
 !flask-app/templates/admin_app/brain_bank_explorer.html
 !flask-app/templates/admin_app/neural_array_matrix.html
+# 仙女座冰山守护系列模板
+!flask-app/templates/andromeda_iceberg_center.html
+!flask-app/templates/andromeda_iceberg_evolution.html
+!flask-app/templates/andromeda_iceberg_meta.html
+!flask-app/templates/andromeda_dashboard.html
+!flask-app/templates/andromeda_knowledge_brain.html
+!flask-app/templates/andromeda_knowledge_graph.html
+!flask-app/templates/andromeda_empowerment_center.html
+!flask-app/templates/andromeda_role_dashboard.html
+!flask-app/templates/andromeda_role_settings.html
+!flask-app/templates/andromeda_persona_chat.html
+!flask-app/templates/andromeda_teacher_roster.html
+!flask-app/templates/andromeda_gray_center.html
+!flask-app/templates/andromeda_health_board.html
+!flask-app/templates/andromeda_upgrade_board.html
+!flask-app/templates/andromeda_eigenflux.html
+!flask-app/templates/andromeda_aurora_center.html
+!flask-app/templates/andromeda_collapse_theorem.html
+!flask-app/templates/andromeda_wenquxing.html
+!flask-app/templates/index.html
+!flask-app/templates/login.html
+!flask-app/templates/local_chat.html
+!flask-app/templates/base.html
+!flask-app/templates/base_unified.html
+!flask-app/templates/dev_dashboard.html
 flask-app-old/
 .scheduler_heartbeat
 .scheduler_pid
