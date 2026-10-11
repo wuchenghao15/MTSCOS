@@ -40,9 +40,9 @@ except Exception:
 import sys
 import time
 import traceback
-from dataclasses import dataclass, field
+# [unused] from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+# [unused] from typing import Dict, List, Optional, Tuple
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -137,7 +137,7 @@ def sample_by_neuralhub_task(task: str, count: int = 2) -> List[AICrewMember]:
     c = _db()
     rows = c.execute('''
         SELECT employee_id, name, employee_type, level, neuralhub_task
-        FROM mt_andromeda_employee_registry 
+        FROM mt_andromeda_employee_registry
         WHERE enabled=1 AND (neuralhub_task=? OR neuralhub_task LIKE ?)
         ORDER BY RANDOM() LIMIT ?
     ''', (task, f'%{task}%', count)).fetchall()
@@ -191,8 +191,8 @@ def assemble_dynamic_crew(topic: str, team_size: int = 12,
         needed = team_size - len(crew)
         c = _db()
         fillers = c.execute('''
-            SELECT employee_id, name, level, neuralhub_task 
-            FROM mt_andromeda_employee_registry 
+            SELECT employee_id, name, level, neuralhub_task
+            FROM mt_andromeda_employee_registry
             WHERE enabled=1 AND employee_type='eigenflux_expert'
             AND neuralhub_task NOT IN (SELECT DISTINCT neuralhub_task FROM mt_andromeda_employee_registry WHERE employee_id IN (''' +
             ",".join(["?"]*len(crew)) + '''))
@@ -415,7 +415,7 @@ def _print_roster():
     total = c.execute(f"SELECT COUNT(*) FROM {TABLE} WHERE enabled=1").fetchone()[0]
     print(f"\n  📊 AI 员工总数: {total:,}")
     task_counts = c.execute(f'''
-        SELECT neuralhub_task, COUNT(*) FROM {TABLE} 
+        SELECT neuralhub_task, COUNT(*) FROM {TABLE}
         WHERE enabled=1 AND neuralhub_task IN ({",".join("?"*len(ROLE_ASSIGNMENTS))})
         GROUP BY neuralhub_task ORDER BY COUNT(*) DESC
     ''', [a.neuralhub_task for a in ROLE_ASSIGNMENTS]).fetchall()

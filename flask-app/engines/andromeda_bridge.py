@@ -1,6 +1,6 @@
 # MicroPython 玩法: 仙女座反馈桥接器
 # 刷入方式: https://ai-passport.folotoy.cn/tools/web-flasher/
-# 
+#
 # 功能:
 #   1. BLE 可连接, 暴露 TRAECARD Service
 #   2. 接收仙女座/冰山的 BLE 写入 (音频配置帧 + PCM 数据)
@@ -92,7 +92,7 @@ def audio_close():
     if i2s_out:
         try:
             i2s_out.deinit()
-        except:
+        except Exception:
             pass
         i2s_out = None
     audio_open = False
@@ -149,7 +149,7 @@ def on_write(char, data):
             try:
                 v = int(text.split(',')[1].split('\r')[0])
                 set_volume(v)
-            except:
+            except Exception:
                 pass
     
     else:

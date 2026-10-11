@@ -21,7 +21,7 @@ ai_github_fusion_engine.py — 仙女座 v6.2 新升级路径：GitHub 开源自
 
 import os, sys, sqlite3, json, time, logging, hashlib, re, subprocess, shutil
 from datetime import datetime
-from pathlib import Path
+# [unused] from pathlib import Path
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s')
 logger = logging.getLogger('github_fusion')

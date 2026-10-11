@@ -38,7 +38,7 @@ ACK 规律:
   python3 folotoy_bridge.py volume-down
 """
 from __future__ import annotations
-import asyncio, sys, os, time, argparse, struct, json
+# [unused] import asyncio, sys, os, time, argparse, struct, json
 from datetime import datetime
 from pathlib import Path
 from typing import Optional

@@ -29,7 +29,7 @@ WAL 安全:
   - 同步写操作用短事务 (单表单批次)
   - 避免同时写同一 k_id (游标保证)
 """
-import os, sys, time, json, socket, struct, threading, sqlite3, datetime, hashlib
+# [unused] import os, sys, time, json, socket, struct, threading, sqlite3, datetime, hashlib
 from pathlib import Path
 
 # ====== 常量 ======

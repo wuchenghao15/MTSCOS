@@ -39,7 +39,7 @@ class RulesDaemon:
             content = open(os.path.join(RULES_DIR, f)).read()
             doc = f.replace(".md", "")
             counts = {}
-            for kw in ["必须", "禁止", "不得", "强制", "严禁", "铁律", 
+            for kw in ["必须", "禁止", "不得", "强制", "严禁", "铁律",
                        "不可绕开", "唯一", "有且仅有", "不允许", "一律"]:
                 counts[kw] = content.count(kw)
             total = sum(counts.values())
@@ -68,7 +68,7 @@ class RulesDaemon:
         results = []
         for fname, (label, keywords) in sorted(cap_map.items()):
             found_in = []
-            py_files = [f for f in os.listdir(eng_dir) 
+            py_files = [f for f in os.listdir(eng_dir)
                        if f.endswith(".py") and not f.startswith("__")]
             for pyf in py_files:
                 content = open(os.path.join(eng_dir, pyf)).read()
@@ -104,10 +104,10 @@ class RulesDaemon:
         try:
             conn = sqlite3.connect(DB_PATH, timeout=10)
             layers = {}
-            for layer, label in [("Peak", "🏛️ Peak 赤壁"), 
-                                 ("Spectrum", "🎨 Spectrum 承天寺"), 
+            for layer, label in [("Peak", "🏛️ Peak 赤壁"),
+                                 ("Spectrum", "🎨 Spectrum 承天寺"),
                                  ("Basement", "🧱 Basement 东坡")]:
-                rows = conn.execute("""SELECT 
+                rows = conn.execute("""SELECT
                     COUNT(DISTINCT rule_id),
                     SUM(CASE WHEN enforcement_scope='STRONG' THEN 1 ELSE 0 END),
                     SUM(CASE WHEN enforcement_scope='MEDIUM' THEN 1 ELSE 0 END),
@@ -147,8 +147,8 @@ class RulesDaemon:
             gaps_json = json.dumps(gaps, ensure_ascii=False)
             rules_json = json.dumps(rules, ensure_ascii=False)
             
-            conn.execute("""INSERT INTO mt_rule_integrity_scan 
-                (scan_id, scan_type, doc_count, total_constraints, engine_modules, 
+            conn.execute("""INSERT INTO mt_rule_integrity_scan
+                (scan_id, scan_type, doc_count, total_constraints, engine_modules,
                  coverage_pct, gaps_json, scan_report)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
                 (scan_id, "ANDROMEDA_AUTO", len(rules), total_constraints,
@@ -174,7 +174,7 @@ class RulesDaemon:
                 bar = "█" * int(info["coverage"] // 5) + "░" * (20 - int(info["coverage"] // 5))
                 print(f"    {info['label']}: {info['rules']}规则 STRONG={info['strong']} MEDIUM={info['medium']} SUPPORT={info['support']}  avg={info['coverage']}%")
         
-        return {"scan_id": scan_id, "coverage": f"{covered_caps*100//total_caps}%", 
+        return {"scan_id": scan_id, "coverage": f"{covered_caps*100//total_caps}%",
                 "gaps": len(gaps)}
     
     def run(self):

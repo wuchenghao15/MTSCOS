@@ -175,8 +175,8 @@ def _loop_derive(db: sqlite3.Connection) -> dict:
     violations = []
     try:
         for v in db.execute("""
-            SELECT viol_rule, viol_stage, viol_action, viol_payload 
-            FROM mt_iron_rule_violations 
+            SELECT viol_rule, viol_stage, viol_action, viol_payload
+            FROM mt_iron_rule_violations
             ORDER BY rowid DESC LIMIT 5""").fetchall():
             violations.append({
                 "rule": v[0], "stage": v[1], "action": v[2],
@@ -204,10 +204,10 @@ def _loop_derive(db: sqlite3.Connection) -> dict:
                 rules = json.loads(m.group(0))
                 for rule in rules:
                     rid = f"iceberg_rule_{int(time.time())}_{abs(hash(rule.get('title',''))) % 1000}"
-                    db.execute("""INSERT INTO mt_iceberg_rules_generated 
+                    db.execute("""INSERT INTO mt_iceberg_rules_generated
                         (rule_id, title, source_type, priority, rule_json, auto_deploy)
                         VALUES (?,?,?,?,?,0)""",
-                        (rid, rule.get("title", "新规则"), "violation", 
+                        (rid, rule.get("title", "新规则"), "violation",
                          3 if rule.get("severity") == "LOW" else (2 if rule.get("severity") == "MEDIUM" else 1),
                          json.dumps(rule, ensure_ascii=False)))
                     generated += 1
@@ -250,7 +250,7 @@ def _loop_expand(db: sqlite3.Connection) -> dict:
     
     # 从 mt_iceberg_rules_generated 取 AUTO_DEPLOY=1 但 deployed=0 的
     pending = db.execute("""
-        SELECT rule_id, title, rule_json FROM mt_iceberg_rules_generated 
+        SELECT rule_id, title, rule_json FROM mt_iceberg_rules_generated
         WHERE auto_deploy=1 AND deployed=0 ORDER BY priority LIMIT 5
     """).fetchall()
     
@@ -260,7 +260,7 @@ def _loop_expand(db: sqlite3.Connection) -> dict:
         try:
             rule = json.loads(rule_json)
             pattern = rule.get("pattern", "")
-            db.execute("""INSERT OR IGNORE INTO ai_firewall_rules 
+            db.execute("""INSERT OR IGNORE INTO ai_firewall_rules
                 (rule_id, name, pattern, action, status) VALUES (?,?,?,?,'ACTIVE')""",
                 (rid, title[:40], pattern, "BLOCK"))
             db.execute("UPDATE mt_iceberg_rules_generated SET deployed=1 WHERE rule_id=?", (rid,))
@@ -295,7 +295,7 @@ def _loop_research(db: sqlite3.Connection) -> dict:
     violations = []
     try:
         for v in db.execute("""
-            SELECT viol_rule, viol_stage, viol_action 
+            SELECT viol_rule, viol_stage, viol_action
             FROM mt_iron_rule_violations ORDER BY rowid DESC LIMIT 3""").fetchall():
             violations.append({"rule": v[0], "stage": v[1], "action": v[2]})
     except: pass
@@ -351,10 +351,10 @@ def run_iceberg_cycle() -> dict:
             
             # 落库
             run_id = f"iceberg_{loop_type}_{int(time.time())}"
-            db.execute("""INSERT INTO mt_iceberg_runs 
-                (run_id, loop_type, items_found, items_ok, items_fixed, 
+            db.execute("""INSERT INTO mt_iceberg_runs
+                (run_id, loop_type, items_found, items_ok, items_fixed,
                  duration_s, report_json) VALUES (?,?,?,?,?,?,?)""",
-                (run_id, loop_type, 
+                (run_id, loop_type,
                  sum(v for k,v in r.items() if k not in ["loop_type","duration_s","error"] and isinstance(v, (int,float))) or 0,
                  0, r.get("rules_fixed", r.get("deployed", r.get("threats_found", 0))),
                  r["duration_s"], json.dumps(r, ensure_ascii=False)))
@@ -391,7 +391,7 @@ if __name__ == "__main__":
         # 查看冰山运行状态
         db = sqlite3.connect(str(DB))
         rows = db.execute("""
-            SELECT loop_type, COUNT(*), MAX(run_at) 
+            SELECT loop_type, COUNT(*), MAX(run_at)
             FROM mt_iceberg_runs GROUP BY loop_type""").fetchall()
         print(f"{'LOOP':15s} {'RUNS':>6s}  {'LAST':22s}")
         print("─" * 50)

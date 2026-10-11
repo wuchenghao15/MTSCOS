@@ -297,8 +297,8 @@ def get_data():
     # 1. Daemon 状态
     daemons = []
     for row in c.execute("""
-        SELECT process_name, status, last_heartbeat, pid 
-        FROM mt_daemon_registry 
+        SELECT process_name, status, last_heartbeat, pid
+        FROM mt_daemon_registry
         ORDER BY CASE status WHEN 'RUNNING' THEN 0 WHEN 'EVENT' THEN 1 WHEN 'READY' THEN 2 ELSE 3 END, last_heartbeat DESC
     """).fetchall():
         daemons.append({
@@ -311,20 +311,20 @@ def get_data():
     # 2. 最近通知
     notifications = []
     for row in c.execute("""
-        SELECT title, content, level, created_at 
-        FROM system_notifications 
+        SELECT title, content, level, created_at
+        FROM system_notifications
         ORDER BY rowid DESC LIMIT 20
     """).fetchall():
         notifications.append({
-            "title": row[0], "content": row[1], 
+            "title": row[0], "content": row[1],
             "level": row[2], "ts": row[3]
         })
     
     # 3. 演化日志
     evolutions = []
     for row in c.execute("""
-        SELECT trigger_type, target_task, created_at 
-        FROM mt_ai_self_evolution_log 
+        SELECT trigger_type, target_task, created_at
+        FROM mt_ai_self_evolution_log
         ORDER BY rowid DESC LIMIT 15
     """).fetchall():
         evolutions.append({
@@ -334,13 +334,13 @@ def get_data():
     # 4. 脑库统计
     brain_total = c.execute("SELECT COUNT(*) FROM ai_brain_enhanced_knowledge").fetchone()[0]
     brain_today = c.execute("""
-        SELECT COUNT(*) FROM ai_brain_enhanced_knowledge 
+        SELECT COUNT(*) FROM ai_brain_enhanced_knowledge
         WHERE date(created_at, 'unixepoch') = date('now', 'localtime')
     """).fetchone()[0]
     brain_cats = []
     for row in c.execute("""
-        SELECT category, COUNT(*) as cnt 
-        FROM ai_brain_enhanced_knowledge 
+        SELECT category, COUNT(*) as cnt
+        FROM ai_brain_enhanced_knowledge
         GROUP BY category ORDER BY cnt DESC LIMIT 10
     """).fetchall():
         brain_cats.append({"cat": row[0], "cnt": row[1]})
@@ -359,27 +359,27 @@ def get_data():
         emp_active = c.execute(
             "SELECT COUNT(*) FROM mt_andromeda_employee_registry WHERE enabled=1 AND call_count > 0"
         ).fetchone()[0]
-    except:
+    except Exception:
         emp_active = 0
 
     # 按 employee_type 聚合 TOP 10 类型 (最多的 AI 类型)
     registry_types = []
     try:
         for row in c.execute("""
-            SELECT employee_type, COUNT(*) as cnt 
-            FROM mt_andromeda_employee_registry 
-            WHERE enabled = 1 
-            GROUP BY employee_type 
+            SELECT employee_type, COUNT(*) as cnt
+            FROM mt_andromeda_employee_registry
+            WHERE enabled = 1
+            GROUP BY employee_type
             ORDER BY cnt DESC LIMIT 10
         """).fetchall():
             registry_types.append({"type": row[0] or "unknown", "count": row[1]})
-    except:
+    except Exception:
         pass
 
     top_writers = []
     for row in c.execute("""
-        SELECT name, skill_level, group_tag, description 
-        FROM ai_employees 
+        SELECT name, skill_level, group_tag, description
+        FROM ai_employees
         WHERE is_enabled = 1
         ORDER BY CASE WHEN typeof(skill_level)='real' THEN skill_level ELSE 0 END DESC, id ASC LIMIT 20
     """).fetchall():
@@ -389,22 +389,22 @@ def get_data():
         except (ValueError, TypeError):
             skill_val = 0.5
         top_writers.append({
-            "name": row[0], "skill": skill_val, 
+            "name": row[0], "skill": skill_val,
             "skill_label": str(row[1]) if row[1] and not isinstance(row[1], (int,float)) else "",
-            "group": row[2] or "", 
+            "group": row[2] or "",
             "description": (row[3] or "")[:60],
         })
     
     # 7. EigenFlux 近 1h
     eigenflux_1h = c.execute("""
-        SELECT COUNT(*) FROM eigenflux_comm_messages 
+        SELECT COUNT(*) FROM eigenflux_comm_messages
         WHERE created_at > datetime('now', '-1 hours', 'localtime')
     """).fetchone()[0]
     
     # 8. daemon config_json 里的 recent_events
     daemon_events = []
     for row in c.execute("""
-        SELECT process_name, config_json FROM mt_daemon_registry 
+        SELECT process_name, config_json FROM mt_daemon_registry
         WHERE config_json IS NOT NULL AND config_json != ''
         ORDER BY last_heartbeat DESC LIMIT 3
     """).fetchall():
@@ -1306,7 +1306,7 @@ STATUS_PAGE = """<!doctype html>
     <div class="section-head" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
       <h2>�️ AI 员工注册中心 <span id="emp-total-tag" style="color:#8b5cf6;font-size:13px;"></span></h2>
       <div style="display:flex;gap:8px;align-items:center;">
-        <input type="text" id="emp-search" placeholder="🔍 搜索 name / type / source..." 
+        <input type="text" id="emp-search" placeholder="🔍 搜索 name / type / source..."
                style="background:#0d1117;border:1px solid #2a3a4e;border-radius:6px;padding:6px 12px;color:#e2e8f0;font-size:13px;width:240px;outline:none;" />
         <button id="emp-search-btn" class="btn-sync refresh" style="padding:4px 14px;">搜索</button>
         <select id="emp-limit" style="background:#0d1117;border:1px solid #2a3a4e;border-radius:6px;padding:5px;color:#e2e8f0;font-size:12px;">
@@ -1400,7 +1400,7 @@ function renderSync(sync) {
     const sub = document.getElementById('sync-sub');
     if (!sync) { body.innerHTML = '<div class="sync-offline-hint">等待数据...</div>'; return; }
     
-    sub.textContent = sync.online 
+    sub.textContent = sync.online
         ? `开发机 ↔ ${sync.hostname || 'HULK-MACMINI'} · DB=${sync.db_path || '—'} · 检查 ${sync.checked_at || '—'}`
         : `${sync.hostname || 'HULK-MACMINI'} 离线 · 无法对比`;
     
@@ -1569,7 +1569,7 @@ async function refresh() {
     });
     
     safeSet('notifications', el => {
-        el.innerHTML = d.notifications.length === 0 ? 
+        el.innerHTML = d.notifications.length === 0 ?
           '<div style="color:var(--muted);font-size:14px;">暂无通知</div>' :
           d.notifications.map((n, i) => {
             const isNew = i < newCount;
@@ -1595,7 +1595,7 @@ async function refresh() {
     
     // ===== Evolutions =====
     safeSet('evolutions', el => {
-        el.innerHTML = d.evolutions.length === 0 ? 
+        el.innerHTML = d.evolutions.length === 0 ?
           '<div style="color:var(--muted);font-size:14px;">暂无演化</div>' :
           d.evolutions.slice(0, 10).map(e => `
             <div class="stat-row"><span>🧬 ${e.type}</span><span class="stat-val">${e.ts}</span></div>`).join('');
@@ -1607,7 +1607,7 @@ async function refresh() {
     safeSet('ef-1h', el => el.textContent = fmtNum(d.eigenflux_1h));
     safeSet('evo-trigger-count', el => el.textContent = d.evolutions.length);
     safeSet('daemon-events', el => {
-        el.innerHTML = d.daemon_events.length === 0 ? 
+        el.innerHTML = d.daemon_events.length === 0 ?
           '<div style="color:var(--muted);font-size:13px;">暂无</div>' :
           d.daemon_events.map(de => `<div style="margin-bottom:8px;"><div style="font-size:13px;font-weight:600;color:var(--accent);">${de.daemon}</div>
             ${de.events.map(e => `<div style="font-size:13px;padding:2px 0;"><span class="level-${e.level}">${e.title}</span></div>`).join('')}
@@ -1768,13 +1768,13 @@ async function loadEmployees() {
                 j.types.map(t => {
                     const pct = (t.count / j.total * 100).toFixed(1);
                     const active = empTypeFilter === t.type;
-                    return `<button class="btn-sync" onclick="empTypeFilter='${t.type === empTypeFilter ? '' : t.type}';empPage=1;loadEmployees();" 
+                    return `<button class="btn-sync" onclick="empTypeFilter='${t.type === empTypeFilter ? '' : t.type}';empPage=1;loadEmployees();"
                         style="padding:3px 10px;font-size:11px;background:${active ? '#8b5cf6' : '#1e293b'};color:${active ? '#fff' : '#94a3b8'};border:1px solid ${active ? '#8b5cf6' : '#2a3a4e'};">
                         ${t.type} ${t.count.toLocaleString()} <span style="opacity:.6">(${pct}%)</span>
                     </button>`;
                 }).join('');
         } else if (empTypeFilter) {
-            filtersEl.innerHTML = `<button class="btn-sync" onclick="empTypeFilter='';empPage=1;loadEmployees();" 
+            filtersEl.innerHTML = `<button class="btn-sync" onclick="empTypeFilter='';empPage=1;loadEmployees();"
                 style="padding:3px 10px;font-size:11px;background:#8b5cf6;color:#fff;border:1px solid #8b5cf6;">🔴 清除类型筛选</button>`;
         } else {
             filtersEl.innerHTML = '';
@@ -1821,7 +1821,7 @@ async function loadEmployees() {
             
             if (start > 1) pagesHtml += `<button class="btn-sync" style="padding:2px 8px;font-size:11px;" onclick="empPage=1;loadEmployees();">«</button>`;
             for (let p = start; p <= end; p++) {
-                pagesHtml += `<button class="btn-sync" style="padding:2px 10px;font-size:11px;${p===j.page?'background:#8b5cf6;color:#fff;border-color:#8b5cf6;':''}" 
+                pagesHtml += `<button class="btn-sync" style="padding:2px 10px;font-size:11px;${p===j.page?'background:#8b5cf6;color:#fff;border-color:#8b5cf6;':''}"
                     onclick="empPage=${p};loadEmployees();">${p}</button>`;
             }
             if (end < j.pages) pagesHtml += `<button class="btn-sync" style="padding:2px 8px;font-size:11px;" onclick="empPage=${j.pages};loadEmployees();">»</button>`;

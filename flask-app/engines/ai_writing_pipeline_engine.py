@@ -30,7 +30,7 @@
 """
 
 from __future__ import annotations
-import json, os, sqlite3, subprocess, sys, time, hashlib, uuid, threading
+# [unused] import json, os, sqlite3, subprocess, sys, time, hashlib, uuid, threading
 from datetime import datetime
 from pathlib import Path
 
@@ -68,7 +68,7 @@ def _detect_writer_model(port: int) -> tuple[str, str]:
 
     # 主写作模型 (优先 14B)
     writer = None
-    for pref in ["qwen2.5:14b", "qwen2.5:14b-q5", "qwen2.5-coder:14b", 
+    for pref in ["qwen2.5:14b", "qwen2.5:14b-q5", "qwen2.5-coder:14b",
                  "qwen2.5-coder:14b-q5", "qwen2.5:7b", "qwen2.5:7b-q5"]:
         if pref in available:
             writer = pref; break

@@ -122,7 +122,7 @@ class IcebergConsciousness:
         elif any(not v for v in five_self.values()):
             evolution_decision = 'strengthen'
             # strengthen 方向 = 最弱域
-            weak_domains = [d for d, t in self.HEALTH_KEY_TABLES.items() 
+            weak_domains = [d for d, t in self.HEALTH_KEY_TABLES.items()
                           if self._score_domain(d, t) < 70]
             upgrade_direction = f"修复 {'/'.join(weak_domains) if weak_domains else 'ALL'} 域健康问题"
             direction_confidence = 0.9
@@ -176,7 +176,7 @@ class IcebergConsciousness:
                 "INSERT INTO mt_iceberg_consciousness_optimizations "
                 "(run_id, domain, self_capability, suggestion, confidence, action_taken, upgrade_direction, direction_num, created_at) "
                 "VALUES (?,?,?,?,?,?,?,?,datetime('now'))",
-                (run_id, 'ALL', f'self_{evolution_decision}', suggestion, 
+                (run_id, 'ALL', f'self_{evolution_decision}', suggestion,
                  0.85 if not direction_confidence else direction_confidence, 0,
                  upgrade_direction, direction_num))
 

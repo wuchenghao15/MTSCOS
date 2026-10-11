@@ -19,7 +19,7 @@ from pathlib import Path
 # 硬件探针
 # ═══════════════════════════════════════════════
 def hw_probe():
-    import platform, re
+    # [unused] import platform, re
     info = {}
     # unified memory
     try:
@@ -115,7 +115,7 @@ def pick_best_quant(model_key: str, hw: dict, purpose: str = "general",
     disk = hw["disk_free_gb"]
     
     # 可用量化 (按质量降序)
-    available = sorted(entry["quants"].items(), 
+    available = sorted(entry["quants"].items(),
                       key=lambda x: -x[1]["q"])
     
     # 优先级 (从高到低)

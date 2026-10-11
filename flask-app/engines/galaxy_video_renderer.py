@@ -126,7 +126,7 @@ def render_content_card(
 ) -> Tuple[str, float]:
     """按 content_type 分发渲染 → PNG 路径"""
     from PIL import Image, ImageDraw, ImageFont
-    import textwrap as _textwrap
+    # [unused] import textwrap as _textwrap
 
     font_path = _find_cjk_font()
     font_big = ImageFont.truetype(font_path, 88)
@@ -652,7 +652,7 @@ def render_video(spec: Dict, out_dir: Path = OUTPUT_DIR) -> Dict:
         dict with: video_path, duration_sec, size_mb, frame_count,
                    card_paths, audio_paths, publishing_manifest
     """
-    from moviepy import ImageClip, AudioFileClip, CompositeVideoClip, concatenate_videoclips
+    # [unused] from moviepy import ImageClip, AudioFileClip, CompositeVideoClip, concatenate_videoclips
 
     out_dir.mkdir(parents=True, exist_ok=True)
     topic = spec.get("meta", {}).get("topic", "unknown")

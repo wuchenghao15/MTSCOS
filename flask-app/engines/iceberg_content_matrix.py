@@ -22,8 +22,8 @@
 """
 import sqlite3 as _sqlite3
 import os as _os
-import json as _json
-from datetime import datetime as _dt
+# [unused] import json as _json
+# [unused] from datetime import datetime as _dt
 
 DB_PATH = None
 LANGS = ('zh_CN', 'zh_TW', 'ja_JP', 'en_US')
@@ -335,7 +335,7 @@ def bootstrap(force_remigrate: bool = False):
 def iceberg_inject_i18n_into_app(app):
     """向 Flask app 的 Jinja2 注入冰山引擎驱动的 t() / t_kw() / current_lang / i18n_dict。
     调用时机: Flask 启动时（替换或补充 i18n_engine.inject_i18n_into_app）。"""
-    import json as _json
+    # [unused] import json as _json
 
     def _session_lang():
         try:

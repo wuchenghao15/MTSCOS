@@ -24,7 +24,7 @@ galaxy_ai_model_router.py — 仙女座 AI 模型路由器 (v1 架构)
 """
 from __future__ import annotations
 
-import asyncio
+# [unused] import asyncio
 import json
 import os
 import sqlite3
@@ -43,8 +43,8 @@ import sys
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field, asdict
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+# [unused] from pathlib import Path
+# [unused] from typing import Any, Dict, List, Optional, Union
 
 # 允许 engines 内部脚本直接运行时找到同级模块
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
