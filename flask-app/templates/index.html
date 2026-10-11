@@ -203,6 +203,106 @@ body .uni-main { margin-left: 0 !important; width: 100% !important; }
     font-size: 10.5px; color: #9baab8;
 }
 
+/* ╔══════════════════════════════════════════════════════════════╗
+ * ║  仙女座 UI Team — 首页内容美化 3 方向 (增量 CSS)              ║
+ * ╚══════════════════════════════════════════════════════════════╝ */
+
+/* ── 1. AI 生态: 图标容器 + hover 高亮 + 徽章边框 ── */
+.mts-eco { gap: 8px 20px; margin-top: 16px; padding-top: 14px;
+    border-top: 1px dashed rgba(99,102,241,.1); }
+.mts-eco .eco-item {
+    padding: 5px 10px; border-radius: 20px;
+    background: rgba(99,102,241,.04);
+    border: 1px solid rgba(99,102,241,.08);
+    gap: 6px; align-items: center;
+    transition: background .2s, border-color .2s, transform .2s;
+    cursor: default;
+}
+.mts-eco .eco-icon {
+    font-size: 10px; color: #8B5CF6;
+    width: 18px; height: 18px; border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: rgba(139,92,246,.1);
+}
+.mts-eco .eco-num { font-size: 12px; }
+.mts-eco .eco-label { font-size: 10px; }
+.mts-eco .eco-item:hover {
+    background: rgba(139,92,246,.1);
+    border-color: rgba(139,92,246,.25);
+    transform: translateY(-1px);
+}
+.mts-eco .eco-item:hover .eco-icon {
+    background: rgba(139,92,246,.2);
+    color: #7C3AED;
+}
+.mts-eco .eco-item:hover .eco-num {
+    filter: brightness(1.1);
+}
+
+/* ── 2. Footer 升级: 渐变分隔线 + 品牌字 + 分层 ── */
+.mts-footer {
+    position: relative;
+    padding: 36px 20px 20px;
+}
+.mts-footer::before {
+    content:''; position:absolute; top:0; left:50%; transform:translateX(-50%);
+    width: 60px; height: 2px; border-radius: 2px;
+    background: linear-gradient(90deg, #EF4444, #F97316, #8B5CF6, #3B82F6, #10B981);
+    opacity: .7;
+}
+.mts-footer .f-brand {
+    font-size: 10px; font-weight: 800; letter-spacing: 3px;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    margin-bottom: 8px;
+}
+.mts-footer .f-brand .f-andromeda {
+    background: linear-gradient(135deg, #7C3AED, #8B5CF6);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+.mts-footer .f-brand .f-iceberg {
+    background: linear-gradient(135deg, #2E86DE, #10B981);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+.mts-footer .f-copy { font-size: 10px; color: #b8c4d0; }
+.mts-footer .f-link { font-size: 9px; color: #c8cfda; margin-top: 4px; }
+.mts-footer .f-link a { color: #8B5CF6; text-decoration: none; font-weight: 600; }
+.mts-footer .f-link a:hover { text-decoration: underline; }
+
+/* ── 3. 佛教法会改 accordion (CSS-only <details>, 默认收起) ── */
+.mts-buddhist.mts-bd-accordion {
+    opacity: 1;                 /* 不再弱化, 因为默认收起不占视觉 */
+    border: 1px dashed rgba(11,31,58,.08);
+    background: rgba(11,31,58,.012);
+    max-height: 38px;          /* 默认只露出 title */
+    overflow: hidden;
+    transition: max-height .4s cubic-bezier(.22,1,.36,1);
+    cursor: pointer;
+}
+.mts-buddhist.mts-bd-accordion[open] {
+    max-height: 600px;         /* 展开后足够容纳所有条目 */
+    border-color: rgba(11,31,58,.12);
+    background: rgba(11,31,58,.02);
+}
+.mts-buddhist.mts-bd-accordion .bd-title {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 0; padding: 4px 0;
+}
+.mts-buddhist.mts-bd-accordion .bd-title::after {
+    content: '›'; font-size: 14px; font-weight: 700;
+    color: #9baab8; transition: transform .3s;
+}
+.mts-buddhist.mts-bd-accordion[open] .bd-title::after {
+    transform: rotate(90deg);
+}
+.mts-buddhist.mts-bd-accordion .bd-list {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px dashed rgba(11,31,58,.06);
+}
+.mts-buddhist.mts-bd-accordion:hover {
+    border-color: rgba(99,102,241,.15);
+}
+
 /* ── 响应式 ── */
 @media (max-width: 640px) {
     .mts-clock .time { font-size: 56px; }
@@ -638,9 +738,9 @@ body {
         </div>
     </div>
 
-    <!-- 佛教派系 15 天事件 (小字, 时间下方) -->
-    <div class="mts-buddhist">
-        <div class="bd-title">佛教派系 · 近期法会</div>
+    <!-- 佛教派系 15 天事件 (可折叠 accordion, 默认收起) -->
+    <details class="mts-buddhist mts-bd-accordion" data-andromeda-reveal>
+        <summary class="bd-title">佛教派系 · 近期法会</summary>
         <div class="bd-list">
         {% for ev in buddhist_events %}
             <div class="bd-item">
@@ -650,15 +750,36 @@ body {
             </div>
         {% endfor %}
         </div>
-    </div>
+    </details>
 
     <!-- 仙女座 AI 生态摘要 (DB 驱动, 极简) -->
-    <div class="mts-eco">
-        <span class="eco-item"><span class="eco-num">{{ andromeda_state.ai_employees | default(0) }}</span><span class="eco-label">AI 员工</span></span>
-        <span class="eco-item"><span class="eco-num">{{ andromeda_state.daemon_running | default(0) }}</span><span class="eco-label">守护进程在线</span></span>
-        <span class="eco-item"><span class="eco-num">{{ andromeda_state.brain_feeds | default(0) }}</span><span class="eco-label">脑库投喂</span></span>
-        <span class="eco-item"><span class="eco-num">{{ (andromeda_state.tokens_saved | default(0)) | int }}</span><span class="eco-label">tokens 本地节省</span></span>
-        <span class="eco-item"><span class="eco-num">{{ andromeda_state.patrol_runs | default(0) }}</span><span class="eco-label">源码巡逻</span></span>
+    <div class="mts-eco" data-andromeda-reveal>
+        <!-- 仙女座 AI 生态: 图标 + 渐变数字 + tooltip -->
+        <span class="eco-item" title="AI 员工总数 (mtos_ai_employees + mtscos_ai_employees)">
+            <i class="eco-icon fas fa-robot"></i>
+            <span class="eco-num">{{ andromeda_state.ai_employees | default(0) }}</span>
+            <span class="eco-label">AI 员工</span>
+        </span>
+        <span class="eco-item" title="仙女座守护进程在线 / 总数">
+            <i class="eco-icon fas fa-shield-heart"></i>
+            <span class="eco-num">{{ andromeda_state.daemon_running | default(0) }}</span>
+            <span class="eco-label">/{{ andromeda_state.daemon_total | default(0) }} 守护</span>
+        </span>
+        <span class="eco-item" title="AI 脑库知识投喂累计条数">
+            <i class="eco-icon fas fa-brain"></i>
+            <span class="eco-num">{{ andromeda_state.brain_feeds | default(0) }}</span>
+            <span class="eco-label">脑库投喂</span>
+        </span>
+        <span class="eco-item" title="本地推理引擎节省 tokens, 零 API 消耗">
+            <i class="eco-icon fas fa-coins"></i>
+            <span class="eco-num">{{ (andromeda_state.tokens_saved | default(0)) | int }}</span>
+            <span class="eco-label">tokens 节省</span>
+        </span>
+        <span class="eco-item" title="仙女座源码巡逻队扫描次数">
+            <i class="eco-icon fas fa-magnifying-glass-chart"></i>
+            <span class="eco-num">{{ andromeda_state.patrol_runs | default(0) }}</span>
+            <span class="eco-label">源码巡逻</span>
+        </span>
     </div>
 
     <!-- 登录卡 (保留完整 CSRF + JS hook) -->
@@ -701,10 +822,19 @@ body {
         </form>
     </div>
 
-    <!-- Footer (极简) -->
+    <!-- Footer (仙女座 × 冰山双品牌) -->
     <div class="mts-footer">
-        {{ footer_info.company if footer_info and footer_info.company else 'MTS Architecture' }} &copy; 2024-{{ footer_info.copyright_year if footer_info and footer_info.copyright_year else '2026' }}
-        · 仙女座星系引擎 · 冰山规则底座
+        <div class="f-brand">
+            <span class="f-andromeda">ANDROMEDA</span> × <span class="f-iceberg">ICEBERG</span>
+        </div>
+        <div class="f-copy">
+            {{ footer_info.company if footer_info and footer_info.company else 'MTS Architecture' }} &copy; 2024-{{ footer_info.copyright_year if footer_info and footer_info.copyright_year else '2026' }}
+        </div>
+        <div class="f-link">
+            <i class="fas fa-code-branch"></i> {{ version | default('23.0.0') }}
+            {% if andromeda_version %} · {{ andromeda_version }}{% endif %}
+            · <i class="fas fa-shield-halved"></i> L0 IRON_RULE
+        </div>
     </div>
 </main>
 
