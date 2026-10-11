@@ -8,7 +8,7 @@
 #   C. 影子回滚节点 (recovery_snapshots) —— 本地 rsync 保留 7 天
 #
 # 拓扑:
-#   Dev (开发机 192.168.11.120)  ←→  Mac mini (生产 192.168.31.9)
+#   Dev (开发机 192.168.11.120)  ←→  Mac mini (生产 100.106.220.96)
 #          ↕                                ↕
 #      GitHub (origin/main)  ←→  本地影子回滚节点
 #
@@ -29,9 +29,13 @@ LOCKDIR="$PROJ/_runtime/sync_locks"
 LOGFILE="$PROJ/_runtime/logs/tri_sync_$(date +%Y%m%d).log"
 
 MINI_USER="wuchenghao"
-MINI_HOST="192.168.31.9"
-MINI_FLASK="~/mtscos/flask-app"
+MINI_HOST="100.106.220.96"
+MINI_FLASK="~/MTSCOS_AI_Project/flask-app"
 MINI_DB="$MINI_FLASK/_runtime/databases/Database/app.db"
+
+# 版本号唯一权威 (V-05): 本地/远端 flask-app/VERSION, DB rsync 前做跨 major 守卫
+LOCAL_VERSION_FILE="$FLASK/VERSION"
+MINI_VERSION_FILE="$MINI_FLASK/VERSION"
 
 GIT_BRANCH="main"
 RSYNC_LIMIT=5000     # KB/s
@@ -60,6 +64,49 @@ need_lock() {
 }
 
 ensure_dir() { mkdir -p "$1"; }
+
+# =============================================================================
+# 跨 major 版本守卫 (V-05 SSOT) —— 只保护 DB rsync, 不保护 git/影子
+#   两端 VERSION 的 major 不一致 → 拒绝同步 DB, 防止 v22/v23 schema 互相覆盖。
+#   逃生口: MTSCOS_ALLOW_MAJOR_SYNC=1  (仅限 SA 明确授权的跨 major 迁移窗口)
+#   任一端版本不可读 → fail-closed 拒绝 (远端离线/路径漂移都不应盲传 DB)。
+# =============================================================================
+_major_of() {
+  # 入参: 版本串(可带 v); stdout 输出 major 整数; 非法返回非 0
+  local v="${1# }"; v="${v% }"; v="${v#v}"; v="${v#V}"
+  local m="${v%%.*}"
+  echo "$m" | grep -Eq '^[0-9]+$' || return 1
+  echo "$m"
+}
+
+read_local_major() {
+  _major_of "$(tr -d '[:space:]' < "$LOCAL_VERSION_FILE" 2>/dev/null)"
+}
+
+read_mini_major() {
+  # MINI_VERSION_FILE 含 ~, 交给远端登录 shell 展开
+  local v
+  v=$(ssh -o ConnectTimeout=8 "$MINI_USER@$MINI_HOST" \
+        "tr -d '[:space:]' < $MINI_VERSION_FILE 2>/dev/null" 2>/dev/null)
+  _major_of "$v"
+}
+
+assert_version_compatible() {
+  if [ "${MTSCOS_ALLOW_MAJOR_SYNC:-0}" = "1" ]; then
+    warn "跨 major DB 守卫已被 MTSCOS_ALLOW_MAJOR_SYNC=1 显式豁免 (仅限 SA 授权的迁移窗口)"
+    return 0
+  fi
+  local lm rm
+  lm=$(read_local_major) || { fail "无法读取本机 VERSION major ($LOCAL_VERSION_FILE) → DB 同步 fail-closed 中止"; return 1; }
+  rm=$(read_mini_major) || { fail "无法读取 Mac mini VERSION major (离线/路径漂移: $MINI_VERSION_FILE) → DB 同步 fail-closed 中止"; return 1; }
+  if [ "$lm" != "$rm" ]; then
+    fail "major 不一致: Dev=v${lm}.x  Mac mini=v${rm}.x → 拒绝跨 major 同步 DB"
+    log "SA 显式豁免方式: MTSCOS_ALLOW_MAJOR_SYNC=1 $0 db"
+    return 1
+  fi
+  ok "版本守卫通过 (两端 major=${lm})"
+  return 0
+}
 
 # =============================================================================
 # WAL CHECKPOINT —— 同步前必做，保证 DB 一致性
@@ -125,33 +172,38 @@ sync_source_git() {
 sync_runtime_db() {
   need_lock "runtime_db" || return 0
   log "===== B. 运行时 DB 双向同步 ====="
-  
-  # ---- 方向 1: Dev → Mac mini ----
-  log "B1. Dev → Mac mini (先 checkpoint)"
-  do_checkpoint "$DB_PATH"
-  
-  # 只同步 DB 主文件（不同步 WAL/SHM，已 checkpoint 清空）
-  rsync -avz --partial --bwlimit=$RSYNC_LIMIT \
-    --progress \
-    "$DB_PATH" \
-    "$MINI_USER@$MINI_HOST:${MINI_DB}.syncing" 2>&1 | tail -5 | tee -a "$LOGFILE" && \
+
+  # B1/B2 是 DB 文件 rsync: 必须先过跨 major 守卫; 不过则跳过, 绝不跨版本线覆盖 DB。
+  if assert_version_compatible; then
+    # ---- 方向 1: Dev → Mac mini ----
+    log "B1. Dev → Mac mini (先 checkpoint)"
+    do_checkpoint "$DB_PATH"
+
+    # 只同步 DB 主文件（不同步 WAL/SHM，已 checkpoint 清空）
+    rsync -avz --partial --bwlimit=$RSYNC_LIMIT \
+      --progress \
+      "$DB_PATH" \
+      "$MINI_USER@$MINI_HOST:${MINI_DB}.syncing" 2>&1 | tail -5 | tee -a "$LOGFILE" && \
+      ssh -o ConnectTimeout=8 "$MINI_USER@$MINI_HOST" \
+        "mv ${MINI_DB}.syncing $MINI_DB && rm -f ${MINI_DB}-wal ${MINI_DB}-shm" 2>&1 | tee -a "$LOGFILE" && \
+      ok "Dev→Mac mini DB rsync 成功" || warn "Dev→Mac mini DB 失败"
+
+    # ---- 方向 2: Mac mini → Dev (拉取 Mac mini 最新数据) ----
+    log "B2. Mac mini → Dev (Mac mini 先 checkpoint)"
     ssh -o ConnectTimeout=8 "$MINI_USER@$MINI_HOST" \
-      "mv ${MINI_DB}.syncing $MINI_DB && rm -f ${MINI_DB}-wal ${MINI_DB}-shm" 2>&1 | tee -a "$LOGFILE" && \
-    ok "Dev→Mac mini DB rsync 成功" || warn "Dev→Mac mini DB 失败"
-  
-  # ---- 方向 2: Mac mini → Dev (拉取 Mac mini 最新数据) ----
-  log "B2. Mac mini → Dev (Mac mini 先 checkpoint)"
-  ssh -o ConnectTimeout=8 "$MINI_USER@$MINI_HOST" \
-    "sqlite3 $MINI_DB 'PRAGMA wal_checkpoint(FULL); PRAGMA wal_checkpoint(TRUNCATE);'" 2>&1 | tee -a "$LOGFILE"
-  
-  rsync -avz --partial --bwlimit=$RSYNC_LIMIT \
-    --progress \
-    "$MINI_USER@$MINI_HOST:${MINI_DB}" \
-    "${DB_PATH}.from_mini" 2>&1 | tail -5 | tee -a "$LOGFILE" && \
-    mv "${DB_PATH}.from_mini" "$DB_PATH" && \
-    rm -f "${DB_PATH}-wal" "${DB_PATH}-shm" && \
-    ok "Mac mini→Dev DB rsync 成功" || warn "Mac mini→Dev DB 失败"
-  
+      "sqlite3 $MINI_DB 'PRAGMA wal_checkpoint(FULL); PRAGMA wal_checkpoint(TRUNCATE);'" 2>&1 | tee -a "$LOGFILE"
+
+    rsync -avz --partial --bwlimit=$RSYNC_LIMIT \
+      --progress \
+      "$MINI_USER@$MINI_HOST:${MINI_DB}" \
+      "${DB_PATH}.from_mini" 2>&1 | tail -5 | tee -a "$LOGFILE" && \
+      mv "${DB_PATH}.from_mini" "$DB_PATH" && \
+      rm -f "${DB_PATH}-wal" "${DB_PATH}-shm" && \
+      ok "Mac mini→Dev DB rsync 成功" || warn "Mac mini→Dev DB 失败"
+  else
+    warn "跳过 B1/B2 DB rsync (跨 major 或版本不可读); B3 配置/日志同步不受影响继续"
+  fi
+
   # ---- 运行时目录（logs, _runtime/*.json 等） ----
   log "B3. _runtime/ 配置双向同步"
   for dir in "_runtime/auto_daemons" "_runtime/logs"; do
@@ -250,6 +302,11 @@ commands:
   rollback    <dev|mini> [snap_name]  回滚
   status      查看三端状态
   check       自检 DB + 网络 + 锁文件
+
+跨 major 守卫:
+  db 同步前自动比对两端 flask-app/VERSION 的 major; 不一致则拒绝 DB rsync。
+  SA 授权的跨版本迁移窗口可用: MTSCOS_ALLOW_MAJOR_SYNC=1 $0 db
+  (git / 影子快照不受该守卫限制)
 
 示例:
   $0 all                         # 全同步

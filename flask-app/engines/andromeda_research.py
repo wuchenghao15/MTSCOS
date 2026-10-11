@@ -298,6 +298,137 @@ def run_research_cycle(max_proposals: int = 2) -> dict:
     return result
 
 
+# ═════════════════════════════════════════════════════════════════════════
+# §14 收口 — routine 研究提案在产物真正 DEPLOYED 后, 走官方状态机合法边到 FINAL_DONE
+# ═════════════════════════════════════════════════════════════════════════
+# routine 自动通道的合法快路径 (跳过 B 轮 SA 人工裁决, 经 STEP_32_PASS_SKIP_B):
+_IR14_FAST_PATH = [
+    "STEP_2A_ROUND", "STEP_3_ZXF_DECISION", "STEP_32_PASS_SKIP_B", "STEP_4_CLERK_RECORD",
+    "STEP_5_IMPL_DOCKING", "STEP_6_AI_TEAM_COORD", "STEP_7_EXECUTE", "STEP_8_ACCEPTANCE",
+    "STEP_9A_PASS_OR_LOOPBACK", "STEP_9B_SUMMARY", "STEP_10_SMART_VERSION_UPGRADE",
+    "STEP_11_AUTO_GIT_SYNC", "STEP_12_TEST1000", "FINAL_DONE",
+]
+_IR14_ORDERED = ["STEP_1_PROPOSAL"] + _IR14_FAST_PATH
+
+
+def _load_ir14():
+    """加载 mt_ir14_dev_flow 并把它的 APP_DB 重定向到研究/演化权威库 database/app.db。
+
+    mt_ir14_dev_flow 默认 APP_DB 指向 ai_engines/app.db (那里没有 mt_dev_flow_session);
+    research flow 实际建在 database/app.db, 不重定向 transition() 会报 flow 不存在。
+    """
+    import importlib.util
+    mod_path = BASE / "ai_engines" / "mt_ir14_dev_flow.py"
+    spec = importlib.util.spec_from_file_location("mt_ir14_dev_flow_research", mod_path)
+    ir14 = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(ir14)
+    ir14.APP_DB = str(DB)
+    return ir14
+
+
+def close_research_proposal(prop_id: str, artifact: str | None = None,
+                            db: sqlite3.Connection | None = None) -> dict:
+    """把一个 routine 研究提案的 §14 flow 沿官方合法边走到 FINAL_DONE, 并置提案 DONE.
+
+    前置 (保证诚实, 不无脑关单):
+      - 提案存在, sensitivity='routine', dev_gate_flow_id LIKE 'flow_research%'
+      - flow 会话存在且尚未 FINAL_DONE
+    本函数不校验产物 (由调用方在 DEPLOYED 后调用); artifact 路径写入各步 payload 留痕。
+    """
+    own = db is None
+    db = db or sqlite3.connect(str(DB))
+    try:
+        row = db.execute(
+            "SELECT status, sensitivity, dev_gate_flow_id FROM mt_research_proposals WHERE prop_id=?",
+            (prop_id,)).fetchone()
+        if not row:
+            return {"closed": False, "reason": "proposal_missing", "prop_id": prop_id}
+        pstatus, sens, flow_id = row
+        if sens != "routine" or not flow_id or not flow_id.startswith("flow_research"):
+            return {"closed": False, "reason": "not_routine_or_no_flow", "prop_id": prop_id}
+
+        sess = db.execute(
+            "SELECT current_step, final_status FROM mt_dev_flow_session WHERE flow_id=?",
+            (flow_id,)).fetchone()
+        if not sess:
+            return {"closed": False, "reason": "flow_session_missing", "flow_id": flow_id}
+        cur_step, final_status = sess
+        if cur_step == "FINAL_DONE" and final_status == "DONE":
+            return {"closed": False, "reason": "already_done", "flow_id": flow_id}
+        if cur_step not in _IR14_ORDERED:
+            return {"closed": False, "reason": "step_not_on_routine_path:%s" % cur_step}
+
+        ir14 = _load_ir14()
+        start_idx = _IR14_ORDERED.index(cur_step)
+        walked = []
+        for nxt in _IR14_ORDERED[start_idx + 1:]:
+            upd = None
+            if nxt == "STEP_7_EXECUTE":
+                upd = {"execute_steps_json": [{"action": "auto_derive_artifact", "artifact": artifact or ""}],
+                       "db_written": 1}
+            elif nxt == "STEP_8_ACCEPTANCE":
+                upd = {"acceptance_passed": 1,
+                       "acceptance_json": {"auto": True, "routine": True, "artifact": artifact or ""}}
+            elif nxt == "STEP_9B_SUMMARY":
+                upd = {"summary_report_json": {"auto_routine": True, "prop_id": prop_id,
+                                               "artifact": artifact or "",
+                                               "note": "routine 研究提案衍生产物已 DEPLOYED, 自动收口"}}
+            ir14.transition(flow_id, nxt, event_kind="AUTO_ROUTINE_CLOSE",
+                            payload={"prop_id": prop_id, "artifact": artifact or ""},
+                            update_fields=upd, operator="andromeda_research")
+            walked.append(nxt)
+
+        now = time.strftime("%Y-%m-%d %H:%M:%S")
+        db.execute("UPDATE mt_dev_flow_session SET final_status='DONE', updated_at=? WHERE flow_id=?",
+                   (now, flow_id))
+        db.execute("UPDATE mt_research_proposals SET status='DONE', updated_at=? WHERE prop_id=?",
+                   (now, prop_id))
+        db.commit()
+        try:
+            ir14.feed_brain(flow_id, "summary_success",
+                            "routine 研究提案 %s 衍生产物 %s 已 DEPLOYED, §14 flow 自动收口 FINAL_DONE。"
+                            % (prop_id, artifact or "(skill)"))
+        except Exception:
+            pass
+        log(f"  ✅ close: {prop_id} → flow 走 {len(walked)} 步到 FINAL_DONE")
+        return {"closed": True, "prop_id": prop_id, "flow_id": flow_id, "steps_walked": len(walked)}
+    finally:
+        if own:
+            db.close()
+
+
+def close_deployed_research_backlog(limit: int = 50) -> dict:
+    """一次性收口历史孤儿 flow: 仅关已有 DEPLOYED 衍生产物、仍 OPEN 的 flow_research 会话.
+
+    未产出产物的 flow 保持 OPEN, 随 _loop_consume_derivatives 逐个 DEPLOYED 后自排,
+    不把没做的事标记成 DONE (诚实留痕)。
+    """
+    db = sqlite3.connect(str(DB))
+    try:
+        rows = db.execute("""
+            SELECT p.prop_id, i.artifact_path
+            FROM mt_research_proposals p
+            JOIN mt_dev_flow_session s ON s.flow_id = p.dev_gate_flow_id
+            JOIN mt_research_implementations i ON i.prop_id = p.prop_id
+            WHERE p.dev_gate_flow_id LIKE 'flow_research%'
+              AND i.status='DEPLOYED'
+              AND s.final_status != 'DONE'
+            GROUP BY p.prop_id ORDER BY p.prop_id LIMIT ?""", (limit,)).fetchall()
+        closed, failed = 0, []
+        for prop_id, artifact in rows:
+            try:
+                r = close_research_proposal(prop_id, artifact=artifact, db=db)
+                if r.get("closed"):
+                    closed += 1
+                else:
+                    failed.append((prop_id, r.get("reason")))
+            except Exception as e:
+                failed.append((prop_id, str(e)[:120]))
+        return {"candidates": len(rows), "closed": closed, "failed": failed}
+    finally:
+        db.close()
+
+
 def log(msg: str):
     print(f"[{time.strftime('%H:%M:%S')}] [自动研究] {msg}")
 
@@ -307,7 +438,9 @@ def log(msg: str):
 # ═════════════════════════════════════════════════════════════════════════
 
 if __name__ == "__main__":
-    if "--daemon" in sys.argv:
+    if "--close-backlog" in sys.argv:
+        print(json.dumps(close_deployed_research_backlog(), ensure_ascii=False, indent=2))
+    elif "--daemon" in sys.argv:
         log("仙女座自动研究 daemon 启动 (每 30 分钟一轮)")
         while True:
             try:

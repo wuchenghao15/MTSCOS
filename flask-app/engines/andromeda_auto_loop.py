@@ -32,7 +32,30 @@ from pathlib import Path
 
 # ── 路径 ──
 BASE = Path(__file__).resolve().parent.parent  # flask-app/
-DB   = BASE / "database" / "app.db"
+DB   = BASE / "database" / "app.db"   # 演化权威库 (建议池/研究/evolution_runs)
+
+# daemon 运行时权威库: 与 ai_smart_mount_engine 的 _DB_CANDIDATES 同序 (engines 优先)。
+# 关键: 心跳/拉起由 smart_mount 在该库管理, auto_loop 对 daemon 只做只读感知 + 审计,
+# 绝不在影子库维护一套竞争的存活状态 (历史教训: 误把 5 天未更新的 database 影子库当权威,
+# 给健康 daemon 虚标 FAILED)。
+_DAEMON_DB_CANDIDATES = [
+    BASE / "engines" / "app.db",
+    BASE / "database" / "app.db",
+]
+
+
+def _resolve_daemon_db():
+    """返回真正被 smart_mount 管理的、含 mt_daemon_registry 的权威库路径。"""
+    for p in _DAEMON_DB_CANDIDATES:
+        try:
+            if p.exists() and p.stat().st_size > 1_000_000:
+                c = sqlite3.connect(str(p))
+                c.execute("SELECT 1 FROM mt_daemon_registry LIMIT 1")
+                c.close()
+                return p
+        except Exception:
+            continue
+    return _DAEMON_DB_CANDIDATES[-1]
 
 # Ollama
 OLLAMA_URL = "http://localhost:11435/api/chat"
@@ -89,6 +112,7 @@ def run_self_loop():
     _safe("benchmark", _loop_benchmark_if_needed)
     _safe("research", _loop_self_research)
     _safe("promote", _loop_promote_derivatives)
+    _safe("consume", _loop_consume_derivatives)
     
     dt = time.time() - t0
     log(f"══════ 自律循环完成 ({dt:.1f}s) ══════")
@@ -133,86 +157,210 @@ def _ensure_flow() -> str | None:
         return None
 
 
-def _loop_daemon_health() -> dict:
-    """全量 daemon 心跳级健康巡检 (v2: 不再盲目 fork).
-
-    设计原则:
-    - smart_mount_engine 是权威进程主管, auto_loop 不做第二个 fork 监管者 (避免脑裂)
-    - 本函数只负责: 感知 (pid 存活 + 心跳新鲜度) → 标记 FAILED → 向建议池投递修复诉求
-    - 修复诉求被 auto_repair / smart_mount 的强制要求池扫描消费, 由权威主管统一拉起
-    """
-    db = sqlite3.connect(str(DB))
-    alive = 0; dead = 0; stale = 0; repair_requested = 0
-    STALE_SEC = 1800  # 心跳超过 30 分钟视为停滞
-    now_ts = time.time()
-
-    def _parse_hb(hb):
-        if not hb: return None
-        for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S.%f", "%Y-%m-%dT%H:%M:%S"):
-            try: return time.mktime(time.strptime(hb[:len(time.strftime(fmt))] if '.' not in hb else hb[:26], fmt))
-            except Exception: continue
+def _parse_ts(hb):
+    if not hb:
         return None
-
-    rows = db.execute(
-        "SELECT process_name, pid, status, COALESCE(last_heartbeat,'') "
-        "FROM mt_daemon_registry").fetchall()
-    total = len(rows)
-
-    for name, pid_str, status, hb in rows:
-        # ① pid 存活检测
-        pid_dead = False
-        tracked = pid_str not in (None, "", 0, "0")
-        if tracked:
-            try:
-                os.kill(int(pid_str), 0)
-            except Exception:
-                pid_dead = True
-
-        # ② 心跳新鲜度
-        hb_ts = _parse_hb(hb)
-        hb_age = (now_ts - hb_ts) if hb_ts else None
-        hb_stale = hb_age is not None and hb_age > STALE_SEC
-
-        if pid_dead:
-            dead += 1
-            log(f"  🔴 进程死亡: {name} (pid={pid_str}, hb={hb})")
-        elif hb_stale and status == "RUNNING":
-            stale += 1
-            log(f"  🟡 心跳停滞 {int(hb_age//60)}min: {name} (pid={pid_str})")
-        else:
-            alive += 1
+    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S.%f", "%Y-%m-%dT%H:%M:%S"):
+        try:
+            return time.mktime(time.strptime(hb[:26] if 'T' in hb else hb[:19], fmt))
+        except Exception:
             continue
+    return None
 
-        # ③ 标记 FAILED (状态机纠偏: RUNNING 但实际死/停 → FAILED)
-        if status == "RUNNING":
-            db.execute("UPDATE mt_daemon_registry SET status='FAILED' WHERE process_name=?", (name,))
 
-        # ④ 投递修复诉求到建议池 (去重: 同一 daemon 只保留一个 PENDING)
-        flow_id = f"daemon_repair_{name}"
-        exists = db.execute(
-            "SELECT 1 FROM mt_ai_suggestion_pool WHERE flow_id=? AND status='PENDING' LIMIT 1",
-            (flow_id,)).fetchone()
-        if not exists:
-            reason = "进程死亡" if pid_dead else f"心跳停滞 {int(hb_age//60)} 分钟"
-            db.execute("""INSERT INTO mt_ai_suggestion_pool
-                (source_type, source_name, suggestion_text, priority, status,
-                 feasibility_score, value_score, cost_score, risk_score,
-                 flow_id, created_at, meta_json)
-                VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
-                ("DAEMON_REPAIR", "andromeda_auto_loop",
-                 f"## daemon 需拉起: {name}\n\n**现象**: {reason}\n**建议**: "
-                 f"由 smart_mount 权威主管按注册表 config_json 重新拉起, 校验收敛后回写 RUNNING 心跳。",
-                 1, "PENDING", 0.9, 0.9, 0.2, 0.1,
-                 flow_id, time.strftime("%Y-%m-%d %H:%M:%S"),
-                 json.dumps({"daemon": name, "pid": pid_str, "last_heartbeat": hb,
-                             "pid_dead": pid_dead, "hb_stale": bool(hb_stale)}, ensure_ascii=False)))
-            repair_requested += 1
+def _reg_key_col(conn):
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(mt_daemon_registry)").fetchall()}
+    return "daemon_name" if "daemon_name" in cols else "process_name"
 
-    db.commit()
-    db.close()
-    log(f"  daemon: total={total} alive={alive} dead={dead} stale={stale} repair_requested={repair_requested}")
-    return {"total": total, "alive": alive, "dead": dead, "stale": stale,
-            "restarted": 0, "repair_requested": repair_requested}
+
+def _loop_daemon_health() -> dict:
+    """daemon 健康巡检 v4 (主管存活感知 + 只读 live 权威 + 审计闭环 + 影子镜像自洽).
+
+    权威关系 (2026-10 双库核对后的正确模型):
+    - engines/app.db = daemon 运行时权威, 由 smart_mount heartbeat_check 做 pid 探测/拉起/状态转移。
+    - database/app.db = 演化库 (建议池/研究), 其 mt_daemon_registry 是可能陈旧的影子, 禁止在此改存活状态。
+
+    v4 关键修正 (根因: smart_mount 主管整体离线, 而非 N 个 daemon 各自故障):
+    - 以"全体 RUNNING 中最新心跳"判定主管在线与否。最新心跳都 > SUPERVISOR_DOWN_SEC
+      → 主管离线 / 全局停摆。此时所有 RUNNING 心跳一起老化是**同一个根因**,
+      只投 1 张 `daemon_supervisor_offline` 单, 绝不再按 daemon 逐个刷 DAEMON_REPAIR
+      (v3 教训: 单周期误写 40 张 per-daemon 假单又自相矛盾地关闭)。
+    - 仅当主管在线 (最新心跳新鲜) 时, 某个 daemon 单独心跳老化 > STALE_SEC 才算个体 stale。
+    - 显式 FAILED/REPAIRING 状态在任何情况下都算真实个体故障。
+    - auto_loop 不 fork 主管 (避免脑裂; launchctl 属 SA 终端操作), 离线只审计告警, 由 SA/launchd 拉起。
+
+    本函数:
+    1) 只读 live 权威库分类 + 判定主管在线。
+    2) 主管离线 → 保证恰好 1 张 PENDING 主管离线单; 恢复在线 → 关闭它。
+    3) 个体真实故障 → 一张 PENDING DAEMON_REPAIR (去重); 恢复/孤儿 → DEPLOYED/DEFERRED。
+    4) 影子镜像自洽: 影子库 FAILED 但 live RUNNING → 回写 RUNNING。
+    """
+    SUPERVISOR_DOWN_SEC = 900   # 全体最新心跳 > 15min → 判定主管离线
+    STALE_SEC = 1800            # 主管在线时, 单 daemon 心跳 > 30min 才算个体 stale
+    SUP_TICKET = "daemon_supervisor_offline"
+    now_ts = time.time()
+    counts = {"total": 0, "alive": 0, "failed": 0, "idle": 0, "stale": 0, "stalled": 0,
+              "supervisor_online": 0, "repair_requested": 0, "repaired_closed": 0,
+              "deferred": 0, "shadow_corrected": 0}
+
+    # ── 1) 读 live 权威库 ──
+    live_path = _resolve_daemon_db()
+    live = sqlite3.connect(str(live_path))
+    live_key = _reg_key_col(live)
+    live_map = {}
+    try:
+        for name, status, hb in live.execute(
+                f"SELECT {live_key}, status, COALESCE(last_heartbeat,'') FROM mt_daemon_registry"):
+            live_map[name] = (status or "", hb)
+    finally:
+        live.close()
+
+    # 主管存活判据: 全体 RUNNING 中最新一次心跳
+    running_ages = [now_ts - t for t in
+                    (_parse_ts(hb) for _n, (st, hb) in live_map.items() if st == "RUNNING")
+                    if t is not None]
+    freshest_age = min(running_ages) if running_ages else None
+    supervisor_online = freshest_age is not None and freshest_age <= SUPERVISOR_DOWN_SEC
+    counts["supervisor_online"] = 1 if supervisor_online else 0
+
+    genuine_bad = {}   # name -> reason (仅个体真实故障)
+    for name, (status, hb) in live_map.items():
+        age = (now_ts - _parse_ts(hb)) if _parse_ts(hb) is not None else None
+        if status in ("FAILED", "REPAIRING"):
+            counts["failed"] += 1
+            genuine_bad[name] = "live 状态=%s" % status
+        elif status == "IDLE":
+            counts["idle"] += 1
+        elif status == "RUNNING":
+            if age is None:
+                counts["alive"] += 1
+            elif not supervisor_online and age > SUPERVISOR_DOWN_SEC:
+                counts["stalled"] += 1          # 全局停摆的一份子, 非个体故障
+            elif supervisor_online and age > STALE_SEC:
+                counts["stale"] += 1
+                genuine_bad[name] = "主管在线但心跳单独停滞 %d 分钟" % int(age // 60)
+            else:
+                counts["alive"] += 1
+        else:
+            counts["alive"] += 1
+    counts["total"] = len(live_map)
+
+    # ── 2-4) 演化库: 主管单 + 个体审计闭环 + 影子镜像 ──
+    evo = sqlite3.connect(str(DB))
+    try:
+        # 2a) 主管离线 → 恰好 1 张 PENDING 主管单
+        if not supervisor_online:
+            exists = evo.execute(
+                "SELECT 1 FROM mt_ai_suggestion_pool WHERE flow_id=? AND status='PENDING' LIMIT 1",
+                (SUP_TICKET,)).fetchone()
+            if not exists:
+                freshest_hb = max((hb for _n, (st, hb) in live_map.items() if st == "RUNNING"),
+                                  default=None)
+                evo.execute("""INSERT INTO mt_ai_suggestion_pool
+                    (source_type, source_name, suggestion_text, priority, status,
+                     feasibility_score, value_score, cost_score, risk_score,
+                     flow_id, created_at, meta_json)
+                    VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
+                    ("DAEMON_REPAIR", "andromeda_auto_loop",
+                     "## ⚠️ smart_mount 主管离线 (全局停摆)\n\n"
+                     "**现象**: live 权威库全体 daemon 最新心跳已 %s 分钟未刷新 "
+                     "(最新=%s), %d 个 RUNNING 一起老化; OS 无 ai_smart_mount_engine 进程。\n"
+                     "**权威库**: %s\n"
+                     "**根因**: daemon 唯一主管 smart_mount 未运行, 非各 daemon 个体故障。\n"
+                     "**处置**: 由 SA 在终端经 launchd 重新拉起 smart_mount_engine "
+                     "(auto_loop 不自行 fork, 避免主管脑裂)。恢复后本单自动关闭。"
+                     % ("?" if freshest_age is None else int(freshest_age // 60),
+                        freshest_hb or "n/a", counts["stalled"], live_path.name),
+                     1, "PENDING", 0.95, 0.95, 0.1, 0.2,
+                     SUP_TICKET, time.strftime("%Y-%m-%d %H:%M:%S"),
+                     json.dumps({"kind": "supervisor_offline", "freshest_hb": freshest_hb,
+                                 "freshest_age_min": None if freshest_age is None else int(freshest_age // 60),
+                                 "stalled": counts["stalled"], "authority_db": str(live_path)},
+                                ensure_ascii=False)))
+                counts["repair_requested"] += 1
+        # 2b) 主管恢复在线 → 关闭主管单
+        else:
+            cur = evo.execute(
+                "UPDATE mt_ai_suggestion_pool SET status='DEPLOYED', deployed_at=? "
+                "WHERE flow_id=? AND status='PENDING'",
+                (time.strftime("%Y-%m-%d %H:%M:%S"), SUP_TICKET))
+            if cur.rowcount:
+                counts["repaired_closed"] += cur.rowcount
+
+        # 3a) 个体真实故障 → 保证一条 PENDING 审计 (去重)
+        for name, reason in genuine_bad.items():
+            flow_id = "daemon_repair_%s" % name
+            exists = evo.execute(
+                "SELECT 1 FROM mt_ai_suggestion_pool WHERE flow_id=? AND status='PENDING' LIMIT 1",
+                (flow_id,)).fetchone()
+            if not exists:
+                evo.execute("""INSERT INTO mt_ai_suggestion_pool
+                    (source_type, source_name, suggestion_text, priority, status,
+                     feasibility_score, value_score, cost_score, risk_score,
+                     flow_id, created_at, meta_json)
+                    VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
+                    ("DAEMON_REPAIR", "andromeda_auto_loop",
+                     "## daemon 个体故障: %s\n\n**live 现象**: %s\n**权威库**: %s\n"
+                     "**建议**: smart_mount heartbeat_check 自动拉起; 本单仅审计留痕。"
+                     % (name, reason, live_path.name),
+                     1, "PENDING", 0.9, 0.9, 0.2, 0.1,
+                     flow_id, time.strftime("%Y-%m-%d %H:%M:%S"),
+                     json.dumps({"daemon": name, "reason": reason,
+                                 "authority_db": str(live_path)}, ensure_ascii=False)))
+                counts["repair_requested"] += 1
+
+        # 3b) 关闭/裁决历史 PENDING 个体审计单
+        open_rows = evo.execute(
+            "SELECT suggestion_id, flow_id FROM mt_ai_suggestion_pool "
+            "WHERE source_type='DAEMON_REPAIR' AND status='PENDING' AND flow_id!=?",
+            (SUP_TICKET,)).fetchall()
+        for sid, flow_id in open_rows:
+            name = flow_id.replace("daemon_repair_", "", 1)
+            if name not in live_map:
+                # live 目录无此 daemon (孤儿) → DEFERRED, 禁止盲拉
+                evo.execute("UPDATE mt_ai_suggestion_pool SET status='DEFERRED', meta_json=? "
+                            "WHERE suggestion_id=?",
+                            (json.dumps({"reason": "not_registered_in_live_catalog",
+                                         "authority_db": str(live_path)}, ensure_ascii=False), sid))
+                counts["deferred"] += 1
+            elif name in genuine_bad:
+                pass  # 仍真实故障, 保持 PENDING
+            elif live_map[name][0] in ("FAILED", "REPAIRING"):
+                pass  # 显式故障, 保持 PENDING
+            elif live_map[name][0] == "RUNNING":
+                age = now_ts - (_parse_ts(live_map[name][1]) or 0)
+                if supervisor_online and age <= STALE_SEC:
+                    evo.execute("UPDATE mt_ai_suggestion_pool SET status='DEPLOYED', deployed_at=? "
+                                "WHERE suggestion_id=?", (time.strftime("%Y-%m-%d %H:%M:%S"), sid))
+                    counts["repaired_closed"] += 1
+                # 主管离线时无法确认个体健康 → 保持 PENDING, 不刷量不误关
+
+        # 4) 影子镜像自洽: shadow.FAILED 但 live.RUNNING → 回写 RUNNING
+        if "mt_daemon_registry" in {r[0] for r in evo.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'")}:
+            sh_key = _reg_key_col(evo)
+            shadow_failed = evo.execute(
+                f"SELECT {sh_key}, COALESCE(last_heartbeat,'') FROM mt_daemon_registry "
+                "WHERE status='FAILED'").fetchall()
+            for name, _hb in shadow_failed:
+                lst = live_map.get(name)
+                if lst and lst[0] == "RUNNING":
+                    evo.execute(
+                        f"UPDATE mt_daemon_registry SET status='RUNNING', last_heartbeat=? "
+                        "WHERE {0}=? AND status='FAILED'".format(sh_key),
+                        (lst[1] or time.strftime("%Y-%m-%dT%H:%M:%S"), name))
+                    counts["shadow_corrected"] += 1
+        evo.commit()
+    finally:
+        evo.close()
+
+    counts["live_db"] = live_path.name
+    counts["sup"] = "在线" if supervisor_online else "离线"
+    log("  daemon[live=%(live_db)s 主管=%(sup)s]: total=%(total)d alive=%(alive)d failed=%(failed)d "
+        "idle=%(idle)d stale=%(stale)d stalled=%(stalled)d | 新增审计=%(repair_requested)d "
+        "关闭=%(repaired_closed)d DEFERRED=%(deferred)d 影子纠正=%(shadow_corrected)d" % counts)
+    counts["restarted"] = 0
+    return counts
 
 
 def _loop_rule_strengthen() -> dict:
@@ -397,6 +545,178 @@ def _loop_promote_derivatives() -> dict:
     return {"promoted": promoted, "candidates": len(props)}
 
 
+# ═════════════════════════════════════════════════════════════════════════
+# 🧬 衍生升级消费 (节流) — RESEARCH_DERIVE 工作项 → 本地 AI 产出 Skill 草案 → 落库
+# ═════════════════════════════════════════════════════════════════════════
+CONSUME_GAP_SEC = 1800   # 两次消费间隔 ≥ 30min (省本地算力)
+CONSUME_DAILY_MAX = 8    # 每日最多产出 8 个
+CONSUME_PER_LOOP = 1     # 每轮最多 1 个
+CONSUME_MAX_ATTEMPTS = 3
+_CONSUME_CAT_SLUG = {"SECURITY": "security", "OPTIMIZE": "optimize", "REFACTOR": "refactor",
+                     "FEATURE": "feature", "EXPERIMENT": "experiment"}
+
+
+def _skill_slug(prop_id: str, category: str) -> str:
+    nums = re.findall(r"\d+", prop_id or "")
+    tail = "-".join(nums[-2:]) if nums else str(int(time.time()))
+    slug = _CONSUME_CAT_SLUG.get((category or "").upper(), "research")
+    return ("andromeda-%s-%s" % (slug, tail))[:48]
+
+
+def _loop_consume_derivatives() -> dict:
+    """节流消费 RESEARCH_DERIVE: 研究提案 → 本地 Ollama 生成 Skill 草案 → 写盘校验 → 落库.
+
+    状态全部写 database/app.db (演化权威库), 不碰 engines 运行时库。
+    - 节流: 距上次消费 <30min 跳过; 当日产出 >=8 跳过; 每轮只做 1 个。
+    - 认领: PENDING → EVALUATED (带租约), 同步完成后 → DEPLOYED/DEFERRED/REJECTED。
+    - 崩溃恢复: EVALUATED 租约 >10min 视为陈旧, 回 PENDING 重新认领。
+    - 重试: 本地 AI 不可用/超时 → attempts+1, <3 回 PENDING; 到顶 DEFERRED(环境) / REJECTED(产物不合格)。
+    复用 ai_skill_deriver_engine.write_and_validate_skill 做写盘+frontmatter 校验;
+    正文用本进程 ollama_chat(qwen2.5:14b-q5) 按研究提案生成, frontmatter 由代码受控拼装
+    (避免模型任意指定 name 造成目录穿越/覆盖)。
+    """
+    now_str = time.strftime("%Y-%m-%d %H:%M:%S")
+    today = time.strftime("%Y-%m-%d")
+    db = sqlite3.connect(str(DB))
+    try:
+        # 0) 崩溃恢复: 陈旧 EVALUATED 租约回 PENDING
+        stale = db.execute(
+            "SELECT suggestion_id, meta_json FROM mt_ai_suggestion_pool "
+            "WHERE source_type='RESEARCH_DERIVE' AND status='EVALUATED' AND evaluated_at IS NOT NULL "
+            "AND CAST((julianday(?) - julianday(evaluated_at)) * 86400 AS INTEGER) > 600",
+            (now_str,)).fetchall()
+        for sid, _m in stale:
+            db.execute("UPDATE mt_ai_suggestion_pool SET status='PENDING' WHERE suggestion_id=? AND status='EVALUATED'", (sid,))
+        if stale:
+            db.commit()
+            log(f"  consume: 回收 {len(stale)} 个陈旧租约 → PENDING")
+
+        # 1) 节流: 间隔
+        last = db.execute(
+            "SELECT MAX(created_at) FROM mt_research_implementations").fetchone()[0]
+        if last:
+            for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M:%S.%f"):
+                try:
+                    if time.time() - time.mktime(time.strptime(last[:19], fmt)) < CONSUME_GAP_SEC:
+                        return {"skipped": True, "reason": "节流: 距上次消费不足30min"}
+                    break
+                except Exception:
+                    continue
+        # 2) 节流: 日额度
+        done_today = db.execute(
+            "SELECT COUNT(*) FROM mt_research_implementations WHERE status='DEPLOYED' AND created_at LIKE ?",
+            (today + "%",)).fetchone()[0]
+        if done_today >= CONSUME_DAILY_MAX:
+            return {"skipped": True, "reason": f"当日已产出 {done_today}, 达上限 {CONSUME_DAILY_MAX}"}
+
+        # 3) 取一个候选 (PENDING, 提案 PROMOTED), 优先级高优先
+        cand = db.execute("""
+            SELECT p.suggestion_id, p.flow_id, pr.title, pr.summary, pr.category
+            FROM mt_ai_suggestion_pool p
+            JOIN mt_research_proposals pr ON pr.prop_id = p.flow_id
+            WHERE p.source_type='RESEARCH_DERIVE' AND p.status='PENDING' AND pr.status='PROMOTED'
+            ORDER BY p.priority ASC, p.suggestion_id ASC LIMIT ?""", (CONSUME_PER_LOOP,)).fetchone()
+        if not cand:
+            return {"skipped": True, "reason": "无可消费 RESEARCH_DERIVE"}
+        sid, prop_id, title, summary, category = cand
+
+        # 4) 原子认领
+        claim_meta = json.dumps({"lease_owner": "andromeda_auto_loop", "leased_at": now_str},
+                                ensure_ascii=False)
+        cur = db.execute(
+            "UPDATE mt_ai_suggestion_pool SET status='EVALUATED', evaluated_at=?, meta_json=? "
+            "WHERE suggestion_id=? AND status='PENDING'", (now_str, claim_meta, sid))
+        db.commit()
+        if cur.rowcount != 1:
+            return {"skipped": True, "reason": "认领竞争失败"}
+
+        # 5) implementations 记录 (attempts 持久化)
+        impl = db.execute(
+            "SELECT impl_id, attempts FROM mt_research_implementations WHERE suggestion_id=?",
+            (sid,)).fetchone()
+        if impl:
+            impl_id, attempts = impl
+        else:
+            attempts = 0
+            cur2 = db.execute("""INSERT INTO mt_research_implementations
+                (prop_id, suggestion_id, artifact_type, artifact_path, status, attempts, error, flow_id, created_at, updated_at)
+                VALUES (?,?,?,?,?,?,?,?,?,?)""",
+                (prop_id, sid, "SKILL", "", "PENDING", 0, "", prop_id, now_str, now_str))
+            impl_id = cur2.lastrowid
+            db.commit()
+
+        # 6) 本地 AI 生成 Skill 正文 (受控 frontmatter)
+        skill_name = _skill_slug(prop_id, category)
+        safe_title = re.sub(r'[\"\r\n]', '', (title or prop_id))[:60]
+        sys_p = ("你是仙女座自演化引擎, 把通过 EigenFlux 投票的研究提案沉淀成可复用 Skill。"
+                 "只输出 Markdown 正文(从 '# 标题' 开始), 不要输出 frontmatter。中文, 结构清晰, 内容务实可执行。")
+        user_p = (
+            f"研究提案: {title}\n类别: {category}\n摘要: {summary or '(无)'}\n\n"
+            "请产出 Skill 正文, 包含小节: "
+            "## 解决什么问题 / ## 快速上手 / ## 实施要点(编号步骤) / "
+            "## 已踩过的坑(表格) / ## 快速命令或代码片段 / ## 预防铁律。"
+            "内容紧扣提案, 不要编造与提案无关的功能。")
+        body = ollama_chat(sys_p, user_p, timeout=180)
+
+        final_status = None; artifact_path = ""; err = ""
+        body = (body or "").strip()
+        if not body or not body.startswith("#"):
+            attempts += 1
+            err = "本地 AI 无产出或格式不符"
+            if attempts >= CONSUME_MAX_ATTEMPTS:
+                final_status, pool_status = "DEFERRED", "DEFERRED"
+            else:
+                final_status, pool_status = "PENDING", "PENDING"
+        else:
+            desc = "%s — 仙女座自探研衍生 Skill(%s). Invoke when working on this pattern." \
+                   % (safe_title, (category or "RESEARCH"))
+            skill_md = '---\nname: "%s"\nalwaysApply: false\ndescription: "%s"\n---\n\n%s' \
+                       % (skill_name, desc, body)
+            try:
+                import ai_skill_deriver_engine as deriver
+                ok, res = deriver.write_and_validate_skill(skill_name, skill_md)
+            except Exception as e:
+                ok, res = False, "write_and_validate 异常: %s" % e
+            attempts += 1
+            if ok:
+                final_status, pool_status, artifact_path = "DEPLOYED", "DEPLOYED", res
+                log(f"  🧬 consume: {safe_title} → Skill {skill_name}")
+            else:
+                err = "产物校验失败: %s" % res
+                if attempts >= CONSUME_MAX_ATTEMPTS:
+                    final_status, pool_status = "REJECTED", "REJECTED"
+                else:
+                    final_status, pool_status = "PENDING", "PENDING"
+
+        # 7) 写回 database 库 (建议池 + implementations)
+        if pool_status == "DEPLOYED":
+            db.execute("UPDATE mt_ai_suggestion_pool SET status='DEPLOYED', deployed_at=? "
+                       "WHERE suggestion_id=?", (now_str, sid))
+        else:
+            db.execute("UPDATE mt_ai_suggestion_pool SET status=? WHERE suggestion_id=?", (pool_status, sid))
+        db.execute("""UPDATE mt_research_implementations
+            SET artifact_type='SKILL', artifact_path=?, status=?, attempts=?, error=?, updated_at=?
+            WHERE impl_id=?""", (artifact_path, final_status, attempts, err[:500], now_str, impl_id))
+        db.commit()
+
+        # 8) DEPLOYED 后沿官方 12 步状态机收口该 routine 提案的 §14 flow
+        close_info = None
+        if pool_status == "DEPLOYED":
+            try:
+                import andromeda_research as ar
+                close_info = ar.close_research_proposal(prop_id, artifact=artifact_path)
+            except Exception as e:
+                close_info = {"closed": False, "error": str(e)[:150]}
+        return {"skipped": False, "suggestion_id": sid, "skill": skill_name,
+                "pool_status": pool_status, "attempts": attempts,
+                "deployed": 1 if pool_status == "DEPLOYED" else 0,
+                "flow_closed": bool(close_info and close_info.get("closed")),
+                "close": close_info,
+                "artifact_path": artifact_path, "error": err}
+    finally:
+        db.close()
+
+
 def _loop_benchmark_if_needed() -> dict:
     """每 24h 跑一次模型 benchmark"""
     db = sqlite3.connect(str(DB))
@@ -451,7 +771,8 @@ def _record_run(dt: float, results: dict):
             except Exception: return 0
         items = (_n("daemon", "repair_requested") + _n("rule", "fixed")
                  + _n("auto_impl", "implemented") + _n("research", "voted")
-                 + _n("research", "started") + _n("promote", "promoted"))
+                 + _n("research", "started") + _n("promote", "promoted")
+                 + _n("consume", "deployed"))
         db.execute("""INSERT INTO mt_evolution_runs
             (loop, started_at, finished_at, duration_s, items_processed, items_ok, suggestion_count, notes)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
