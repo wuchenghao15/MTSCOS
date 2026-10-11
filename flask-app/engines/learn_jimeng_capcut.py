@@ -61,24 +61,24 @@ API 入口: CyberBara (cyberbara.com/api) 或 BytePlus ModelArk 或 fal.ai
 [1. 主体描述] + [2. 动作/运镜] + [3. 场景/环境] + [4. 光线/氛围] + [5. 风格/参考] + [6. 音频描述]
 
 完整模板:
-"[主体] 在 [场景] [运镜描述], [动作细节], [光线条件], [风格参考], 电影质感. 
+"[主体] 在 [场景] [运镜描述], [动作细节], [光线条件], [风格参考], 电影质感.
 音频: [环境音] + [音效] + [人声描述]"
 
 示例1 (AI产品广告):
-"A high-end perfume commercial, slow motion liquid splash, 
-glossy lighting, premium cinematic style. 
-Camera: 360-degree orbiting close-up. 
-Audio: glass clink, liquid pouring, ambient music. 
+"A high-end perfume commercial, slow motion liquid splash,
+glossy lighting, premium cinematic style.
+Camera: 360-degree orbiting close-up.
+Audio: glass clink, liquid pouring, ambient music.
 参考素材: 3张产品图 + 1支参考广告片"
 
 示例2 (社交媒体竖屏):
-"9:16 竖屏 UGC, 手持手机镜头, 中景. 
-一位穿着浴袍的女生在阳光卧室里举着皱巴巴的亚麻衬衫, 
-对着镜头说 Meeting in twenty minutes. 
-然后用挂烫机熨烫, 最后挑眉看镜头. 
+"9:16 竖屏 UGC, 手持手机镜头, 中景.
+一位穿着浴袍的女生在阳光卧室里举着皱巴巴的亚麻衬衫,
+对着镜头说 Meeting in twenty minutes.
+然后用挂烫机熨烫, 最后挑眉看镜头.
 Audio: 房间混响 + 挂烫机 gurgling + 衬衫摩擦声"
 
-Prompt 长度: 不要太冗长, 200-500字最佳. 
+Prompt 长度: 不要太冗长, 200-500字最佳.
 参考素材: 可混合图片+视频, 最多50个.""",
         "source": "seedance-25.ai/blog",
     },
@@ -137,7 +137,7 @@ Prompt 长度: 不要太冗长, 200-500字最佳.
 
 方案3: Prompt 里反复锚定
   开头描述 + 中间描述 + 结尾描述各加一次角色特征:
-  "一个穿红色风衣的长发女生 [开头锚定] 走进咖啡馆 [中间锚定红色风衣长发], 
+  "一个穿红色风衣的长发女生 [开头锚定] 走进咖啡馆 [中间锚定红色风衣长发],
    坐下喝拿铁 [结尾锚定红色风衣长发特写]"
 
 方案4: 后处理一致性修复
@@ -229,7 +229,7 @@ CAPCUT_60_SKILLS = [
   ✅ 关键帧自动生成 (起点+终点→流畅过渡)
   ✅ 多时间线 (一个草稿最多 50 条时间线)
 
-免费功能: 大部分 AI 工具免费. 
+免费功能: 大部分 AI 工具免费.
 付费版 (剪映 Pro): 高级调色/多机位/50条时间线/无损云空间""",
         "source": "capcut.cn / capcut.com/tools/ai-tools",
     },
@@ -239,7 +239,7 @@ CAPCUT_60_SKILLS = [
         "content": """最简工作流: 1个想法 → 10分钟 → 发布Ready
 
 Step 1 - 描述想法
-  剪映首页 → "AI视频生成" → 输入: 
+  剪映首页 → "AI视频生成" → 输入:
   "我想做一条关于xxx的15秒抖音视频, 风格是xxx, 节奏要快"
   → AI 自动生成: 剧本 + 分镜表 + 配音脚本 + 建议素材
 
@@ -312,7 +312,7 @@ def ingest_to_brain(all_skills):
         gid = f"SKILLGROUP-{hashlib.md5(group_name.encode()).hexdigest()[:8]}"
         conn.execute("""
             INSERT OR IGNORE INTO knowledge_graph_nodes
-            (node_id, node_name, node_type, content, metadata, 
+            (node_id, node_name, node_type, content, metadata,
              importance_score, is_active, created_at, updated_at)
             VALUES (?, ?, 'BRAINCATEGORY', ?, ?, 0.90, 1, ?, ?)
         """, (gid, group_name, f"Skill Group: {group_name}",
@@ -342,7 +342,7 @@ def ingest_to_brain(all_skills):
         # 知识图谱节点
         conn.execute("""
             INSERT OR IGNORE INTO knowledge_graph_nodes
-            (node_id, node_name, node_type, content, metadata, 
+            (node_id, node_name, node_type, content, metadata,
              importance_score, is_active, created_at, updated_at)
             VALUES (?, ?, 'knowledge', ?, ?, 0.88, 1, ?, ?)
         """, (nid, skill["title"][:40], skill["content"][:200],
@@ -354,7 +354,7 @@ def ingest_to_brain(all_skills):
         rid = f"REL-{hashlib.md5((nid+gid).encode()).hexdigest()[:10]}"
         conn.execute("""
             INSERT OR IGNORE INTO knowledge_graph_relations
-            (relation_id, source_node_id, target_node_id, relation_type, 
+            (relation_id, source_node_id, target_node_id, relation_type,
              weight, description, is_active, created_at)
             VALUES (?, ?, ?, 'BELONGS_TO', 0.92, ?, 1, ?)
         """, (rid, nid, gid, f"{skill['title'][:20]} ∈ {group}", ts))

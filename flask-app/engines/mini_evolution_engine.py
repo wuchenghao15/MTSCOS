@@ -19,7 +19,7 @@ Mac mini 作为独立计算节点, 利用本地 Ollama (qwen2.5:14b + qwen2.5-co
 """
 
 from __future__ import annotations
-import os, sys, sqlite3, json, subprocess, time, hashlib, threading, re, importlib.util, traceback
+# [unused] import os, sys, sqlite3, json, subprocess, time, hashlib, threading, re, importlib.util, traceback
 from pathlib import Path
 
 BASE = Path(__file__).parent.parent

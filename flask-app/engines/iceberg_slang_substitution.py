@@ -590,7 +590,7 @@ def register_routes(app):
       Layer-3 after_request   HTML/JSON 响应自动替换 (输出层)
       Layer-4 提交日志留痕    mt_slang_submission_log 记录每次改了什么
     """
-    import flask as _flask
+    # [unused] import flask as _flask
 
     def _get_db():
         return sqlite3.connect(str(DB), timeout=5)

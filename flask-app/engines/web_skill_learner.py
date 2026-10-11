@@ -163,7 +163,7 @@ def ingest_skill_template(template):
         INSERT OR IGNORE INTO knowledge_graph_nodes
         (node_id, node_name, node_type, content, metadata, importance_score, is_active, created_at, updated_at)
         VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?)
-    """, (group_node_id, group, "BRAINCATEGORY", 
+    """, (group_node_id, group, "BRAINCATEGORY",
           f"Skill Group: {group}",
           json.dumps({"skill_group": group, "category": cat, "source": "web_learner"}, ensure_ascii=False),
           0.85, ts, ts))
@@ -203,7 +203,7 @@ def ingest_skill_template(template):
             INSERT OR IGNORE INTO knowledge_graph_relations
             (relation_id, source_node_id, target_node_id, relation_type, weight, description, is_active, created_at)
             VALUES (?, ?, ?, ?, ?, ?, 1, ?)
-        """, (rid, nid, group_node_id, "BELONGS_TO", 0.9, 
+        """, (rid, nid, group_node_id, "BELONGS_TO", 0.9,
               f"{title} ∈ {group}", ts))
         rel_count += 1
     
@@ -267,7 +267,7 @@ def run_learning_cycle():
     
     # 新增类目统计
     new_cats = conn.execute("""
-        SELECT category, COUNT(*) FROM ai_brain_enhanced_knowledge 
+        SELECT category, COUNT(*) FROM ai_brain_enhanced_knowledge
         WHERE knowledge_type LIKE 'web_learner_%'
         GROUP BY category ORDER BY COUNT(*) DESC
     """).fetchall()

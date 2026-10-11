@@ -34,7 +34,7 @@ try:
 except Exception:
     pass
 from datetime import datetime
-from typing import Dict, List, Optional, Tuple
+# [unused] from typing import Dict, List, Optional, Tuple
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DB_PATH = os.path.join(ROOT, 'database', 'app.db')

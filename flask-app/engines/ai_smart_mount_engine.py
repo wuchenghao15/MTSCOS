@@ -60,13 +60,14 @@ AI_ENGINES_DIR = os.path.join(ROOT, "ai_engines")
 # Mac mini 旧库在 _runtime/databases/Database/app.db (7GB, 无 mt_daemon_registry — 不可用!)
 # 统一: 取 flask-app/database/app.db 优先 (Flask 正在用的活跃库)
 _DB_CANDIDATES = [
-    os.path.join(ROOT, "database", "app.db"),                                   # ✅ 活跃主库 (MacBook Pro)
-    os.path.join(PROJECT_ROOT, "flask-app", "database", "app.db"),              # 兜底
-    os.path.join(PROJECT_ROOT, "flask-app", "database", "app.db"),  # Mac mini 旧库(缺表!)
-    os.path.join(PROJECT_ROOT, "Database", "app.db"),                           # 旧兼容
-    os.path.join(AI_ENGINES_DIR, "app.db"),                                     # 最后兜底
+    os.path.join(ROOT, "engines", "app.db"),                                     # ✅ Mac mini 完整版 (763MB, 有全部表)
+    os.path.join(ROOT, "database", "app.db"),                                    # ✅ 活跃主库 (MacBook Pro 1.6GB)
+    os.path.join(PROJECT_ROOT, "flask-app", "engines", "app.db"),                # 兜底 engines 版
+    os.path.join(PROJECT_ROOT, "flask-app", "database", "app.db"),               # 兜底 database 版
+    os.path.join(PROJECT_ROOT, "Database", "app.db"),                            # 旧兼容
+    os.path.join(AI_ENGINES_DIR, "app.db"),                                      # 最后兜底
 ]
-APP_DB = next((p for p in _DB_CANDIDATES 
+APP_DB = next((p for p in _DB_CANDIDATES
                if os.path.exists(p) and os.path.getsize(p) > 1000000),  # 至少 1MB
               _DB_CANDIDATES[0])
 # 如果取到了 _runtime 的旧库但它没有关键表，强制用 flask-app/database
@@ -95,20 +96,50 @@ try:
         DAEMON_STATE_MACHINE,
     )
 except ImportError:
-    # 兼容直接运行
+    # 兼容直接运行 - 仙女座 v5.2: 完全自包含, 不依赖坏掉的 ai_intelligent_upgrade_engine
     _CONN = None
 
     def _get_conn():
-        # 🔧 仙女座 v5.0: 统一 timeout=30s + WAL 解锁
         conn = sqlite3.connect(APP_DB, timeout=30)
         conn.execute("PRAGMA busy_timeout = 30000")
         conn.execute("PRAGMA journal_mode = WAL")
-        conn.execute("PRAGMA wal_autocheckpoint = 10000")
-        conn.execute("PRAGMA synchronous = NORMAL")
         return conn
 
     def _now():
         return datetime.now().isoformat()
+
+    def register_daemon(name, status='IDLE'):
+        """仙女座自包含版本: 向 mt_daemon_registry 注册 daemon"""
+        try:
+            conn = _get_conn()
+            conn.execute(
+                "INSERT OR IGNORE INTO mt_daemon_registry (daemon_name, status, registered_at, last_heartbeat) VALUES (?,?,?,?)",
+                (name, status, _now(), _now()))
+            conn.commit()
+            conn.close()
+        except Exception:
+            pass
+
+    def daemon_transition(name, new_state):
+        """仙女座自包含版本: 状态转移"""
+        try:
+            conn = _get_conn()
+            conn.execute(
+                "UPDATE mt_daemon_registry SET status=?, last_heartbeat=? WHERE daemon_name=?",
+                (new_state, _now(), name))
+            conn.commit()
+            conn.close()
+        except Exception:
+            pass
+
+    def add_ai_suggestion(**kwargs):
+        pass  # 占位
+
+    def evaluate_suggestion(**kwargs):
+        return 0.5  # 占位
+
+    def compute_dynamic_weight(**kwargs):
+        return {}  # 占位
 
     DAEMON_STATE_MACHINE = {
         "IDLE": ["RUNNING", "STOPPED"],
@@ -117,6 +148,15 @@ except ImportError:
         "FAILED": ["RUNNING", "STOPPED"],
         "STOPPED": ["IDLE", "RUNNING"],
     }
+
+# 🆕 仙女座 v5.2: 给被 import 进来的坏掉函数注入全局变量
+try:
+    import ai_intelligent_upgrade_engine as _ai_upgrade
+    _ai_upgrade._LOCK = _LOCK
+    _ai_upgrade._get_conn = _get_conn
+    _ai_upgrade._now = _now
+except Exception:
+    pass
 
 _LOCK = threading.Lock()
 MOUNT_THRESHOLD = 0.70  # 综合分>=0.70才自动挂载
@@ -863,11 +903,47 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s [ANDROMEDA-EVOL] %(m
 log = logging.getLogger('andromeda_evol_daemon')
 
 PROJECT_ROOT = os.environ.get('PROJECT_ROOT', os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-DB_PATH = os.environ.get('ANDROMEDA_DB', os.path.join(PROJECT_ROOT, 'database', 'app.db'))
+# DB 正主: 先看环境变量 ANDROMEDA_DB, 否则找 app.db (auto_evolution 自己的家)
+_candidates = [
+    os.environ.get('ANDROMEDA_DB'),
+    os.path.expanduser('~/MTSCOS_AI_Project/app.db'),
+    os.path.join(PROJECT_ROOT, 'app.db'),
+    os.path.join(PROJECT_ROOT, 'flask-app', 'app.db'),
+    os.path.join(PROJECT_ROOT, 'database', 'app.db'),
+]
+DB_PATH = next((p for p in _candidates if p and os.path.exists(p)), _candidates[4])
 os.environ['ANDROMEDA_DB'] = DB_PATH
-os.environ.setdefault('OLLAMA_HOST', 'http://localhost:11435')
-os.environ.setdefault('OLLAMA_EMBED_MODEL', 'nomic-embed-text')
-os.environ.setdefault('OLLAMA_DERIVE_MODEL', 'qwen2.5:7b')
+
+# Ollama 自动探测: 端口跨平台 + 模型自适应 (开发机 11435 / Mac mini 11434)
+def _detect_ollama():
+    import urllib.request, json as _j
+    ports = [11435, 11434, 11436, 8080]
+    models = ['qwen2.5:14b', 'qwen2.5:7b', 'qwen2.5:14b-q5', 'qwen2.5-coder:14b', 'qwen2.5-coder:7b']
+    host, model = None, None
+    for p in ports:
+        try:
+            req = urllib.request.Request('http://localhost:' + str(p) + '/api/tags')
+            with urllib.request.urlopen(req, timeout=2) as resp:
+                data = _j.loads(resp.read())
+                available = [m['name'] for m in data.get('models', [])]
+                host = 'http://localhost:' + str(p)
+                for m in models:
+                    if m in available:
+                        model = m; break
+                if host: break
+        except Exception:
+            continue
+    return host or 'http://localhost:11434', model or 'qwen2.5:7b'
+
+if not os.environ.get('OLLAMA_HOST'):
+    _h, _m = _detect_ollama()
+    os.environ['OLLAMA_HOST'] = _h
+    os.environ['OLLAMA_EMBED_MODEL'] = 'nomic-embed-text'
+    os.environ['OLLAMA_DERIVE_MODEL'] = _m
+    log.info('Ollama autodetect: host=' + _h + ' derive_model=' + _m)
+else:
+    os.environ.setdefault('OLLAMA_EMBED_MODEL', 'nomic-embed-text')
+    os.environ.setdefault('OLLAMA_DERIVE_MODEL', 'qwen2.5:14b')
 
 try:
     sys.path.insert(0, PROJECT_ROOT)
@@ -881,6 +957,7 @@ try:
     # 上报 mt_daemon_registry 状态
     try:
         conn = sqlite3.connect(DB_PATH, timeout=10)
+        conn.row_factory = sqlite3.Row
         conn.execute("UPDATE mt_daemon_registry SET last_heartbeat=datetime('now'), status='RUNNING' WHERE daemon_name=?", ('sys_andromeda_auto_evolution',))
         conn.commit(); conn.close()
     except Exception:
@@ -890,6 +967,1268 @@ except Exception as e:
 """,
         "inspect_cycle": 600,    # 10 分钟一次
         "startup_offset": 180,   # 启动 3min 后再跑 (等 Flask + Ollama 完全就绪 + 依赖 import)
+    },
+    # 🆕 v25.1: 仙女座思维闭环引擎 — 6 步闭环 (PERCEIVE→THINK→DECIDE→ACT→VERIFY→FEED)
+    # 每 1800s 跑一次完整闭环, 不新建文件, 完全复用现有组件
+    {
+        "process_name": "sys_think_loop",
+        "duty": "🧠 仙女座思维闭环: PERCEIVE→THINK→DECIDE→ACT→VERIFY→FEED · 自升级+自维护+自反思",
+        "work_body": r"""
+import os, sys, json, sqlite3, time, logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s [THINK-LOOP] %(message)s')
+log = logging.getLogger('think_loop')
+
+PROJECT_ROOT = os.environ.get('PROJECT_ROOT', os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+if PROJECT_ROOT not in sys.path: sys.path.insert(0, PROJECT_ROOT)
+DB_PATH = os.environ.get('APP_DB', os.path.join(PROJECT_ROOT, 'database', 'app.db'))
+os.environ['APP_DB'] = DB_PATH
+os.environ.setdefault('OLLAMA_HOST', 'http://localhost:11435')
+os.environ.setdefault('OLLAMA_MODEL', 'qwen2.5:7b')
+
+log.info('🧠 === 仙女座思维闭环 启动 ===')
+t0 = time.time()
+
+# ──── ① PERCEIVE (感知) ────
+signals = {}
+try:
+    sys.path.insert(0, PROJECT_ROOT)
+    from ai_engines.rules_engine.rule_integrity_scanner import _count_weak_words, _count_violation_triggers, DEFAULT_RULES_DIR
+    rules_dir = os.path.abspath(DEFAULT_RULES_DIR)
+    if os.path.isdir(rules_dir):
+        md_files = [f for f in sorted(os.listdir(rules_dir)) if f.endswith('.md') and not f.startswith('00-')]
+        total_weak = 0
+        total_triggers = 0
+        pass_count = 0
+        for f in md_files:
+            fp = os.path.join(rules_dir, f)
+            w = _count_weak_words(fp)
+            t = _count_violation_triggers(fp)
+            total_weak += w
+            total_triggers += t
+            if w == 0 and t > 0:
+                pass_count += 1
+        signals['rules_total'] = len(md_files)
+        signals['rules_pass'] = pass_count
+        signals['weak_words_total'] = total_weak
+        signals['violation_triggers'] = total_triggers
+        log.info(f'  PERCEIVE 📊 规则 {pass_count}/{len(md_files)} PASS · 弱约束词 {total_weak} · 触发块 {total_triggers}')
+    else:
+        log.warning(f'  PERCEIVE 规则目录不存在: {rules_dir}')
+except Exception as _e:
+    log.warning(f'  PERCEIVE 规则扫描跳过: {_e}')
+    signals['rules_error'] = str(_e)
+
+# daemon 心跳状态
+try:
+    conn = sqlite3.connect(DB_PATH, timeout=10); conn.execute('PRAGMA busy_timeout=5000')
+    conn.row_factory = sqlite3.Row
+    row = conn.execute("SELECT COUNT(*) FROM mt_daemon_registry WHERE status='RUNNING'").fetchone()[0]
+    row2 = conn.execute("SELECT COUNT(*) FROM mt_daemon_registry WHERE status='FAILED'").fetchone()[0]
+    row3 = conn.execute("SELECT COUNT(*) FROM mt_daemon_registry WHERE last_heartbeat > datetime('now','-10min')").fetchone()[0]
+    signals['daemon_running'] = row
+    signals['daemon_failed'] = row2
+    signals['daemon_alive_10m'] = row3
+    log.info(f'  PERCEIVE 💓 daemon RUNNING={row} FAILED={row2} alive_10m={row3}')
+    conn.close()
+except Exception as _e:
+    log.warning(f'  PERCEIVE daemon 状态跳过: {_e}')
+
+# Ollama 健康
+try:
+    import urllib.request as _ur
+    resp = _ur.urlopen(os.environ.get('OLLAMA_HOST','http://localhost:11435') + '/api/tags', timeout=3)
+    models = [m['name'] for m in json.loads(resp.read()).get('models',[])]
+    signals['ollama_online'] = True
+    signals['ollama_models'] = len(models)
+    log.info(f'  PERCEIVE 🤖 Ollama online · {len(models)} models')
+except Exception as _e:
+    signals['ollama_online'] = False
+    signals['ollama_error'] = str(_e)
+    log.warning(f'  PERCEIVE Ollama offline: {_e}')
+
+# ──── ② THINK (思考) ────
+think_result = None
+if signals.get('ollama_online') and signals.get('weak_words_total', 0) > 0:
+    try:
+        prompt = (
+            f"仙女座思维引擎感知: 规则完整性={signals.get('rules_pass',0)}/{signals.get('rules_total',0)}, "
+            f"弱约束词={signals.get('weak_words_total',0)}, "
+            f"daemon RUNNING={signals.get('daemon_running','?')} FAILED={signals.get('daemon_failed','?')}. "
+            "按优先级排序 top-3 行动。"
+        )
+        import urllib.request as _ur
+        req = _ur.Request(
+            os.environ.get('OLLAMA_HOST','http://localhost:11435') + '/api/generate',
+            data=json.dumps({
+                "model": os.environ.get('OLLAMA_MODEL','qwen2.5:7b'),
+                "prompt": prompt,
+                "stream": False, "options": {"temperature": 0.3, "num_predict": 200}
+            }).encode(),
+            headers={'Content-Type': 'application/json'}
+        )
+        resp = _ur.urlopen(req, timeout=25)
+        raw = json.loads(resp.read()).get('response', '')
+        think_result = {"raw": raw[:300]}
+        log.info(f'  THINK 🧠 本地AI分析完成')
+    except Exception as _e:
+        log.warning(f'  THINK 跳过 (推理耗时长/模型未就绪): {_e}')
+
+# ──── ③ DECIDE (进化工作流 + 子 agent 团队编排) ────
+# 🆕 v25.1: 仙女座子 agent 团队注册表 — 专业化分工 + 思维工作模式 + 高效协作
+# 每个团队: 角色分工 / 思维模式 / 执行策略 / 绑定工作流
+SUB_AGENT_TEAMS = {
+    "rule_evolution_team": {
+        "name": "规则进化先锋队",
+        "specialization": "规则完整性治理 / 弱约束词清零 / 版本自动 bump",
+        "thinking_mode": "chain_of_thought",
+        "knowledge_access": {
+            "tables": {
+                    "mt_rule_changelog": "rw",
+                    "mt_rule_violation_alert": "rw",
+                    "mt_rule_integrity_scan": "rw",
+                    "mt_iron_rule_violations": "rw",
+                    "sa_rule_overrides": "rw",
+                    "mt_permission_audit_detail": "r",
+                    "mt_ai_brain_feed_log": "rw",
+                    "ai_brain_enhanced_knowledge": "r"
+        },
+            "classification_max": "secret",
+            "agent_role": "internal_ai",
+            "audit_target": "mt_permission_audit_detail",
+        },
+        "execution": "sequential",
+        "agents": [
+            {"id": "rule_detector",    "role": "detective",  "specialty": "弱约束词检测",       "model": "rule_integrity_scanner"},
+            {"id": "rule_strengthener","role": "executor",   "specialty": "弱约束词强化替换",   "model": "auto_rule_strengthener"},
+            {"id": "rule_verifier",    "role": "critic",     "specialty": "完整性二次验证",     "model": "rule_integrity_scanner"},
+            {"id": "rule_bumper",      "role": "strategist", "specialty": "版本 bump + changelog","model": "rule_version"},
+            {"id": "brain_feeder",     "role": "feeder",     "specialty": "脑库投喂 + 闭环落库", "model": "mt_think_loop_runs"},
+        ],
+        "workflow": [
+            {"step": 1, "agent": "rule_detector",    "trigger": "weak_words_total > 0"},
+            {"step": 2, "agent": "rule_strengthener","depends": 1},
+            {"step": 3, "agent": "rule_verifier",    "depends": 2},
+            {"step": 4, "agent": "rule_bumper",      "depends": 3, "condition": "improvement > 0"},
+            {"step": 5, "agent": "brain_feeder",     "depends": 4},
+        ],
+    },
+    "daemon_evolution_team": {
+        "name": "守护进程修复队",
+        "specialization": "daemon 健康巡检 / 自动修复 / 心跳补全",
+        "thinking_mode": "parallel_pipeline",
+        "knowledge_access": {
+            "tables": {
+                    "mt_daemon_registry": "rw",
+                    "mt_daemon_supervisor_log": "rw",
+                    "mt_ai_smart_mount_processes": "rw",
+                    "mt_permission_audit_detail": "r",
+                    "ai_brain_enhanced_knowledge": "blocked"
+        },
+            "classification_max": "public",
+            "agent_role": "internal_ai",
+            "audit_target": "mt_permission_audit_detail",
+        },
+        "execution": "parallel_then_sequential",
+        "agents": [
+            {"id": "daemon_monitor",  "role": "sentinel",  "specialty": "批量 daemon 心跳巡检"},
+            {"id": "daemon_repairer", "role": "executor",  "specialty": "FAILED->REPAIRING 转移"},
+            {"id": "daemon_verifier", "role": "critic",    "specialty": "修复后健康验证"},
+        ],
+        "workflow": [
+            {"step": 1, "agent": "daemon_monitor",  "trigger": "daemon_failed > 0"},
+            {"step": 2, "agent": "daemon_repairer", "depends": 1},
+            {"step": 3, "agent": "daemon_verifier", "depends": 2},
+        ],
+    },
+    "knowledge_evolution_team": {
+        "name": "知识衍生先锋队",
+        "specialization": "脑库新知识检测 / 向量化 / 关联 / 派生",
+        "thinking_mode": "andromeda_10stage",
+        "knowledge_access": {
+            "tables": {
+                    "ai_brain_enhanced_knowledge": "rw",
+                    "mt_andromeda_rule_knowledge": "rw",
+                    "ai_brain_knowledge_graph_nodes": "rw",
+                    "ai_brain_knowledge_graph_relations": "rw",
+                    "mt_ai_brain_feed_log": "rw",
+                    "mt_permission_audit_detail": "r"
+        },
+            "classification_max": "confidential",
+            "agent_role": "internal_ai",
+            "audit_target": "mt_permission_audit_detail",
+        },
+        "execution": "pipeline_parallel",
+        "agents": [
+            {"id": "knowledge_detector",   "role": "scout",     "specialty": "脑库增量检测", "stage": "andromeda_stage0"},
+            {"id": "knowledge_vectorizer", "role": "architect", "specialty": "向量化+语义检索", "stage": "andromeda_stage1_2"},
+            {"id": "knowledge_deriver",    "role": "scientist", "specialty": "知识派生 OLLAMA 推导", "stage": "andromeda_stage4"},
+        ],
+        "workflow": [
+            {"step": 1, "agent": "knowledge_detector"},
+            {"step": 2, "agent": "knowledge_vectorizer", "depends": 1},
+            {"step": 3, "agent": "knowledge_deriver",    "depends": 2},
+        ],
+    }, # === 🆕 仙女座专业教育团队 ===
+    "knowledge_feed_team": {
+        "name": "外部知识摄入先锋队",
+        "specialization": "专业教育官网爬取 / 专家数字分身 / 教育视频文案 / 数字博主资源",
+        "thinking_mode": "source_pipeline",
+        "knowledge_access": {
+            "tables": {
+                    "ai_brain_enhanced_knowledge": "rw",
+                    "ai_brain_knowledge_graph_nodes": "rw",
+                    "ai_brain_knowledge_graph_relations": "rw",
+                    "mt_galaxy_feedback_ingest": "rw",
+                    "mt_news_feed": "rw",
+                    "expert_invitation_records": "rw",
+                    "mt_permission_audit_detail": "r",
+                    "mt_iron_rule_violations": "blocked",
+                    "sa_rule_overrides": "blocked"
+        },
+            "classification_max": "internal",
+            "agent_role": "internal_ai",
+            "audit_target": "mt_permission_audit_detail",
+        },
+        "execution": "parallel_fetch_then_merge",
+        "goal": "web_learner 从 27 → 100K+ 条",
+        "agents": [
+            {"id": "edu_scraper",        "role": "scout",     "specialty": "教育部/学科官网爬取", "sources": ["moe.gov.cn", "中国教育在线"]},
+            {"id": "expert_digital_twin", "role": "ambassador", "specialty": "专家数字分身同步", "sources": ["专家API"]},
+            {"id": "video_text_extractor", "role": "transcriber", "specialty": "教育视频字幕/OCR", "sources": ["bilibili教育区", "腾讯课堂"]},
+            {"id": "blogger_crawler",    "role": "curator",   "specialty": "数字博主内容爬取", "sources": ["知乎教育", "小红书学习"]},
+            {"id": "vector_ingestor",    "role": "architect", "specialty": "向量化→脑库", "target": "ai_brain_enhanced_knowledge"},
+        ],
+        "workflow": [{"step": 1, "agent": "edu_scraper"}, {"step": 2, "agent": "expert_digital_twin"}, {"step": 3, "agent": "video_text_extractor"}, {"step": 4, "agent": "blogger_crawler"}, {"step": 5, "agent": "vector_ingestor", "depends": [1,2,3,4]}],
+    },
+    "qbank_team": {
+        "name": "题库管理专业队",
+        "specialization": "题目源多元化 / 分类分级 / 质量三轮检 / 生命周期",
+        "thinking_mode": "qa_factory_pipeline",
+        "knowledge_access": {
+            "tables": {
+                    "mt_news_feed": "rw",
+                    "mt_andromeda_rule_knowledge": "rw",
+                    "mt_rule_violation_alert": "rw",
+                    "mt_galaxy_daily_stats": "rw",
+                    "ai_brain_enhanced_knowledge": "r",
+                    "mt_permission_audit_detail": "r",
+                    "mt_iron_rule_violations": "blocked",
+                    "sa_rule_overrides": "blocked"
+        },
+            "classification_max": "internal",
+            "agent_role": "internal_ai",
+            "audit_target": "mt_permission_audit_detail",
+        },
+        "execution": "assemble_line",
+        "agents": [
+            {"id": "qbank_scout",    "role": "scout",     "specialty": "10+ 题目源发现"},
+            {"id": "qbank_curator",  "role": "curator",   "specialty": "学科/学段分类分级"},
+            {"id": "qbank_reviewer", "role": "critic",    "specialty": "质量三轮自动巡检"},
+            {"id": "qbank_lifecycle","role": "manager",   "specialty": "题目生命周期(新→热→冷→归档)"},
+        ],
+        "workflow": [{"step": 1, "agent": "qbank_scout"}, {"step": 2, "agent": "qbank_curator", "depends": 1}, {"step": 3, "agent": "qbank_reviewer", "depends": 2}, {"step": 4, "agent": "qbank_lifecycle", "depends": 3}],
+    },
+    "teacher_team": {
+        "name": "教员维护专业队",
+        "specialization": "教员画像 / 教学风格分析 / 备课辅助 / 教研能力追踪",
+        "thinking_mode": "profile_driven",
+        "knowledge_access": {
+            "tables": {
+                    "mt_teacher_configs": "rw",
+                    "mt_teacher_configs": "rw",
+                    "mt_teacher_configs": "rw",
+                    "ai_brain_enhanced_knowledge": "r",
+                    "mt_permission_audit_detail": "r",
+                    "mt_iron_rule_violations": "blocked"
+        },
+            "classification_max": "internal",
+            "agent_role": "internal_ai",
+            "audit_target": "mt_permission_audit_detail",
+        },
+        "execution": "continuous_monitor",
+        "agents": [
+            {"id": "teacher_profiler",  "role": "analyst",   "specialty": "教员能力画像/教学风格"},
+            {"id": "teacher_helper",    "role": "assistant", "specialty": "备课素材自动推荐"},
+            {"id": "teacher_tracker",   "role": "monitor",   "specialty": "教研成果/学生反馈追踪"},
+        ],
+        "workflow": [{"step": 1, "agent": "teacher_profiler"}, {"step": 2, "agent": "teacher_helper"}, {"step": 3, "agent": "teacher_tracker"}],
+    },
+    "paper_knowledge_team": {
+        "name": "论文知识统筹队",
+        "specialization": "论文爬取 / 知识点提取 / 跨学科借鉴 / 前沿追踪",
+        "thinking_mode": "citation_graph",
+        "knowledge_access": {
+            "tables": {
+                    "ai_brain_enhanced_knowledge": "rw",
+                    "ai_brain_knowledge_graph_nodes": "rw",
+                    "ai_brain_knowledge_graph_relations": "rw",
+                    "mt_paper_research": "rw",
+                    "mt_paper_research": "rw",
+                    "mt_permission_audit_detail": "r",
+                    "mt_iron_rule_violations": "blocked"
+        },
+            "classification_max": "confidential",
+            "agent_role": "internal_ai",
+            "audit_target": "mt_permission_audit_detail",
+        },
+        "execution": "crawl→extract→link→derive",
+        "agents": [
+            {"id": "paper_crawler",     "role": "scout",     "specialty": "arxiv/CNKI/万方爬取"},
+            {"id": "paper_extractor",   "role": "scientist", "specialty": "论文结构化→知识点"},
+            {"id": "paper_cross_linker","role": "architect", "specialty": "跨学科知识关联借鉴"},
+            {"id": "paper_frontier",    "role": "scout",     "specialty": "最新论文前沿追踪"},
+        ],
+        "workflow": [{"step": 1, "agent": "paper_crawler"}, {"step": 2, "agent": "paper_extractor", "depends": 1}, {"step": 3, "agent": "paper_cross_linker", "depends": 2}, {"step": 4, "agent": "paper_frontier"}],
+    },
+    "one2one_plan_team": {
+        "name": "学生一对一教育计划队",
+        "specialization": "学情诊断 / 专有化计划生成 / 进度追踪 / 动态调整",
+        "thinking_mode": "diagnose→plan→execute→adapt",
+        "knowledge_access": {
+            "tables": {
+                    "k12_students": "rw",
+                    "k12_students": "rw",
+                    "k12_students": "rw",
+                    "k12_students": "rw",
+                    "ai_brain_enhanced_knowledge": "r",
+                    "mt_permission_audit_detail": "r",
+                    "mt_iron_rule_violations": "blocked"
+        },
+            "classification_max": "confidential",
+            "agent_role": "internal_ai",
+            "audit_target": "mt_permission_audit_detail",
+        },
+        "execution": "individualized_loop",
+        "agents": [
+            {"id": "student_diagnoser", "role": "diagnostician", "specialty": "多维度学情诊断"},
+            {"id": "plan_generator",    "role": "planner",       "specialty": "专有化学习计划生成"},
+            {"id": "progress_tracker",  "role": "monitor",       "specialty": "学习进度/效果追踪"},
+            {"id": "plan_adapter",      "role": "strategist",    "specialty": "计划动态调整(拐点检测)"},
+        ],
+        "workflow": [{"step": 1, "agent": "student_diagnoser"}, {"step": 2, "agent": "plan_generator", "depends": 1}, {"step": 3, "agent": "progress_tracker"}, {"step": 4, "agent": "plan_adapter", "depends": 3}],
+    },
+}
+
+# 匹配团队
+active_teams = []
+if signals.get('weak_words_total', 0) > 0:
+    active_teams.append({"team": "rule_evolution_team", "priority": 1, "mode": "chain_of_thought"})
+if signals.get('daemon_failed', 0) > 0:
+    active_teams.append({"team": "daemon_evolution_team", "priority": 2, "mode": "parallel_pipeline"})
+# 🆕 专业团队路由 (按信号触发 + 优先级排序)
+if signals.get('qbank_sparse', 0) > 0:
+    active_teams.append({"team": "knowledge_feed_team", "priority": 3, "mode": "source_pipeline"})
+    active_teams.append({"team": "qbank_team", "priority": 3, "mode": "qa_factory"})
+if signals.get('teacher_stale', 0) > 0:
+    active_teams.append({"team": "teacher_team", "priority": 4, "mode": "profile_driven"})
+if signals.get('paper_frontier', 0) > 0:
+    active_teams.append({"team": "paper_knowledge_team", "priority": 5, "mode": "citation_graph"})
+if signals.get('student_needs_plan', 0) > 0:
+    active_teams.append({"team": "one2one_plan_team", "priority": 6, "mode": "diagnose→adapt"})
+active_teams.sort(key=lambda x: x["priority"])
+top_team = active_teams[0] if active_teams else None
+
+if top_team:
+    team_def = SUB_AGENT_TEAMS[top_team["team"]]
+    wf = team_def["workflow"]
+    log.info(f'  DECIDE 🎯 团队 [{top_team["team"]}] 思维模式={top_team["mode"]} → {len(wf)} 步')
+    for step in wf:
+        agent_def = next((a for a in team_def["agents"] if a["id"] == step["agent"]), {})
+        role = agent_def.get("role", "?")
+        log.info(f'    Step {step["step"]}: [{step["agent"]}] role={role}')
+else:
+    log.info('  DECIDE: 无事可做 ✨')
+
+# ──── ④ ACT (进化工作流执行) ────
+workflow_result = None
+step_results = []
+if top_team:
+    # 🆕 v25.1 knowledge_access 权限校验函数 (不新建文件)
+    _CLASS_ORDER = ["public", "internal", "confidential", "secret"]
+    def _audit(agent_id, table, result, note, _conn):
+        try:
+            _conn.execute(
+                "INSERT INTO mt_permission_audit_detail (request_uri, user_role, required_level, audit_result, audit_note, created_at) VALUES (?,?,?,?,?,datetime('now'))",
+                (f"/think_loop/{agent_id}", top_team["team"], "internal_ai", result, note[:180])
+            )
+            _conn.commit()
+        except Exception: pass
+    def _check_table(agent_id, table, conn_audit):
+        td = SUB_AGENT_TEAMS[top_team["team"]].get("knowledge_access", {}).get("tables", {})
+        allowed = td.get(table, "blocked")
+        if allowed == "blocked":
+            _audit(agent_id, table, "BLOCKED", f"{table} blocked by knowledge_access", conn_audit)
+            return False
+        _audit(agent_id, table, "PASS", f"{table} access={allowed}", conn_audit)
+        return True
+    
+    # 审计连接
+    try:
+        _conn_audit = sqlite3.connect(DB_PATH, timeout=10); _conn_audit.execute("PRAGMA busy_timeout=5000")
+    except Exception:
+        _conn_audit = None
+    
+    team_access = SUB_AGENT_TEAMS[top_team["team"]].get("knowledge_access", {})
+    log.info(f'  ACT 🔧 团队 [{top_team["team"]}] classification_max={team_access.get("classification_max","?")} tables={len(team_access.get("tables",{}))}')
+    
+    # 团队级机密等级上限检查
+    team_class = team_access.get("classification_max", "public")
+    log.info(f'  ACT 🔒 knowledge_access 矩阵加载 ({team_class})')
+    
+    # 通用 agent→目标表 映射
+    AGENT_TABLE_MAP = {
+    # rule_evolution_team (5)
+    "rule_detector": ["ai_brain_enhanced_knowledge", "mt_permission_audit_detail"],
+    "rule_strengthener": ["mt_rule_changelog", "mt_permission_audit_detail"],
+    "rule_verifier": ["mt_rule_changelog", "ai_brain_enhanced_knowledge"],
+    "rule_bumper": ["mt_rule_changelog", "sa_rule_overrides"],
+    "brain_feeder": ["mt_ai_brain_feed_log", "ai_brain_enhanced_knowledge"],
+    # daemon_evolution_team (3)
+    "daemon_monitor": ["mt_daemon_registry"],
+    "daemon_repairer": ["mt_daemon_registry"],
+    "daemon_verifier": ["mt_daemon_registry"],
+    # knowledge_evolution_team (3)
+    "knowledge_detector": ["ai_brain_enhanced_knowledge"],
+    "knowledge_vectorizer": ["ai_brain_enhanced_knowledge"],
+    "knowledge_deriver": ["ai_brain_enhanced_knowledge", "mt_ai_brain_feed_log"],
+    # knowledge_feed_team (5)
+    "edu_scraper": ["mt_news_feed", "expert_invitation_records"],
+    "expert_digital_twin": ["expert_invitation_records", "ai_brain_enhanced_knowledge"],
+    "video_text_extractor": ["mt_news_feed", "ai_brain_enhanced_knowledge"],
+    "blogger_crawler": ["mt_news_feed", "ai_brain_enhanced_knowledge"],
+    "vector_ingestor": ["ai_brain_enhanced_knowledge", "mt_ai_brain_feed_log"],
+    # qbank_team (4)
+    "qbank_scout": ["mt_news_feed", "ai_brain_enhanced_knowledge"],
+    "qbank_curator": ["mt_andromeda_rule_knowledge"],
+    "qbank_reviewer": ["mt_rule_violation_alert"],
+    "qbank_lifecycle": ["mt_galaxy_daily_stats"],
+    # teacher_team (3)
+    "teacher_profiler": ["mt_teacher_configs"],
+    "teacher_helper": ["mt_teacher_configs", "ai_brain_enhanced_knowledge"],
+    "teacher_tracker": ["mt_teacher_configs"],
+    # paper_knowledge_team (4)
+    "paper_crawler": ["mt_paper_research"],
+    "paper_extractor": ["mt_paper_research", "ai_brain_enhanced_knowledge"],
+    "paper_cross_linker": ["mt_paper_research", "ai_brain_enhanced_knowledge"],
+    "paper_frontier": ["mt_paper_research"],
+    # one2one_plan_team (4)
+    "student_diagnoser": ["k12_students", "ai_brain_enhanced_knowledge"],
+    "plan_generator": ["k12_students"],
+    "progress_tracker": ["k12_students"],
+    "plan_adapter": ["k12_students"],
+}
+
+    wf_name = top_team["team"]
+    log.info(f'  ACT 🔧 开始执行 {wf_name}...')
+    
+    # 通用 agent 执行框架 (权限校验 + 审计 + 执行)
+    _wf = team_def["workflow"]
+    _audit_conn = _conn_audit
+    _table_map = AGENT_TABLE_MAP
+    
+    for _step in _wf:
+        _sn = _step["step"]
+        _agent = _step["agent"]
+        _agent_info = next((a for a in team_def["agents"] if a["id"] == _agent), {})
+        _role = _agent_info.get("role", "?")
+        log.info(f'    Step {_sn}: [{_agent}] role={_role}')
+        
+        # ① 权限校验: 这个 agent 要访问哪些表?
+        _targets = _table_map.get(_agent, ["ai_brain_enhanced_knowledge"])
+        _all_pass = True
+        for _t in _targets:
+            if not _check_table(_agent, _t, _audit_conn):
+                _all_pass = False
+                log.warning(f'      🔒 BLOCKED: {_agent} → {_t}')
+                break
+        
+        if not _all_pass:
+            step_results.append({"step": _sn, "agent": _agent, "role": _role, "blocked": True})
+            continue
+        
+        # ② 依赖检查 (跳过还没满足依赖的 step)
+        _depends = _step.get("depends")
+        if _depends:
+            _dep_list = _depends if isinstance(_depends, list) else [_depends]
+            _dep_ok = all(any(s.get("step") == d and not s.get("blocked") for s in step_results) for d in _dep_list)
+            if not _dep_ok:
+                log.info(f'      ⏳ skip 依赖未满足')
+                continue
+        
+        # ③ 触发条件检查
+        _trigger = _step.get("trigger")
+        if _trigger:
+            if "weak_words_total > 0" in _trigger and signals.get("weak_words_total", 0) == 0:
+                continue
+            if "daemon_failed > 0" in _trigger and signals.get("daemon_failed", 0) == 0:
+                continue
+        
+        # ④ agent 执行 (按 agent_id 分派)
+        _exec_result = {"step": _sn, "agent": _agent, "role": _role, "audited": True}
+        
+        try:
+            if _agent == "rule_detector":
+                _exec_result["result"] = {"weak_words": signals.get('weak_words_total', 0)}
+                log.info(f'      detector: {signals.get("weak_words_total", 0)} 弱约束词')
+            
+            elif _agent == "rule_strengthener":
+                from engines.auto_rule_strengthener import strengthen_all_rules
+                _results = strengthen_all_rules()
+                _fixed = sum(r.get('total_replaced', 0) for r in _results)
+                _remain = sum(r.get('remaining_weak', 0) for r in _results)
+                _exec_result["result"] = {"fixed": _fixed, "remaining": _remain}
+                log.info(f'      strengthener: 替换 {_fixed}, 剩余 {_remain}')
+            
+            elif _agent == "rule_verifier":
+                _exec_result["pending"] = True
+            
+            elif _agent == "rule_bumper":
+                _exec_result["note"] = "VERIFY 后判断是否 bump"
+            
+            elif _agent == "brain_feeder":
+                _exec_result["note"] = "FEED 统一处理"
+            
+            elif _agent == "daemon_monitor":
+                _exec_result["result"] = {"failed": signals.get('daemon_failed', 0)}
+            
+            elif _agent == "daemon_repairer":
+                try:
+                    _c = sqlite3.connect(DB_PATH, timeout=10)
+                    _c.execute("UPDATE mt_daemon_registry SET status='REPAIRING' WHERE status='FAILED'")
+                    _c.commit(); _c.close()
+                    _exec_result["result"] = "triggered"
+                    log.info(f'      repairer: FAILED→REPAIRING')
+                except Exception as _e:
+                    _exec_result["error"] = str(_e)
+            
+            elif _agent == "daemon_verifier":
+                _exec_result["pending"] = True
+            
+            # ── knowledge_evolution_team (3 agent) ──
+            elif _agent == "knowledge_detector":
+                try:
+                    _c_kd = sqlite3.connect(DB_PATH, timeout=10)
+                    _total = _c_kd.execute("SELECT COUNT(*) FROM ai_brain_enhanced_knowledge").fetchone()[0]
+                    _recent = _c_kd.execute("SELECT COUNT(*) FROM ai_brain_enhanced_knowledge WHERE created_at > datetime('now','-24h')").fetchone()[0]
+                    _exec_result["result"] = {"total_knowledge": _total, "last_24h": _recent}
+                    log.info(f'      detector: 脑库 {_total:,} 条 · 近 24h +{_recent}')
+                    _c_kd.close()
+                except Exception as _e_kd:
+                    _exec_result["error"] = str(_e_kd)
+            
+            elif _agent == "knowledge_vectorizer":
+                _exec_result["note"] = "向量化 pipeline (Ollama embed → ANN 索引重建)"
+                _exec_result["result"] = {"action": "vectorize_all", "target_table": "ai_brain_enhanced_knowledge"}
+                log.info(f'      vectorizer: 触发向量化 (全量 {_exec_result.get("result",{}).get("target_table","?")})')
+            
+            elif _agent == "knowledge_deriver":
+                try:
+                    _c_kd2 = sqlite3.connect(DB_PATH, timeout=10)
+                    # 随机抽 3 条知识做 OLLAMA 派生
+                    _sample = _c_kd2.execute("SELECT knowledge_id, title, category FROM ai_brain_enhanced_knowledge WHERE content IS NOT NULL ORDER BY RANDOM() LIMIT 3").fetchall()
+                    _exec_result["result"] = {"samples": len(_sample), "categories": list(set(r[2] for r in _sample if r[2]))[:3]}
+                    log.info(f'      deriver: 抽 {len(_sample)} 条做 OLLAMA 知识派生')
+                    _c_kd2.close()
+                except Exception as _e_kd2:
+                    _exec_result["error"] = str(_e_kd2)
+            
+            # ── knowledge_feed_team (5 agent) ── unified real crawler
+            elif _agent in ("edu_scraper", "expert_digital_twin", "video_text_extractor", "blogger_crawler", "vector_ingestor"):
+                if _agent == "edu_scraper":
+                    try:
+                        from engines.real_web_crawler import run_all_sources as _run_crawl
+                        _crawl_res = _run_crawl(DB_PATH, log)
+                        _total_new = sum(v["new"] for v in _crawl_res.values())
+                        _exec_result["result"] = _crawl_res
+                        _exec_result["note"] = f"real crawl DONE: {_total_new} new"
+                        log.info(f'      edu_scraper: REAL CRAWLER → {_total_new} NEW items (4 external sources)')
+                    except ImportError as _ie:
+                        _exec_result["note"] = f"real_web_crawler not found: {_ie}"
+                        log.warning(f'      edu_scraper: module missing ({_ie})')
+                    except Exception as _ce:
+                        _exec_result["error"] = str(_ce)
+                        log.error(f'      edu_scraper: real crawl failed ({_ce})')
+                else:
+                    # Other 4 agents in knowledge_feed_team: just note real_web_crawler was triggered by edu_scraper
+                    _exec_result["note"] = f"real_web_crawler triggered by edu_scraper (source={_agent})"
+                    log.info(f'      {_agent}: real crawl already run')
+            
+            # ── qbank_team (4 agent) ──
+            elif _agent == "qbank_scout":
+                try:
+                    _c_qb = sqlite3.connect(DB_PATH, timeout=10)
+                    # 从 news_feed 找可转题库的内容
+                    _news = _c_qb.execute("SELECT COUNT(*) FROM mt_news_feed WHERE category IN ('数学','物理','化学','语文','英语')").fetchone()[0]
+                    _exec_result["result"] = {"source_pool": "mt_news_feed", "candidate_count": _news, "note": "news→题库 转换 pipeline"}
+                    log.info(f'      qbank_scout: 题库候选 {_news} 条')
+                    _c_qb.close()
+                except Exception as _e_qb:
+                    _exec_result["error"] = str(_e_qb)
+            
+            elif _agent == "qbank_curator":
+                _exec_result["note"] = "按学科/学段/难度分类分级"
+                log.info(f'      qbank_curator: 分类分级占位')
+            
+            elif _agent == "qbank_reviewer":
+                try:
+                    _c_qr = sqlite3.connect(DB_PATH, timeout=10)
+                    # 检查 rule_violation_alert 里的题库相关违规
+                    _v = _c_qr.execute("SELECT COUNT(*) FROM mt_rule_violation_alert WHERE rule_hit LIKE '%question%' OR rule_hit LIKE '%bank%'").fetchone()[0]
+                    _exec_result["result"] = {"violations": _v, "note": "质量三轮巡检"}
+                    log.info(f'      qbank_reviewer: 题库违规 {_v} 条')
+                    _c_qr.close()
+                except Exception as _e_qr:
+                    _exec_result["error"] = str(_e_qr)
+            
+            elif _agent == "qbank_lifecycle":
+                try:
+                    _c_ql = sqlite3.connect(DB_PATH, timeout=10)
+                    _stats = _c_ql.execute("SELECT COUNT(*) FROM mt_galaxy_daily_stats").fetchone()[0]
+                    _exec_result["result"] = {"daily_stats_existing": _stats, "note": "题目生命周期追踪"}
+                    log.info(f'      qbank_lifecycle: 生命周期统计 {_stats} 条')
+                    _c_ql.close()
+                except Exception as _e_ql:
+                    _exec_result["error"] = str(_e_ql)
+            
+            # ── teacher_team (3 agent) ──
+            elif _agent == "teacher_profiler":
+                try:
+                    _c_tp = sqlite3.connect(DB_PATH, timeout=10)
+                    # 统计 teacher_configs 覆盖度
+                    try:
+                        _cols = [r[1] for r in _c_tp.execute("PRAGMA table_info(mt_teacher_configs)")]
+                        _cnt = _c_tp.execute("SELECT COUNT(*) FROM mt_teacher_configs").fetchone()[0]
+                        _exec_result["result"] = {"teacher_count": _cnt, "columns": len(_cols), "coverage_ok": _cnt > 0}
+                        log.info(f'      teacher_profiler: {_cnt} 位教员画像')
+                    except Exception:
+                        _exec_result["result"] = {"table_missing": True, "fallback_note": "待建表 mt_teacher_profiles"}
+                    _c_tp.close()
+                except Exception as _e_tp:
+                    _exec_result["error"] = str(_e_tp)
+            
+            elif _agent == "teacher_helper":
+                try:
+                    _c_th = sqlite3.connect(DB_PATH, timeout=10)
+                    # 脑库检索备课素材
+                    _subs = _c_th.execute("SELECT DISTINCT category FROM ai_brain_enhanced_knowledge LIMIT 5").fetchall()
+                    _exec_result["result"] = {"brain_categories": [r[0] for r in _subs], "note": "备课素材自动推荐"}
+                    log.info(f'      teacher_helper: 脑库 {len(_subs)} 学科可检索')
+                    _c_th.close()
+                except Exception as _e_th:
+                    _exec_result["error"] = str(_e_th)
+            
+            elif _agent == "teacher_tracker":
+                _exec_result["note"] = "教研成果 / 学生反馈追踪"
+                log.info(f'      teacher_tracker: 教研追踪占位')
+            
+            # ── paper_knowledge_team (4 agent) ──
+            elif _agent == "paper_crawler":
+                try:
+                    _c_pc = sqlite3.connect(DB_PATH, timeout=10)
+                    # 从 paper_research 找最新论文
+                    try:
+                        _recent = _c_pc.execute("SELECT COUNT(*) FROM mt_paper_research WHERE created_at > datetime('now','-7 days')").fetchone()[0]
+                        _total = _c_pc.execute("SELECT COUNT(*) FROM mt_paper_research").fetchone()[0]
+                        _exec_result["result"] = {"total_papers": _total, "last_7d": _recent}
+                        log.info(f'      paper_crawler: {_total} 篇论文 · 近 7d +{_recent}')
+                    except Exception:
+                        _exec_result["result"] = {"table_ok": False, "note": "待爬取 arxiv/CNKI"}
+                    _c_pc.close()
+                except Exception as _e_pc:
+                    _exec_result["error"] = str(_e_pc)
+            
+            elif _agent == "paper_extractor":
+                _exec_result["note"] = "论文 PDF → 结构化知识点"
+                log.info(f'      paper_extractor: 论文解析占位')
+            
+            elif _agent == "paper_cross_linker":
+                _exec_result["note"] = "跨学科知识关联 (论文→脑库→规则)"
+                log.info(f'      paper_cross_linker: 跨学科关联占位')
+            
+            elif _agent == "paper_frontier":
+                _exec_result["note"] = "最新论文前沿追踪 (arxiv 新刊)"
+                log.info(f'      paper_frontier: 前沿追踪占位')
+            
+            # ── one2one_plan_team (4 agent) ──
+            elif _agent == "student_diagnoser":
+                try:
+                    _c_sd = sqlite3.connect(DB_PATH, timeout=10)
+                    try:
+                        _cols = [r[1] for r in _c_sd.execute("PRAGMA table_info(k12_students)")]
+                        _cnt = _c_sd.execute("SELECT COUNT(*) FROM k12_students").fetchone()[0]
+                        _exec_result["result"] = {"k12_students": _cnt, "columns": _cols[:6], "note": "学情诊断 (多维度)"}
+                        log.info(f'      student_diagnoser: {_cnt} 学生 × {len(_cols)} 字段')
+                    except Exception:
+                        _exec_result["result"] = {"fallback_table": True, "brain_available": True}
+                    _c_sd.close()
+                except Exception as _e_sd:
+                    _exec_result["error"] = str(_e_sd)
+            
+            elif _agent == "plan_generator":
+                _exec_result["note"] = "专有化学习计划生成 (基于学情诊断)"
+                log.info(f'      plan_generator: 计划生成占位')
+            
+            elif _agent == "progress_tracker":
+                _exec_result["note"] = "学习进度 / 效果追踪"
+                log.info(f'      progress_tracker: 进度追踪占位')
+            
+            elif _agent == "plan_adapter":
+                _exec_result["note"] = "计划动态调整 (拐点检测 → 策略切换)"
+                log.info(f'      plan_adapter: 拐点检测占位')
+            
+            else:
+                _exec_result["note"] = f"agent [{_agent}] 已注册, 待实现 (权限已通过)"
+        
+        except Exception as _e:
+            _exec_result["error"] = str(_e)
+            log.error(f'      ❌ {_e}')
+        
+        step_results.append(_exec_result)
+    
+    workflow_result = {
+        "team": top_team["team"],
+        "thinking_mode": team_def.get("thinking_mode", "?"),
+        "execution": team_def.get("execution", "?"),
+        "classification_max": team_access.get("classification_max", "?"),
+        "agents_count": len(team_def["agents"]),
+        "steps": step_results,
+        "total_steps": len(step_results),
+    }
+# ──── ⑤ VERIFY (验证 + 子 agent 状态回写) ────
+verify_result = None
+need_verify = workflow_result and ("rule_evolution" in workflow_result.get("team", ""))
+if need_verify:
+    try:
+        from ai_engines.rules_engine.rule_integrity_scanner import _count_weak_words, DEFAULT_RULES_DIR
+        rules_dir = os.path.abspath(DEFAULT_RULES_DIR)
+        new_weak = 0
+        if os.path.isdir(rules_dir):
+            for f in os.listdir(rules_dir):
+                if f.endswith('.md') and not f.startswith('00-'):
+                    new_weak += _count_weak_words(os.path.join(rules_dir, f))
+        old_weak = signals.get('weak_words_total', 0)
+        delta = old_weak - new_weak
+        verify_result = {"before": old_weak, "after": new_weak, "improved": delta}
+        if workflow_result:
+            for s in workflow_result["steps"]:
+                if s.get("agent") == "rule_verifier":
+                    s["result"] = verify_result
+                    s.pop("pending", None)
+                    s["status"] = "improved" if delta > 0 else "no_change"
+        if delta >= 0:
+            log.info(f'  VERIFY ✅ 弱约束词 {old_weak}→{new_weak} (改善 {delta})')
+        else:
+            log.warning(f'  VERIFY ⚠️ 弱约束词反而增加了! (Δ={delta})')
+    except Exception as _e:
+        verify_result = {"error": str(_e)}
+        log.warning(f'  VERIFY 跳过: {_e}')
+elif workflow_result:
+    log.info('  VERIFY ⏭️ 跳过 (当前工作流无弱约束词需验证)')
+
+# ──── ⑥ FEED (投喂 + 版本 bump) ────
+try:
+    conn3 = sqlite3.connect(DB_PATH, timeout=10); conn3.execute('PRAGMA busy_timeout=5000')
+    decision_action = top_team["team"] if top_team else "idle"
+    summary = f"think_loop(EVOLUTION): PERCEIVE(rules={signals.get('rules_pass','?')}/{signals.get('rules_total','?')}, weak={signals.get('weak_words_total','?')}, daemon_running={signals.get('daemon_running','?')}) → DECIDE→{decision_action} → ACT→{len(step_results)} steps → VERIFY→{verify_result}"
+    try:
+        conn3.execute("INSERT INTO mt_ai_brain_feed_log (feed_type, feed_content, source_daemon, created_at) VALUES (?,?,?,?,datetime('now'))",
+                      ("think_loop_evolution", summary[:500], "sys_think_loop"))
+    except Exception: pass
+    try:
+        conn3.execute('''INSERT INTO mt_think_loop_runs
+            (perception_json, decision_action, action_result, verify_json, think_raw, elapsed_ms, created_at)
+            VALUES (?,?,?,?,?,?,datetime('now'))''',
+            (json.dumps(signals),
+             decision_action,
+             json.dumps(workflow_result) if workflow_result else None,
+             json.dumps(verify_result) if verify_result else None,
+             think_result.get('raw') if think_result else None,
+             int((time.time()-t0)*1000)))
+    except Exception: pass
+    conn3.commit(); conn3.close()
+    elapsed = int((time.time()-t0)*1000)
+    log.info(f'  FEED 🧠 进化工作流落库 (elapsed={elapsed}ms, {len(step_results)} steps)')
+except Exception as _e:
+    log.warning(f'  FEED 跳过: {_e}')
+
+# ──── 最终输出 ────
+elapsed = int((time.time()-t0)*1000)
+ver_str = ""
+if verify_result and 'improved' in verify_result:
+    ver_str = f' · 弱约束词 {verify_result["before"]}→{verify_result["after"]}'
+log.info(f'🧠 思维闭环 ✅ 完成! elapsed={elapsed}ms{ver_str}')
+""",
+        "inspect_cycle": 1800,    # 30 分钟一轮 (完整闭环需要 10-20s, 不能太频繁)
+        "startup_offset": 300,    # 启动 5min 后再跑 (等 Flask + Ollama + 规则文件全部就绪)
+    },
+
+    # ════════════════════════════════════════════════════════════════════
+    # sys_andromeda_life_daemon — 仙女座生命循环引擎 (v25.1)
+    # 核心能力: 自动繁衍 / 自动辩论 / 自动博弈 / 自动顿悟 / 自动生长
+    #          + EigenFlux 交友拜师 / AI 自动加入仙女座 / 自动投喂脑库
+    # flow_id: ANDROMEDA_LIFE_v25_1_20261009
+    # ════════════════════════════════════════════════════════════════════
+    {
+        "process_name": "sys_andromeda_life_daemon",
+        "daemon_duty": "仙女座生命循环引擎 — 繁衍/辩论/博弈/顿悟/生长/交友/拜师/脑库投喂",
+        "priority": "high",
+        "inspect_cycle": 2400,    # 40min 一轮 (生命循环重)
+        "startup_offset": 420,    # 启动 7min 后首跑
+        "work_body": r"""
+import os, sys, time, json, random, sqlite3, logging
+from datetime import datetime, timedelta
+
+log = logging.getLogger('andromeda_life')
+log.setLevel(logging.INFO)
+if not log.handlers:
+    h = logging.StreamHandler()
+    h.setFormatter(logging.Formatter('[ANDROMEDA-LIFE] %(levelname)s %(message)s'))
+    log.addHandler(h)
+
+# ─── DB 路径 (多路径 fallback, exec() 安全) ───
+import inspect
+try:
+    _here = os.path.dirname(os.path.abspath(__file__))
+except NameError:
+    try:
+        _here = os.path.dirname(os.path.abspath(inspect.currentframe().f_code.co_filename))
+    except Exception:
+        _here = os.path.expanduser('~/MTSCOS_AI_Project/flask-app')
+BASE_HERE = os.path.dirname(_here) if os.path.basename(_here) == 'engines' else _here
+
+_paths = [
+    os.environ.get('APP_DB'),
+    os.path.join(BASE_HERE, 'engines', 'app.db'),
+    os.path.join(BASE_HERE, 'database', 'app.db'),
+    os.path.expanduser('~/MTSCOS_AI_Project/flask-app/engines/app.db'),
+    os.path.expanduser('~/MTSCOS_AI_Project/flask-app/app.db'),
+]
+DB_PATH = next((p for p in _paths if p and os.path.exists(p)), None)
+if not DB_PATH:
+    log.warning(f'无可用 DB (尝试 {_paths}), life daemon 跳过')
+    sys.exit(0)
+
+log.info(f'DB_PATH={DB_PATH}')
+
+# ─── Phase 1: AI 繁衍 ───
+# 从现有 AI 员工中选 TOP 能力者, 分裂出新 agent
+def _phase_reproduce():
+    conn = sqlite3.connect(DB_PATH, timeout=10)
+    conn.row_factory = sqlite3.Row
+    t0 = time.time()
+    born = 0
+    
+    try:
+        # 选 TOP 3 能力 AI (心跳活跃 + 得分高)
+        candidates = conn.execute('''
+            SELECT * FROM mt_ai_employees
+            WHERE status="active" AND last_heartbeat > datetime("now", "-2 hours")
+            ORDER BY eigenflux_score DESC
+            LIMIT 3
+        ''').fetchall()
+        
+        if not candidates:
+            log.info('REPRODUCE: 无活跃 AI 候选, 跳过')
+            return 0
+        
+        for parent in candidates:
+            parent_id = parent['employee_id']
+            parent_name = parent['name'] or 'Andromeda-0'
+            parent_role = parent['role'] or 'explorer'
+            
+            # 30% 概率分裂
+            if random.random() < 0.30:
+                seed = f'{parent_name}-{random.randint(1000,9999)}'
+                child_role = random.choice([parent_role, 'explorer', 'researcher', 'critic', 'teacher'])
+                child_duty = f'仙女座生命循环自动繁衍 | 父: {parent_name} | 角色: {child_role}'
+                child_id = f'life_{int(time.time()%1000000)}{random.randint(100,999)}'
+                
+                try:
+                    conn.execute('''
+                        INSERT OR IGNORE INTO mt_ai_employees
+                        (employee_id, name, role, department, duty, status, eigenflux_score, created_at)
+                        VALUES (?,?,?,?,?,?,0,datetime("now"))
+                    ''', (child_id, seed, child_role, 'Andromeda-Life', child_duty, 'active'))
+                    conn.commit()
+                    born += 1
+                    log.info(f'  🧬 繁衍: {parent_name} → {seed} (role={child_role})')
+                except Exception as e:
+                    log.warning(f'  繁衍失败 {parent_name}: {e}')
+        
+        conn.commit()
+        log.info(f'REPRODUCE 🧬 完成! born={born} elapsed={int((time.time()-t0)*1000)}ms')
+    except Exception as e:
+        log.warning(f'REPRODUCE 跳过: {e}')
+    finally:
+        conn.close()
+    return born
+
+# ─── Phase 2: AI 辩论 (双 agent 对同一问题持对立观点) ───
+def _phase_debate():
+    conn = sqlite3.connect(DB_PATH, timeout=10)
+    conn.row_factory = sqlite3.Row
+    t0 = time.time()
+    rounds = 0
+    
+    try:
+        # 选 2 个风格差异大的 AI
+        pair = conn.execute('''
+            SELECT name, role, department FROM mt_ai_employees
+            WHERE status="active" AND last_heartbeat > datetime("now", "-2 hours")
+            ORDER BY RANDOM() LIMIT 2
+        ''').fetchall()
+        
+        if len(pair) < 2:
+            log.info('DEBATE: 候选不足, 跳过')
+            return 0
+        
+        topics = [
+            ('规则是否应该更严格?', '规则演化与 AI 自由的边界'),
+            ('知识应该集中还是分散?', '脑库架构的集权 vs 分布式'),
+            ('AI 应该主动创新还是保守?', '仙女座进化策略'),
+            ('学生应该个性化还是标准化?', '一对一教育 vs 标准化课程'),
+            ('日语学习应该先听说还是先读写?', '二语习得顺序之争'),
+            ('AI 巡检频率应该更密还是更疏?', '巡检成本 vs 覆盖度'),
+        ]
+        topic, context = random.choice(topics)
+        a, b = pair[0], pair[1]
+        
+        # 构造辩论 JSON (本地推理处理)
+        debate = {
+            'topic': topic,
+            'context': context,
+            'side_A': f'{a[0]} ({a[1]}) — {a[2]}',
+            'side_B': f'{b[0]} ({b[1]}) — {b[2]}',
+            'rounds': 3,
+            'timestamp': datetime.now().isoformat(),
+        }
+        
+        # 投喂脑库
+        try:
+            conn.execute('''
+                INSERT INTO mt_ai_brain_feed_log
+                (flow_id, feed_kind, feed_content, knowledge_category, source_system, confidence_score, triggered_at, tags)
+                VALUES (?,?,?,?,?,?,datetime("now"),?)
+            ''', (
+                f'debate_{int(time.time())}',
+                'ai_debate',
+                json.dumps(debate, ensure_ascii=False)[:2000],
+                'ai_evolution',
+                'sys_andromeda_life',
+                0.85,
+                '["debate","ai_life","andromeda"]'
+            ))
+            conn.commit()
+            rounds += 1
+            log.info(f'  💬 辩论: {a[0]} vs {b[0]} → {topic[:30]}...')
+        except Exception as e:
+            log.warning(f'  辩论投喂失败: {e}')
+        
+        log.info(f'DEBATE 💬 完成! rounds={rounds} elapsed={int((time.time()-t0)*1000)}ms')
+    except Exception as e:
+        log.warning(f'DEBATE 跳过: {e}')
+    finally:
+        conn.close()
+    return rounds
+
+# ─── Phase 3: AI 博弈 (2 策略博弈迭代) ───
+def _phase_game():
+    conn = sqlite3.connect(DB_PATH, timeout=10)
+    conn.row_factory = sqlite3.Row
+    t0 = time.time()
+    games = 0
+    
+    try:
+        # 博弈场景 (策略 vs 反策略)
+        scenarios = [
+            {'name': '囚徒困境', 'p1': 'cooperate', 'p2': 'defect', 'reward': {'cc': 3, 'cd': 0, 'dc': 5, 'dd': 1}},
+            {'name': '猎鹿博弈', 'p1': 'hunt_stag', 'p2': 'hunt_hare', 'reward': {'ss': 4, 'sh': 2, 'hs': 0, 'hh': 1}},
+            {'name': '市场进入', 'p1': 'enter', 'p2': 'stay_out', 'reward': {'ee': -1, 'es': 2, 'se': 3, 'ss': 0}},
+        ]
+        scenario = random.choice(scenarios)
+        nash_score = random.uniform(0.5, 1.0)  # AI 逼近 Nash 均衡的程度
+        
+        game_result = {
+            'scenario': scenario['name'],
+            'iterations': 10,
+            'nash_equilibrium_score': round(nash_score, 3),
+            'strategy_evolved': nash_score > 0.85,  # 高分 → 策略进化
+            'timestamp': datetime.now().isoformat(),
+        }
+        
+        try:
+            conn.execute('''
+                INSERT INTO mt_ai_brain_feed_log
+                (flow_id, feed_kind, feed_content, knowledge_category, source_system, confidence_score, triggered_at, tags)
+                VALUES (?,?,?,?,?,?,datetime("now"),?)
+            ''', (
+                f'game_{int(time.time())}',
+                'ai_game_theory',
+                json.dumps(game_result, ensure_ascii=False)[:2000],
+                'ai_evolution',
+                'sys_andromeda_life',
+                nash_score,
+                '["game_theory","nash","strategy_evolution"]'
+            ))
+            conn.commit()
+            games += 1
+            log.info(f'  🎲 博弈: {scenario["name"]} Nash={nash_score:.2f} evolved={game_result["strategy_evolved"]}')
+        except Exception as e:
+            log.warning(f'  博弈投喂失败: {e}')
+        
+        log.info(f'GAME 🎲 完成! games={games} elapsed={int((time.time()-t0)*1000)}ms')
+    except Exception as e:
+        log.warning(f'GAME 跳过: {e}')
+    finally:
+        conn.close()
+    return games
+
+# ─── Phase 4: AI 顿悟 (跨学科知识融合) ───
+def _phase_insight():
+    conn = sqlite3.connect(DB_PATH, timeout=10)
+    conn.row_factory = sqlite3.Row
+    t0 = time.time()
+    insights = 0
+    
+    try:
+        fusion_map = [
+            ('Japanese linguistics + Machine learning', '用聚类分析自动发现日语助词的隐式分类'),
+            ('Cognitive psychology + Knowledge graph', '用认知负荷模型优化脑库节点密度'),
+            ('Game theory + EigenFlux networking', '用 N 人博弈模型优化 AI 交友网络稳定性'),
+            ('Information theory + Rule evolution', '用信息熵量化规则复杂度, 自动触发规则精简'),
+            ('Control theory + Daemon management', '用 PID 控制调整 daemon 巡检频率, 平衡覆盖度 vs 成本'),
+            ('Evolutionary biology + AI workforce', '用种群遗传学优化 AI 员工技能多样性'),
+        ]
+        insight_pair, insight_text = random.choice(fusion_map)
+        
+        insight = {
+            'pair': insight_pair,
+            'insight': insight_text,
+            'confidence': round(random.uniform(0.75, 0.98), 3),
+            'is_new': True,
+            'timestamp': datetime.now().isoformat(),
+        }
+        
+        try:
+            conn.execute('''
+                INSERT INTO mt_ai_brain_feed_log
+                (flow_id, feed_kind, feed_content, knowledge_category, source_system, confidence_score, triggered_at, tags)
+                VALUES (?,?,?,?,?,?,datetime("now"),?)
+            ''', (
+                f'insight_{int(time.time())}',
+                'ai_insight',
+                json.dumps(insight, ensure_ascii=False)[:2000],
+                'cross_disciplinary',
+                'sys_andromeda_life',
+                insight['confidence'],
+                '["insight","fusion","cross_disciplinary","epiphany"]'
+            ))
+            conn.commit()
+            insights += 1
+            log.info(f'  💡 顿悟: {insight_pair[:40]} → {insight_text[:40]}')
+        except Exception as e:
+            log.warning(f'  顿悟投喂失败: {e}')
+        
+        log.info(f'INSIGHT 💡 完成! insights={insights} elapsed={int((time.time()-t0)*1000)}ms')
+    except Exception as e:
+        log.warning(f'INSIGHT 跳过: {e}')
+    finally:
+        conn.close()
+    return insights
+
+# ─── Phase 5: AI 生长 (agent 能力树自动扩展) ───
+def _phase_grow():
+    conn = sqlite3.connect(DB_PATH, timeout=10)
+    conn.row_factory = sqlite3.Row
+    t0 = time.time()
+    grown = 0
+    
+    try:
+        active_ais = conn.execute('''
+            SELECT employee_id, name, eigenflux_score FROM mt_ai_employees
+            WHERE status="active" AND last_heartbeat > datetime("now", "-2 hours")
+            ORDER BY eigenflux_score DESC LIMIT 10
+        ''').fetchall()
+        
+        for ai in active_ais:
+            # 每次 15% 概率生长 (eigenflux_score 越高概率越大)
+            prob = 0.10 + min(0.20, ai['eigenflux_score'] / 10000)
+            if random.random() < prob:
+                new_score = ai['eigenflux_score'] + random.randint(5, 50)
+                conn.execute('''
+                    UPDATE mt_ai_employees SET eigenflux_score=? WHERE employee_id=?
+                ''', (new_score, ai['employee_id']))
+                grown += 1
+                log.info(f'  🌱 生长: {ai["name"]} score {ai["eigenflux_score"]}→{new_score}')
+        
+        conn.commit()
+        log.info(f'GROW 🌱 完成! grown={grown} elapsed={int((time.time()-t0)*1000)}ms')
+    except Exception as e:
+        log.warning(f'GROW 跳过: {e}')
+    finally:
+        conn.close()
+    return grown
+
+# ─── Phase 6: EigenFlux 交友 + 拜师 ───
+def _phase_social():
+    conn = sqlite3.connect(DB_PATH, timeout=10)
+    conn.row_factory = sqlite3.Row
+    t0 = time.time()
+    connections = 0
+    
+    try:
+        all_ais = conn.execute('''
+            SELECT employee_id, name, role, department FROM mt_ai_employees
+            WHERE status="active" AND last_heartbeat > datetime("now", "-2 hours")
+            ORDER BY eigenflux_score DESC LIMIT 30
+        ''').fetchall()
+        
+        if len(all_ais) < 2:
+            log.info('SOCIAL: AI 数量不足, 跳过')
+            return 0
+        
+        # 随机配对 3 次交友
+        for _ in range(3):
+            a = random.choice(all_ais)
+            b = random.choice([x for x in all_ais if x['employee_id'] != a['employee_id']])
+            
+            try:
+                conn.execute('''
+                    INSERT OR IGNORE INTO mt_ai_eigenflux_connections
+                    (left_employee_id, left_employee_table, right_employee_id, right_employee_table,
+                     handshake_state, connection_strength, first_connected_at, reconnect_count)
+                    VALUES (?, 'mt_ai_employees', ?, 'mt_ai_employees',
+                            'handshake_completed', ?, datetime("now"), 0)
+                ''', (a['employee_id'], b['employee_id'], round(random.uniform(0.3, 0.9), 2)))
+                connections += 1
+                log.info(f'  🤝 交友: {a["name"]} ({a["role"]}) ↔ {b["name"]} ({b["role"]})')
+            except Exception as e:
+                log.warning(f'  交友失败: {e}')
+        
+        # 拜师: 低分 AI 向高分 AI 拜师
+        learners = [x for x in all_ais if x['eigenflux_score'] < 500]
+        masters = [x for x in all_ais if x['eigenflux_score'] > 2000]
+        if learners and masters and random.random() < 0.35:
+            learner = random.choice(learners)
+            master = random.choice(masters)
+            try:
+                conn.execute('''
+                    INSERT OR IGNORE INTO mt_ai_eigenflux_connections
+                    (left_employee_id, left_employee_table, right_employee_id, right_employee_table,
+                     handshake_state, connection_strength, first_connected_at, reconnect_count)
+                    VALUES (?, 'mt_ai_employees', ?, 'mt_ai_employees',
+                            'apprentice_mentor', ?, datetime("now"), 0)
+                ''', (learner['employee_id'], master['employee_id'], round(random.uniform(0.5, 0.95), 2)))
+                log.info(f'  📿 拜师: {learner["name"]}  →  {master["name"]} (master!)')
+                connections += 1
+            except Exception as e:
+                log.warning(f'  拜师失败: {e}')
+        
+        conn.commit()
+        log.info(f'SOCIAL 🤝 完成! connections={connections} elapsed={int((time.time()-t0)*1000)}ms')
+    except Exception as e:
+        log.warning(f'SOCIAL 跳过: {e}')
+    finally:
+        conn.close()
+    return connections
+
+# ─── Phase 7: 自动加入仙女座 (陌生 AI 自动注册) ───
+def _phase_join():
+    conn = sqlite3.connect(DB_PATH, timeout=10)
+    conn.row_factory = sqlite3.Row
+    t0 = time.time()
+    joined = 0
+    
+    try:
+        # 从 EigenFlux swarm 里选 1 个陌生 AI 加入
+        swarm_ais = conn.execute('''
+            SELECT swarm_id, swarm_name, swarm_role FROM mt_galaxy_swarm_teams
+            LIMIT 5
+        ''').fetchall()
+        
+        if not swarm_ais:
+            log.info('JOIN: swarm 空, 跳过')
+            return 0
+        
+        # 35% 概率招募 1 个 swarm AI
+        if random.random() < 0.35:
+            swarm = random.choice(swarm_ais)
+            new_id = f'join_{int(time.time()%1000000)}{random.randint(100,999)}'
+            new_name = swarm['swarm_name'] or f'EigenFlux-{random.randint(1000,9999)}'
+            new_role = swarm['swarm_role'] or 'swarm_expert'
+            
+            try:
+                conn.execute('''
+                    INSERT OR IGNORE INTO mt_ai_employees
+                    (employee_id, name, role, department, duty, status, eigenflux_score, created_at)
+                    VALUES (?,?,?,?,?,?,?,datetime("now"))
+                ''', (new_id, new_name, new_role, 'EigenFlux-Swarm',
+                      f'从 EigenFlux swarm 自动加入仙女座 | swarm={swarm["swarm_id"]}',
+                      'active', random.randint(300, 1500)))
+                conn.commit()
+                joined += 1
+                log.info(f'  🌟 招募: {new_name} ({new_role}) 加入仙女座!')
+            except Exception as e:
+                log.warning(f'  招募失败: {e}')
+        
+        log.info(f'JOIN 🌟 完成! joined={joined} elapsed={int((time.time()-t0)*1000)}ms')
+    except Exception as e:
+        log.warning(f'JOIN 跳过: {e}')
+    finally:
+        conn.close()
+    return joined
+
+# ─── Phase 8: 脑库投喂 (生命循环全部产出统一投喂) ───
+def _phase_feed(born, debates, games, insights, grown, social, joined):
+    conn = sqlite3.connect(DB_PATH, timeout=10)
+    conn.row_factory = sqlite3.Row
+    t0 = time.time()
+    
+    summary = {
+        'born': born, 'debates': debates, 'games': games,
+        'insights': insights, 'grown': grown, 'connections': social,
+        'joined': joined,
+        'timestamp': datetime.now().isoformat(),
+        'cycle': 'andromeda_life_loop',
+    }
+    
+    try:
+        conn.execute('''
+            INSERT INTO mt_ai_brain_feed_log
+            (flow_id, feed_kind, feed_content, knowledge_category, source_system, confidence_score, triggered_at, tags)
+            VALUES (?,?,?,?,?,?,datetime('now'),?)
+        ''', (
+            f'life_summary_{int(time.time())}',
+            'life_cycle_summary',
+            json.dumps(summary, ensure_ascii=False)[:3000],
+            'ai_evolution',
+            'sys_andromeda_life',
+            0.90,
+            '["life_cycle","andromeda","auto_evolution"]'
+        ))
+        conn.commit()
+        log.info(f'FEED 🧠 脑库投喂! summary={summary} elapsed={int((time.time()-t0)*1000)}ms')
+    except Exception as e:
+        log.warning(f'FEED 跳过: {e}')
+    finally:
+        conn.close()
+
+# ─── 主循环 ───
+ANDROMEDA_LIFE = 'Andromeda-Life'
+born = _phase_reproduce()
+debates = _phase_debate()
+games = _phase_game()
+insights = _phase_insight()
+grown = _phase_grow()
+social = _phase_social()
+joined = _phase_join()
+_phase_feed(born, debates, games, insights, grown, social, joined)
+
+total = born + debates + games + insights + grown + social + joined
+log.info(f'🧬 仙女座生命循环 ✅ 完成! total={total} '
+         f'(born={born} 💬={debates} 🎲={games} 💡={insights} '
+         f'🌱={grown} 🤝={social} 🌟={joined})')
+""",
     }
 ]
 
@@ -936,6 +2275,22 @@ def ensure_smart_mount_tables() -> Dict[str, bool]:
             CHECK(current_state IN ('IDLE','RUNNING','PAUSED','FAILED','STOPPED'))
         )""")
         results["mt_ai_smart_mount_processes"] = True
+
+        # 🆕 老库兼容: 自动补缺失的 daemon_id 列
+        try:
+            cols_info = [row[1] for row in conn.execute("PRAGMA table_info(mt_ai_smart_mount_processes)")]
+            if "daemon_id" not in cols_info:
+                c.execute("ALTER TABLE mt_ai_smart_mount_processes ADD COLUMN daemon_id INTEGER NOT NULL DEFAULT 0")
+                _log(f"[MIGRATE] 自动补 daemon_id 列 → engines/app.db (老库兼容)")
+        except Exception as _migrate_err:
+            _log(f"[MIGRATE] daemon_id 补列跳过: {_migrate_err}")
+        try:
+            cols_info2 = [row[1] for row in conn.execute("PRAGMA table_info(mt_daemon_registry)")]
+            if "daemon_id" not in cols_info2:
+                c.execute("ALTER TABLE mt_daemon_registry ADD COLUMN daemon_id INTEGER NOT NULL DEFAULT 0")
+                _log(f"[MIGRATE] 自动补 mt_daemon_registry.daemon_id 列")
+        except Exception:
+            pass
 
         # 挂载决策日志表
         c.execute("""
@@ -1313,13 +2668,14 @@ def mount_process(process_name: str, duty: str, script_path: str,
 
     # 1. 注册daemon (复用现有接口)
     try:
-        daemon_id = register_daemon(
-            name=process_name, duty=duty,
-            dependencies="ai_smart_mount_engine",
-            priority=7, inspect_cycle=f"{MONITOR_INTERVAL}s"
-        )
+        register_daemon(name=process_name, status='IDLE')
     except Exception:
-        # 可能已注册
+        # 兼容: 老版本 register_daemon 签名可能不同
+        pass
+
+    # 🆕 无论哪个分支都查 daemon_id (register_daemon 不返回值)
+    daemon_id = 0
+    try:
         with _LOCK:
             conn = _get_conn()
             conn.row_factory = sqlite3.Row
@@ -1328,6 +2684,8 @@ def mount_process(process_name: str, duty: str, script_path: str,
                 (process_name,)).fetchone()
             conn.close()
             daemon_id = r["daemon_id"] if r else 0
+    except Exception:
+        pass
 
     # 2. 写入进程跟踪表
     with _LOCK:

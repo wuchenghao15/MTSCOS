@@ -13,7 +13,7 @@ i18n_engine — 文案管理 + 多语言翻译引擎 (v22.39.0)
 语言代码规范: zh_CN / ja_JP / en_US
 """
 import sqlite3 as _sqlite3
-from app.middlewares.system_container import system_container
+# [unused] from app.middlewares.system_container import system_container
 # [unused] import re as _re
 import os as _os
 
@@ -88,7 +88,7 @@ def t_kw(key, default, lang='zh_CN', **kwargs):
 def inject_i18n_into_app(app):
     """向 Flask app 的 Jinja2 环境注入 t / t_kw / current_lang / available_langs
     同时暴露 /api/i18n/dict 给前端 JS 拉取完整翻译字典。"""
-    import json as _json
+    # [unused] import json as _json
 
     def _build_i18n_dict(lang):
         """构建 {key: translation} 字典给前端 JS 使用"""
