@@ -11,6 +11,8 @@
     <link rel="stylesheet" href="/assets/css/mtscos-design-system.css">
     <link rel="stylesheet" href="/assets/font-awesome/css/all.min.css">
     <link rel="stylesheet" href="/assets/tailwind.min.css">
+    {# 🧊 仙女座冰山全站主题层 (最后加载, 渐进增强, 覆盖通用样式) #}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/andromeda-ice-theme.css') }}">
     <script>
         // 主题初始化（尽早执行避免 FOUC）
         (function(){
@@ -353,6 +355,8 @@
         })();
     </script>
     <script src="/static/js/utils/apiRequest.js"></script>
+    {# 🧊 仙女座自动美化引擎 (全站通用, defer 不阻塞首屏) #}
+    <script defer src="{{ url_for('static', filename='js/andromeda-beautify.js') }}"></script>
     {% block scripts %}{% endblock %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/lang_fab.css') }}">
 <div class="lang-bar" id="langBar">
