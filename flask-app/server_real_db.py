@@ -9780,6 +9780,88 @@ except Exception as _red_init_exc:
         pass
 
 
+# ╔══════════════════════════════════════════════════════════════╗
+# ║  🌌 仙女座 × 冰山 深度绑定 — 核心数据源                     ║
+# ║  _get_andromeda_state(): helper, 被 index() + API 复用       ║
+# ╚══════════════════════════════════════════════════════════════╝
+def _get_andromeda_state():
+    """仙女座实时状态聚合 (双 DB 搜索, fail-closed).
+    返回 (andromeda_state dict, andromeda_version str).
+    - daemon_running / daemon_total: mt_daemon_registry
+    - ai_employees: ai_employees 表
+    - brain_feeds: mt_ai_brain_feed_log
+    - tokens_saved: mt_local_ai_inference_log 累计
+    - patrol_runs: mt_patrol_runs
+    - daemon_pct: 运行百分比 (自动计算)
+    - health: ok/warn/crit (自动判断, 基于 daemon_pct)
+    - rule_changelog: mt_rule_changelog 最新版本号
+    """
+    state = {
+        'daemon_running': 0, 'daemon_total': 0,
+        'ai_employees': 0,
+        'brain_feeds': 0,
+        'tokens_saved': 0,
+        'patrol_runs': 0,
+        'daemon_pct': 0,
+        'health': 'ok',
+        'cache_at': None,
+    }
+    version = ''
+    try:
+        import sqlite3 as _sq
+        import time as _t
+        _base = os.path.dirname(os.path.abspath(__file__))
+        _db_candidates = [
+            os.path.join(_base, 'engines', 'app.db'),   # Mac mini 完整 AI 表
+            os.path.join(_base, 'database', 'app.db'),  # Flask 主库
+            os.path.join(_base, 'app.db'),              # fallback
+        ]
+        def _q(_dbp, _sql, _default=0):
+            try:
+                if not os.path.exists(_dbp): return _default
+                _c = sqlite3.connect(_dbp); _r = _c.execute(_sql).fetchone(); _c.close()
+                return (_r[0] if _r else _default) or _default
+            except Exception: return _default
+        for _dbp in _db_candidates:
+            if not os.path.exists(_dbp): continue
+            # daemon
+            if state['daemon_running'] == 0:
+                _v = _q(_dbp, "SELECT COUNT(*) FROM mt_daemon_registry WHERE status='RUNNING'")
+                if _v: state['daemon_running'] = _v
+            if state['daemon_total'] == 0:
+                _v = _q(_dbp, "SELECT COUNT(*) FROM mt_daemon_registry")
+                if _v: state['daemon_total'] = _v
+            # ai_employees
+            if state['ai_employees'] == 0:
+                _v = _q(_dbp, "SELECT COUNT(*) FROM ai_employees")
+                if _v: state['ai_employees'] = _v
+            # brain_feeds
+            if state['brain_feeds'] == 0:
+                _v = _q(_dbp, "SELECT COUNT(*) FROM mt_ai_brain_feed_log")
+                if _v: state['brain_feeds'] = _v
+            # tokens_saved
+            if state['tokens_saved'] == 0:
+                _v = _q(_dbp, "SELECT COALESCE(SUM(tokens_saved),0) FROM mt_local_ai_inference_log")
+                if _v: state['tokens_saved'] = _v
+            # patrol_runs
+            if state['patrol_runs'] == 0:
+                _v = _q(_dbp, "SELECT COUNT(*) FROM mt_patrol_runs")
+                if _v: state['patrol_runs'] = _v
+            # rule changelog version
+            if not version:
+                try:
+                    _c = sqlite3.connect(_dbp); _r = _c.execute("SELECT to_version FROM mt_rule_changelog ORDER BY created_at DESC LIMIT 1").fetchone(); _c.close()
+                    if _r and _r[0]: version = _r[0]
+                except Exception: pass
+        # 自动计算 daemon_pct + health
+        total = state['daemon_total'] or 1
+        state['daemon_pct'] = round(state['daemon_running'] / total * 100)
+        state['health'] = 'ok' if state['daemon_pct'] >= 90 else ('warn' if state['daemon_pct'] >= 60 else 'crit')
+        state['cache_at'] = int(_t.time())
+    except Exception: pass
+    return state, version
+
+
 @app.route('/')
 @app.route('/index')
 @system_container('homepage', require_auth='guest')
@@ -9928,71 +10010,8 @@ def index():
     # v22.3.2 修复: index.html 必须作为着陆页渲染（冰山唯一主页入口）
     # v22.3.3 增量: 仙女座实时状态注入（DB 驱动, fail-closed）
     # ═══════════════════════════════════════════════════════════
-    # ── 仙女座实时状态 (fail-closed, 双 DB 搜索) ──
-    andromeda_state = {
-        'daemon_running': 0, 'daemon_total': 0,
-        'ai_employees': 0,
-        'brain_feeds': 0,
-        'tokens_saved': 0,
-        'patrol_runs': 0,
-    }
-    andromeda_version = ''
-    try:
-        import sqlite3 as _idx_sq
-        _base = os.path.dirname(os.path.abspath(__file__))
-        # 优先 database/app.db (Flask 主库, 已被 Flask 进程连接)
-        _db_candidates = [
-            os.path.join(_base, 'database', 'app.db'),
-            os.path.join(_base, 'engines', 'app.db'),
-            os.path.join(_base, 'app.db'),
-        ]
-        def _try_db_query(_db_path, _sql, _default=0):
-            try:
-                if not os.path.exists(_db_path): return _default
-                _c = sqlite3.connect(_db_path)
-                _c.row_factory = sqlite3.Row
-                _r = _c.execute(_sql).fetchone()
-                _v = _r[0] if _r else _default
-                _c.close()
-                return _v or _default
-            except Exception: return _default
-        # 遍历所有 DB, 有数据就用
-        for _dbp in _db_candidates:
-            if not os.path.exists(_dbp): continue
-            # daemon
-            if andromeda_state['daemon_running'] == 0:
-                _v = _try_db_query(_dbp, "SELECT COUNT(*) FROM mt_daemon_registry WHERE status='RUNNING'")
-                if _v: andromeda_state['daemon_running'] = _v
-            if andromeda_state['daemon_total'] == 0:
-                _v = _try_db_query(_dbp, "SELECT COUNT(*) FROM mt_daemon_registry")
-                if _v: andromeda_state['daemon_total'] = _v
-            # ai_employees
-            if andromeda_state['ai_employees'] == 0:
-                _v = _try_db_query(_dbp, "SELECT COUNT(*) FROM ai_employees")
-                if _v: andromeda_state['ai_employees'] = _v
-            # brain_feeds
-            if andromeda_state['brain_feeds'] == 0:
-                _v = _try_db_query(_dbp, "SELECT COUNT(*) FROM mt_ai_brain_feed_log")
-                if _v: andromeda_state['brain_feeds'] = _v
-            # tokens_saved
-            if andromeda_state['tokens_saved'] == 0:
-                _v = _try_db_query(_dbp, "SELECT COALESCE(SUM(tokens_saved),0) FROM mt_local_ai_inference_log")
-                if _v: andromeda_state['tokens_saved'] = _v
-            # patrol_runs
-            if andromeda_state['patrol_runs'] == 0:
-                _v = _try_db_query(_dbp, "SELECT COUNT(*) FROM mt_patrol_runs")
-                if _v: andromeda_state['patrol_runs'] = _v
-            # rule changelog (取最新版本)
-            if not andromeda_version:
-                try:
-                    _c = sqlite3.connect(_dbp)
-                    _c.row_factory = sqlite3.Row
-                    _r = _c.execute("SELECT to_version FROM mt_rule_changelog ORDER BY created_at DESC LIMIT 1").fetchone()
-                    if _r and _r['to_version']: andromeda_version = _r['to_version']
-                    _c.close()
-                except Exception: pass
-    except Exception:
-        pass
+    # ── 仙女座实时状态 (🌌 深度绑定: 复用 _get_andromeda_state helper) ──
+    andromeda_state, andromeda_version = _get_andromeda_state()
 
     # 安全收集所有可用变量, 缺失的给默认值, 避免 Jinja2/render_template NameError
     _g = dict(globals())
@@ -10037,6 +10056,61 @@ def index():
 # 独立模板 sa_dashboard.html，不复用 index.html
 # 访问控制：双密钥在线 + 127.0.0.1 loopback（与首页跳转条件一致），否则 403
 # ════════════════════════════════════════════════════════════════════
+
+# ════════════════════════════════════════════════════════════════════
+# 🌌 仙女座 × 冰山 深度绑定 API — 实时数据管道
+# GET /api/andromeda/state  → JSON (andromeda_state + version)
+# GET /api/andromeda/health → 极简健康度 (daemon_pct + health)
+# 任何页面可以 poll 这个端点刷新状态条 / 健康度条 / 徽章数字
+# ════════════════════════════════════════════════════════════════════
+@app.route('/api/andromeda/state', methods=['GET'])
+def api_andromeda_state():
+    """仙女座实时状态 JSON 端点 — 冰山全站页面可轮询.
+    完整数据: daemon_running/total + ai_employees + brain_feeds
+             + tokens_saved + patrol_runs + daemon_pct + health.
+    额外: version + cache_at (客户端可做缓存).
+    """
+    try:
+        state, version = _get_andromeda_state()
+        state['version'] = version
+        # CORS: 允许同域任何页面访问
+        resp = jsonify({'success': True, 'data': state})
+        resp.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate'
+        resp.headers['X-Andromeda-Cache'] = str(state.get('cache_at', 0))
+        return resp
+    except Exception as e:
+        # fail-closed: 返回上一次的默认值, 不阻断客户端
+        return jsonify({
+            'success': False,
+            'data': {'daemon_running': 0, 'daemon_total': 0, 'daemon_pct': 0,
+                     'health': 'crit', 'ai_employees': 0, 'brain_feeds': 0,
+                     'tokens_saved': 0, 'patrol_runs': 0, 'cache_at': None},
+            'error': str(e)[:120]
+        }), 503
+
+
+@app.route('/api/andromeda/health', methods=['GET'])
+def api_andromeda_health():
+    """极简健康度端点 — 只返回 daemon 状态, 适合高频轮询.
+    客户端用这个刷新状态条/健康度条, 省带宽.
+    """
+    try:
+        state, _ = _get_andromeda_state()
+        slim = {
+            'daemon_running': state['daemon_running'],
+            'daemon_total': state['daemon_total'],
+            'daemon_pct': state['daemon_pct'],
+            'health': state['health'],
+            'cache_at': state.get('cache_at'),
+        }
+        resp = jsonify(slim)
+        resp.headers['Cache-Control'] = 'no-store'
+        return resp
+    except Exception:
+        return jsonify({'daemon_running': 0, 'daemon_total': 0,
+                        'daemon_pct': 0, 'health': 'crit', 'cache_at': None}), 503
+
+
 def _sa_safe_next(raw_next):
     """登录回跳白名单：仅允许站内相对路径（以/开头且非//），防开放重定向。"""
     try:
