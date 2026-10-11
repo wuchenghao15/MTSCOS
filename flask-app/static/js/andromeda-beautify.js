@@ -187,6 +187,56 @@ function entranceSweep() {
     });
 }
 
+// ── 🌌 仙女座深度绑定: 实时数据轮询 ──
+// 30s setTimeout 循环 (非 setInterval, 防请求堆积)
+// document.hidden 时跳过 (省资源)
+// fail-closed: 网络错不影响现有 DOM
+var _pollTimer = null, _pollLoading = false;
+function startPolling() {
+    var INTERVAL = 30000; // 30s
+    var POLL_URL = '/api/andromeda/state'; // 完整端点 (health 端点被 Ollama 路由抢占)
+    function tick() {
+        _pollTimer = setTimeout(tick, INTERVAL);
+        if (document.hidden) return;
+        if (_pollLoading) return;
+        _pollLoading = true;
+        fetch(POLL_URL, { cache: 'no-store' })
+            .then(function(r){ return r.ok ? r.json() : null; })
+            .then(function(resp){
+                _pollLoading = false;
+                var data = resp && resp.data ? resp.data : resp; // 兼容两种格式
+                if (!data || !data.health) return;
+                // ── 刷新 daemon 健康度条 ──
+                document.querySelectorAll('.health-fill').forEach(function(el){
+                    el.style.width = (data.daemon_pct || 0) + '%';
+                    el.classList.remove('medium','low');
+                    if (data.daemon_pct < 60) el.classList.add('low');
+                    else if (data.daemon_pct < 90) el.classList.add('medium');
+                });
+                // ── 刷新健康度状态文字 ──
+                document.querySelectorAll('.hl-status').forEach(function(el){
+                    el.classList.remove('ok','warn','crit');
+                    el.classList.add(data.health || 'ok');
+                    el.textContent = (data.daemon_running || 0) + '/' + (data.daemon_total || 0) + ' · ' + (data.daemon_pct || 0) + '%';
+                });
+                // ── 刷新顶栏绿点 (ok=亮, warn=脉动, crit=红) ──
+                document.querySelectorAll('.mts-status .dot, .sa-status-dot').forEach(function(el){
+                    el.classList.remove('dot-warn','dot-crit');
+                    if (data.health === 'warn') el.classList.add('dot-warn');
+                    else if (data.health === 'crit') el.classList.add('dot-crit');
+                });
+                // ── 刷新顶栏 DAEMON 计数 ──
+                document.querySelectorAll('[class*="cnt-daemon"], .daemon-count').forEach(function(el){
+                    el.textContent = (data.daemon_running || 0) + '/' + (data.daemon_total || 0);
+                });
+                // 广播 (其他模块可监听)
+                try { document.dispatchEvent(new CustomEvent('andromeda:state', {detail: data})); } catch(e){}
+            })
+            .catch(function(){ _pollLoading = false; }); // fail-closed
+    }
+    tick(); // 立即开始第一次
+}
+
 // ── 初始化 ──
 function init() {
     try {
@@ -195,6 +245,7 @@ function init() {
         markElements(document);
         entranceSweep();
         watchMutations();
+        startPolling();
         // 暴露到 window (调试用)
         window.AndromedaBeautify = {
             version: '1.0.0',

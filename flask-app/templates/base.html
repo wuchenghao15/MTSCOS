@@ -112,6 +112,58 @@
 
     {% block content %}{% endblock %}
 
+    <!-- ═══════════════════════════════════════════════════════
+         🌌 仙女座 × 冰山 全站状态条 (深度绑定)
+         Polling 模块自动刷新 health-fill / hl-status / .dot
+         ═══════════════════════════════════════════════════════ -->
+    <div class="andromeda-top-bar" style="position:fixed;top:0;left:0;right:0;z-index:9999;pointer-events:none;">
+        <div class="atb-health" style="height:2px;background:rgba(11,31,58,.06);overflow:hidden;">
+            <div class="health-fill" style="height:100%;width:100%;background:linear-gradient(90deg,#10B981,#34D399);transition:width .6s;"></div>
+        </div>
+        <div class="atb-info" style="pointer-events:auto;display:flex;justify-content:flex-end;align-items:center;gap:8px;padding:3px 12px;font-size:9px;font-family:'JetBrains Mono',ui-monospace,monospace;color:#9baab8;background:rgba(255,255,255,.75);backdrop-filter:blur(4px);border-bottom:1px solid rgba(11,31,58,.05);transform:translateY(-100%);opacity:0;transition:transform .3s,opacity .3s;">
+            <span class="hl-status ok" style="font-weight:700;letter-spacing:1px;">
+                🌐 <span class="daemon-count">--/--</span>
+            </span>
+        </div>
+    </div>
+    <script>
+    (function(){
+        // hover 显示状态条 (默认隐藏, 不占空间)
+        var bar = document.querySelector('.andromeda-top-bar');
+        if (bar) {
+            document.addEventListener('mouseenter', function(){
+                bar.querySelector('.atb-info').style.transform = 'translateY(0)';
+                bar.querySelector('.atb-info').style.opacity = '1';
+            }, true);
+            document.addEventListener('mouseleave', function(e){
+                if (!bar.contains(e.relatedTarget)) {
+                    bar.querySelector('.atb-info').style.transform = 'translateY(-100%)';
+                    bar.querySelector('.atb-info').style.opacity = '0';
+                }
+            });
+        }
+        // 首次拉取状态
+        fetch('/api/andromeda/state', {cache:'no-store'})
+            .then(function(r){ return r.json(); })
+            .then(function(resp){
+                var d = resp && resp.data ? resp.data : resp;
+                if (!d) return;
+                var pct = d.daemon_pct || 0;
+                document.querySelectorAll('.andromeda-top-bar .health-fill').forEach(function(el){
+                    el.style.width = pct + '%';
+                    el.classList.remove('medium','low');
+                    if (pct < 60) { el.classList.add('low'); el.style.background='linear-gradient(90deg,#EF4444,#F87171)'; }
+                    else if (pct < 90) { el.classList.add('medium'); el.style.background='linear-gradient(90deg,#F59E0B,#FBBF24)'; }
+                });
+                document.querySelectorAll('.andromeda-top-bar .daemon-count').forEach(function(el){
+                    el.textContent = (d.daemon_running || 0) + '/' + (d.daemon_total || 0);
+                });
+                var hl = document.querySelector('.andromeda-top-bar .hl-status');
+                if (hl) { hl.classList.remove('ok','warn','crit'); hl.classList.add(d.health || 'ok'); }
+            }).catch(function(){});
+    })();
+    </script>
+
     <script src="/assets/layout_adapter.js"></script>
     <script>
         (function() {
