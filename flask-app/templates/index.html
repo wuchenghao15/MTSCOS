@@ -3,7 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>MTSCOS AI · 仙女座星系智能学习平台</title>
+<title>冰山 · MTSCOS AI | Iceberg System for Andromeda</title>
+<link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='img/favicon-iceberg.svg') }}">
+<link rel="alternate icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/common.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/andromeda_theme.css') }}">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
@@ -276,6 +278,71 @@ body {
     100% { transform: rotate(360deg); }
 }
 
+/* ── 冰山系统 Logo (内联 SVG 升级) ── */
+.mts-logo { gap: 12px; }
+.mts-logo .orb { display: none; } /* 隐藏旧 ✦ 角标, 换冰山 SVG */
+.iceberg-svg {
+    border-radius: 7px;
+    box-shadow: 0 2px 10px rgba(99,102,241,.35), 0 0 0 1px rgba(139,92,246,.2);
+    animation: iceberg-float 6s ease-in-out infinite;
+    flex-shrink: 0;
+}
+@keyframes iceberg-float {
+    0%,100% { transform: translateY(0); }
+    50%     { transform: translateY(-2px); }
+}
+.mts-logo-text {
+    display:flex; flex-direction:column; line-height:1.15;
+}
+.mts-logo-main {
+    font-size: 15px; font-weight: 800;
+    background: linear-gradient(135deg, #4338CA 0%, #6366F1 40%, #8B5CF6 80%, #A78BFA 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+.mts-logo-sub {
+    font-size: 9px; font-weight: 600; letter-spacing: 2px;
+    color: var(--mtscos-text-secondary, #6b7a8f); text-transform: uppercase;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+/* ── 冰山系统介绍横幅 (时钟下方) ── */
+.iceberg-intro {
+    margin-top: 18px;
+    padding: 12px 20px;
+    background:
+        linear-gradient(135deg, rgba(99,102,241,.06), rgba(139,92,246,.04) 50%, rgba(46,134,222,.05));
+    border: 1px solid rgba(99,102,241,.12);
+    border-radius: 10px;
+    display:flex; gap: 16px; align-items: center;
+    transition: border-color .3s, box-shadow .3s;
+}
+.iceberg-intro:hover {
+    border-color: rgba(99,102,241,.3);
+    box-shadow: 0 4px 20px -10px rgba(99,102,241,.25);
+}
+.iceberg-intro .ii-svg { width:36px; height:36px; flex-shrink:0; }
+.iceberg-intro .ii-text { flex:1; min-width:0; }
+.iceberg-intro .ii-title {
+    font-size: 12px; font-weight: 800;
+    color: #4338CA; letter-spacing: .5px;
+}
+.iceberg-intro .ii-desc {
+    font-size: 11px; color: #6b7a8f; line-height: 1.5;
+    margin-top: 2px;
+}
+.iceberg-intro .ii-layers {
+    display:flex; gap: 3px; flex-shrink: 0;
+}
+.iceberg-intro .ii-layer {
+    font-size: 8px; font-weight: 700; letter-spacing: .5px;
+    padding: 3px 6px; border-radius: 4px;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+}
+.iceberg-intro .ii-layer.l0 { background:rgba(239,68,68,.1); color:#EF4444; border:1px solid rgba(239,68,68,.25); }
+.iceberg-intro .ii-layer.l1 { background:rgba(139,92,246,.1); color:#8B5CF6; border:1px solid rgba(139,92,246,.25); }
+.iceberg-intro .ii-layer.l2 { background:rgba(59,130,246,.1); color:#3B82F6; border:1px solid rgba(59,130,246,.25); }
+.iceberg-intro .ii-layer.l3 { background:rgba(16,185,129,.1); color:#10B981; border:1px solid rgba(16,185,129,.25); }
+
 /* ⑤ 佛教事件卡: 派系 hover 微交互 */
 .mts-buddhist {
     transition: box-shadow .3s, border-color .3s;
@@ -364,9 +431,35 @@ body {
 <!-- ═══ 主内容 (侧栏已隐藏) ═══ -->
 <main class="mts-wrap">
 
-    <!-- 顶部 Logo + 状态 + 版本 -->
+    <!-- 顶部 Logo + 冰山品牌 + 状态 + 版本 -->
     <div class="mts-top">
-        <div class="mts-logo"><span class="orb">✦</span> MTSCOS AI · 仙女座星系</div>
+        <div class="mts-logo">
+            <!-- 冰山系统 Logo (SVG 内联, 与仙女座共享光晕) -->
+            <svg class="iceberg-svg" viewBox="0 0 32 32" width="32" height="32" xmlns="http://www.w3.org/2000/svg">
+                <rect width="32" height="32" rx="7" fill="#0B0A1E"/>
+                <polygon points="16,4 27,18 5,18" fill="url(#icePeakInline)"/>
+                <polygon points="7,18 25,18 21,25 11,25" fill="#4338CA" opacity=".92"/>
+                <polygon points="11,25 21,25 19,30 13,30" fill="#1E1B4B"/>
+                <line x1="4" y1="18" x2="28" y2="18" stroke="#A78BFA" stroke-width=".6" stroke-dasharray="2,1.5" opacity=".55"/>
+                <!-- 仙女座 3 星 (冰山支撑仙女座!) -->
+                <circle cx="16" cy="2.5" r="1.3" fill="#FCD34D"/>
+                <circle cx="12" cy="4.5" r=".6" fill="#A78BFA"/>
+                <circle cx="20" cy="4.5" r=".6" fill="#A78BFA"/>
+                <!-- 小光晕 -->
+                <circle cx="16" cy="4" r="8" fill="none" stroke="#8B5CF6" stroke-width=".3" opacity=".25"/>
+                <defs>
+                    <linearGradient id="icePeakInline" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0" stop-color="#E0E7FF"/>
+                        <stop offset=".4" stop-color="#A5B4FC" stop-opacity=".95"/>
+                        <stop offset="1" stop-color="#6366F1"/>
+                    </linearGradient>
+                </defs>
+            </svg>
+            <div class="mts-logo-text">
+                <span class="mts-logo-main">冰山 · MTSCOS AI</span>
+                <span class="mts-logo-sub">ICEBERG SYSTEM for Andromeda</span>
+            </div>
+        </div>
         <div class="mts-status">
             <span class="dot" title="仙女座守护进程在线"></span>
             <span class="cnt">{{ andromeda_state.daemon_running | default(0) }}/{{ andromeda_state.daemon_total | default(0) }} DAEMON</span>
@@ -382,6 +475,36 @@ body {
         <div class="date" id="clkDate">—</div>
         <div class="time" id="clkTime">--:--:--</div>
         <div class="weekday" id="clkWeek">—</div>
+    </div>
+
+    <!-- 冰山系统介绍横幅 (与仙女座关联) -->
+    <div class="iceberg-intro">
+        <svg class="ii-svg" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+            <rect width="32" height="32" rx="6" fill="#0B0A1E"/>
+            <polygon points="16,4 27,18 5,18" fill="url(#ip2)"/>
+            <polygon points="7,18 25,18 21,25 11,25" fill="#4338CA" opacity=".9"/>
+            <polygon points="11,25 21,25 19,30 13,30" fill="#1E1B4B"/>
+            <line x1="4" y1="18" x2="28" y2="18" stroke="#A78BFA" stroke-width=".5" stroke-dasharray="2,1.5" opacity=".6"/>
+            <circle cx="16" cy="2.5" r="1.1" fill="#FCD34D"/>
+            <circle cx="12" cy="4.5" r=".5" fill="#A78BFA"/>
+            <circle cx="20" cy="4.5" r=".5" fill="#A78BFA"/>
+            <defs>
+                <linearGradient id="ip2" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0" stop-color="#E0E7FF"/>
+                    <stop offset="1" stop-color="#6366F1"/>
+                </linearGradient>
+            </defs>
+        </svg>
+        <div class="ii-text">
+            <div class="ii-title">冰山系统 · Iceberg System</div>
+            <div class="ii-desc">L0 IRON_RULE 铁律12步骤 强制约束 · L1 核心规范 · L2 操作规范 · L3 实施细则 — 为仙女座星系提供不可绕过的规则底座</div>
+        </div>
+        <div class="ii-layers">
+            <span class="ii-layer l0">L0 IRON</span>
+            <span class="ii-layer l1">L1 CORE</span>
+            <span class="ii-layer l2">L2 OPS</span>
+            <span class="ii-layer l3">L3 IMPL</span>
+        </div>
     </div>
 
     <!-- 佛教派系 15 天事件 (小字, 时间下方) -->
