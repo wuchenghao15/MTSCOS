@@ -27,6 +27,12 @@
 # 用法 (在开发机):
 #   bash _entry_wrappers/mini_realign_repo.sh              # 只读预检
 #   bash _entry_wrappers/mini_realign_repo.sh --execute    # SA 停服后执行对齐
+#
+# ⚠️ 发布顺序 (重要):
+#   本脚本要求 mini 本地 VERSION == origin/main 的 VERSION, 因此必须在"开发机
+#   v23 终审 bump VERSION 之前"运行 —— 此刻两端都还是 v22.2.0, 守卫放行。
+#   等 mini 代码对齐成正常 git 仓库后, 开发机再跑 v23_upgrade_finalize.py bump
+#   到 v23.0.0 并 push, mini 用普通 git pull 跟上即可 (无需再用本脚本)。
 # =============================================================================
 set -euo pipefail
 
@@ -97,7 +103,9 @@ cur_v="$(cat flask-app/VERSION 2>/dev/null || echo '?')"
 base_v="$(git show "$BASE:flask-app/VERSION" 2>/dev/null || echo '?')"
 log "VERSION: 本地=$cur_v  主干=$base_v"
 if [ "$cur_v" != "$base_v" ]; then
-  bad "VERSION 不一致, 拒绝在跨版本状态下对齐 (请先走 v23 终审使两端版本一致)"
+  bad "VERSION 不一致 (本地=$cur_v 主干=$base_v), 拒绝在跨版本状态下 reset 对齐"
+  bad "若主干已 bump 而 mini 仍旧: mini 代码其实只需补差异, 勿用本脚本; 应在备份后"
+  bad "用 'git fetch && git reset --hard origin/main' 或联系 SA 评估 (本脚本设计用于 bump 之前的首次对齐)"
   exit 4
 fi
 ok "两端 VERSION 一致 ($cur_v)"
