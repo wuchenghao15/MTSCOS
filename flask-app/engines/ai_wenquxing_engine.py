@@ -26,10 +26,10 @@
 """
 
 from __future__ import annotations
-import json, os, sqlite3, subprocess, sys, time, hashlib, uuid, re, threading
+# [unused] import json, os, sqlite3, subprocess, sys, time, hashlib, uuid, re, threading
 from datetime import datetime
 from pathlib import Path
-from enum import Enum, auto
+# [unused] from enum import Enum, auto
 
 # ═══════════════════════════════════════════════════════════
 # DB
@@ -147,7 +147,7 @@ MODELS = {
 ## 引言 — 为什么这个主题重要
 ## 一、背景与历史
 ## 二、核心概念解析
-## 三、现状与挑战  
+## 三、现状与挑战
 ## 四、主流解决方案对比
 ## 五、创新方向与案例
 ## 六、实操指南 (step-by-step)

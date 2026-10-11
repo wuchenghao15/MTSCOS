@@ -161,7 +161,7 @@ def simulate_vote(proposal: str, sensitivity: str = "routine", max_experts: int 
             votes.append(result)
             print(f"  👁️  {expert['name']:12s} [{dt:.1f}s] {result['raw_vote']:5s} score={result.get('score','?')} {result.get('opinion','')[:40]}")
         except Exception as e:
-            votes.append({"expert_id": expert["id"], "expert_name": expert["name"], 
+            votes.append({"expert_id": expert["id"], "expert_name": expert["name"],
                          "raw_vote": "FAIL", "score": 0, "opinion": f"解析失败: {str(e)[:50]}"})
             print(f"  ❌  {expert['name']:12s} FAIL (解析异常: {str(e)[:30]})")
     

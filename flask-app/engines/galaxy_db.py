@@ -18,7 +18,7 @@ try:
     _mtscos_patch(verbose=False)
 except Exception:
     pass
-import json as _json
+# [unused] import json as _json
 from datetime import datetime
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

@@ -117,8 +117,8 @@ def ollama(sys_p: str, user_p: str, timeout: int = 25) -> str | None:
             {"role": "user", "content": user_p}
         ], "stream": False}).encode()
         r = urllib.request.urlopen(urllib.request.Request(
-            "http://localhost:11435/api/chat", 
-            data=payload, headers={"Content-Type":"application/json"}), 
+            "http://localhost:11435/api/chat",
+            data=payload, headers={"Content-Type":"application/json"}),
             timeout=timeout)
         return json.loads(r.read())["message"]["content"]
     except Exception:
@@ -279,7 +279,7 @@ class ArduinoAIIntuner:
             ).fetchall()
             for log_id, error in errors:
                 analysis = ai_analyze_compile_error(error)
-                self.db.execute("""UPDATE mt_arduino_compile_logs 
+                self.db.execute("""UPDATE mt_arduino_compile_logs
                     SET ai_analyzed=1, ai_root_cause=?, ai_fix_suggestion=?
                     WHERE log_id=?""",
                     (analysis["root_cause"], analysis["fix"], log_id))
@@ -297,7 +297,7 @@ class ArduinoAIIntuner:
                     "SELECT session_id FROM mt_arduino_sessions WHERE device_id=? AND status='ACTIVE'", (dev_id,)).fetchone()
                 if not existing:
                     sid = f"sess_{dev_id}_{int(time.time())}"
-                    self.db.execute("""INSERT INTO mt_arduino_sessions 
+                    self.db.execute("""INSERT INTO mt_arduino_sessions
                         (session_id, device_id, vid, pid, status, started_at)
                         VALUES (?,?,?,?,?,?)""",
                         (sid, dev_id, vid, pid, "ACTIVE", now))
@@ -308,7 +308,7 @@ class ArduinoAIIntuner:
         # 3. 端口监控 (从 detect_log 推断)
         try:
             ports = self.db.execute("""
-                SELECT DISTINCT details_json FROM mt_arduino_detect_log 
+                SELECT DISTINCT details_json FROM mt_arduino_detect_log
                 WHERE details_json LIKE '%/dev/%' ORDER BY rowid DESC LIMIT 10
             """).fetchall()
             for (details,) in ports:
@@ -332,11 +332,11 @@ class ArduinoAIIntuner:
             mid = f"mon_{port.replace('/dev/','').replace('/','_')}"
             existing = self.db.execute("SELECT monitor_id FROM mt_arduino_port_monitor WHERE port=?", (port,)).fetchone()
             if existing:
-                self.db.execute("""UPDATE mt_arduino_port_monitor 
+                self.db.execute("""UPDATE mt_arduino_port_monitor
                     SET last_seen=?, event_count=event_count+1 WHERE port=?""",
                     (time.strftime("%Y-%m-%d %H:%M:%S"), port))
             else:
-                self.db.execute("""INSERT INTO mt_arduino_port_monitor 
+                self.db.execute("""INSERT INTO mt_arduino_port_monitor
                     (monitor_id, port, vid_pid, board_name, status, first_seen, last_seen)
                     VALUES (?,?,?,?,?,?,?)""",
                     (mid, port, f"{vid}:{pid}" if vid else "", self._guess_board(vid, pid),
@@ -361,7 +361,7 @@ class ArduinoAIIntuner:
     
     def _log_intervention(self, action: str, detail: str):
         try:
-            self.db.execute("""INSERT INTO mt_arduino_ai_intervention_log 
+            self.db.execute("""INSERT INTO mt_arduino_ai_intervention_log
                 (intervention_id, action, details, ai_engine, acted_at, result)
                 VALUES (?,?,?,?,?,?)""",
                 (f"intv_{int(time.time()*1000)}", action, detail, MODEL,
@@ -395,10 +395,10 @@ def run_demo():
         print(f"      {line}")
     
     # 落库
-    db.execute("""INSERT OR IGNORE INTO mt_arduino_ai_codegen_log 
+    db.execute("""INSERT OR IGNORE INTO mt_arduino_ai_codegen_log
         (gen_id, session_id, prompt, generated_code, board_type, compile_ok, ai_model, generated_at)
         VALUES (?,?,?,?,?,?,?,?)""",
-        (code["gen_id"], None, "HC-SR04 超声波测距", code["code"], 
+        (code["gen_id"], None, "HC-SR04 超声波测距", code["code"],
          "UNO", 1 if code["compile_ok"] else 0, MODEL, code["generated_at"]))
     
     # ② AI 编译分析演示
@@ -428,10 +428,10 @@ def run_demo():
     ]
     for topic, level, source, cnt, mastery in topics:
         lid = f"learn_{abs(hash(topic)) % 100000}"
-        db.execute("""INSERT OR REPLACE INTO mt_arduino_learning_log 
+        db.execute("""INSERT OR REPLACE INTO mt_arduino_learning_log
             (learn_id, topic, level, source, practice_count, mastery_score, last_practice)
             VALUES (?,?,?,?,?,?,?)""",
-            (lid, topic, level, source, cnt, mastery, 
+            (lid, topic, level, source, cnt, mastery,
              time.strftime("%Y-%m-%d %H:%M:%S")))
         print(f"   📚 [{level:4s}] {topic:20s} mastery={mastery}% ({cnt}次)")
     

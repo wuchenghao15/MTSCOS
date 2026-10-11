@@ -141,7 +141,7 @@ class SmartFilter:
             return False
         # schema_plus_rules: 只同步规则/权限/治理相关表
         return any(kw in table_name.lower() for kw in [
-            "rule", "iron", "violation", "firewall", "permission", 
+            "rule", "iron", "violation", "firewall", "permission",
             "daemon_registry", "iceberg", "governance", "integrity",
         ])
 
@@ -232,8 +232,8 @@ class SmartSyncEngine:
         result["duration_s"] = round(time.time() - t0, 1)
         
         # 落库
-        self.db.execute("""INSERT INTO mt_sync_runs 
-            (sync_id, trigger, dev_commit, files_count, db_tables, db_rows, 
+        self.db.execute("""INSERT INTO mt_sync_runs
+            (sync_id, trigger, dev_commit, files_count, db_tables, db_rows,
              duration_s, status, report_json) VALUES (?,?,?,?,?,?,?,?,?)""",
             (sync_id, trigger, dev_commit, result["files_synced"],
              ",".join(result["db_tables_synced"]), result["db_rows_total"],
@@ -269,7 +269,7 @@ class SmartSyncEngine:
         
         # 基础命令: flask-app 目录
         src = str(self.cfg.dev_flask) + "/"
-        dst = (f"{self.cfg.prod_host}:{self.cfg.prod_flask}" 
+        dst = (f"{self.cfg.prod_host}:{self.cfg.prod_flask}"
                if self.cfg.is_remote else str(self.cfg.prod_flask))
         
         cmd = ["rsync", "-avz", "--delete"] + rsync_excludes + [
@@ -289,8 +289,8 @@ class SmartSyncEngine:
             if result.returncode != 0:
                 log(f"  ⚠️ rsync 有警告: {result.stderr[:80]}")
             # 统计同步文件数
-            synced = len([l for l in result.stdout.split("\n") 
-                         if l and not l.startswith("sending") and not l.startswith("total") 
+            synced = len([l for l in result.stdout.split("\n")
+                         if l and not l.startswith("sending") and not l.startswith("total")
                          and not l.startswith("sent") and not l.startswith("delta")])
             log(f"     同步 {synced} 项")
             return synced
@@ -408,13 +408,13 @@ class SmartSyncEngine:
             return 0
         
         if self.cfg.is_remote:
-            cmd = ["rsync", "-avz", 
+            cmd = ["rsync", "-avz",
                    "--exclude", ".bak", "--exclude", "_backup/", "--exclude", "rules_backup/",
                    str(self.cfg.dev_rules) + "/",
                    f"{self.cfg.prod_host}:{self.cfg.prod_rules}/"]
         else:
             self.cfg.prod_rules.mkdir(parents=True, exist_ok=True)
-            cmd = ["rsync", "-avz", 
+            cmd = ["rsync", "-avz",
                    "--exclude", ".bak", "--exclude", "_backup/", "--exclude", "rules_backup/",
                    str(self.cfg.dev_rules) + "/",
                    str(self.cfg.prod_rules) + "/"]
@@ -435,7 +435,7 @@ class SmartSyncEngine:
         import subprocess as sp
         
         # 杀掉旧进程
-        sp.run(["bash", "-c", 
+        sp.run(["bash", "-c",
                f"lsof -ti :{self.cfg.prod_port} | xargs kill -9 2>/dev/null"],
                capture_output=True)
         
@@ -453,7 +453,7 @@ class SmartSyncEngine:
             
             time.sleep(3)
             # 检查是否起来
-            check = sp.run(["lsof", "-ti", f":{self.cfg.prod_port}"], 
+            check = sp.run(["lsof", "-ti", f":{self.cfg.prod_port}"],
                           capture_output=True, text=True)
             if check.stdout.strip():
                 log(f"  ✅ 生产 Flask 已启动 (port {self.cfg.prod_port})")
@@ -480,7 +480,7 @@ class SmartSyncEngine:
         
         # prod Flask 状态
         try:
-            r = subprocess.run(["lsof", "-ti", f":{self.cfg.prod_port}"], 
+            r = subprocess.run(["lsof", "-ti", f":{self.cfg.prod_port}"],
                              capture_output=True, text=True)
             result["prod_flask_running"] = bool(r.stdout.strip())
         except: pass
@@ -488,7 +488,7 @@ class SmartSyncEngine:
         # 上次同步
         try:
             row = self.db.execute("""
-                SELECT sync_id, trigger, status, duration_s, synced_at 
+                SELECT sync_id, trigger, status, duration_s, synced_at
                 FROM mt_sync_runs ORDER BY rowid DESC LIMIT 1""").fetchone()
             if row:
                 result["last_sync"] = dict(row)
@@ -526,7 +526,7 @@ def trigger_git_commit():
                           cwd=str(CONFIG.dev_root))
         changed = len([l for l in r.stdout.split("\n") if l.strip() and "|" in l])
         log(f"     最近 commit 改了 {changed} 个文件")
-    except:
+    except Exception:
         changed = 0
     
     if changed > 0:
@@ -554,7 +554,7 @@ def trigger_daemon_check() -> bool:
             prod_pys[str(pf.relative_to(prod_root))] = pf.stat().st_mtime
     
     # 找差异
-    newer = [k for k, mt in dev_pys.items() 
+    newer = [k for k, mt in dev_pys.items()
              if k not in prod_pys or mt > prod_pys.get(k, 0)]
     
     if newer:

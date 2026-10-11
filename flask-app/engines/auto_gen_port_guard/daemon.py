@@ -247,13 +247,13 @@ class PortGuardDaemon:
     # ─── 异常告警 ───
     def emit_alert(self, conn, alert_type, severity, detail):
         alert_id = f"alert-{int(time.time())}-{hash(alert_type + detail) & 0xFFFF}"
-        conn.execute("""INSERT OR IGNORE INTO mt_port_alert_log 
+        conn.execute("""INSERT OR IGNORE INTO mt_port_alert_log
             (alert_id, check_time, alert_type, severity, detail)
             VALUES (?, datetime('now','localtime'), ?, ?, ?)""",
             (alert_id, alert_type, severity, detail))
         # 触发 rules_engine 告警 (如果表存在)
         try:
-            conn.execute("""INSERT INTO mt_rule_violation_alert 
+            conn.execute("""INSERT INTO mt_rule_violation_alert
                 (rule_id, violation_type, detail, trigger_source, created_at)
                 VALUES ('MT_RULE_SYS_OPS', ?, ?, 'port_guard', datetime('now','localtime'))""",
                 (alert_type, detail))
@@ -270,8 +270,8 @@ class PortGuardDaemon:
 
         # SA 双密钥
         sa = self.check_sa_dual_key()
-        conn.execute("""INSERT INTO mt_sa_dual_key_status 
-            (check_time, vikey_present, vikey_verified, fingerprint_hash, 
+        conn.execute("""INSERT INTO mt_sa_dual_key_status
+            (check_time, vikey_present, vikey_verified, fingerprint_hash,
              fingerprint_len, dual_authenticated, sa_layout, trigger_reason, note)
             VALUES (?,?,?,?,?,?,?,?,?)""",
             (now, sa["vikey_present"], sa["vikey_verified"], sa["fingerprint_hash"],
@@ -286,8 +286,8 @@ class PortGuardDaemon:
         # Arduino 端口
         ports = self.check_arduino_ports()
         for p in ports:
-            conn.execute("""INSERT INTO mt_arduino_port_status 
-                (check_time, port_device, vid, pid, board_name, driver_type, 
+            conn.execute("""INSERT INTO mt_arduino_port_status
+                (check_time, port_device, vid, pid, board_name, driver_type,
                  driver_ok, status, note)
                 VALUES (?,?,?,?,?,?,?,?,?)""",
                 (now, p["port_device"], p["vid"], p["pid"], p["board_name"],

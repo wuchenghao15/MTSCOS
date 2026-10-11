@@ -17,7 +17,7 @@ from __future__ import annotations
 import json, sqlite3, time, uuid
 from datetime import datetime
 from pathlib import Path
-from typing import List, Dict, Any, Optional, Literal
+# [unused] from typing import List, Dict, Any, Optional, Literal
 
 _PROJECT_ROOT = Path(__file__).parent.parent
 _DB_CANDIDATES = [

@@ -240,7 +240,7 @@ def auth(address: str, username: str, bind_mode: bool = False) -> dict:
         (session_id, passport_id, ble_address, action, status, vikey_serial,
          response_json, started_at, completed_at, duration_ms)
         VALUES (?,?,?,?,?,?,?,?,?,?)""",
-        (session_id, 
+        (session_id,
          result.get("address", ""),  # 简化存 address
          address, "bind" if bind_mode else "auth",
          "AUTH_OK" if result.get("ok") else "AUTH_FAIL",

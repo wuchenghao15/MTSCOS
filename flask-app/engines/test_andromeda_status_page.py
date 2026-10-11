@@ -59,7 +59,7 @@ class TestDatabase(unittest.TestCase):
     def test_sync_tables_exist(self):
         """mini 同步对比用的 8 张表都存在"""
         expected = [
-            "ai_employees", "ai_brain_enhanced_knowledge", 
+            "ai_employees", "ai_brain_enhanced_knowledge",
             "mt_daemon_registry", "knowledge_graph_nodes",
             "knowledge_graph_relations", "mt_ai_self_evolution_log",
             "ai_learning_records", "system_notifications",
@@ -173,7 +173,7 @@ class TestApiEmployees(unittest.TestCase):
         r2 = self.client.get('/api/employees?page=2&limit=5')
         d1, d2 = r1.get_json(), r2.get_json()
         self.assertNotEqual(
-            d1["rows"][0]["employee_id"], 
+            d1["rows"][0]["employee_id"],
             d2["rows"][0]["employee_id"],
             "第 1 页和第 2 页的第一条应该不同"
         )
@@ -189,7 +189,7 @@ class TestApiEmployees(unittest.TestCase):
         """每行应有 employee_id / name / employee_type 等"""
         d = self.client.get('/api/employees?limit=1').get_json()
         row = d["rows"][0]
-        for must_have in ["employee_id", "name", "employee_type", 
+        for must_have in ["employee_id", "name", "employee_type",
                           "call_count", "level", "description"]:
             self.assertIn(must_have, row, f"员工对象缺字段: {must_have}")
     

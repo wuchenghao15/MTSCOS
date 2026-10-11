@@ -38,9 +38,9 @@ except Exception:
 import subprocess
 import sys
 import time
-from dataclasses import dataclass, field
+# [unused] from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+# [unused] from typing import Dict, List, Optional, Tuple
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 DB_PATH = "database/app.db"
@@ -455,7 +455,7 @@ def build_jimeng_prompt(spec: Dict, profile: MimicProfile) -> str:
 def mimic_render(topic: str, profile: Optional[MimicProfile] = None,
                  team_size: int = 12) -> Dict:
     """用仙女座动态团队 + 即梦模仿风格 渲染视频"""
-    from engines.galaxy_dyn_team_engine import assemble_dynamic_crew, crew_to_production_spec
+    # [unused] from engines.galaxy_dyn_team_engine import assemble_dynamic_crew, crew_to_production_spec
     from engines.galaxy_composition_engine import generate_production_spec
 
     print(f"\n🚀 仙女座动态团队 + 即梦模仿")
