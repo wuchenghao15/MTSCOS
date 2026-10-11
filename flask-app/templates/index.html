@@ -163,6 +163,35 @@ body .uni-main { margin-left: 0 !important; width: 100% !important; }
 }
 .mts-login .register a:hover { text-decoration: underline; }
 
+/* ── 仙女座状态徽章 (极简, 不破坏骨架) ── */
+.mts-status { display:flex; align-items:center; gap:8px; }
+.mts-status .dot {
+    width:8px; height:8px; border-radius:50%;
+    background:#10B981; box-shadow:0 0 6px rgba(16,185,129,.6);
+    animation: pulse 2s infinite;
+}
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+.mts-status .cnt {
+    font-size:10px; font-weight:700; color:var(--mtscos-text-secondary,#6b7a8f);
+    font-family:ui-monospace,monospace; letter-spacing:.5px;
+}
+
+/* ── 仙女座 AI 生态摘要条 ── */
+.mts-eco {
+    margin-top: 18px;
+    display:flex; justify-content:center; flex-wrap:wrap;
+    gap: 4px 18px;
+    font-size: 11px; color:#7a8fa6;
+    letter-spacing:.3px;
+}
+.mts-eco .eco-item { display:flex; gap:5px; align-items:baseline; }
+.mts-eco .eco-num {
+    font-weight:800; font-family:ui-monospace,monospace;
+    background:linear-gradient(135deg,var(--andromeda-purple-400,#9B59B6),var(--iceberg-blue-400,#2E86DE));
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+}
+.mts-eco .eco-label { color:#9baab8; }
+
 /* ── Footer (极简) ── */
 .mts-footer {
     text-align: center; padding: 32px 20px 12px;
@@ -197,10 +226,17 @@ body .uni-main { margin-left: 0 !important; width: 100% !important; }
 <!-- ═══ 主内容 (侧栏已隐藏) ═══ -->
 <main class="mts-wrap">
 
-    <!-- 顶部 Logo + 版本 -->
+    <!-- 顶部 Logo + 状态 + 版本 -->
     <div class="mts-top">
         <div class="mts-logo"><span class="orb">✦</span> MTSCOS AI · 仙女座星系</div>
-        <span class="mts-ver">v{{ version | default('23.0.0') }}</span>
+        <div class="mts-status">
+            <span class="dot" title="仙女座守护进程在线"></span>
+            <span class="cnt">{{ andromeda_state.daemon_running | default(0) }}/{{ andromeda_state.daemon_total | default(0) }} DAEMON</span>
+            <span class="mts-ver" style="margin-left:8px;">
+                v{{ version | default('23.0.0') }}
+                {% if andromeda_version %}·{{ andromeda_version }}{% endif %}
+            </span>
+        </div>
     </div>
 
     <!-- 系统时间 (大字, 主视觉) -->
@@ -222,6 +258,15 @@ body .uni-main { margin-left: 0 !important; width: 100% !important; }
             </div>
         {% endfor %}
         </div>
+    </div>
+
+    <!-- 仙女座 AI 生态摘要 (DB 驱动, 极简) -->
+    <div class="mts-eco">
+        <span class="eco-item"><span class="eco-num">{{ andromeda_state.ai_employees | default(0) }}</span><span class="eco-label">AI 员工</span></span>
+        <span class="eco-item"><span class="eco-num">{{ andromeda_state.daemon_running | default(0) }}</span><span class="eco-label">守护进程在线</span></span>
+        <span class="eco-item"><span class="eco-num">{{ andromeda_state.brain_feeds | default(0) }}</span><span class="eco-label">脑库投喂</span></span>
+        <span class="eco-item"><span class="eco-num">{{ (andromeda_state.tokens_saved | default(0)) | int }}</span><span class="eco-label">tokens 本地节省</span></span>
+        <span class="eco-item"><span class="eco-num">{{ andromeda_state.patrol_runs | default(0) }}</span><span class="eco-label">源码巡逻</span></span>
     </div>
 
     <!-- 登录卡 (保留完整 CSRF + JS hook) -->

@@ -9926,8 +9926,74 @@ def index():
 
     # ═══════════════════════════════════════════════════════════
     # v22.3.2 修复: index.html 必须作为着陆页渲染（冰山唯一主页入口）
-    # v25.1 曾误删 render_template 改 redirect — 已恢复
+    # v22.3.3 增量: 仙女座实时状态注入（DB 驱动, fail-closed）
     # ═══════════════════════════════════════════════════════════
+    # ── 仙女座实时状态 (fail-closed, 双 DB 搜索) ──
+    andromeda_state = {
+        'daemon_running': 0, 'daemon_total': 0,
+        'ai_employees': 0,
+        'brain_feeds': 0,
+        'tokens_saved': 0,
+        'patrol_runs': 0,
+    }
+    andromeda_version = ''
+    try:
+        import sqlite3 as _idx_sq
+        _base = os.path.dirname(os.path.abspath(__file__))
+        # 优先 database/app.db (Flask 主库, 已被 Flask 进程连接)
+        _db_candidates = [
+            os.path.join(_base, 'database', 'app.db'),
+            os.path.join(_base, 'engines', 'app.db'),
+            os.path.join(_base, 'app.db'),
+        ]
+        def _try_db_query(_db_path, _sql, _default=0):
+            try:
+                if not os.path.exists(_db_path): return _default
+                _c = sqlite3.connect(_db_path)
+                _c.row_factory = sqlite3.Row
+                _r = _c.execute(_sql).fetchone()
+                _v = _r[0] if _r else _default
+                _c.close()
+                return _v or _default
+            except Exception: return _default
+        # 遍历所有 DB, 有数据就用
+        for _dbp in _db_candidates:
+            if not os.path.exists(_dbp): continue
+            # daemon
+            if andromeda_state['daemon_running'] == 0:
+                _v = _try_db_query(_dbp, "SELECT COUNT(*) FROM mt_daemon_registry WHERE status='RUNNING'")
+                if _v: andromeda_state['daemon_running'] = _v
+            if andromeda_state['daemon_total'] == 0:
+                _v = _try_db_query(_dbp, "SELECT COUNT(*) FROM mt_daemon_registry")
+                if _v: andromeda_state['daemon_total'] = _v
+            # ai_employees
+            if andromeda_state['ai_employees'] == 0:
+                _v = _try_db_query(_dbp, "SELECT COUNT(*) FROM ai_employees")
+                if _v: andromeda_state['ai_employees'] = _v
+            # brain_feeds
+            if andromeda_state['brain_feeds'] == 0:
+                _v = _try_db_query(_dbp, "SELECT COUNT(*) FROM mt_ai_brain_feed_log")
+                if _v: andromeda_state['brain_feeds'] = _v
+            # tokens_saved
+            if andromeda_state['tokens_saved'] == 0:
+                _v = _try_db_query(_dbp, "SELECT COALESCE(SUM(tokens_saved),0) FROM mt_local_ai_inference_log")
+                if _v: andromeda_state['tokens_saved'] = _v
+            # patrol_runs
+            if andromeda_state['patrol_runs'] == 0:
+                _v = _try_db_query(_dbp, "SELECT COUNT(*) FROM mt_patrol_runs")
+                if _v: andromeda_state['patrol_runs'] = _v
+            # rule changelog (取最新版本)
+            if not andromeda_version:
+                try:
+                    _c = sqlite3.connect(_dbp)
+                    _c.row_factory = sqlite3.Row
+                    _r = _c.execute("SELECT to_version FROM mt_rule_changelog ORDER BY created_at DESC LIMIT 1").fetchone()
+                    if _r and _r['to_version']: andromeda_version = _r['to_version']
+                    _c.close()
+                except Exception: pass
+    except Exception:
+        pass
+
     # 安全收集所有可用变量, 缺失的给默认值, 避免 Jinja2/render_template NameError
     _g = dict(globals())
     try:
@@ -9948,6 +10014,8 @@ def index():
             page_csrf_token=page_csrf_token if 'page_csrf_token' in locals() else (session.get('csrf_token', '') if session else ''),
             layout_mode=(session.get('layout_mode', 'STANDARD') if session else 'STANDARD'),
             dual_authenticated=(session.get('dual_auth_completed') if session else False),
+            andromeda_state=andromeda_state,
+            andromeda_version=andromeda_version,
         )
     except Exception as _idx_tpl_err:
         import logging as _lg_idx
