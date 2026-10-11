@@ -243,6 +243,19 @@ body .uni-main { margin-left: 0 !important; width: 100% !important; }
 .mts-eco .eco-item:hover .eco-num {
     filter: brightness(1.1);
 }
+/* 待修复徽章: 有 PENDING 诉求时转红 (含 smart_mount 主管离线单) */
+.mts-eco .eco-repair.is-alert {
+    background: rgba(239,68,68,.10);
+    border-color: rgba(239,68,68,.35);
+}
+.mts-eco .eco-repair.is-alert .eco-icon {
+    background: rgba(239,68,68,.18);
+    color: #DC2626;
+}
+.mts-eco .eco-repair.is-alert .eco-num {
+    background: linear-gradient(135deg,#EF4444,#F87171);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
 
 /* ── 2. Footer 升级: 渐变分隔线 + 品牌字 + 分层 ── */
 .mts-footer {
@@ -790,7 +803,26 @@ body {
             <span class="eco-num" data-evo-field="evo_research_started">{{ andromeda_state.evo_research_started | default(0) }}</span>
             <span class="eco-label">自探研</span>
         </span>
+        <span class="eco-item eco-repair{% if (andromeda_state.evo_repair_pending | default(0)) > 0 %} is-alert{% endif %}" title="待拉起/修复的 daemon 诉求 (建议池 DAEMON_REPAIR PENDING); 含 smart_mount 主管离线单">
+            <i class="eco-icon fas fa-wrench"></i>
+            <span class="eco-num" data-evo-field="evo_repair_pending">{{ andromeda_state.evo_repair_pending | default(0) }}</span>
+            <span class="eco-label">待修复</span>
+        </span>
     </div>
+    <script>
+    (function(){
+        // 待修复徽章: 轮询广播 evo_repair_pending>0 时转红
+        function paint(n){
+            document.querySelectorAll('.mts-eco .eco-repair').forEach(function(el){
+                el.classList.toggle('is-alert', (n || 0) > 0);
+            });
+        }
+        paint({{ andromeda_state.evo_repair_pending | default(0) }});
+        document.addEventListener('andromeda:state', function(e){
+            if (e && e.detail) paint(e.detail.evo_repair_pending || 0);
+        });
+    })();
+    </script>
 
     <!-- 登录卡 (保留完整 CSRF + JS hook) -->
     <div class="mts-login-wrap" data-andromeda-reveal>
@@ -827,7 +859,7 @@ body {
             <div class="register" data-andromeda-reveal><i class="fas fa-user-plus"></i> 没有账号？<a href="{{ url_for('auth.register') }}">立即注册 →</a></div>
             <!-- 仙女座 + 冰山双品牌底部 -->
             <div class="mts-brand-foot">
-                <span>ANDROMEDA</span> × ICEBERG · SYSTEM v{{ version | default('23.0.0') }}
+                <span>ANDROMEDA</span> × ICEBERG · SYSTEM {{ version }}
             </div>
         </form>
     </div>
@@ -841,8 +873,7 @@ body {
             {{ footer_info.company if footer_info and footer_info.company else 'MTS Architecture' }} &copy; 2024-{{ footer_info.copyright_year if footer_info and footer_info.copyright_year else '2026' }}
         </div>
         <div class="f-link">
-            <i class="fas fa-code-branch"></i> {{ version | default('23.0.0') }}
-            {% if andromeda_version %} · {{ andromeda_version }}{% endif %}
+            <i class="fas fa-code-branch"></i> {{ version }}
             · <i class="fas fa-shield-halved"></i> L0 IRON_RULE
         </div>
     </div>
