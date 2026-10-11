@@ -217,7 +217,7 @@
         .biz-hero-title {
             position:absolute; top:16px; left:20px;
             display:flex; align-items:center; gap:10px;
-            font-size:14px; font-weight:800; color: var(--andromeda-deep,#0B1F3A);
+            font-size:14px; font-weight:800; color: var(--andromeda-deep,var(--andromeda-deep));
         }
         .biz-hero-title .orb {
             width:22px; height:22px; border-radius:50%; background: var(--andromeda-grad);
@@ -241,7 +241,7 @@
             font-size:11px; color:var(--mtscos-text-secondary);
         }
         .biz-hero-flow span { display:inline-flex; align-items:center; gap:5px; }
-        .biz-hero-flow strong { color: var(--andromeda-purple,#9B59B6); font-weight:700; font-family: var(--mtscos-font-mono,monospace); }
+        .biz-hero-flow strong { color: var(--andromeda-purple,var(--andromeda-purple-400)); font-weight:700; font-family: var(--mtscos-font-mono,monospace); }
         .biz-hero-trigger {
             position:absolute; bottom:10px; right:16px;
             display:inline-flex; align-items:center; gap:6px; padding:7px 14px;
@@ -265,7 +265,7 @@
         }
         .biz-meta-bar .bm-left { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
         .biz-meta-bar .bm-item { display: inline-flex; align-items: center; gap: 6px; color: var(--mtscos-text-secondary); }
-        .biz-meta-bar .bm-item strong { color: var(--mtscos-text-primary,#0B1F3A); font-weight: 700; font-family: ui-monospace, monospace; }
+        .biz-meta-bar .bm-item strong { color: var(--mtscos-text-primary,var(--andromeda-deep)); font-weight: 700; font-family: ui-monospace, monospace; }
         .biz-meta-bar .bm-ver { display:inline-flex; align-items:center; gap:6px; padding:3px 10px; border-radius:999px; font-weight:700; font-size:11.5px;
             background: linear-gradient(135deg, rgba(92,154,111,.12), rgba(111,168,139,.10)); color: #5C9A6F; border: 1px solid rgba(92,154,111,.25); }
         .biz-meta-bar .bm-ver i { font-size:10px; }
@@ -274,7 +274,7 @@
         .biz-stats-bar { display:grid; grid-template-columns: repeat(4,1fr); gap:10px; margin-bottom: 20px; }
         .biz-stat-cell { display:flex; align-items:center; gap:8px; padding: 8px 12px; border-radius:10px; background: var(--mtscos-bg-card,#fff); border:1px solid var(--biz-line,rgba(11,31,58,.08)); }
         .biz-stat-cell .lbl { font-size:11.5px; color:var(--mtscos-text-secondary); font-weight:600; }
-        .biz-stat-cell .num { font-size:15px; font-weight:800; color: var(--andromeda-deep,#0B1F3A); font-family: var(--mtscos-font-mono,monospace); }
+        .biz-stat-cell .num { font-size:15px; font-weight:800; color: var(--andromeda-deep,var(--andromeda-deep)); font-family: var(--mtscos-font-mono,monospace); }
 
         .biz-mon-card:hover { box-shadow: 0 4px 16px -6px rgba(11,31,58,.12); }
         .biz-mon-card.good { border-color: rgba(92,154,111,.35); }
@@ -283,31 +283,31 @@
         .biz-mon-ico {
             width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center;
             background: linear-gradient(135deg, rgba(155,89,182,.12), rgba(46,134,222,.10));
-            color: #9B59B6; font-size: 18px; flex-shrink: 0;
+            color: var(--andromeda-purple-400); font-size: 18px; flex-shrink: 0;
         }
         .biz-mon-card.good .biz-mon-ico { background: linear-gradient(135deg, rgba(92,154,111,.15), rgba(111,168,139,.10)); color: #5C9A6F; }
         .biz-mon-card.bad  .biz-mon-ico { background: linear-gradient(135deg, rgba(239,68,68,.12), rgba(192,57,43,.10)); color: #C0392B; }
         .biz-mon-body { flex: 1; min-width: 0; }
-        .biz-mon-title { font-size: 13px; font-weight: 700; color: var(--mtscos-text-primary,#0B1F3A); margin-bottom: 2px; display:flex; align-items:center; gap:8px; }
+        .biz-mon-title { font-size: 13px; font-weight: 700; color: var(--mtscos-text-primary,var(--andromeda-deep)); margin-bottom: 2px; display:flex; align-items:center; gap:8px; }
         .biz-mon-status { font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 999px; }
         .biz-mon-status.good { background: rgba(92,154,111,.12); color: #5C9A6F; }
         .biz-mon-status.warn { background: rgba(234,179,8,.12); color: #B45309; }
         .biz-mon-status.bad  { background: rgba(239,68,68,.12); color: #C0392B; }
         .biz-mon-sub { font-size: 11.5px; color: var(--mtscos-text-secondary); display: flex; flex-wrap: wrap; gap: 10px; }
         .biz-mon-sub span { display: inline-flex; align-items: center; gap: 4px; }
-        .biz-mon-sub strong { color: var(--mtscos-text-primary,#0B1F3A); font-family: ui-monospace, monospace; font-size: 11px; }
+        .biz-mon-sub strong { color: var(--mtscos-text-primary,var(--andromeda-deep)); font-family: ui-monospace, monospace; font-size: 11px; }
         .biz-mon-sub .dot { width:6px; height:6px; border-radius:50%; display: inline-block; }
         .biz-mon-sub .dot.good { background:#5C9A6F; box-shadow:0 0 6px rgba(92,154,111,.5); }
         .biz-mon-sub .dot.warn { background:#EAB308; box-shadow:0 0 6px rgba(234,179,8,.5); }
         .biz-mon-sub .dot.bad  { background:#EF4444; box-shadow:0 0 6px rgba(239,68,68,.5); }
 
         /* 🌟 AI 天团 roster 面板 */
-        .at-title { display:flex; align-items:center; gap:10px; font-size:15px; font-weight:800; color: var(--andromeda-deep,#0B1F3A); }
+        .at-title { display:flex; align-items:center; gap:10px; font-size:15px; font-weight:800; color: var(--andromeda-deep,var(--andromeda-deep)); }
         .at-title .at-orb { width:20px; height:20px; border-radius:50%; background: var(--andromeda-grad); box-shadow: 0 0 12px rgba(155,89,182,.45); animation: andPulse 3s ease-in-out infinite; }
         .at-sub { font-size:12px; font-weight:500; color: var(--mtscos-text-secondary,#6b7a8f); margin-left:6px; }
         .at-filter { display:flex; gap:6px; }
         .at-chip { padding:5px 12px; border-radius:999px; border:1px solid var(--andromeda-soft,rgba(155,89,182,.18)); background:var(--mtscos-bg-card,#fff); font-size:12px; font-weight:600; color:var(--mtscos-text-secondary); cursor:pointer; transition:all .18s; }
-        .at-chip:hover { border-color:#9B59B6; color:#9B59B6; }
+        .at-chip:hover { border-color:var(--andromeda-purple-400); color:var(--andromeda-purple-400); }
         .at-chip.active { background: var(--andromeda-grad); color:#fff; border-color:transparent; box-shadow: 0 2px 8px rgba(155,89,182,.3); }
 
         .and-teams-grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap:12px; }
@@ -316,19 +316,19 @@
             border:1px solid var(--andromeda-soft,rgba(155,89,182,.12)); transition: transform .18s, box-shadow .18s, border-color .18s;
             cursor:pointer; position:relative; overflow:hidden;
         }
-        .at-card::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; background: var(--team-color,#9B59B6); opacity:.9; }
-        .at-card:hover { transform: translateY(-2px); border-color: var(--team-color,#9B59B6); box-shadow: 0 6px 20px -6px rgba(11,31,58,.2); }
-        .at-card .at-name { font-size:14px; font-weight:800; color: var(--andromeda-deep,#0B1F3A); margin-bottom:4px; line-height:1.25; }
+        .at-card::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; background: var(--team-color,var(--andromeda-purple-400)); opacity:.9; }
+        .at-card:hover { transform: translateY(-2px); border-color: var(--team-color,var(--andromeda-purple-400)); box-shadow: 0 6px 20px -6px rgba(11,31,58,.2); }
+        .at-card .at-name { font-size:14px; font-weight:800; color: var(--andromeda-deep,var(--andromeda-deep)); margin-bottom:4px; line-height:1.25; }
         .at-card .at-count { font-size:11px; color: var(--mtscos-text-secondary); font-weight:600; margin-bottom:10px; }
-        .at-card .at-count strong { color: var(--team-color,#9B59B6); font-size:14px; font-family: monospace; }
+        .at-card .at-count strong { color: var(--team-color,var(--andromeda-purple-400)); font-size:14px; font-family: monospace; }
         .at-card .at-core { display:flex; gap:4px; flex-wrap:wrap; }
         .at-card .at-chip-name {
             font-size:10.5px; font-weight:600; padding:2px 7px; border-radius:999px;
             background: var(--team-color-soft,rgba(155,89,182,.1));
-            color: var(--team-color,#9B59B6); white-space:nowrap;
+            color: var(--team-color,var(--andromeda-purple-400)); white-space:nowrap;
         }
         .at-card .at-badge-core { position:absolute; top:8px; right:8px; font-size:10px; padding:2px 6px; border-radius:999px; background:rgba(255,215,0,.15); color:#B8860B; font-weight:700; }
-        .at-card[data-filter="tech"]   .at-badge-core { background:rgba(46,134,222,.12); color:#1B4F72; }
+        .at-card[data-filter="tech"]   .at-badge-core { background:rgba(46,134,222,.12); color:var(--iceberg-blue-500); }
         .at-card[data-filter="culture"].at-badge-core { background:rgba(230,126,34,.12); color:#CA6F1E; }
 
         /* 银河星 tooltip (overrides old) */
@@ -351,7 +351,7 @@
             box-shadow: var(--biz-shadow-soft);
         }
         .biz-stat-cell .lbl { font-size:11.5px; color:var(--mtscos-text-secondary); font-weight:600; }
-        .biz-stat-cell .num { font-size:22px; font-weight:800; color: var(--andromeda-deep,#0B1F3A); font-family: var(--mtscos-font-mono,monospace); }
+        .biz-stat-cell .num { font-size:22px; font-weight:800; color: var(--andromeda-deep,var(--andromeda-deep)); font-family: var(--mtscos-font-mono,monospace); }
 
         /* 双列区: AI生态 | §14规则 */
             background: var(--mtscos-bg-card,#fff);
@@ -364,7 +364,7 @@
             display:flex; align-items:center; gap:8px;
             font-size:14px; font-weight:800; margin-bottom:14px;
         }
-        .biz-card-title i { color: var(--andromeda-purple,#9B59B6); }
+        .biz-card-title i { color: var(--andromeda-purple,var(--andromeda-purple-400)); }
         .biz-card-grid { display:grid; grid-template-columns: repeat(3,1fr); gap:10px; }
         .biz-card-grid.eco-3 .cell { text-align:center; padding:14px 8px; border-radius:10px; background: var(--mtscos-bg-page,#f0f3f6); }
         .biz-card-grid.eco-3 .cell i { font-size:18px; color:var(--mtscos-primary-base); margin-bottom:6px; }
@@ -411,10 +411,29 @@
         .biz-welcome-banner {
             display:flex; align-items:stretch; gap:28px;
             padding: 24px 28px; margin-bottom: 24px;
-            background: linear-gradient(135deg, rgba(11,31,58,.04), rgba(155,89,182,.08));
+            /* Layer 3: 仙女座星系渐变 mesh */
+            background:
+                radial-gradient(ellipse 500px 260px at 5% 0%,  rgba(155,89,182,.14) 0%, transparent 60%),
+                radial-gradient(ellipse 420px 240px at 100% 100%, rgba(46,134,222,.12) 0%, transparent 60%),
+                radial-gradient(ellipse 300px 180px at 90% 0%,  rgba(255,107,157,.09) 0%, transparent 65%),
+                radial-gradient(ellipse 220px 140px at 50% 100%, rgba(11,31,58,.05) 0%, transparent 70%),
+                linear-gradient(135deg, rgba(11,31,58,.02), rgba(155,89,182,.05));
             border: 1px solid rgba(155,89,182,.18);
             border-radius: 18px;
             box-shadow: 0 8px 32px -12px rgba(11,31,58,.12);
+            position: relative; overflow: hidden;
+        }
+        /* 微妙的"星尘"质感叠加层 */
+        .biz-welcome-banner::after {
+            content:''; position:absolute; inset:0; pointer-events:none;
+            background-image:
+                radial-gradient(circle at 14% 22%, rgba(255,255,255,.55) 0.5px, transparent 1px),
+                radial-gradient(circle at 38% 68%, rgba(255,255,255,.40) 0.4px, transparent 1px),
+                radial-gradient(circle at 72% 18%, rgba(255,255,255,.45) 0.4px, transparent 1px),
+                radial-gradient(circle at 88% 52%, rgba(155,89,182,.35) 0.5px, transparent 1px),
+                radial-gradient(circle at 22% 88%, rgba(46,134,222,.40) 0.5px, transparent 1px);
+            background-size: 220px 220px, 180px 180px, 260px 260px, 300px 300px, 200px 200px;
+            opacity: .55;
         }
         .biz-welcome-banner.logged { align-items:center; }
         .biz-welcome-banner.logged { background: linear-gradient(135deg, rgba(92,154,111,.06), rgba(111,168,139,.08)); border-color: rgba(92,154,111,.2); }
@@ -426,7 +445,7 @@
             color:#fff; font-size:22px;
             box-shadow: 0 6px 20px -4px rgba(155,89,182,.5);
         }
-        .wb-title { font-size:18px; font-weight:800; color: var(--andromeda-deep,#0B1F3A); margin-bottom:4px; letter-spacing:.3px; }
+        .wb-title { font-size:18px; font-weight:800; color: var(--andromeda-deep,var(--andromeda-deep)); margin-bottom:4px; letter-spacing:.3px; }
         .wb-sub { font-size:13px; color: var(--mtscos-text-secondary,#4a5b6e); line-height:1.5; }
 
         /* 🔐 登录卡 (强化版 — 垂直大卡片) */
@@ -444,7 +463,7 @@
             background: var(--andromeda-grad);
         }
         .wb-login-title {
-            font-size:13px; font-weight:700; color: var(--andromeda-deep,#0B1F3A);
+            font-size:13px; font-weight:700; color: var(--andromeda-deep,var(--andromeda-deep));
             display:flex; align-items:center; gap:8px; padding-bottom:6px;
             border-bottom: 1px solid var(--biz-line, rgba(11,31,58,.06));
         }
@@ -462,12 +481,12 @@
             box-sizing: border-box;
         }
         .wb-field input:focus {
-            border-color: var(--andromeda-purple,#9B59B6);
+            border-color: var(--andromeda-purple,var(--andromeda-purple-400));
             background: #fff;
             box-shadow: 0 0 0 3px rgba(155,89,182,.12);
         }
         .wb-remember { font-size:12.5px; color:var(--mtscos-text-secondary); display:flex; align-items:center; gap:6px; cursor:pointer; user-select:none; }
-        .wb-remember input { accent-color: var(--andromeda-purple,#9B59B6); width:15px; height:15px; }
+        .wb-remember input { accent-color: var(--andromeda-purple,var(--andromeda-purple-400)); width:15px; height:15px; }
 
         .wb-btn {
             padding: 12px 22px; border:none; border-radius:10px;
@@ -484,10 +503,81 @@
         .wb-btn .btn-text { /* 确保按钮文字不被吃掉 */ display:inline-block; line-height:1; }
         .wb-msg { min-height:18px; font-size:12.5px; text-align:center; padding-top:2px; }
         .wb-msg.error { color:var(--mtscos-danger-base,#d15b5b); font-weight:600; }
-        .wb-msg.info { color:var(--andromeda-purple,#9B59B6); font-weight:600; }
+        .wb-msg.info { color:var(--andromeda-purple,var(--andromeda-purple-400)); font-weight:600; }
         .wb-register-link { text-align:center; font-size:12.5px; color:var(--mtscos-text-secondary,#7a8aa0); padding-top:4px; }
-        .wb-register-link a { color:var(--andromeda-purple,#9B59B6); font-weight:600; text-decoration:none; }
+        .wb-register-link a { color:var(--andromeda-purple,var(--andromeda-purple-400)); font-weight:600; text-decoration:none; }
         .wb-register-link a:hover { text-decoration:underline; }
+
+        /* ═══════════════════════════════════════════
+           🏔️ Layer 2: 仙女座品牌家族 (7 子品牌网格)
+           ═══════════════════════════════════════════ */
+        .biz-brand-family { margin-bottom:22px; }
+        .bf-header {
+            display:flex; align-items:center; gap:10px; margin-bottom:14px;
+        }
+        .bf-orb {
+            width:22px; height:22px; border-radius:50%;
+            background: linear-gradient(135deg, var(--andromeda-purple-400), var(--iceberg-blue-400));
+            box-shadow: 0 0 12px rgba(155,89,182,.45);
+            animation: andPulse 3s ease-in-out infinite;
+        }
+        .bf-title {
+            font-size:15px; font-weight:800; color: var(--andromeda-deep);
+            display:flex; align-items:center; gap:8px;
+        }
+        .bf-title::before {
+            content:''; width:4px; height:14px; border-radius:2px;
+            background: linear-gradient(180deg, var(--andromeda-purple-400), var(--iceberg-blue-400));
+        }
+        .bf-sub { font-size:11.5px; color: var(--mtscos-text-secondary); font-weight:500; margin-left:6px; }
+
+        .bf-grid {
+            display:grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 12px;
+        }
+        .bf-card {
+            position:relative; overflow:hidden;
+            background: var(--mtscos-bg-card, #fff);
+            border: 1px solid var(--biz-line);
+            border-radius: 14px;
+            padding: 16px 14px 14px;
+            transition: transform .18s var(--ease-out), box-shadow .25s var(--ease-out), border-color .2s var(--ease-out);
+            cursor: default;
+        }
+        .bf-card::before {
+            content:''; position:absolute; top:0; left:0; right:0; height:3px;
+            background: var(--bf-color, var(--andromeda-purple-400));
+            opacity: .9;
+        }
+        .bf-card:hover {
+            transform: translateY(-2px);
+            border-color: var(--bf-color, var(--andromeda-purple-400));
+            box-shadow: 0 8px 24px -8px rgba(11,31,58,.18);
+        }
+        .bf-icon {
+            width: 38px; height: 38px; border-radius: 10px;
+            display:flex; align-items:center; justify-content:center;
+            font-size: 18px;
+            background: var(--bf-color-soft, rgba(155,89,182,.10));
+            margin-bottom: 10px;
+        }
+        .bf-name {
+            font-size: 14px; font-weight: 800;
+            color: var(--andromeda-deep);
+            line-height: 1.25; margin-bottom: 2px;
+        }
+        .bf-engine {
+            font-size: 10.5px; font-weight: 700;
+            color: var(--bf-color, var(--andromeda-purple-400));
+            letter-spacing: .5px;
+            margin-bottom: 8px;
+            font-family: var(--mtscos-font-mono, monospace);
+        }
+        .bf-desc {
+            font-size: 11px; color: var(--mtscos-text-secondary);
+            line-height: 1.5;
+        }
     </style>
     {# v24.3.3: 始终加载 SA 双密钥 CSS — 选择器限定 body.layout-mode-SA_PROPRIETARY，非 SA 态零影响 #}
     <link rel="stylesheet" href="{{ url_for('static', filename='css/sa_proprietary.css') }}">
@@ -508,25 +598,25 @@
         <div class="wb-left">
             <div class="wb-icon"><i class="fas fa-sparkles"></i></div>
             <div>
-                <div class="wb-title">欢迎来到 <span style="color:var(--andromeda-purple,#9B59B6)">MTSCOS AI</span></div>
+                <div class="wb-title">欢迎来到 <span style="color:var(--andromeda-purple,var(--andromeda-purple-400))">MTSCOS AI</span></div>
                 <div class="wb-sub" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-                    <span style="color:var(--andromeda-purple,#9B59B6);font-weight:600">🧠 仙女座 AI · 在线学习伙伴</span>
-                    <span class="num-mono" style="color:var(--andromeda-purple,#9B59B6);opacity:.55" id="evCycleWrap" hidden>演化 <strong id="evCycleLogin">—</strong></span>
+                    <span style="color:var(--andromeda-purple,var(--andromeda-purple-400));font-weight:600">🧠 仙女座 AI · 在线学习伙伴</span>
+                    <span class="num-mono" style="color:var(--andromeda-purple,var(--andromeda-purple-400));opacity:.55" id="evCycleWrap" hidden>演化 <strong id="evCycleLogin">—</strong></span>
                     <span id="evDaemonLogin" style="opacity:.55" hidden>守护 —</span>
                     <span id="evMiniLogin" style="opacity:.55" hidden>推理 —</span>
                     <span id="evStatusLogin" style="padding:1px 8px;border-radius:999px;font-size:10px;font-weight:700;background:rgba(34,197,94,.1);color:#166534;border:1px solid rgba(34,197,94,.3)">● 欢迎体验</span>
                 </div>
                 <!-- 🌌 仙女座功能亮点 (未登录也能看到) -->
                 <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
-                    <span style="padding:3px 10px;border-radius:12px;font-size:11px;background:rgba(155,89,182,.1);color:#9B59B6;border:1px solid rgba(155,89,182,.25);">🧠 本地 Ollama · 零 token</span>
-                    <span style="padding:3px 10px;border-radius:12px;font-size:11px;background:rgba(46,134,222,.1);color:#2E86DE;border:1px solid rgba(46,134,222,.25);">💡 发散思维引擎</span>
+                    <span style="padding:3px 10px;border-radius:12px;font-size:11px;background:rgba(155,89,182,.1);color:var(--andromeda-purple-400);border:1px solid rgba(155,89,182,.25);">🧠 本地 Ollama · 零 token</span>
+                    <span style="padding:3px 10px;border-radius:12px;font-size:11px;background:rgba(46,134,222,.1);color:var(--iceberg-blue-400);border:1px solid rgba(46,134,222,.25);">💡 发散思维引擎</span>
                     <span style="padding:3px 10px;border-radius:12px;font-size:11px;background:rgba(52,211,153,.1);color:#10B981;border:1px solid rgba(52,211,153,.25);">📚 永久化脑库</span>
                     <span style="padding:3px 10px;border-radius:12px;font-size:11px;background:rgba(251,191,36,.1);color:#F59E0B;border:1px solid rgba(251,191,36,.25);">⚡ 智能守护集群</span>
                 </div>
             </div>
         </div>
         <form class="wb-login" id="bizLoginFormMain" onsubmit="return false;">
-            <div class="wb-login-title"><i class="fas fa-user-shield" style="color:var(--andromeda-purple,#9B59B6);font-size:13px"></i> 安全登录 MTSCOS AI</div>
+            <div class="wb-login-title"><i class="fas fa-user-shield" style="color:var(--andromeda-purple,var(--andromeda-purple-400));font-size:13px"></i> 安全登录 MTSCOS AI</div>
             <input type="hidden" name="csrf_token" value="{{ page_csrf_token if page_csrf_token else (csrf_token if csrf_token else '') }}">
             <div class="wb-field">
                 <i class="fas fa-user"></i>
@@ -551,7 +641,7 @@
             <div class="wb-icon" style="background:linear-gradient(135deg,var(--mtscos-primary-base),var(--mtscos-secondary-base))">{{ current_user.username[0]|upper }}</div>
             <div>
                 {% if personalized and role_hero %}
-                <div class="wb-title" style="font-size:16px;">{{ role_hero.greeting|default('你好') }}, <span style="color:var(--andromeda-purple,#9B59B6);">{{ current_user.username }}</span>!</div>
+                <div class="wb-title" style="font-size:16px;">{{ role_hero.greeting|default('你好') }}, <span style="color:var(--andromeda-purple,var(--andromeda-purple-400));">{{ current_user.username }}</span>!</div>
                 <div class="wb-sub" style="line-height:1.6;">
                     {% if role_hero.subtitle %}{{ role_hero.subtitle }} · {% endif %}
                     <span style="opacity:.7;">仙女座 AI 在线 · 你的专属学习伙伴已就绪 🧠</span>
@@ -559,7 +649,7 @@
                 {% if recommendations %}
                 <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
                     {% for rec in recommendations[:3] %}
-                    <span style="padding:3px 10px;border-radius:12px;font-size:11px;background:rgba(46,134,222,.1);color:#2E86DE;border:1px solid rgba(46,134,222,.25);">🎯 {{ rec }}</span>
+                    <span style="padding:3px 10px;border-radius:12px;font-size:11px;background:rgba(46,134,222,.1);color:var(--iceberg-blue-400);border:1px solid rgba(46,134,222,.25);">🎯 {{ rec }}</span>
                     {% endfor %}
                 </div>
                 {% endif %}
@@ -570,7 +660,7 @@
             </div>
         </div>
         <div style="display:flex;gap:8px;">
-            <a href="/local-chat" class="wb-btn" style="background:linear-gradient(135deg,#9B59B6,#2E86DE);color:#fff;"><i class="fas fa-brain"></i> 🧠 仙女座聊天</a>
+            <a href="/local-chat" class="wb-btn" style="background:linear-gradient(135deg,var(--andromeda-purple-400),var(--iceberg-blue-400));color:#fff;"><i class="fas fa-brain"></i> 🧠 仙女座聊天</a>
             <a href="/student_portal" class="wb-btn"><i class="fas fa-gauge-high"></i> {{ t('home.workspace', default='工作台') }}</a>
         </div>
     </section>
@@ -599,41 +689,94 @@
         <div class="biz-stat-cell"><span class="lbl">✦ EigenFlux 专家</span><span class="num num-mono" id="statEigExp">{{ homepage_stats.eigenflux_expert_count if homepage_stats else 0 }}</span></div>
         <div class="biz-stat-cell"><span class="lbl">📐 开发流程</span><span class="num num-mono" id="statDevFlow">{% if homepage_stats and homepage_stats.iron_violations == 0 %}OK{% else %}{{ homepage_stats.iron_violations if homepage_stats else 0 }}⛔{% endif %}</span></div>
         <div class="biz-stat-cell"><span class="lbl">🚀 Daemon 运行</span><span class="num num-mono" id="statDaemon">{{ homepage_stats.daemon_running if homepage_stats else 0 }}/{{ homepage_stats.daemon_total if homepage_stats else 0 }}</span></div>
-        <div class="biz-stat-cell"><span class="lbl">🤝 握手状态</span><span class="num" id="statHS" style="font-size:13px;color:#9B59B6;font-family:var(--mtscos-font-mono,monospace);">{% if homepage_stats and homepage_stats.handshake_active > 0 %}● {{ homepage_stats.handshake_active }}活{% else %}○ 离线{% endif %}</span></div>
+        <div class="biz-stat-cell"><span class="lbl">🤝 握手状态</span><span class="num" id="statHS" style="font-size:13px;color:var(--andromeda-purple-400);font-family:var(--mtscos-font-mono,monospace);">{% if homepage_stats and homepage_stats.handshake_active > 0 %}● {{ homepage_stats.handshake_active }}活{% else %}○ 离线{% endif %}</span></div>
     </section>
 
-    <!-- 🌟 双 Logo 品牌展示 + 冰山规则分层 -->
+    <!-- �️ 仙女座品牌家族 — 7 子品牌矩阵 -->
+    <section class="biz-brand-family">
+        <div class="bf-header">
+            <span class="bf-orb"></span>
+            <div class="bf-title">仙女座品牌家族</div>
+            <span class="bf-sub">7 子品牌 · 守护集群 · 实时在线</span>
+        </div>
+        <div class="bf-grid">
+            <div class="bf-card" style="--bf-color:#1E4A63;--bf-color-soft:rgba(30,74,99,.10)">
+                <div class="bf-icon">⚙️</div>
+                <div class="bf-name">中枢法则</div>
+                <div class="bf-engine">sys_rule_enforcer</div>
+                <div class="bf-desc">9 篇规则自动学习 · 弱约束词强化 · 铁律强制执行</div>
+            </div>
+            <div class="bf-card" style="--bf-color:#DC2626;--bf-color-soft:rgba(220,38,38,.10)">
+                <div class="bf-icon">🛠️</div>
+                <div class="bf-name">自愈工坊</div>
+                <div class="bf-engine">sys_auto_repair</div>
+                <div class="bf-desc">FAILED daemon 自动重启 · 异常自愈 · 三重保活</div>
+            </div>
+            <div class="bf-card" style="--bf-color:#1A73E8;--bf-color-soft:rgba(26,115,232,.10)">
+                <div class="bf-icon">🔍</div>
+                <div class="bf-name">明镜巡逻</div>
+                <div class="bf-engine">sys_auto_patrol</div>
+                <div class="bf-desc">6 人 AI 巡逻队 — 语法 · 导入 · 模式错误扫描</div>
+            </div>
+            <div class="bf-card" style="--bf-color:#059669;--bf-color-soft:rgba(5,150,105,.10)">
+                <div class="bf-icon">🧠</div>
+                <div class="bf-name">本地智脑</div>
+                <div class="bf-engine">sys_local_inference</div>
+                <div class="bf-desc">聊天/分类/审查/Bug 分析 — 全部本地，零 token</div>
+            </div>
+            <div class="bf-card" style="--bf-color:#8B6F3F;--bf-color-soft:rgba(139,111,63,.10)">
+                <div class="bf-icon">📡</div>
+                <div class="bf-name">洞察之眼</div>
+                <div class="bf-engine">sys_deep_inspection</div>
+                <div class="bf-desc">页面/路由/代码逐行 + AI 团队路由验证</div>
+            </div>
+            <div class="bf-card" style="--bf-color:#B83A2F;--bf-color-soft:rgba(184,58,47,.10)">
+                <div class="bf-icon">💓</div>
+                <div class="bf-name">血脉心跳</div>
+                <div class="bf-engine">sys_heartbeat_writer</div>
+                <div class="bf-desc">30s 周期心跳 — 所有 daemon 活性追踪</div>
+            </div>
+            <div class="bf-card" style="--bf-color:#C9A96E;--bf-color-soft:rgba(201,169,110,.10)">
+                <div class="bf-icon">📝</div>
+                <div class="bf-name">文印天团</div>
+                <div class="bf-engine">sys_copy_inspection</div>
+                <div class="bf-desc">仙女座文案天团 — 缺失/重复/占位符/硬编码合规巡检</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- �� 双 Logo 品牌展示 + 冰山规则分层 -->
     <section style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
         <!-- 左: 双 Logo + 中心思想 -->
         <div style="background:linear-gradient(135deg,rgba(11,31,58,.04),rgba(155,89,182,.06));border:1px solid rgba(155,89,182,.14);border-radius:14px;padding:20px 22px;">
-            <div style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:800;color:#0B1F3A;margin-bottom:14px;">
-                <span style="width:4px;height:14px;border-radius:2px;background:linear-gradient(180deg,#9B59B6,#2E86DE);"></span>
+            <div style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:800;color:var(--andromeda-deep);margin-bottom:14px;">
+                <span style="width:4px;height:14px;border-radius:2px;background:linear-gradient(180deg,var(--andromeda-purple-400),var(--iceberg-blue-400));"></span>
                 🌟 仙女座 × 冰山 · 双子引擎
             </div>
             <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:center;">
                 <div style="text-align:center;">
                     <img src="/static/img/andromeda-logo.svg" width="72" height="72" style="border-radius:12px;">
-                    <div style="font-size:12px;font-weight:700;color:#9B59B6;margin-top:6px;">✨ ANDROMEDA</div>
+                    <div style="font-size:12px;font-weight:700;color:var(--andromeda-purple-400);margin-top:6px;">✨ ANDROMEDA</div>
                     <div style="font-size:10px;color:#6b7a8f;letter-spacing:1px;">星系引擎</div>
                 </div>
-                <div style="display:flex;flex-direction:column;align-items:center;gap:6px;color:#9B59B6;">
+                <div style="display:flex;flex-direction:column;align-items:center;gap:6px;color:var(--andromeda-purple-400);">
                     <div style="width:30px;height:30px;border-radius:50%;border:1px dashed rgba(155,89,182,.4);display:flex;align-items:center;justify-content:center;font-size:12px;">🔗</div>
                     <div style="font-size:10px;color:#6b7a8f;text-align:center;">几何共享<br>父子支撑</div>
                 </div>
                 <div style="text-align:center;">
                     <img src="/static/img/iceberg-logo.svg" width="72" height="72" style="border-radius:12px;">
-                    <div style="font-size:12px;font-weight:700;color:#2E86DE;margin-top:6px;">⛰️ ICEBERG</div>
+                    <div style="font-size:12px;font-weight:700;color:var(--iceberg-blue-400);margin-top:6px;">⛰️ ICEBERG</div>
                     <div style="font-size:10px;color:#6b7a8f;letter-spacing:1px;">规则底座</div>
                 </div>
             </div>
             <div style="margin-top:14px;padding:10px 12px;background:rgba(155,89,182,.06);border-radius:8px;font-size:12px;color:#4a5b6e;line-height:1.6;">
-                <b style="color:#0B1F3A;">中心思想：</b>仙女座 25 颗域星（活跃执行）+ 冰山 4 层规则（沉默支撑）。冰山托举仙女座，双方共享同心圆+径向辐射几何语言。
+                <b style="color:var(--andromeda-deep);">中心思想：</b>仙女座 25 颗域星（活跃执行）+ 冰山 4 层规则（沉默支撑）。冰山托举仙女座，双方共享同心圆+径向辐射几何语言。
             </div>
         </div>
 
         <!-- 右: 冰山规则分层可视化 -->
         <div style="background:linear-gradient(135deg,rgba(11,31,58,.04),rgba(46,134,222,.06));border:1px solid rgba(46,134,222,.14);border-radius:14px;padding:20px 22px;">
-            <div style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:800;color:#0B1F3A;margin-bottom:14px;">
+            <div style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:800;color:var(--andromeda-deep);margin-bottom:14px;">
                 <span style="width:4px;height:14px;border-radius:2px;background:linear-gradient(180deg,#EF4444,#312E81);"></span>
                 📐 冰山规则分层 (L0 → L1 → L2 → L3)
             </div>
@@ -643,7 +786,7 @@
             <div style="margin-top:12px;display:flex;gap:10px;font-size:11px;color:#6b7a8f;">
                 <span>🎯 铁律违反 <b style="color:#C0392B;font-family:monospace;" id="iceVio">{{ homepage_stats.iron_violations if homepage_stats else 0 }}</b></span>
                 <span>• 规则告警 <b style="color:#B45309;font-family:monospace;" id="iceAlert">{{ homepage_stats.rule_alerts if homepage_stats else 0 }}</b></span>
-                <span>• 规则变更 <b style="color:#1B4F72;font-family:monospace;" id="iceChg">{{ homepage_stats.rule_changes if homepage_stats else 0 }}</b></span>
+                <span>• 规则变更 <b style="color:var(--iceberg-blue-500);font-family:monospace;" id="iceChg">{{ homepage_stats.rule_changes if homepage_stats else 0 }}</b></span>
             </div>
         </div>
     </section>
@@ -652,7 +795,7 @@
     <section style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:20px;">
         <!-- Daemon 状态 -->
         <div style="background:var(--mtscos-bg-card,#fff);border:1px solid var(--biz-line,rgba(11,31,58,.08));border-radius:14px;padding:16px 18px;">
-            <div style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:800;color:#0B1F3A;margin-bottom:10px;">
+            <div style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:800;color:var(--andromeda-deep);margin-bottom:10px;">
                 <span>🚀 Daemon 引擎</span>
                 <span id="daemonDot" style="width:8px;height:8px;border-radius:50%;background:#EAB308;margin-left:auto;animation:pulseDot 1.5s infinite;"></span>
             </div>
@@ -661,16 +804,16 @@
 
         <!-- EigenFlux 通讯 -->
         <div style="background:var(--mtscos-bg-card,#fff);border:1px solid var(--biz-line,rgba(11,31,58,.08));border-radius:14px;padding:16px 18px;">
-            <div style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:800;color:#0B1F3A;margin-bottom:10px;">
+            <div style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:800;color:var(--andromeda-deep);margin-bottom:10px;">
                 <span>✦ EigenFlux 专家网络</span>
-                <span style="font-size:10px;padding:2px 8px;border-radius:999px;background:rgba(155,89,182,.12);color:#9B59B6;font-weight:700;margin-left:auto;">LIVE</span>
+                <span style="font-size:10px;padding:2px 8px;border-radius:999px;background:rgba(155,89,182,.12);color:var(--andromeda-purple-400);font-weight:700;margin-left:auto;">LIVE</span>
             </div>
             <div id="eigenBox" style="font-size:12px;color:#4a5b6e;line-height:1.8;">{% if homepage_stats and homepage_stats.eigen_box_html %}{{ homepage_stats.eigen_box_html | safe }}{% else %}加载中…{% endif %}</div>
         </div>
 
         <!-- 握手 + 冰山运行 -->
         <div style="background:var(--mtscos-bg-card,#fff);border:1px solid var(--biz-line,rgba(11,31,58,.08));border-radius:14px;padding:16px 18px;">
-            <div style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:800;color:#0B1F3A;margin-bottom:10px;">
+            <div style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:800;color:var(--andromeda-deep);margin-bottom:10px;">
                 <span>🤝 握手 + 冰山运行</span>
             </div>
             <div id="hsBox" style="font-size:12px;color:#4a5b6e;line-height:1.8;">{% if homepage_stats and homepage_stats.hs_box_html %}{{ homepage_stats.hs_box_html | safe }}{% else %}加载中…{% endif %}</div>
