@@ -9859,6 +9859,45 @@ def _get_andromeda_state():
         state['health'] = 'ok' if state['daemon_pct'] >= 90 else ('warn' if state['daemon_pct'] >= 60 else 'crit')
         state['cache_at'] = int(_t.time())
     except Exception: pass
+
+    # ── 🌌 自演化/自探研指标 (database/app.db 演化主库, fail-soft) ──
+    # 自演化循环 andromeda_auto_loop 把健康/研究/衍生产出写在这里
+    state.update({
+        'evo_loop_last': None,       # 最近一次自律循环
+        'evo_loop_items': 0,         # 最近一轮有效产出项
+        'evo_research_total': 0,     # 自探研提案累计
+        'evo_research_started': 0,   # 投票通过并启动
+        'evo_suggestions_total': 0,  # 建议池总量
+        'evo_repair_pending': 0,     # 待拉起 daemon 诉求
+        'evo_derived_total': 0,      # 研究衍生工作项
+        'evo_daemon_failed': 0,      # 自循环标记 FAILED 的 daemon
+    })
+    try:
+        import sqlite3 as _evo_sq
+        _evo_db = os.path.join(_base, 'database', 'app.db')
+        if os.path.exists(_evo_db):
+            _ec = _evo_sq.connect(_evo_db)
+            def _evoq(_sql, _d=0):
+                try:
+                    _r = _ec.execute(_sql).fetchone()
+                    return _r[0] if _r and _r[0] is not None else _d
+                except Exception: return _d
+            state['evo_loop_last'] = _evoq(
+                "SELECT started_at FROM mt_evolution_runs WHERE loop='SELF_LOOP' ORDER BY id DESC LIMIT 1", None)
+            state['evo_loop_items'] = _evoq(
+                "SELECT COALESCE(items_ok,0) FROM mt_evolution_runs WHERE loop='SELF_LOOP' ORDER BY id DESC LIMIT 1")
+            state['evo_research_total'] = _evoq("SELECT COUNT(*) FROM mt_research_proposals")
+            state['evo_research_started'] = _evoq(
+                "SELECT COUNT(*) FROM mt_research_proposals WHERE status IN ('STARTED','DONE','PROMOTED')")
+            state['evo_suggestions_total'] = _evoq("SELECT COUNT(*) FROM mt_ai_suggestion_pool")
+            state['evo_repair_pending'] = _evoq(
+                "SELECT COUNT(*) FROM mt_ai_suggestion_pool WHERE source_type='DAEMON_REPAIR' AND status='PENDING'")
+            state['evo_derived_total'] = _evoq(
+                "SELECT COUNT(*) FROM mt_ai_suggestion_pool WHERE source_type='RESEARCH_DERIVE'")
+            state['evo_daemon_failed'] = _evoq(
+                "SELECT COUNT(*) FROM mt_daemon_registry WHERE status='FAILED'")
+            _ec.close()
+    except Exception: pass
     return state, version
 
 

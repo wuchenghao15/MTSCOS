@@ -780,6 +780,11 @@ body {
             <span class="eco-num">{{ andromeda_state.patrol_runs | default(0) }}</span>
             <span class="eco-label">源码巡逻</span>
         </span>
+        <span class="eco-item" title="仙女座自我探研: Q5 头脑风暴提案经 EigenFlux 投票通过并建 §14 flow 的累计数">
+            <i class="eco-icon fas fa-dna"></i>
+            <span class="eco-num" data-evo-field="evo_research_started">{{ andromeda_state.evo_research_started | default(0) }}</span>
+            <span class="eco-label">自探研</span>
+        </span>
     </div>
 
     <!-- 登录卡 (保留完整 CSRF + JS hook) -->
