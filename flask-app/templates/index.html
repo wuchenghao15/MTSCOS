@@ -50,27 +50,29 @@ body .uni-main { margin-left: 0 !important; width: 100% !important; }
     font-family: ui-monospace, monospace;
 }
 
-/* ── 主视觉: 系统时间 ── */
-.mts-clock {
-    text-align: center;
-    padding: 36px 20px 8px;
+/* ── 主视觉: 时钟 (右上角, 小字, 右对齐) ── */
+.mts-top { align-items: center; }
+.mts-status { gap: 10px; }
+.mts-clock-top {
+    display:flex; flex-direction:column; align-items:flex-end;
+    margin-left: 14px; padding-left: 14px;
+    border-left: 1px solid rgba(11,31,58,.08);
+    line-height: 1.3;
 }
-.mts-clock .date {
-    font-size: 13px; font-weight: 500; color: var(--mtscos-text-secondary, #6b7a8f);
-    letter-spacing: 2px;
-    margin-bottom: 14px;
+.mts-clock-top .clk-date {
+    font-size: 10px; font-weight: 500; color: var(--mtscos-text-secondary, #6b7a8f);
+    letter-spacing: 1px;
 }
-.mts-clock .time {
-    font-size: 84px; font-weight: 900;
+.mts-clock-top .clk-time {
+    font-size: 14px; font-weight: 800;
     font-family: 'SF Mono', 'JetBrains Mono', ui-monospace, monospace;
     background: linear-gradient(135deg, var(--andromeda-purple-400, #9B59B6), var(--iceberg-blue-400, #2E86DE));
     -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-    line-height: 1;
-    letter-spacing: -2px;
+    letter-spacing: .5px;
 }
-.mts-clock .weekday {
-    font-size: 14px; color: var(--mtscos-text-secondary, #6b7a8f);
-    margin-top: 10px; letter-spacing: 4px;
+.mts-clock-top .clk-week {
+    font-size: 9px; color: var(--mtscos-text-secondary, #9baab8);
+    letter-spacing: 3px; text-transform: uppercase;
 }
 
 /* ── 佛教派系 15 天事件 (小字, 时间下方) ── */
@@ -220,26 +222,7 @@ body {
         #fafbfd !important;
 }
 
-/* ② 时钟区: 呼吸光晕 */
-.mts-clock .time {
-    text-shadow: 0 0 80px rgba(155,89,182,.08), 0 0 40px rgba(46,134,222,.06);
-    animation: breathe 6s ease-in-out infinite;
-}
-@keyframes breathe {
-    0%,100% { filter: brightness(1) drop-shadow(0 0 0 transparent); }
-    50%     { filter: brightness(1.05) drop-shadow(0 0 20px rgba(155,89,182,.15)); }
-}
-.mts-clock::before {
-    content:''; display:block;
-    width:200px; height:200px; margin:0 auto -160px;
-    background: radial-gradient(circle, rgba(155,89,182,.08) 0%, transparent 70%);
-    z-index:-1; position:relative;
-    animation: nebula 20s ease-in-out infinite;
-}
-@keyframes nebula {
-    0%,100% { transform: scale(1) translate(0,0); opacity:.6; }
-    50%     { transform: scale(1.2) translate(10px,-5px); opacity:.9; }
-}
+/* ② 时钟已移至右上角, 旧 C 位动画已清 */
 
 /* ③ 仙女座星云脉动 (状态绿点升级) */
 .mts-status .dot {
@@ -467,14 +450,13 @@ body {
                 v{{ version | default('23.0.0') }}
                 {% if andromeda_version %}·{{ andromeda_version }}{% endif %}
             </span>
+            <!-- 右上角时钟 (小字, 右对齐) -->
+            <span class="mts-clock-top">
+                <span class="clk-date" id="clkDate">—</span>
+                <span class="clk-time" id="clkTime">--:--:--</span>
+                <span class="clk-week" id="clkWeek">—</span>
+            </span>
         </div>
-    </div>
-
-    <!-- 系统时间 (大字, 主视觉) -->
-    <div class="mts-clock">
-        <div class="date" id="clkDate">—</div>
-        <div class="time" id="clkTime">--:--:--</div>
-        <div class="weekday" id="clkWeek">—</div>
     </div>
 
     <!-- 冰山系统介绍横幅 (与仙女座关联) -->
