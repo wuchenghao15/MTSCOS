@@ -28,7 +28,7 @@ MTSCOS AI
     background-image:
       radial-gradient(ellipse 900px 500px at 10% 15%, rgba(44,95,124,0.07), transparent 60%),
       radial-gradient(ellipse 700px 400px at 90% 85%, rgba(30,74,99,0.06), transparent 60%);
-  }
+  
   .card, .panel, .box, .block {
     background:var(--paper); border-radius:var(--radius-lg);
     border:1px solid rgba(44,95,124,0.08);
@@ -66,7 +66,7 @@ MTSCOS AI
   @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Noto+Serif+SC:wght@400;700;900&display=swap');
   :root{--bg:#05060d;--bg2:#0a0d1a;--neon-cyan:#00f0ff;--neon-violet:#a78bfa;--neon-gold:#fbbf24;--text:#e8ecf8;--muted:#8892a8;--red:#ef4444;}
   *{margin:0;padding:0;box-sizing:border-box;}
-  body{background:var(--bg);color:var(--text);font-family:'JetBrains Mono','Noto Serif SC';min-height:100vh;display:flex;flex-direction:column;}
+  body{background:var(--bg);color:var(--text);font-family:'JetBrains Mono','Noto Serif SC';min-height:100vh;display:flex; overflow:hidden;flex-direction:column;
 
   .sidebar{width:240px;background:var(--bg2);border-right:1px solid rgba(255,255,255,0.05);padding:20px;position:fixed;top:0;left:0;bottom:0;overflow-y:auto;}
   .sidebar h2{font-family:'Noto Serif SC';font-size:0.9rem;color:var(--neon-cyan);letter-spacing:2px;margin-bottom:14px;}
@@ -88,7 +88,7 @@ MTSCOS AI
   .msg-head{font-size:0.72rem;color:var(--muted);margin-bottom:6px;}
   .msg-head .p-name{font-weight:700;color:var(--neon-cyan);}
   .msg.me .msg-head .p-name{color:var(--neon-violet);}
-  .msg-body{font-size:0.88rem;line-height:1.8;background:rgba(255,255,255,0.02);padding:14px 18px;border-radius:8px;white-space:pre-wrap;}
+  .msg-body{font-size:0.88rem;line-height:1.8;background:rgba(255,255,255,0.02);padding:14px 18px;border-radius:8px;white-space:pre-wrap;
   .loading{color:var(--neon-gold);font-size:0.75rem;font-style:italic;animation:pulse 1.5s infinite;}
   @keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.4;}}
 
@@ -118,8 +118,6 @@ MTSCOS AI
 {% block content %}
 <!-- 🪐 仙女座统一导航组件 -->
 <link rel="stylesheet" href="/static/css/andromeda_nav.css">
-
-
 <div class="sidebar">
   <h2>{{ t('andromeda.AI_人格_d0249d', default='🎭 AI 人格') }}</h2>
   <div id="personaList">{{ t('andromeda.加载中_26b5bd', default='加载中...') }}</div>

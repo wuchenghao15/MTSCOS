@@ -7,6 +7,9 @@ MTSCOS AI
 {% block extra_head %}
 
 <style>
+  /* v25.1 child page scroll fix */
+  body{min-height:0}
+  
 /* ═══════════════════════════════════════════════════
      📐 美院院士设计 Token (v22.4.0) — 统一注入
      ═══════════════════════════════════════════════════ */
@@ -118,8 +121,6 @@ MTSCOS AI
 {% block content %}
 <!-- 🪐 仙女座统一导航组件 -->
 <link rel="stylesheet" href="/static/css/andromeda_nav.css">
-
-
 <div class="container">
 
   <div class="hd">
