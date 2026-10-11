@@ -386,3 +386,4 @@ docs/
 flask-app/core/services/archived_logs/
 *.archive
 MTSCOS_AI/
+!.rules/applied/

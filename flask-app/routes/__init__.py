@@ -660,7 +660,8 @@ def _root_redirect():
     _sa_r = _sa_preauth_redirect()
     if _sa_r is not None:
         return _sa_r
-    return _redirect('/index')
+    # v22.2.0: 默认直达冰山守护中心（仙女座 v26.0 Hero + 侧边栏）
+    return _redirect('/andromeda/iceberg_center')
 
 # ───────────────────────────────────────────────────────────────
 # 🔧 SERVER 模式路由 override (v22.10.6)

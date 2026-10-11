@@ -35,11 +35,29 @@ from functools import wraps
 
 from flask import Blueprint, Response, g, jsonify, request, session, stream_with_context
 
-# ── 路径解析 ────────────────────────────────────────────────────
+# ── 路径解析 (v25.1: APP_DB env var first + multi-fallback for Mac mini) ──
 _BLUEPRINT_DIR = os.path.dirname(os.path.abspath(__file__))
 _FLASK_APP_DIR = os.path.dirname(_BLUEPRINT_DIR)
 _ROOT_DIR = os.path.dirname(_FLASK_APP_DIR)
-_DB_PATH = os.path.join(_ROOT_DIR, "app.db")
+
+def _resolve_db_path():
+    """Resolve DB path: env var > engines/app.db > database/app.db > root app.db"""
+    env = os.environ.get("APP_DB", "")
+    if env and os.path.exists(env):
+        return env
+    candidates = [
+        os.path.join(_FLASK_APP_DIR, "engines", "app.db"),
+        os.path.join(_FLASK_APP_DIR, "database", "app.db"),
+        os.path.join(_ROOT_DIR, "app.db"),
+        os.path.join(_FLASK_APP_DIR, "app.db"),
+    ]
+    for c in candidates:
+        if os.path.exists(c):
+            return c
+    return candidates[0]
+
+_DB_PATH = _resolve_db_path()
+os.environ["APP_DB"] = _DB_PATH  # sync for other modules
 
 for _d in [_FLASK_APP_DIR, _ROOT_DIR]:
     if _d not in sys.path:
@@ -263,18 +281,63 @@ def _build_divergent_prompt(user_text, username, cognitive_profile=None, history
     return system
 
 
+def _ollama_available():
+    """Check if Ollama is reachable (v25.1: returns False on Mac mini without Ollama)."""
+    try:
+        import urllib.request as _ur
+        # Support env var override for custom host
+        host = os.environ.get("OLLAMA_HOST", "http://127.0.0.1:11434")
+        req = _ur.Request(f"{host}/api/tags", headers={"User-Agent": "andromeda"})
+        resp = _ur.urlopen(req, timeout=3)
+        return resp.status == 200
+    except Exception:
+        return False
+
+
+def _fallback_local_reply(user_text, username):
+    """
+    v25.1: Fallback reply when Ollama not available (Mac mini scenario).
+    Uses Andromeda divergent thinking template (冰山矩阵) — no external deps.
+    Generates 2-3 perspective angles on the user's topic.
+    """
+    topic = (user_text or "").strip()[:80]
+    angles = [
+        f"【第1视角 — 冰山表层】'{topic}' 这个问题，从日常经验层面看...",
+        f"【第2视角 — 认知中层】深入分析的话，'{topic}' 背后隐藏的假设是...",
+        f"【第3视角 — 元认知层】换个角度：为什么我们会在意 '{topic}' 这个问题本身？",
+    ]
+    reply = f"你好 {username}！(本地推理降级模式 · 发散思维引擎)\n\n"
+    reply += f"关于「{topic}」，仙女座从 3 个角度展开：\n\n"
+    for a in angles:
+        reply += a + "\n\n"
+    reply += f"当前 Mac mini 未安装 Ollama · 回答由仙女座发散思维模板生成。\n"
+    reply += f"安装 Ollama (brew install ollama) 后自动切换 qwen2.5 原生推理。"
+    return reply
+
+
 def _call_ollama_stream(user_text, system_prompt, username):
     """
-    直接调用本地 Ollama /api/chat (流式原生)
-    仙女座发散思维 prompt 由上游 _build_divergent_prompt 生成, 完全可控
+    v25.1: Stream from Ollama /api/chat. Auto-detect available.
+    Falls back to _fallback_local_reply when Ollama unreachable.
     """
     import urllib.request as _ur
+
+    if not _ollama_available():
+        yield f"data: [thinking]\n\n"
+        fallback_text = _fallback_local_reply(user_text, username)
+        # Stream fallback text token-by-token for consistent UX
+        for ch in fallback_text:
+            yield f"data: {json.dumps({'token': ch}, ensure_ascii=False)}\n\n"
+        yield f"data: [done] {json.dumps({'model': 'andromeda_fallback', 'duration_ms': 50}, ensure_ascii=False)}\n\n"
+        return
+
     yield f"data: [thinking]\n\n"
 
     try:
-        # Ollama 原生 /api/chat 端点 (支持 system + messages)
+        host = os.environ.get("OLLAMA_HOST", "http://127.0.0.1:11434")
+        model = os.environ.get("OLLAMA_MODEL", "qwen2.5:7b")
         body = json.dumps({
-            "model": "qwen2.5:14b",
+            "model": model,
             "messages": [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_text},
@@ -283,11 +346,7 @@ def _call_ollama_stream(user_text, system_prompt, username):
             "options": {"temperature": 0.85, "top_p": 0.92, "num_predict": 1024}
         }).encode()
 
-        req = _ur.Request(
-            "http://127.0.0.1:11434/api/chat",
-            data=body,
-            headers={"Content-Type": "application/json"}
-        )
+        req = _ur.Request(f"{host}/api/chat", data=body, headers={"Content-Type": "application/json"})
         resp = _ur.urlopen(req, timeout=180)
 
         for line in resp:
@@ -302,7 +361,7 @@ def _call_ollama_stream(user_text, system_prompt, username):
                     yield f"data: {json.dumps({'token': token}, ensure_ascii=False)}\n\n"
                 if chunk.get("done"):
                     total_dur = chunk.get("total_duration", 0)
-                    yield f"data: [done] {json.dumps({'model': 'qwen2.5:14b', 'duration_ms': total_dur//1000000 if total_dur else 0}, ensure_ascii=False)}\n\n"
+                    yield f"data: [done] {json.dumps({'model': model, 'duration_ms': total_dur//1000000 if total_dur else 0}, ensure_ascii=False)}\n\n"
                     break
             except json.JSONDecodeError:
                 continue
