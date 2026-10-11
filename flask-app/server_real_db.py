@@ -9925,13 +9925,38 @@ def index():
         cognitive_profile = _cog
 
     # ═══════════════════════════════════════════════════════════
-    # v25.1: 去首页冗余内容 → 未登录直跳登录页 / 已登录直跳管理中心
-    # index.html 不再作为着陆页渲染 (fail-closed, SA 双密钥逻辑已在上文处理)
+    # v22.3.2 修复: index.html 必须作为着陆页渲染（冰山唯一主页入口）
+    # v25.1 曾误删 render_template 改 redirect — 已恢复
     # ═══════════════════════════════════════════════════════════
-    _is_auth = session.get('username') and session.get('role')
-    if _is_auth:
-        return redirect('/admin_center', code=302)
-    return redirect('/auth/login', code=302)
+    # 安全收集所有可用变量, 缺失的给默认值, 避免 Jinja2/render_template NameError
+    _g = dict(globals())
+    try:
+        return render_template('index.html',
+            version=version if 'version' in locals() else _g.get('version', 'v22.3.2'),
+            latest_version=latest if 'latest' in locals() else _g.get('latest', ''),
+            system_version=version if 'version' in locals() else _g.get('version', 'v22.3.2'),
+            homepage_stats=stats if 'stats' in locals() else {},
+            footer_info=footer_info if 'footer_info' in locals() else {},
+            particle_config=particle_config if 'particle_config' in locals() else {},
+            cognitive_profile=cognitive_profile if 'cognitive_profile' in locals() else {},
+            role_hero=role_hero if 'role_hero' in locals() else {},
+            recommendations=recommendations if 'recommendations' in locals() else [],
+            personalized=personalized if 'personalized' in locals() else False,
+            current_user=session.get('username', '') if session else '',
+            is_super_admin=bool(session.get('role') == 'super_admin') if session else False,
+            is_admin=bool(session.get('role') in ('admin','super_admin')) if session else False,
+            page_csrf_token=page_csrf_token if 'page_csrf_token' in locals() else (session.get('csrf_token', '') if session else ''),
+            layout_mode=(session.get('layout_mode', 'STANDARD') if session else 'STANDARD'),
+            dual_authenticated=(session.get('dual_auth_completed') if session else False),
+        )
+    except Exception as _idx_tpl_err:
+        import logging as _lg_idx
+        _lg_idx.getLogger('index_render').error(f"index.html render 失败, fallback: {_idx_tpl_err}")
+        try:
+            return _rt('admin_fallback.html', name='Index Template Fallback')
+        except Exception:
+            from flask import Response
+            return Response('<html><body><h1>MTSCOS AI · Index Template Error</h1><pre>' + str(_idx_tpl_err) + '</pre></body></html>', status=500)
 
 
 # ════════════════════════════════════════════════════════════════════
