@@ -256,24 +256,29 @@ def run_research_cycle(max_proposals: int = 2) -> dict:
         # ④ 只有 routine 才自动 start_flow → Step7 EXECUTE
         # sensitive/major 必须人类决策, 但我们把提案准备好了
         if sens["level"] == "routine":
-            # 调 dev_gate start
+            # 在常驻连接上直接建 §14 flow (修复: 旧版 subprocess dev_gate 开第二连接
+            # 与 Flask/daemon 争 WAL 写锁 → "database is locked" 必现失败 2026-09-24)
             try:
-                r = subprocess.run(
-                    [sys.executable, str(BASE / "engines" / "dev_gate.py"),
-                     "start", title, summary],
-                    cwd=str(BASE), capture_output=True, text=True, timeout=180
-                )
-                if r.returncode == 0:
-                    flow_data = json.loads(r.stdout.split("\n")[-1])
-                    flow_id = flow_data.get("flow_id", "")
-                    db.execute("UPDATE mt_research_proposals SET dev_gate_flow_id=?, status=? WHERE prop_id=?",
-                               (flow_id, "STARTED", prop_id))
-                    result["started"] += 1
-                    log(f"     ✅ dev_gate start → {flow_id[:40]} Step7={flow_data.get('allowed_write')}")
-                else:
-                    db.execute("UPDATE mt_research_proposals SET status=? WHERE prop_id=?",
-                               ("FAILED", prop_id))
-                    log(f"     ❌ dev_gate start 失败: {r.stderr[:60]}")
+                flow_id = f"flow_research_{int(time.time())}_{abs(hash(title)) % 100000}"
+                now = time.strftime("%Y-%m-%d %H:%M:%S")
+                db.execute("""INSERT OR IGNORE INTO mt_dev_flow_session
+                    (flow_id, proposal_title, proposal_summary, proposal_json,
+                     final_status, current_step, created_at, updated_at, created_by)
+                    VALUES (?,?,?,?,?,?,?,?,?)""",
+                    (flow_id, title[:120], (summary or "")[:500],
+                     json.dumps({"source": "andromeda_research", "auto": True,
+                                 "sensitivity": sens["level"],
+                                 "research_prop_id": prop_id,
+                                 "title": title, "summary": summary}, ensure_ascii=False),
+                     "OPEN", "STEP_1_PROPOSAL", now, now, "andromeda_research"))
+                db.execute("UPDATE mt_research_proposals SET dev_gate_flow_id=?, status=? WHERE prop_id=?",
+                           (flow_id, "STARTED", prop_id))
+                db.commit()  # 立即提交, 缩短写事务持锁时间
+                result["started"] += 1
+                log(f"     ✅ §14 flow 已建 (进程内) → {flow_id[:48]}")
+            except sqlite3.OperationalError as e:
+                # 锁竞争偶发: 不把提案判死刑, 保留 VOTED 下轮重试
+                log(f"     ⏳ flow 建库锁竞争, 提案保留 VOTED 下轮重试: {str(e)[:60]}")
             except Exception as e:
                 log(f"     ❌ start_flow 异常: {e}")
         

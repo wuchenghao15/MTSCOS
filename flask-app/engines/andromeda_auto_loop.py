@@ -63,23 +63,32 @@ def run_self_loop():
     log(f"══════ 仙女座自律循环启动 ══════")
     
     results = {}
-    
+
     # 1. Dev gate 检查 (自指闭环: 自律循环也必须有 flow_id)
     flow_id = _ensure_flow()
     if flow_id:
         log(f"  🛡️ flow_id={flow_id}")
-    
-    # 2. Daemon 健康巡检 + 自动重启
-    results["daemon"] = _loop_daemon_health()
-    
-    # 3. 规则弱约束词扫描 + 自动强化 (已有, 精简版)
-    results["rule"] = _loop_rule_strengthen()
-    
-    # 4. 建议池自动实施 (高价值 routine 建议 → Q5 生成 patch → 自动改)
-    results["auto_impl"] = _loop_auto_implement()
-    
+
+    # 2. Daemon 健康巡检 (心跳级感知 + 修复诉求投递, 不再盲目 fork)
+    # 3. 规则弱约束词扫描 + 自动强化
+    # 4. 建议池自动实施
     # 5. 每 24h benchmark
-    results["benchmark"] = _loop_benchmark_if_needed()
+    # 6. 🌌 自探研 (Ollama 头脑风暴, 30min 节流)
+    # 7. 🧬 衍生升级 (研究提案 → 建议池)
+    # 每步独立隔离: 任一步异常绝不拖垮整轮 (修复历史"零产出空转")
+    def _safe(name, fn):
+        try:
+            results[name] = fn()
+        except Exception as e:
+            log(f"  ⚠️ 步骤 {name} 异常隔离: {e}")
+            results[name] = {"error": str(e)[:200]}
+
+    _safe("daemon", _loop_daemon_health)
+    _safe("rule", _loop_rule_strengthen)
+    _safe("auto_impl", _loop_auto_implement)
+    _safe("benchmark", _loop_benchmark_if_needed)
+    _safe("research", _loop_self_research)
+    _safe("promote", _loop_promote_derivatives)
     
     dt = time.time() - t0
     log(f"══════ 自律循环完成 ({dt:.1f}s) ══════")
@@ -125,40 +134,85 @@ def _ensure_flow() -> str | None:
 
 
 def _loop_daemon_health() -> dict:
-    """15 daemon 存活巡检 + 自动重启"""
+    """全量 daemon 心跳级健康巡检 (v2: 不再盲目 fork).
+
+    设计原则:
+    - smart_mount_engine 是权威进程主管, auto_loop 不做第二个 fork 监管者 (避免脑裂)
+    - 本函数只负责: 感知 (pid 存活 + 心跳新鲜度) → 标记 FAILED → 向建议池投递修复诉求
+    - 修复诉求被 auto_repair / smart_mount 的强制要求池扫描消费, 由权威主管统一拉起
+    """
     db = sqlite3.connect(str(DB))
-    dead = 0; alive = 0; restarted = 0
-    
-    for name, pid_str, status in db.execute(
-        "SELECT process_name, pid, status FROM mt_daemon_registry WHERE pid IS NOT NULL").fetchall():
-        alive += 1
-        try:
-            pid = int(pid_str)
-            os.kill(pid, 0)
-        except Exception:
-            dead += 1
-            # 自动重启 (简单版, 尝试 fork 启动进程)
-            log(f"  🔴 daemon 死了: {name} (pid={pid_str})")
+    alive = 0; dead = 0; stale = 0; repair_requested = 0
+    STALE_SEC = 1800  # 心跳超过 30 分钟视为停滞
+    now_ts = time.time()
+
+    def _parse_hb(hb):
+        if not hb: return None
+        for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S.%f", "%Y-%m-%dT%H:%M:%S"):
+            try: return time.mktime(time.strptime(hb[:len(time.strftime(fmt))] if '.' not in hb else hb[:26], fmt))
+            except Exception: continue
+        return None
+
+    rows = db.execute(
+        "SELECT process_name, pid, status, COALESCE(last_heartbeat,'') "
+        "FROM mt_daemon_registry").fetchall()
+    total = len(rows)
+
+    for name, pid_str, status, hb in rows:
+        # ① pid 存活检测
+        pid_dead = False
+        tracked = pid_str not in (None, "", 0, "0")
+        if tracked:
             try:
-                # 找脚本
-                candidates = list((BASE / "engines").rglob(f"{name.split('_')[1] if '_' in name else '*.py'}*.py"))[:3]
-                if candidates:
-                    proc = subprocess.Popen(
-                        [sys.executable, str(candidates[0]), "--loop"],
-                        stdout=open(os.devnull, "w"), stderr=open(os.devnull, "w"),
-                        start_new_session=True
-                    )
-                    db.execute("UPDATE mt_daemon_registry SET pid=?, status='RUNNING' WHERE process_name=?",
-                              (proc.pid, name))
-                    restarted += 1
-                    log(f"  ✅ 重启 {name} → pid={proc.pid}")
-            except Exception as e:
-                log(f"  ❌ 重启失败: {e}")
-    
+                os.kill(int(pid_str), 0)
+            except Exception:
+                pid_dead = True
+
+        # ② 心跳新鲜度
+        hb_ts = _parse_hb(hb)
+        hb_age = (now_ts - hb_ts) if hb_ts else None
+        hb_stale = hb_age is not None and hb_age > STALE_SEC
+
+        if pid_dead:
+            dead += 1
+            log(f"  🔴 进程死亡: {name} (pid={pid_str}, hb={hb})")
+        elif hb_stale and status == "RUNNING":
+            stale += 1
+            log(f"  🟡 心跳停滞 {int(hb_age//60)}min: {name} (pid={pid_str})")
+        else:
+            alive += 1
+            continue
+
+        # ③ 标记 FAILED (状态机纠偏: RUNNING 但实际死/停 → FAILED)
+        if status == "RUNNING":
+            db.execute("UPDATE mt_daemon_registry SET status='FAILED' WHERE process_name=?", (name,))
+
+        # ④ 投递修复诉求到建议池 (去重: 同一 daemon 只保留一个 PENDING)
+        flow_id = f"daemon_repair_{name}"
+        exists = db.execute(
+            "SELECT 1 FROM mt_ai_suggestion_pool WHERE flow_id=? AND status='PENDING' LIMIT 1",
+            (flow_id,)).fetchone()
+        if not exists:
+            reason = "进程死亡" if pid_dead else f"心跳停滞 {int(hb_age//60)} 分钟"
+            db.execute("""INSERT INTO mt_ai_suggestion_pool
+                (source_type, source_name, suggestion_text, priority, status,
+                 feasibility_score, value_score, cost_score, risk_score,
+                 flow_id, created_at, meta_json)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
+                ("DAEMON_REPAIR", "andromeda_auto_loop",
+                 f"## daemon 需拉起: {name}\n\n**现象**: {reason}\n**建议**: "
+                 f"由 smart_mount 权威主管按注册表 config_json 重新拉起, 校验收敛后回写 RUNNING 心跳。",
+                 1, "PENDING", 0.9, 0.9, 0.2, 0.1,
+                 flow_id, time.strftime("%Y-%m-%d %H:%M:%S"),
+                 json.dumps({"daemon": name, "pid": pid_str, "last_heartbeat": hb,
+                             "pid_dead": pid_dead, "hb_stale": bool(hb_stale)}, ensure_ascii=False)))
+            repair_requested += 1
+
     db.commit()
     db.close()
-    log(f"  daemon: alive={alive} dead={dead} restarted={restarted}")
-    return {"alive": alive, "dead": dead, "restarted": restarted}
+    log(f"  daemon: total={total} alive={alive} dead={dead} stale={stale} repair_requested={repair_requested}")
+    return {"total": total, "alive": alive, "dead": dead, "stale": stale,
+            "restarted": 0, "repair_requested": repair_requested}
 
 
 def _loop_rule_strengthen() -> dict:
@@ -251,6 +305,98 @@ def _loop_auto_implement() -> dict:
     return {"implemented": implemented}
 
 
+# ═════════════════════════════════════════════════════════════════════════
+# 🌌 自探研机制 (自我探研) — 节流调用 andromeda_research 头脑风暴循环
+# ═════════════════════════════════════════════════════════════════════════
+RESEARCH_THROTTLE_SEC = 1800  # 自探研每 30 分钟最多一轮 (省本地算力)
+
+
+def _loop_self_research() -> dict:
+    """进程内调用 andromeda_research.run_research_cycle (1 个提案).
+
+    - 节流: mt_research_proposals 最新提案 <30min 则跳过
+    - 进程内调用 (同一 DB, 不再 subprocess dev_gate 之外的额外 fork)
+    - Ollama 离线 / 异常一律 fail-soft, 不影响自律主循环
+    """
+    db = sqlite3.connect(str(DB))
+    last = db.execute("SELECT created_at FROM mt_research_proposals ORDER BY rowid DESC LIMIT 1").fetchone()
+    db.close()
+    if last and last[0]:
+        for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M:%S.%f"):
+            try:
+                ts = time.mktime(time.strptime(last[0][:19], fmt))
+                if time.time() - ts < RESEARCH_THROTTLE_SEC:
+                    return {"skipped": True, "reason": f"节流: {int((time.time()-ts)//60)}min 前刚探研"}
+            except Exception:
+                continue
+
+    try:
+        import andromeda_research as ar  # 同目录, 共享 database/app.db
+        res = ar.run_research_cycle(max_proposals=1)
+        log(f"  research: 头脑风暴={res.get('brainstormed',0)} 通过={res.get('voted',0)} "
+            f"启动={res.get('started',0)} 跳过={res.get('skipped',0)}")
+        return {"skipped": False,
+                "brainstormed": res.get("brainstormed", 0),
+                "voted": res.get("voted", 0),
+                "started": res.get("started", 0)}
+    except Exception as e:
+        log(f"  research: 异常 fail-soft: {e}")
+        return {"skipped": False, "error": str(e)[:200]}
+
+
+# ═════════════════════════════════════════════════════════════════════════
+# 🧬 衍生升级闭环 — 研究提案 → 建议池 (auto-dev / skill-deriver 可消费)
+# ═════════════════════════════════════════════════════════════════════════
+_PROMOTE_STATUSES = ("VOTED", "STARTED", "DONE")
+_PROMOTE_PRIORITY = {"SECURITY": 1, "OPTIMIZE": 2, "REFACTOR": 2, "FEATURE": 3, "EXPERIMENT": 4}
+
+
+def _loop_promote_derivatives() -> dict:
+    """把已通过的 routine 研究提案衍生为建议池工作项.
+
+    闭环: run_research_cycle (头脑风暴/投票) → mt_research_proposals
+          → 本函数 → mt_ai_suggestion_pool → auto_dev_team / skill_deriver 消费
+    去重: 建议池 flow_id = research prop_id, 已存在则不重复投递
+    """
+    db = sqlite3.connect(str(DB))
+    props = db.execute("""
+        SELECT prop_id, title, summary, category, sensitivity, status
+        FROM mt_research_proposals
+        WHERE status IN ('VOTED','STARTED','DONE') AND sensitivity='routine'
+        ORDER BY rowid DESC LIMIT 10""").fetchall()
+
+    promoted = 0
+    for prop_id, title, summary, category, sens, pstatus in props:
+        exists = db.execute(
+            "SELECT 1 FROM mt_ai_suggestion_pool WHERE flow_id=? LIMIT 1", (prop_id,)).fetchone()
+        if exists:
+            continue
+        prio = _PROMOTE_PRIORITY.get(category, 3)
+        db.execute("""INSERT INTO mt_ai_suggestion_pool
+            (source_type, source_name, suggestion_text, priority, status,
+             feasibility_score, value_score, cost_score, risk_score,
+             flow_id, created_at, meta_json)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
+            ("RESEARCH_DERIVE", "andromeda_auto_loop",
+             f"## [研究衍生] {title}\n\n**类别**: {category}\n**摘要**: {summary or ''}\n\n"
+             f"**来源**: 仙女座自探研提案 {prop_id} (状态 {pstatus})\n"
+             f"**建议**: 交 auto_dev_team / skill_deriver 评估并衍生为 Skill 或自动开发任务。",
+             prio, "PENDING", 0.6, 0.7, 0.4, 0.2,
+             prop_id, time.strftime("%Y-%m-%d %H:%M:%S"),
+             json.dumps({"derived_from": "mt_research_proposals", "prop_id": prop_id,
+                         "category": category, "proposal_status": pstatus}, ensure_ascii=False)))
+        db.execute("UPDATE mt_research_proposals SET status='PROMOTED', updated_at=? WHERE prop_id=?",
+                   (time.strftime("%Y-%m-%d %H:%M:%S"), prop_id))
+        promoted += 1
+        log(f"  🧬 衍生升级: {title[:40]} → 建议池 (prio={prio})")
+
+    db.commit()
+    db.close()
+    if promoted:
+        log(f"  promote: 衍生 {promoted} 个研究提案 → 建议池")
+    return {"promoted": promoted, "candidates": len(props)}
+
+
 def _loop_benchmark_if_needed() -> dict:
     """每 24h 跑一次模型 benchmark"""
     db = sqlite3.connect(str(DB))
@@ -299,7 +445,13 @@ def _record_run(dt: float, results: dict):
     """记录到 mt_evolution_runs"""
     db = sqlite3.connect(str(DB))
     try:
-        items = results.get("daemon", {}).get("restarted", 0) + results.get("rule", {}).get("fixed", 0) + results.get("auto_impl", {}).get("implemented", 0)
+        # 全口径统计: 修复诉求 + 规则强化 + 自动实施 + 自探研 + 衍生升级
+        def _n(step, key):
+            try: return int(results.get(step, {}).get(key, 0) or 0)
+            except Exception: return 0
+        items = (_n("daemon", "repair_requested") + _n("rule", "fixed")
+                 + _n("auto_impl", "implemented") + _n("research", "voted")
+                 + _n("research", "started") + _n("promote", "promoted"))
         db.execute("""INSERT INTO mt_evolution_runs
             (loop, started_at, finished_at, duration_s, items_processed, items_ok, suggestion_count, notes)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",

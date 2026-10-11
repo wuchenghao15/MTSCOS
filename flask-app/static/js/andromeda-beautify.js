@@ -229,6 +229,14 @@ function startPolling() {
                 document.querySelectorAll('[class*="cnt-daemon"], .daemon-count').forEach(function(el){
                     el.textContent = (data.daemon_running || 0) + '/' + (data.daemon_total || 0);
                 });
+                // ── 🌌 通用自演化指标绑定: 任何 [data-evo-field] 自动取对应字段 ──
+                document.querySelectorAll('[data-evo-field]').forEach(function(el){
+                    var f = el.getAttribute('data-evo-field');
+                    if (data[f] !== undefined && data[f] !== null) {
+                        el.textContent = data[f];
+                        el.classList.add('evo-live');
+                    }
+                });
                 // 广播 (其他模块可监听)
                 try { document.dispatchEvent(new CustomEvent('andromeda:state', {detail: data})); } catch(e){}
             })
