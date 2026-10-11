@@ -77,32 +77,33 @@ body .uni-main { margin-left: 0 !important; width: 100% !important; }
 
 /* ── 佛教派系 15 天事件 (小字, 时间下方) ── */
 .mts-buddhist {
-    margin-top: 28px;
-    padding: 18px 22px;
-    background: rgba(11,31,58,.02);
-    border: 1px solid rgba(11,31,58,.06);
-    border-radius: 12px;
+    margin-top: 18px;
+    padding: 10px 14px;
+    background: rgba(11,31,58,.015);
+    border: 1px dashed rgba(11,31,58,.06);
+    border-radius: 10px;
+    opacity: .75;
 }
 .mts-buddhist .bd-title {
-    font-size: 11px; font-weight: 700; letter-spacing: 1px;
-    color: var(--mtscos-text-secondary, #6b7a8f);
-    margin-bottom: 12px; text-transform: uppercase;
+    font-size: 10px; font-weight: 600; letter-spacing: 1.5px;
+    color: var(--mtscos-text-secondary, #9baab8);
+    margin-bottom: 8px; text-transform: uppercase;
 }
 .mts-buddhist .bd-list {
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 6px 16px;
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 3px 14px;
 }
 .mts-buddhist .bd-item {
-    font-size: 11px; color: #7a8fa6;
+    font-size: 10px; color: #9baab8;
     display:flex; gap: 6px; align-items: baseline;
 }
 .mts-buddhist .bd-date {
     font-family: ui-monospace, monospace;
-    color: var(--andromeda-purple-400, #9B59B6); font-weight: 600;
-    min-width: 48px; flex-shrink: 0;
+    color: #b8c4d0; font-weight: 500;
+    min-width: 44px; flex-shrink: 0;
 }
-.mts-buddhist .bd-faction { color: var(--iceberg-blue-400, #2E86DE); font-weight: 600; }
-.mts-buddhist .bd-event { color: #7a8fa6; }
+.mts-buddhist .bd-faction { color: #8d9fae; font-weight: 500; }
+.mts-buddhist .bd-event { color: #9baab8; }
 
 /* ── 登录卡 ── */
 .mts-login-wrap {
@@ -288,59 +289,71 @@ body {
     font-family: 'JetBrains Mono', ui-monospace, monospace;
 }
 
-/* ── 冰山系统介绍横幅 (时钟下方) ── */
+/* ── 冰山系统介绍横幅 (突出, 顶栏下 C 位) ── */
 .iceberg-intro {
-    margin-top: 18px;
-    padding: 12px 20px;
+    margin-top: 20px;
+    padding: 18px 24px;
     background:
-        linear-gradient(135deg, rgba(99,102,241,.06), rgba(139,92,246,.04) 50%, rgba(46,134,222,.05));
-    border: 1px solid rgba(99,102,241,.12);
-    border-radius: 10px;
-    display:flex; gap: 16px; align-items: center;
-    transition: border-color .3s, box-shadow .3s;
+        linear-gradient(135deg, rgba(67,56,202,.08) 0%, rgba(99,102,241,.06) 30%, rgba(139,92,246,.05) 60%, rgba(167,139,250,.04) 100%);
+    border: 1.5px solid rgba(99,102,241,.2);
+    border-radius: 14px;
+    display:flex; gap: 18px; align-items: center;
+    position: relative; overflow: hidden;
+    box-shadow: 0 4px 24px -8px rgba(99,102,241,.15), inset 0 1px 0 rgba(255,255,255,.5);
+    transition: border-color .3s, box-shadow .3s, transform .3s;
+}
+.iceberg-intro::before {
+    content:''; position:absolute; top:0; left:0; right:0; height:2px;
+    background: linear-gradient(90deg, #EF4444, #F97316, #8B5CF6, #3B82F6, #10B981);
+    opacity:.8; animation: iceberg-spectrum 8s linear infinite;
+}
+@keyframes iceberg-spectrum {
+    0%   { background-position: 0% 50%; }
+    100% { background-position: 200% 50%; }
 }
 .iceberg-intro:hover {
-    border-color: rgba(99,102,241,.3);
-    box-shadow: 0 4px 20px -10px rgba(99,102,241,.25);
+    border-color: rgba(99,102,241,.45);
+    box-shadow: 0 6px 32px -8px rgba(99,102,241,.25), inset 0 1px 0 rgba(255,255,255,.6);
+    transform: translateY(-1px);
 }
-.iceberg-intro .ii-svg { width:36px; height:36px; flex-shrink:0; }
+.iceberg-intro .ii-svg { width:44px; height:44px; flex-shrink:0; filter: drop-shadow(0 2px 8px rgba(99,102,241,.3)); }
 .iceberg-intro .ii-text { flex:1; min-width:0; }
 .iceberg-intro .ii-title {
-    font-size: 12px; font-weight: 800;
-    color: #4338CA; letter-spacing: .5px;
+    font-size: 14px; font-weight: 900;
+    background: linear-gradient(135deg, #312E81 0%, #4338CA 30%, #6366F1 60%, #8B5CF6 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    letter-spacing: .5px;
 }
 .iceberg-intro .ii-desc {
-    font-size: 11px; color: #6b7a8f; line-height: 1.5;
-    margin-top: 2px;
+    font-size: 11px; color: #5a6b82; line-height: 1.55;
+    margin-top: 4px;
 }
 .iceberg-intro .ii-layers {
-    display:flex; gap: 3px; flex-shrink: 0;
+    display:flex; gap: 4px; flex-shrink: 0;
 }
 .iceberg-intro .ii-layer {
-    font-size: 8px; font-weight: 700; letter-spacing: .5px;
-    padding: 3px 6px; border-radius: 4px;
+    font-size: 8px; font-weight: 800; letter-spacing: 1px;
+    padding: 4px 8px; border-radius: 5px;
     font-family: 'JetBrains Mono', ui-monospace, monospace;
 }
-.iceberg-intro .ii-layer.l0 { background:rgba(239,68,68,.1); color:#EF4444; border:1px solid rgba(239,68,68,.25); }
-.iceberg-intro .ii-layer.l1 { background:rgba(139,92,246,.1); color:#8B5CF6; border:1px solid rgba(139,92,246,.25); }
-.iceberg-intro .ii-layer.l2 { background:rgba(59,130,246,.1); color:#3B82F6; border:1px solid rgba(59,130,246,.25); }
-.iceberg-intro .ii-layer.l3 { background:rgba(16,185,129,.1); color:#10B981; border:1px solid rgba(16,185,129,.25); }
-
-/* ⑤ 佛教事件卡: 派系 hover 微交互 */
-.mts-buddhist {
-    transition: box-shadow .3s, border-color .3s;
+.iceberg-intro .ii-layer.l0 { background:rgba(239,68,68,.12); color:#DC2626; border:1px solid rgba(239,68,68,.3); animation: layer-pulse-l0 3s ease-in-out infinite; }
+.iceberg-intro .ii-layer.l1 { background:rgba(139,92,246,.12); color:#7C3AED; border:1px solid rgba(139,92,246,.28); }
+.iceberg-intro .ii-layer.l2 { background:rgba(59,130,246,.12); color:#2563EB; border:1px solid rgba(59,130,246,.28); }
+.iceberg-intro .ii-layer.l3 { background:rgba(16,185,129,.12); color:#059669; border:1px solid rgba(16,185,129,.28); }
+@keyframes layer-pulse-l0 {
+    0%,100% { box-shadow: 0 0 0 0 rgba(239,68,68,.3); }
+    50%     { box-shadow: 0 0 0 3px rgba(239,68,68,.08); }
 }
+
+/* ⑤ 佛教事件卡: 已弱化, 仅保留基本 readability */
 .mts-buddhist:hover {
-    border-color: rgba(155,89,182,.2);
-    box-shadow: 0 4px 20px -8px rgba(155,89,182,.15);
+    opacity: .9; /* 仅 hover 时稍微亮一点, 无抬升 */
 }
 .mts-buddhist .bd-item {
-    transition: transform .2s, color .2s;
-    padding: 2px 4px; border-radius: 4px;
+    transition: color .2s;
 }
 .mts-buddhist .bd-item:hover {
-    transform: translateX(3px);
-    background: rgba(155,89,182,.05);
+    color: #7a8fa6; /* 仅 hover 时稍微亮一点, 无位移/背景 */
 }
 
 /* ⑥ AI 生态摘要: 数字 pulsing + hover */
