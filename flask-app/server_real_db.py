@@ -779,6 +779,18 @@ app.url_map.strict_slashes = False  # 全局: /foo ↔ /foo/ 等价, 避免 catc
 # 登录态由 mtscos_sid + Flask session cookie 双重保证, secret_key 变 = Flask session cookie 全部作废
 # 固定值保留向后兼容 (v22.38.0 以前的部署也能继续用同一个 secret_key)
 app.secret_key = '[REDACTED]'
+
+# ── Session Cookie 安全加固 ──
+# 本地开发 (NODE_ROLE=DEV) 允许 HTTP, 公网 (PROD) 强制 Secure+SameSite=Strict
+_IS_PROD = NODE_ROLE != "DEV"
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SECURE=_IS_PROD,       # 公网 HTTPS-only
+    SESSION_COOKIE_SAMESITE='Strict' if _IS_PROD else 'Lax',
+    SESSION_COOKIE_NAME='mtscos_sess',
+    PERMANENT_SESSION_LIFETIME=3600*24*30,  # 30 天
+)
+
 app.jinja_env.undefined = _FriendlyUndefined
 app.jinja_env.auto_reload = True
 
@@ -2546,6 +2558,14 @@ def _init_ai_firewall_and_workforce():
     except Exception as e:
         _fw_logger.warning(f"[listening] blueprint register fail: {e}")
 
+    # v25.1: 日语学习 API (听力/词汇/语法/阅读/播报员/云引擎)
+    try:
+        from app.api.japanese_api import japanese_api as _jp_api
+        app.register_blueprint(_jp_api)
+        _fw_logger.info("[japanese] blueprint registered: japanese_api (/api/japanese/*)")
+    except Exception as e:
+        _fw_logger.warning(f"[japanese] blueprint register fail: {e}")
+
     try:
         from app.api.system_boost_api import system_boost_api as _sb_api
         app.register_blueprint(_sb_api)
@@ -3835,6 +3855,17 @@ _MT_HOTLINK_WHITELIST_PREFIXES = (
     '/andromeda/',
     # v22.10.20: 🧠 本地聊天 — 仙女座发散思维引擎页面
     '/local-chat', '/api/local-chat/',
+    # v22.10.22: 🎯 P1 核心独立页面 (用户可收藏/书签直达, 防盗链不拦截)
+    '/exam_center', '/exam_system/', '/exam/',
+    '/japanese_page', '/japanese/',
+    '/student_portal',
+    '/brain_bank_page', '/brain_bank/',
+    '/adult_education',
+    '/wrong_book',
+    '/eigenflux_center',
+    '/neural_array_page', '/neuralhub/',
+    '/theme/', '/theme_schemes',
+    '/api/security/',
 )
 # API 内部白名单 — 这些 /api/ 路径即使无 Referer 或外站 Referer 也允许访问 (状态检查类)
 _MT_HOTLINK_API_ALLOW_PREFIXES = (
@@ -4190,6 +4221,60 @@ def _mt_mobile_redirect():
         pass
     return None
 
+
+# ---------- 全局安全响应头：after_request ----------
+@app.after_request
+def _mt_security_headers(response):
+    """仙女座全局安全响应头 (OWASP Top 10 基础防护)
+
+    - X-Content-Type-Options: nosniff (禁止 MIME 嗅探)
+    - X-Frame-Options: SAMEORIGIN (防点击劫持, 允许同源 iframe)
+    - Referrer-Policy: strict-origin-when-cross-origin (控制 Referer 泄露)
+    - Permissions-Policy (防摄像头/麦克风/地理位置滥用)
+    - Strict-Transport-Security (HSTS, 仅 HTTPS 时注入)
+    - Content-Security-Policy (CSP 基础, 非严格模式避免误伤 inline script)
+    """
+    path = request.path or ''
+    is_static = (path.startswith('/static/') or path.startswith('/assets/')
+                 or path.endswith(('.css', '.js', '.svg', '.png', '.jpg', '.woff2')))
+    is_sse = path.startswith('/api/local-chat/') or path.startswith('/api/andromeda/stream')
+
+    # 1) 所有响应必加
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'SAMEORIGIN'
+    response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+    response.headers['Permissions-Policy'] = (
+        'camera=(), microphone=(), geolocation=(), '
+        'payment=(), usb=(), serial=()'
+    )
+
+    # 2) HTTPS / 公网请求 → HSTS (强制 1 年, 含 includeSubDomains)
+    # 判断: CF-Connecting-IP header 存在 = Cloudflare Tunnel 公网请求
+    _cf_ip = request.headers.get('CF-Connecting-IP')
+    _is_https = _IS_PROD or _cf_ip or request.is_secure
+    if _is_https:
+        response.headers['Strict-Transport-Security'] = (
+            'max-age=31536000; includeSubDomains'
+        )
+
+    # 3) CSP 基础策略 (非严格, 允许 inline script/style 以免破坏现有页面)
+    #    SSE 端点不套 CSP (EventSource 需要更宽松)
+    if not is_sse and not is_static:
+        response.headers['Content-Security-Policy'] = (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
+            "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; "
+            "font-src 'self' https://cdnjs.cloudflare.com data:; "
+            "img-src 'self' data: https:; "
+            "connect-src 'self' https://mtos.site https://*.mtos.site; "
+            "frame-ancestors 'self'"
+        )
+
+    # 4) API 响应防缓存 (静态资源不动)
+    if path.startswith('/api/') and not is_static:
+        response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate'
+
+    return response
 
 # ---------- Cookies 自动挂载：after_request ----------
 @app.after_request
@@ -7626,9 +7711,18 @@ def get_version_info():
     if not version and os.path.exists(VERSION_FILE):
         try:
             with open(VERSION_FILE, 'r', encoding='utf-8') as f:
-                version = f.read().strip()
-            info['version'] = version
-            info['source'] = 'VERSION file'
+                _v_raw = f.read().strip()
+            # 安全校验：VERSION 文件必须是单行、短版本号格式 (vX.Y.Z 或 vX.Y.Z-tag)
+            # 防止被误写为注释块/环境变量文件 (历史教训: 986 字节注释被当 version 渲染)
+            import re as _re
+            _v_match = _re.match(r'^v\d+\.\d+\.\d+[\w.\-+]*$', _v_raw)
+            if _v_match and len(_v_raw) <= 50 and '\n' not in _v_raw:
+                version = _v_raw
+                info['version'] = version
+                info['source'] = 'VERSION file'
+            else:
+                # 文件内容异常（多行/过长/非版本号格式），跳过继续回退
+                pass
         except Exception:
             pass
 
@@ -9830,22 +9924,14 @@ def index():
         _cog['username'] = session.get('username', '')
         cognitive_profile = _cog
 
-    return render_template('index.html',
-                           version=version,
-                           version_info=info,
-                           latest_version=latest,
-                           homepage_stats=stats,
-                           _s=stats,
-                           footer_info=footer_info,
-                           particle_config=particle_config,
-                           cognitive_profile=cognitive_profile,
-                           personalized=personalized,
-                           role_hero=role_hero,
-                           recommendations=recommendations,
-                           ai_eco=ai_eco,
-                           sa_rules=sa_rules,
-                           theme_schemes=theme_schemes,
-                           page_csrf_token=page_csrf_token)
+    # ═══════════════════════════════════════════════════════════
+    # v25.1: 去首页冗余内容 → 未登录直跳登录页 / 已登录直跳管理中心
+    # index.html 不再作为着陆页渲染 (fail-closed, SA 双密钥逻辑已在上文处理)
+    # ═══════════════════════════════════════════════════════════
+    _is_auth = session.get('username') and session.get('role')
+    if _is_auth:
+        return redirect('/admin_center', code=302)
+    return redirect('/auth/login', code=302)
 
 
 # ════════════════════════════════════════════════════════════════════
@@ -11557,16 +11643,20 @@ def _sa_update_device_binding(username, device_hash, ip, ua, login_success):
 
 @app.route('/auth/login', methods=['GET', 'POST'])
 def login():
-    # ✅ GET /auth/login → 统一重定向到 /index#login-card (系统统一入口, 与 /login GET 一致)
+    # ✅ GET /auth/login → v25.1: 直接 render login.html (继承 base_unified, 有时间显示)
     if request.method == 'GET':
-        # 带 error 参数透传
         err = request.args.get('error', '')
         next_url = request.args.get('next', '')
-        if err:
-            return redirect(f'/index#login-card?error={err}{"&next="+next_url if next_url else ""}', code=302)
-        if next_url:
-            return redirect(f'/index#login-card?next={next_url}', code=302)
-        return redirect('/index#login-card', code=302)
+        page_csrf_token = ''
+        try:
+            from app.security.csrf_manager import CSRFManager
+            page_csrf_token = CSRFManager.generate_token()
+        except Exception:
+            page_csrf_token = session.get('_csrf_token', '')
+        return render_template('login.html',
+                               error=err,
+                               next_url=next_url or None,
+                               page_csrf_token=page_csrf_token)
 
     if request.method == 'POST':
         # ✅ 同时支持 JSON (fetch API) 和 form-urlencoded (传统表单) 两种提交方式
