@@ -578,6 +578,40 @@
             font-size: 11px; color: var(--mtscos-text-secondary);
             line-height: 1.5;
         }
+        /* ═══ 📦 ops-fold 运维折叠面板 ═══ */
+        .ops-fold {
+            margin-bottom: 20px;
+            border: 1px dashed rgba(11,31,58,.14);
+            border-radius: 14px;
+            background: rgba(11,31,58,.02);
+        }
+        .ops-fold > summary {
+            padding: 12px 18px;
+            cursor: pointer;
+            font-size: 12px; font-weight: 700;
+            color: var(--mtscos-text-secondary, #6b7a8f);
+            letter-spacing: .3px;
+            list-style: none;
+            user-select: none;
+            transition: color .18s ease;
+        }
+        .ops-fold > summary::-webkit-details-marker { display: none; }
+        .ops-fold > summary::before {
+            content: '▶'; display: inline-block;
+            font-size: 10px; margin-right: 8px;
+            color: var(--andromeda-purple-400);
+            transition: transform .2s ease;
+        }
+        .ops-fold[open] > summary::before {
+            transform: rotate(90deg);
+        }
+        .ops-fold[open] > summary {
+            color: var(--andromeda-deep);
+            border-bottom: 1px dashed rgba(11,31,58,.1);
+        }
+        .ops-fold > *:not(summary) {
+            padding: 14px 18px;
+        }
     </style>
     {# v24.3.3: 始终加载 SA 双密钥 CSS — 选择器限定 body.layout-mode-SA_PROPRIETARY，非 SA 态零影响 #}
     <link rel="stylesheet" href="{{ url_for('static', filename='css/sa_proprietary.css') }}">
@@ -666,26 +700,16 @@
     </section>
     {% endif %}
 
-    <!-- 🔖 版本 + 注册时间 + 登录信息条 -->
-    <section class="biz-meta-bar">
+    <!-- 🔖 极简版本条 (一行, 不抢眼) -->
+    <section class="biz-meta-bar" style="margin-bottom:16px;">
         <div class="bm-left">
             <span class="bm-ver"><i class="fas fa-code-branch"></i> v{{ version | default('23.0.0') }}</span>
-            {% if current_user and current_user.is_authenticated and user_created_at %}
-                <span class="bm-item"><i class="fas fa-calendar-check"></i> 注册于 <strong>{{ user_created_at[:10] }}</strong>
-                    {% if user_register_days is not none %}· 已陪伴 <strong>{{ user_register_days }}</strong> 天{% endif %}
-                </span>
-            {% elif current_user and current_user.is_authenticated %}
-                <span class="bm-item"><i class="fas fa-user-circle"></i> 欢迎 <strong>{{ current_user.username }}</strong></span>
-            {% else %}
-                <span class="bm-item"><i class="fas fa-user-lock"></i> 未登录 · 登录后解锁全部功能</span>
-            {% endif %}
         </div>
     </section>
-
-    <!-- 📊 核心指标条 (6格, 真实数据, 冰山+仙女座+EigenFlux) -->
+    <!-- �📊 核心指标条 (6格, 真实数据, 冰山+仙女座+EigenFlux) -->
     <section class="biz-stats-bar" style="grid-template-columns:repeat(6,1fr);">
-        <div class="biz-stat-cell"><span class="lbl">✨ 仙女座 AI 员工</span><span class="num num-mono" id="statAndEmp">{{ homepage_stats.ai_employees_count if homepage_stats else 0 }}</span></div>
-        <div class="biz-stat-cell"><span class="lbl">🏔️ 冰山文案矩阵</span><span class="num num-mono" id="statIceMat">{{ homepage_stats.ice_matrix_count if homepage_stats else 0 }}</span></div>
+        <div class="biz-stat-cell"><span class="lbl">✨ AI 员工</span><span class="num num-mono" id="statAndEmp">{{ homepage_stats.ai_employees_count if homepage_stats else 0 }}</span></div>
+        <div class="biz-stat-cell"><span class="lbl">🏔️ 冰山矩阵</span><span class="num num-mono" id="statIceMat">{{ homepage_stats.ice_matrix_count if homepage_stats else 0 }}</span></div>
         <div class="biz-stat-cell"><span class="lbl">✦ EigenFlux 专家</span><span class="num num-mono" id="statEigExp">{{ homepage_stats.eigenflux_expert_count if homepage_stats else 0 }}</span></div>
         <div class="biz-stat-cell"><span class="lbl">📐 开发流程</span><span class="num num-mono" id="statDevFlow">{% if homepage_stats and homepage_stats.iron_violations == 0 %}OK{% else %}{{ homepage_stats.iron_violations if homepage_stats else 0 }}⛔{% endif %}</span></div>
         <div class="biz-stat-cell"><span class="lbl">🚀 Daemon 运行</span><span class="num num-mono" id="statDaemon">{{ homepage_stats.daemon_running if homepage_stats else 0 }}/{{ homepage_stats.daemon_total if homepage_stats else 0 }}</span></div>
@@ -744,6 +768,10 @@
             </div>
         </div>
     </section>
+    <!-- 📦 运维折叠: stats-bar + 双Logo + 系统面板 -->
+    <details class="ops-fold">
+        <summary>📦 系统运维详情（点击展开）</summary>
+
 
     <!-- �� 双 Logo 品牌展示 + 冰山规则分层 -->
     <section style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
@@ -819,20 +847,14 @@
             <div id="hsBox" style="font-size:12px;color:#4a5b6e;line-height:1.8;">{% if homepage_stats and homepage_stats.hs_box_html %}{{ homepage_stats.hs_box_html | safe }}{% else %}加载中…{% endif %}</div>
         </div>
     </section>
+    </details>
 
-    <!-- Footer -->
-    <footer class="biz-footer">
-        <div class="fl">
-            <span class="biz-status-dot"></span>
-            <span>{{ footer_info.company if footer_info and footer_info.company else 'MTS Architecture' }} &copy; 2024-{{ footer_info.copyright_year if footer_info and footer_info.copyright_year else '2026' }}</span>
-            <span style="opacity:.4">|</span>
-            <span>v{{ version if version else system_version }}{% if latest_version and latest_version != version %}（最新 {{ latest_version }}）{% endif %}</span>
-        </div>
-        <div class="fr">
-            <a href="/"><i class="fas fa-house"></i> {{ t('home.home') }}</a>
-            <a href="/student_portal"><i class="fas fa-gauge-high"></i> {{ t('home.workspace') }}</a>
-            {% if is_super_admin or is_admin %}<a href="/admin_app/governance/"><i class="fas fa-crown"></i> 管理员</a>{% endif %}
-        </div>
+    <!-- Footer (极简, 不抢眼) -->
+    <footer class="biz-footer" style="padding:12px 0;font-size:11px;color:#8a9bab;opacity:.65;">
+        <span class="biz-status-dot" style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#10B981;margin-right:6px;vertical-align:middle;"></span>
+        <span>{{ footer_info.company if footer_info and footer_info.company else 'MTS Architecture' }} &copy; 2024-{{ footer_info.copyright_year if footer_info and footer_info.copyright_year else '2026' }}</span>
+        <span style="margin:0 8px;opacity:.35;">·</span>
+        <span>v{{ version if version else system_version }}</span>
     </footer>
 </main>
 
