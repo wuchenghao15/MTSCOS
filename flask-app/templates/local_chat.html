@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>仙女座 · 本地聊天 | MTSCOS AI</title>
 <style>
+  /* v25.1 全盘布局修复 */
+  html,body{height:100%;min-height:100vh;overflow:hidden;margin:0;padding:0}
+  *{box-sizing:border-box}
+  .container,.main,.content{flex:1;min-height:0;overflow-y:auto}
   :root{
     --mtscos-primary-base:#06b6d4;
     --mtscos-secondary-base:#a855f7;
@@ -22,19 +26,24 @@
   *{margin:0;padding:0;box-sizing:border-box}
   html,body{height:100%;font-family:-apple-system,"SF Pro","PingFang SC","Helvetica Neue",sans-serif;background:var(--bg);color:var(--text);overflow:hidden}
   
-  .layout{display:grid;grid-template-columns:260px 1fr;height:100vh}
+  /* ════════ v25.1: 仙女座聊天 · Flexbox 三栏标准布局 ════════
+     结构: flex row(sidebar + chat-main)
+     chat-main: flex col(header + messages + input)
+     所有滚动区必须 min-height:0 才能在 flex 父容器内正确收缩
+  */
+  .layout{display:flex;height:100vh;overflow:hidden}
   
-  /* ═══ 侧边栏 ═══ */
-  .sidebar{background:rgba(6,182,212,.03);border-right:1px solid var(--line);display:flex;flex-direction:column;overflow:hidden}
-  .sidebar-header{padding:20px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
-  .logo{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--mtscos-primary-base),var(--mtscos-secondary-base));display:flex;align-items:center;justify-content:center;font-size:18px}
+  /* ═══ 侧边栏 (左 260px) ═══ */
+  .sidebar{width:260px;flex-shrink:0;background:rgba(6,182,212,.03);border-right:1px solid var(--line);display:flex;flex-direction:column;height:100vh;overflow:hidden;min-height:0}
+  .sidebar-header{flex-shrink:0;padding:20px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
+  .logo{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--mtscos-primary-base),var(--mtscos-secondary-base));display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
   .brand{font-weight:700;font-size:14px;letter-spacing:.5px}
   .brand-sub{font-size:10px;color:var(--text-dim);margin-top:2px}
   
-  .new-session{margin:12px;padding:10px 12px;background:linear-gradient(135deg,rgba(6,182,212,.15),rgba(168,85,247,.1));border:1px solid var(--line);border-radius:var(--radius);color:var(--mtscos-primary-base);cursor:pointer;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;transition:all .2s}
+  .new-session{flex-shrink:0;margin:12px;padding:10px 12px;background:linear-gradient(135deg,rgba(6,182,212,.15),rgba(168,85,247,.1));border:1px solid var(--line);border-radius:var(--radius);color:var(--mtscos-primary-base);cursor:pointer;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;transition:all .2s}
   .new-session:hover{background:linear-gradient(135deg,rgba(6,182,212,.25),rgba(168,85,247,.15));transform:translateY(-1px)}
   
-  .session-list{flex:1;overflow-y:auto;padding:8px}
+  .session-list{flex:1;min-height:0;overflow-y:auto;padding:8px}
   .session-list::-webkit-scrollbar{width:4px}
   .session-list::-webkit-scrollbar-thumb{background:rgba(6,182,212,.3);border-radius:2px}
   
@@ -45,20 +54,20 @@
   .session-last{font-size:11px;color:var(--text-dim);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .session-meta{font-size:10px;color:var(--text-faint);margin-top:4px;display:flex;gap:8px}
   
-  .user-bar{padding:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:10px}
-  .avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--mtscos-primary-base),var(--mtscos-secondary-base));display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px}
+  .user-bar{flex-shrink:0;padding:14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:10px}
+  .avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--mtscos-primary-base),var(--mtscos-secondary-base));display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex-shrink:0}
   .user-info{flex:1;min-width:0}
   .user-name{font-size:13px;font-weight:600}
   .user-cog{font-size:11px;color:var(--text-dim)}
   
-  /* ═══ 聊天主区 ═══ */
-  .chat-main{display:flex;flex-direction:column;overflow:hidden}
-  .chat-header{padding:16px 24px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:16px}
+  /* ═══ 聊天主区 (右 flex:1) ═══ */
+  .chat-main{flex:1;min-width:0;display:flex;flex-direction:column;height:100vh;overflow:hidden;min-height:0}
+  .chat-header{flex-shrink:0;padding:16px 24px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:16px}
   .chat-title{font-weight:600;font-size:15px;flex:1;min-width:0}
   .chat-stats{display:flex;gap:12px;font-size:11px;color:var(--text-dim)}
   .chat-stats span{display:flex;align-items:center;gap:4px}
   
-  .messages{flex:1;overflow-y:auto;padding:24px;display:flex;flex-direction:column;gap:16px}
+  .messages{flex:1;min-height:0;overflow-y:auto;padding:24px;display:flex;flex-direction:column;gap:16px}
   .messages::-webkit-scrollbar{width:6px}
   .messages::-webkit-scrollbar-thumb{background:rgba(6,182,212,.3);border-radius:3px}
   
@@ -84,8 +93,8 @@
   .breakthrough-tag{background:rgba(110,231,183,.15);color:var(--green);border-color:rgba(110,231,183,.3)}
   .question-tag{background:rgba(248,113,113,.15);color:#f87171;border-color:rgba(248,113,113,.3)}
   
-  /* ═══ 输入区 ═══ */
-  .input-area{padding:16px 24px;border-top:1px solid var(--line);background:rgba(0,0,0,.2)}
+  /* ═══ 输入区 (底部贴底, flex-shrink:0 保证不被挤) ═══ */
+  .input-area{flex-shrink:0;padding:16px 24px;border-top:1px solid var(--line);background:rgba(0,0,0,.2)}
   .input-wrapper{display:flex;gap:12px;align-items:flex-end;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:12px;transition:all .2s}
   .input-wrapper:focus-within{border-color:var(--mtscos-primary-base);box-shadow:0 0 20px rgba(6,182,212,.1)}
   textarea.chat-input{flex:1;background:transparent;border:none;outline:none;color:var(--text);resize:none;font-size:14px;line-height:1.6;min-height:24px;max-height:160px;font-family:inherit}

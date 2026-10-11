@@ -30,7 +30,7 @@ MTSCOS AI
     background-image:
       radial-gradient(ellipse 900px 500px at 10% 15%, rgba(44,95,124,0.07), transparent 60%),
       radial-gradient(ellipse 700px 400px at 90% 85%, rgba(30,74,99,0.06), transparent 60%);
-  }
+  
   .card, .panel, .box, .block {
     background:var(--paper); border-radius:var(--radius-lg);
     border:1px solid rgba(44,95,124,0.08);
@@ -68,7 +68,7 @@ MTSCOS AI
   @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;700&family=Noto+Serif+SC:wght@300;400;700;900&display=swap');
   :root{--bg:#05060d;--bg2:#0a0d1a;--neon-cyan:#00f0ff;--neon-violet:#a78bfa;--neon-green:#22c55e;--neon-red:#ef4444;--neon-amber:#fbbf24;--text:#e8ecf8;--muted:#8892a8;}
   *{margin:0;padding:0;box-sizing:border-box;}
-  body{background:var(--bg);color:var(--text);font-family:'JetBrains Mono','Noto Serif SC';min-height:100vh;}
+  body{background:var(--bg);color:var(--text);font-family:'JetBrains Mono','Noto Serif SC';min-height:100vh; overflow:hidden
   .container{max-width:1200px;margin:0 auto;padding:40px;}
   .hd{text-align:center;margin-bottom:30px;}
   .hd-tag{color:var(--neon-red);font-size:0.7rem;letter-spacing:6px;margin-bottom:10px;}
@@ -122,8 +122,6 @@ MTSCOS AI
 {% block content %}
 <!-- 🪐 仙女座统一导航组件 -->
 <link rel="stylesheet" href="/static/css/andromeda_nav.css">
-
-
 <button class="refresh" onclick="load()">{{ t('andromeda.刷新_504087', default='⟳ 刷新') }}</button>
 <div class="container">
   <div class="hd">

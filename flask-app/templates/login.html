@@ -4,6 +4,10 @@
 
 {% block extra_head %}
 <style>
+/* v25.1 子页面内容滚动容器 */
+  .container{flex:1;min-height:0;overflow-y:auto}
+  [class*="main"]{min-height:0}
+  [class*="content"]{min-height:0}
 .login-container {
     max-width: 420px;
     margin: 40px auto;

@@ -4,11 +4,29 @@
 <meta charset="UTF-8">
 <title>⚙️ 仙女座角色设置 · Dashboard</title>
 <style>
-:root{
-  --bg:#0f172a; --bg2:#1e293b; --card:#ffffff; --ink:#0f172a; --ink-2:#334155; --muted:#64748b;
-  --iceberg:#0ea5e9; --iceberg-dim:#0284c7; --ok:#16a34a; --warn:#d97706; --danger:#dc2626; --purple:#7c3aed;
-  --border:#e2e8f0; --border-dark:rgba(148,163,184,.15); --radius:10px;
-}
+/* ════════ v25.1 仙女座冰山系统 · 统一 Flexbox 布局骨架 ════════ */
+  :root{
+    --sidebar-w:240px; --header-h:56px; --footer-h:40px;
+    --bg:#0B0A1E; --bg-card:rgba(255,255,255,.04); --panel-hover:rgba(6,182,212,.06);
+    --text:#E8F0F2; --text-dim:#5B8AA8; --text-faint:#2C5F7C;
+    --line:rgba(6,182,212,.25); --line-soft:rgba(6,182,212,.1);
+    --radius:16px; --mtscos-primary-base:#06b6d4; --mtscos-secondary-base:#a855f7;
+  }
+  html,body{height:100%;margin:0;padding:0;overflow:hidden}
+  body{display:flex; overflow:hidden;flex-direction:column;font-family:-apple-system,"SF Pro","PingFang SC",sans-serif;background:var(--bg);color:var(--text)}
+  /* 页面主内容滚动区 */
+  .layout-fix,.container,.main,.content,.main-area,.content-area,.page-body,#app{
+    flex:1;min-height:0;overflow-y:auto;
+  }
+  /* 左侧栏 (如果存在) */
+  .sidebar{flex-shrink:0;height:100%;min-height:0;overflow:hidden}
+  .sidebar .sidebar-inner,.sidebar .nav-list,.sidebar ul{flex:1;min-height:0;overflow-y:auto}
+  /* 右侧主区 */
+  .main,.main-area,.content-area{display:flex;flex-direction:column;min-height:0;overflow:hidden}
+  /* 所有卡片/网格内部的滚动 */
+  [class*="-list"],[class*="-grid"]{min-height:0}
+  /* 修复 flex 子项无法收缩导致多余空白 */
+  *{box-sizing:border-box}
 *{box-sizing:border-box;margin:0;padding:0;}
 html,body{height:100%;}
 body{font-family:-apple-system,'PingFang SC','Segoe UI',sans-serif;
