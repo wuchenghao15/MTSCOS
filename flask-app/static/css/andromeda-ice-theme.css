@@ -1,0 +1,251 @@
+/* ╔══════════════════════════════════════════════════════════════╗
+ * ║  🧊 冰山系统 · Andromeda Ice Theme — 全站通用主题层          ║
+ * ║  设计: Andromeda UI Team  动效: Motion Engineering            ║
+ * ║  合规: Iceberg Rule Team  引擎: AI Engine Team                ║
+ * ╠══════════════════════════════════════════════════════════════╣
+ * ║  纯 CSS (变量) + 渐进增强, 不改 HTML 结构                     ║
+ * ║  load order: 在 base.html 所有 CSS 之后注入                   ║
+ * ╚══════════════════════════════════════════════════════════════╝ */
+
+/* ────────────────────────────────────────────────────────────────
+ * 1. 冰山主题变量 (与 index.html 已有的 --andromeda-* 对齐)
+ * ──────────────────────────────────────────────────────────────── */
+:root, [data-theme="andromeda"], [data-theme="iceberg"] {
+    /* 冰山分层颜色 (与 iceberg-logo.svg 完全一致) */
+    --iceberg-l0: #EF4444;   /* IRON_RULE */
+    --iceberg-l1: #8B5CF6;   /* CORE      */
+    --iceberg-l2: #3B82F6;   /* OPS       */
+    --iceberg-l3: #10B981;   /* IMPL      */
+
+    /* 仙女座星云 */
+    --andromeda-purple-500: #8B5CF6;
+    --andromeda-purple-400: #9B59B6;
+    --andromeda-blue-500:   #2563EB;
+    --andromeda-blue-400:   #2E86DE;
+    --andromeda-deep:       #0B1F3A;
+
+    /* 中性色 */
+    --iceberg-surface:  #FAFBFF;
+    --iceberg-card:     #FFFFFF;
+    --iceberg-border:   rgba(99,102,241,.14);
+    --iceberg-border-strong: rgba(99,102,241,.28);
+    --iceberg-text:     #0B1F3A;
+    --iceberg-text-sec: #6B7A8F;
+
+    /* 动效 */
+    --iceberg-radius:   12px;
+    --iceberg-radius-sm: 8px;
+    --iceberg-shadow-sm: 0 2px 8px -4px rgba(11,31,58,.08);
+    --iceberg-shadow-md: 0 6px 24px -8px rgba(99,102,241,.15);
+    --iceberg-shadow-lg: 0 12px 40px -16px rgba(11,31,58,.18);
+    --iceberg-transition: .25s cubic-bezier(.22,1,.36,1);
+}
+
+/* ────────────────────────────────────────────────────────────────
+ * 2. 全站通用卡片 (任何 .card / .panel / .box / section)
+ * ──────────────────────────────────────────────────────────────── */
+.card, .panel, .box, section[class*="card"], section[class*="panel"],
+div[class*="Card"], div[class*="Panel"], div[class*="Box"],
+[class*="-card"], [class*="-panel"], [class*="-box"],
+.admin-card, .dashboard-card, .stat-card, .info-card, .data-card,
+.feature-card, .content-card, .widget-card {
+    border-radius: var(--iceberg-radius, 12px) !important;
+    border: 1px solid var(--iceberg-border, rgba(99,102,241,.14)) !important;
+    box-shadow: var(--iceberg-shadow-sm) !important;
+    transition: border-color var(--iceberg-transition),
+                box-shadow var(--iceberg-transition),
+                transform var(--iceberg-transition) !important;
+}
+.card:hover, .panel:hover, .box:hover,
+.admin-card:hover, .dashboard-card:hover, .stat-card:hover {
+    border-color: var(--iceberg-border-strong) !important;
+    box-shadow: var(--iceberg-shadow-md) !important;
+    transform: translateY(-1px) !important;
+}
+
+/* ────────────────────────────────────────────────────────────────
+ * 3. 全站通用按钮
+ * ──────────────────────────────────────────────────────────────── */
+button[type="submit"], button.primary, .btn-primary, .btn-success,
+a.btn-primary, a.btn-success, .button-primary,
+.form-actions button:not([type="button"]),
+.btn:not(.btn-outline):not(.btn-secondary):not([class*="outline"]):not([class*="ghost"]):not([class*="text"]) {
+    border-radius: var(--iceberg-radius-sm, 8px) !important;
+    background: linear-gradient(135deg, var(--andromeda-purple-500, #8B5CF6), var(--andromeda-blue-400, #2E86DE)) !important;
+    background-size: 200% 100% !important;
+    color: #fff !important;
+    border: none !important;
+    box-shadow: 0 4px 14px -6px rgba(124,58,237,.4) !important;
+    transition: transform .18s, box-shadow .25s, background-position .5s !important;
+}
+button[type="submit"]:hover, button.primary:hover,
+.btn-primary:hover, .btn-success:hover,
+button:not([type="button"]):hover,
+.btn:not(.btn-outline):not(.btn-secondary):not([class*="outline"]):hover {
+    background-position: 100% 0 !important;
+    box-shadow: 0 6px 22px -6px rgba(46,134,222,.45) !important;
+    transform: translateY(-1px) !important;
+}
+
+/* ────────────────────────────────────────────────────────────────
+ * 4. 全站通用输入框 (input / select / textarea)
+ * ──────────────────────────────────────────────────────────────── */
+input[type="text"], input[type="password"], input[type="email"],
+input[type="number"], input[type="search"], input:not([type]),
+select, textarea, .form-control, .field-input, input.form-control {
+    border-radius: var(--iceberg-radius-sm, 8px) !important;
+    border: 1px solid rgba(11,31,58,.12) !important;
+    transition: border-color .2s, box-shadow .2s, background .2s !important;
+    background: linear-gradient(180deg, #fff 0%, #fafbff 100%) !important;
+}
+input:focus, select:focus, textarea:focus,
+.form-control:focus, .field-input:focus {
+    outline: none !important;
+    border-color: var(--andromeda-purple-500, #8B5CF6) !important;
+    box-shadow:
+        0 0 0 3px rgba(139,92,246,.12),
+        0 0 16px -4px rgba(139,92,246,.2) !important;
+    background: #fff !important;
+}
+
+/* ────────────────────────────────────────────────────────────────
+ * 5. 全站通用表格
+ * ──────────────────────────────────────────────────────────────── */
+table:not(.no-theme), .data-table, .admin-table, table.display {
+    border-radius: var(--iceberg-radius, 12px) !important;
+    overflow: hidden !important;
+    border: 1px solid var(--iceberg-border) !important;
+}
+table:not(.no-theme) thead th,
+.data-table thead th, .admin-table thead th {
+    background: linear-gradient(180deg, #4338CA 0%, #5B21B6 100%) !important;
+    color: #fff !important;
+    font-weight: 700 !important;
+    letter-spacing: .3px !important;
+    border-bottom: none !important;
+}
+table:not(.no-theme) tbody tr:hover td,
+.data-table tbody tr:hover td, .admin-table tbody tr:hover td {
+    background: rgba(139,92,246,.04) !important;
+}
+
+/* ────────────────────────────────────────────────────────────────
+ * 6. 全站侧边栏 / 导航
+ * ──────────────────────────────────────────────────────────────── */
+aside, .sidebar, .side-nav, .nav-side, nav.sidebar {
+    background: linear-gradient(180deg, #0B0A1E 0%, #1E1B4B 100%) !important;
+    border-right: 1px solid rgba(139,92,246,.2) !important;
+}
+aside a, .sidebar a, .side-nav a, nav.sidebar a {
+    color: #A78BFA !important;
+    transition: color .2s, background .2s !important;
+}
+aside a:hover, .sidebar a:hover,
+.side-nav a:hover, nav.sidebar a:hover {
+    color: #fff !important;
+    background: rgba(139,92,246,.15) !important;
+}
+aside a.active, .sidebar a.active,
+aside a[aria-current], .sidebar a[aria-current] {
+    color: #fff !important;
+    background: linear-gradient(90deg, rgba(139,92,246,.25), transparent) !important;
+    border-left: 3px solid var(--iceberg-l1, #8B5CF6) !important;
+}
+
+/* ────────────────────────────────────────────────────────────────
+ * 7. 全站页头 / 面包屑 / 分页
+ * ──────────────────────────────────────────────────────────────── */
+.breadcrumb, .page-header, .content-header, .section-title {
+    border-bottom: 1px solid var(--iceberg-border) !important;
+    padding-bottom: 12px !important;
+}
+.pagination .page-link, .pager .page-link {
+    border-radius: var(--iceberg-radius-sm, 8px) !important;
+    border: 1px solid var(--iceberg-border) !important;
+    color: var(--andromeda-purple-500) !important;
+}
+.pagination .page-item.active .page-link {
+    background: linear-gradient(135deg, var(--andromeda-purple-500), var(--andromeda-blue-400)) !important;
+    border-color: transparent !important;
+    color: #fff !important;
+}
+
+/* ────────────────────────────────────────────────────────────────
+ * 8. 全站徽章 / 标签 / Alert
+ * ──────────────────────────────────────────────────────────────── */
+.badge, .tag, .label, [class*="badge-"], [class*="tag-"], [class*="label-"] {
+    border-radius: 6px !important;
+    font-weight: 700 !important;
+    letter-spacing: .3px !important;
+}
+.badge-success, .tag-success, .badge-green, .tag-green, [class*="success"] {
+    background: rgba(16,185,129,.1) !important;
+    color: #059669 !important;
+    border: 1px solid rgba(16,185,129,.25) !important;
+}
+.badge-warning, .tag-warning, .badge-yellow, [class*="warning"] {
+    background: rgba(245,158,11,.1) !important;
+    color: #D97706 !important;
+    border: 1px solid rgba(245,158,11,.25) !important;
+}
+.badge-danger, .tag-danger, .badge-red, [class*="danger"], [class*="error"] {
+    background: rgba(239,68,68,.1) !important;
+    color: #DC2626 !important;
+    border: 1px solid rgba(239,68,68,.25) !important;
+}
+.badge-info, .tag-info, [class*="info"], [class*="primary"] {
+    background: rgba(139,92,246,.1) !important;
+    color: #7C3AED !important;
+    border: 1px solid rgba(139,92,246,.25) !important;
+}
+
+/* ────────────────────────────────────────────────────────────────
+ * 9. Alert / Toast / Message
+ * ──────────────────────────────────────────────────────────────── */
+.alert, .notification, .toast, .message {
+    border-radius: var(--iceberg-radius-sm, 8px) !important;
+    border-left: 4px solid var(--andromeda-purple-500) !important;
+}
+
+/* ────────────────────────────────────────────────────────────────
+ * 10. Modal / Dialog
+ * ──────────────────────────────────────────────────────────────── */
+.modal-content, .dialog-content, .modal-dialog .modal-content {
+    border-radius: var(--iceberg-radius, 16px) !important;
+    border: 1px solid var(--iceberg-border-strong) !important;
+    box-shadow: 0 24px 64px -16px rgba(11,31,58,.3) !important;
+}
+
+/* ────────────────────────────────────────────────────────────────
+ * 11. 可访问性降级
+ * ──────────────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+}
+
+/* ────────────────────────────────────────────────────────────────
+ * 12. 暗色模式 (自动跟随系统)
+ * ──────────────────────────────────────────────────────────────── */
+@media (prefers-color-scheme: dark) {
+    :root, [data-theme="dark"] {
+        --iceberg-surface:  #0B0A1E;
+        --iceberg-card:     #1E1B4B;
+        --iceberg-border:   rgba(139,92,246,.25);
+        --iceberg-border-strong: rgba(139,92,246,.45);
+        --iceberg-text:     #E0E7FF;
+        --iceberg-text-sec: #A78BFA;
+    }
+    .card, .panel, .box, .admin-card, .dashboard-card {
+        background: var(--iceberg-card) !important;
+        border-color: var(--iceberg-border) !important;
+    }
+    input[type="text"], input[type="password"], input, select, textarea, .form-control {
+        background: #0B0A1E !important;
+        border-color: rgba(139,92,246,.3) !important;
+        color: var(--iceberg-text) !important;
+    }
+    table:not(.no-theme) tbody tr, .data-table tbody tr {
+        background: var(--iceberg-card) !important;
+        color: var(--iceberg-text) !important;
+    }
+}
