@@ -26,7 +26,7 @@
       radial-gradient(ellipse 700px 400px at 90% 85%,rgba(30,74,99,0.05),transparent 60%),
       radial-gradient(ellipse 500px 300px at 50% 50%,rgba(201,169,110,0.03),transparent 70%);
     color:var(--text-primary);min-height:100vh;line-height:1.7;
-  }
+  
   .wqx-container{max-width:1400px;margin:0 auto;padding:32px 40px 80px;}
 
   /* 题头 */
@@ -220,8 +220,8 @@
 
   <!-- 权限提示: 非学生角色 -->
   {% set sess_role = (session.get('role') or session.get('user_role') or '').strip().lower() %}
-  {% set _sa = {'super_admin', 'sa', 'wuchenghao15'} %}
-  {% set _student = {'student', '', 'learner', 'pupil'} %}
+  {% set _sa = ['super_admin', 'sa', 'wuchenghao15'] %}
+  {% set _student = ['student', '', 'learner', 'pupil'] %}
   {% if sess_role not in _sa and sess_role not in _student %}
   <div style="max-width:720px;margin:12px auto;padding:14px 20px;background:rgba(184,58,47,0.08);border:1px solid var(--seal-red);border-radius:var(--radius-md);color:var(--seal-red);font-size:0.85rem;text-align:center;line-height:1.7;">
     🔒 文曲星为<b>学生专属页面</b><br>

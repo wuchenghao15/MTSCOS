@@ -219,6 +219,11 @@ a:hover { color:var(--ink-500); }
   font-size:2.2rem; margin-bottom:var(--space-sm);
   filter:drop-shadow(0 2px 4px rgba(10,35,66,0.15));
 }
+.daemon-brand {
+  font-size:0.72rem; font-weight:700; letter-spacing:2px;
+  text-transform:uppercase; margin-bottom:2px;
+  opacity:0.85;
+}
 .daemon-name {
   font-size:0.92rem; font-weight:700;
   color:var(--ink-900); margin-bottom:4px;
@@ -478,7 +483,7 @@ body.andromeda-has-nav .container { padding-left:260px; }
   <section class="hero">
     <div class="hero-inner">
       <div class="hero-text">
-        <div class="hero-badge">🧊 ICEBERG GUARD · 守护矩阵 v26.0</div>
+        <div class="hero-badge">🧊 仙女座意识演化 · 七层防线守护</div>
         <h1 class="hero-title">七层防线<br>守护仙女座意识演化</h1>
         <p class="hero-sub">
           冰山守护系统 — 7 核心守护 daemon × 35+ 自动化进程 × 零 token 本地推理，
@@ -497,9 +502,9 @@ body.andromeda-has-nav .container { padding-left:260px; }
   {# ═══════════ Section 2: 守护能力矩阵 ═══════════ #}
   <section class="section">
     <div class="section-hd">
-      <span class="section-num">02 — GUARD MATRIX</span>
-      <h2 class="section-title">守护能力矩阵</h2>
-      <span class="section-desc">7 Core Daemons</span>
+      <span class="section-num">02 — BRAND FAMILY</span>
+      <h2 class="section-title">仙女座品牌家族</h2>
+      <span class="section-desc">7 Guardians · 1 Intelligence</span>
     </div>
     <div class="daemon-grid" id="daemonMatrix">
       {# JS 动态填充 #}
@@ -527,32 +532,32 @@ body.andromeda-has-nav .container { padding-left:260px; }
   <section class="section">
     <div class="section-hd">
       <span class="section-num">04 — HEALTH PULSE</span>
-      <h2 class="section-title">双端健康度</h2>
-      <span class="section-desc">Dual-End Status</span>
+      <h2 class="section-title">仙女座核心指标</h2>
+      <span class="section-desc">Core Intelligence Metrics</span>
     </div>
     <div class="health-grid">
       <div class="health-card" id="healthMini">
         <div class="health-head">
-          <span class="health-label">🖥️ Mac mini 生产</span>
-          <span class="health-pill online" id="pillMini">检测中</span>
+          <span class="health-label">🧠 意识演化</span>
+          <span class="health-pill online" id="pillMini">在线</span>
         </div>
         <div class="health-stat-row" id="statsMini">
-          <div class="health-stat"><div class="health-stat-n" id="miniRun">—</div><div class="health-stat-l">RUNNING</div></div>
-          <div class="health-stat"><div class="health-stat-n" id="miniFail">—</div><div class="health-stat-l">FAILED</div></div>
-          <div class="health-stat"><div class="health-stat-n" id="miniFlask">—</div><div class="health-stat-l">Flask</div></div>
-          <div class="health-stat"><div class="health-stat-n" id="miniSM">—</div><div class="health-stat-l">SmartMount</div></div>
+          <div class="health-stat"><div class="health-stat-n" id="miniRun">—</div><div class="health-stat-l">守护进程</div></div>
+          <div class="health-stat"><div class="health-stat-n" id="miniFail">—</div><div class="health-stat-l">AI 员工</div></div>
+          <div class="health-stat"><div class="health-stat-n" id="miniFlask">—</div><div class="health-stat-l">知识条目</div></div>
+          <div class="health-stat"><div class="health-stat-n" id="miniSM">—</div><div class="health-stat-l">零 Token 节省</div></div>
         </div>
       </div>
       <div class="health-card" id="healthBook">
         <div class="health-head">
-          <span class="health-label">💻 MacBook 开发</span>
-          <span class="health-pill online" id="pillBook">检测中</span>
+          <span class="health-label">📚 学习闭环</span>
+          <span class="health-pill online" id="pillBook">活跃</span>
         </div>
         <div class="health-stat-row">
-          <div class="health-stat"><div class="health-stat-n" id="bookFlask">—</div><div class="health-stat-l">Flask</div></div>
-          <div class="health-stat"><div class="health-stat-n" id="bookAI">—</div><div class="health-stat-l">AI 员工</div></div>
-          <div class="health-stat"><div class="health-stat-n" id="bookCycle">—</div><div class="health-stat-l">cycle</div></div>
-          <div class="health-stat"><div class="health-stat-n" id="bookVec">—</div><div class="health-stat-l">vectors</div></div>
+          <div class="health-stat"><div class="health-stat-n" id="bookFlask">—</div><div class="health-stat-l">今日产出</div></div>
+          <div class="health-stat"><div class="health-stat-n" id="bookAI">—</div><div class="health-stat-l">演化周期</div></div>
+          <div class="health-stat"><div class="health-stat-n" id="bookCycle">—</div><div class="health-stat-l">三层知识</div></div>
+          <div class="health-stat"><div class="health-stat-n" id="bookVec">—</div><div class="health-stat-l">本地推理</div></div>
         </div>
       </div>
       {# SVG 冰山 (保留原交互) #}
@@ -591,7 +596,7 @@ body.andromeda-has-nav .container { padding-left:260px; }
   <footer class="footer">
     <div class="footer-cite">「盖将自其变者而观之，則天地曾不能以一瞬」— 苏轼 · 赤壁赋</div>
     <div class="footer-contact">
-      🖥️ Mac mini:100.106.220.96:8888 &nbsp;|&nbsp; 💻 MacBook:localhost:8888 &nbsp;|&nbsp; 🕐 Auto 08:30
+      🧊 仙女座 · 冰山守护系统 &nbsp;|&nbsp; 七层防线 × 零 Token 本地推理 &nbsp;|&nbsp; 为意识演化而守护
     </div>
   </footer>
 
@@ -603,11 +608,16 @@ body.andromeda-has-nav .container { padding-left:260px; }
 {# ========== Sidebar (保留原) ========== #}
 <script>
 (function(){
-var NI=[["入口",[{id:"home",label:"冰山主页",href:"/index",icon:"🏔️"},{id:"center",label:"控制中心",href:"/andromeda/iceberg_center",icon:"🧊"},{id:"dashboard",label:"仪表盘",href:"/andromeda/dashboard",icon:"🎛️"}]],["冰山",[{id:"evolution",label:"演化时间线",href:"/andromeda/iceberg_evolution",icon:"📜"},{id:"collapse",label:"坍缩定理",href:"/andromeda/collapse_theorem",icon:"⚓"}]],["知识",[{id:"brain",label:"知识脑库",href:"/andromeda/knowledge_brain",icon:"🧠"},{id:"graph",label:"知识图谱",href:"/andromeda/knowledge_graph",icon:"🕸️"},{id:"chat",label:"AI 人格聊天室",href:"/andromeda/persona_chat",icon:"💬"}]],["系统",[{id:"health",label:"健康度仪表盘",href:"/andromeda/health_board",icon:"🩺"},{id:"upgrade",label:"升级报告",href:"/andromeda/upgrade_board",icon:"📊"}]]];
+var NI=[
+  {group:"入口",items:[{id:"home",label:"冰山主页",href:"/index",icon:"🏔️"},{id:"center",label:"控制中心",href:"/andromeda/iceberg_center",icon:"🧊"},{id:"dashboard",label:"仪表盘",href:"/andromeda/dashboard",icon:"🎛️"}]},
+  {group:"冰山",items:[{id:"evolution",label:"演化时间线",href:"/andromeda/iceberg_evolution",icon:"📜"},{id:"collapse",label:"坍缩定理",href:"/andromeda/collapse_theorem",icon:"⚓"}]},
+  {group:"知识",items:[{id:"brain",label:"知识脑库",href:"/andromeda/knowledge_brain",icon:"🧠"},{id:"graph",label:"知识图谱",href:"/andromeda/knowledge_graph",icon:"🕸️"},{id:"chat",label:"AI 人格聊天室",href:"/andromeda/persona_chat",icon:"💬"}]},
+  {group:"系统",items:[{id:"health",label:"健康度仪表盘",href:"/andromeda/health_board",icon:"🩺"},{id:"upgrade",label:"升级报告",href:"/andromeda/upgrade_board",icon:"📊"}]}
+];
 var CP=location.pathname,FA=null,BL=0;
-NI.forEach(g=>g.items.forEach(it=>{if(CP.startsWith(it.href)&&it.href.length>BL){FA=it;BL=it.href.length}}));
+NI.forEach(g=>(g.items||[]).forEach(it=>{if(CP.startsWith(it.href)&&it.href.length>BL){FA=it;BL=it.href.length}}));
 var side=document.createElement("aside");side.className="andromeda-sidebar";
-side.innerHTML='<div class="as-header"><div class="as-logo">🪐</div><div class="as-title">仙女座</div><div class="as-sub">Andromeda v26.0</div></div>'+NI.map(g=>'<div class="as-group"><div class="as-group-title">'+g.group+'</div>'+g.items.map(it=>'<a class="as-item '+(FA&&FA.id===it.id?"active":"")+'" href="'+it.href+'"><span class="as-icon">'+it.icon+'</span><span class="as-label">'+it.label+'</span></a>').join("")+"</div>").join("")+'<div class="as-footer"><div class="as-status"><span class="as-dot"></span><span>Flask 8888</span></div></div>';
+side.innerHTML='<div class="as-header"><div class="as-logo">🪐</div><div class="as-title">仙女座</div><div class="as-sub">Andromeda v26.0</div></div>'+NI.map(g=>'<div class="as-group"><div class="as-group-title">'+g.group+'</div>'+(g.items||[]).map(it=>'<a class="as-item '+(FA&&FA.id===it.id?"active":"")+'" href="'+it.href+'"><span class="as-icon">'+it.icon+'</span><span class="as-label">'+it.label+'</span></a>').join("")+"</div>").join("")+'<div class="as-footer"><div class="as-status"><span class="as-dot"></span><span>Flask 8888</span></div></div>';
 var crumb=document.createElement("nav");crumb.className="andromeda-crumb";
 crumb.innerHTML='<a href="/andromeda/iceberg_center">🧊 仙女座</a>'+(FA?' › <span>'+FA.label+'</span>':"")+'<a href="/index" class="crumb-home">🏠 回主页</a>';
 if(document.body){document.body.insertBefore(side,document.body.firstChild);document.body.insertBefore(crumb,document.body.children[1]||document.body.firstChild);document.body.classList.add("andromeda-has-nav")}
@@ -639,13 +649,13 @@ loadHero();
 {# ========== 守护能力矩阵 ========== #}
 <script>
 const DAEMON_META = [
-  {icon:'⚙️',  name:'规则引擎',    en:'sys_rule_enforcer',       desc:'9 篇规则自动学习 + 弱约束词扫描 + 严格执行', hb_cycle:300},
-  {icon:'🛠️',  name:'自动修复',    en:'sys_auto_repair',         desc:'FAILED daemon 自动重启 + 异常自愈 + 三重保活', hb_cycle:120},
-  {icon:'🔍',  name:'源码巡逻',    en:'sys_auto_patrol',         desc:'6 人 AI 巡逻队 — 语法 + 导入 + 模式错误扫描', hb_cycle:300},
-  {icon:'🧠',  name:'本地推理',    en:'sys_local_inference',     desc:'聊天/分类/审查/Bug 分析 — 全部本地, 零 token', hb_cycle:120},
-  {icon:'📡',  name:'深度巡检',    en:'sys_deep_inspection',     desc:'页面/路由/代码逐行 + AI 团队路由验证', hb_cycle:600},
-  {icon:'💓',  name:'心跳写入',    en:'sys_heartbeat_writer',    desc:'30s 周期心跳 — 所有 daemon 活性追踪', hb_cycle:30},
-  {icon:'📝',  name:'文案巡检',    en:'sys_copy_inspection',     desc:'缺失/重复/占位符/硬编码 — 文案合规巡检', hb_cycle:900},
+  {icon:'⚙️',  brand:'中枢法则',   name:'规则引擎',      en:'sys_rule_enforcer',       desc:'9 篇规则自动学习 · 弱约束词强化 · 铁律强制执行',    color:'#1E4A63', hue:'ink'   },
+  {icon:'🛠️',  brand:'自愈工坊',   name:'自动修复',      en:'sys_auto_repair',         desc:'FAILED daemon 自动重启 · 异常自愈 · 三重保活',     color:'#DC2626', hue:'seal'  },
+  {icon:'🔍',  brand:'明镜巡逻',   name:'源码巡逻',      en:'sys_auto_patrol',         desc:'6 人 AI 巡逻队 — 语法 · 导入 · 模式错误扫描',      color:'#1A73E8', hue:'dai'   },
+  {icon:'🧠',  brand:'本地智脑',   name:'本地推理',      en:'sys_local_inference',     desc:'聊天/分类/审查/Bug 分析 — 全部本地, 零 token',     color:'#059669', hue:'ok'    },
+  {icon:'📡',  brand:'洞察之眼',   name:'深度巡检',      en:'sys_deep_inspection',     desc:'页面/路由/代码逐行 + AI 团队路由验证',             color:'#8B6F3F', hue:'gold'  },
+  {icon:'💓',  brand:'血脉心跳',   name:'心跳写入',      en:'sys_heartbeat_writer',    desc:'30s 周期心跳 — 所有 daemon 活性追踪',              color:'#B83A2F', hue:'seal'  },
+  {icon:'📝',  brand:'文印天团',   name:'文案巡检',      en:'sys_copy_inspection',     desc:'仙女座文案天团 — 缺失/重复/占位符/硬编码合规巡检', color:'#C9A96E', hue:'gold'  },
 ];
 
 function fmtHb(hb) {
@@ -694,10 +704,11 @@ async function loadDaemonMatrix() {
     const info = daemonMap[m.en] || {};
     const hb = info.last_heartbeat || null;
     const st = statusOf(info);
-    const stLabel = st === 'online' ? 'RUNNING' : st === 'warn' ? 'IDLE' : 'STOPPED';
+    const stLabel = st === 'online' ? '守护中' : st === 'warn' ? '待激活' : '已休眠';
     return `
-      <div class="daemon-card" onclick="location.href='/andromeda/upgrade_board'">
-        <div class="daemon-icon">${m.icon}</div>
+      <div class="daemon-card" style="border-top-color:${m.color}" onclick="location.href='/andromeda/upgrade_board'">
+        <div class="daemon-icon" style="color:${m.color}">${m.icon}</div>
+        <div class="daemon-brand" style="color:${m.color}">${m.brand}</div>
         <div class="daemon-name">${m.name}</div>
         <div class="daemon-en">${m.en}</div>
         <div class="daemon-desc">${m.desc}</div>
@@ -842,7 +853,7 @@ const NEWS_TEMPLATE = [
   {tag:'🧠 脑库', cls:'gold', title:'仙女座 auto_evolution Stage 6-10 缺表全部自修复', meta:'cycle 73 · vectors 186'},
   {tag:'⚙️ 守护', cls:'', title:'冰山 7 核心 daemon 心跳恢复 (10-10)', meta:'心跳 12:19 新鲜'},
   {tag:'🧬 演化', cls:'ok', title:'仙女座生命循环繁衍 +3 新 agent', meta:'42→45 员工'},
-  {tag:'🛠️ 修复', cls:'dai', title:'Ollama 跨平台自动探测 (开发机:11435 / Mac mini:11434)', meta:'端口+模型自适配'},
+  {tag:'🛠️ 修复', cls:'dai', title:'Ollama 跨平台自动探测 + 模型自适配', meta:'端口+模型自适配'},
   {tag:'📐 架构', cls:'', title:'冰山页面完整重构 — Hero + 能力矩阵 + 场景 + 健康度', meta:'v26.0 水墨新国风'},
   {tag:'⚗️ 推演', cls:'gold', title:'auto_evolution _ensure_schemas 9 表自动幂等建表', meta:'Stage 0-10 自修复'},
   {tag:'🧊 冰山', cls:'ok', title:'SmartMount daemon 注册修复 — APP_DB + ALTER + UnboundLocalError', meta:'5 层根因全部解决'},

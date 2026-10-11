@@ -53,7 +53,7 @@
     background-image:
       radial-gradient(ellipse 900px 500px at 10% 15%, rgba(44,95,124,0.07), transparent 60%),
       radial-gradient(ellipse 700px 400px at 90% 85%, rgba(30,74,99,0.06), transparent 60%);
-  }
+  
   .card, .panel, .box, .block {
     background:var(--paper); border-radius:var(--radius-lg);
     border:1px solid rgba(44,95,124,0.08);
@@ -360,32 +360,32 @@
     <!-- 卡片网格 (可点击) -->
     {% if teachers %}
     <div class="andr-grid">
-    {% for t in teachers %}
-    <div class="andr-card {{ 'teacher' if t.role=='teacher' else ('head' if t.role=='department_head' else 'advisor') }}"
-         data-tid="{{ t.teacher_id }}" onclick="andrOpenDetail('{{ t.teacher_id }}')"></div>
-        {% set pal = edu_palettes.get(t.education_type, {'primary':'#888','gradient_from':'#888','gradient_to':'#888','secondary':'#aaa','accent':'#ccc','bg_tint':'transparent'}) %}
+    {% for teacher in teachers %}
+    <div class="andr-card {{ 'teacher' if teacher.role=='teacher' else ('head' if teacher.role=='department_head' else 'advisor') }}"
+         data-tid="{{ teacher.teacher_id }}" onclick="andrOpenDetail('{{ teacher.teacher_id }}')"></div>
+        {% set pal = edu_palettes.get(teacher.education_type, {'primary':'#888','gradient_from':'#888','gradient_to':'#888','secondary':'#aaa','accent':'#ccc','bg_tint':'transparent'}) %}
         <div class="andr-card-grad" style="background: linear-gradient(90deg, var(--style-fix-7130f10-0, inherit), var(--style-fix-7130f10-1, inherit))"></div>
         <div class="andr-card-inner">
         <div class="andr-head-row">
-            <div class="avatar">{{ t.avatar_emoji or '👤' }}</div>
-            <div class="andr-card-icon">{{ edu_icons.get(t.education_type, '')|safe }}</div>
+            <div class="avatar">{{ teacher.avatar_emoji or '👤' }}</div>
+            <div class="andr-card-icon">{{ edu_icons.get(teacher.education_type, '')|safe }}</div>
         </div>
-        <div class="name">{{ t.name }}</div>
-        {% if t.name_kanji and t.name != t.name_kanji %}<div class="kanji">{{ t.name_kanji }}</div>{% endif %}
-        <div class="andr-codename" style="color: var(--style-fix-25d9175-0, inherit); background: linear-gradient(90deg, var(--style-fix-25d9175-1, inherit), transparent); border-left: 3px solid var(--style-fix-25d9175-2, inherit)">{{ edu_codenames.get(t.education_type, t.education_type) }}</div>
-cao        <div class="subj">{{ t.subject }}</div>
-        {% if t.subject_en %}<div class="subj-en">{{ t.subject_en }}</div>{% endif %}
+        <div class="name">{{ teacher.name }}</div>
+        {% if teacher.name_kanji and teacher.name != teacher.name_kanji %}<div class="kanji">{{ teacher.name_kanji }}</div>{% endif %}
+        <div class="andr-codename" style="color: var(--style-fix-25d9175-0, inherit); background: linear-gradient(90deg, var(--style-fix-25d9175-1, inherit), transparent); border-left: 3px solid var(--style-fix-25d9175-2, inherit)">{{ edu_codenames.get(teacher.education_type, teacher.education_type) }}</div>
+cao        <div class="subj">{{ teacher.subject }}</div>
+        {% if teacher.subject_en %}<div class="subj-en">{{ teacher.subject_en }}</div>{% endif %}
         <div class="andr-tags">
-            <span class="andr-tag {{ t.gender }}">{{ '♂' if t.gender=='male' else '♀' }} {{ '男性' if t.gender=='male' else '女性' }}</span>
-            {% if t.dialect %}<span class="andr-tag region">{{ t.dialect }}</span>{% endif %}
-            {% if t.region %}<span class="andr-tag region">📍 {{ t.region }}</span>{% endif %}
-            <span class="andr-tag role">{{ role_labels.get(t.role, t.role) }}</span>
-            {% if t.grade_level %}<span class="andr-tag">{{ t.grade_level }}</span>{% endif %}
-            {% if t.personality_type %}<span class="andr-tag pers">{{ t.personality_type }}</span>{% endif %}
+            <span class="andr-tag {{ teacher.gender }}">{{ '♂' if teacher.gender=='male' else '♀' }} {{ '男性' if teacher.gender=='male' else '女性' }}</span>
+            {% if teacher.dialect %}<span class="andr-tag region">{{ teacher.dialect }}</span>{% endif %}
+            {% if teacher.region %}<span class="andr-tag region">📍 {{ teacher.region }}</span>{% endif %}
+            <span class="andr-tag role">{{ role_labels.get(teacher.role, teacher.role) }}</span>
+            {% if teacher.grade_level %}<span class="andr-tag">{{ teacher.grade_level }}</span>{% endif %}
+            {% if teacher.personality_type %}<span class="andr-tag pers">{{ teacher.personality_type }}</span>{% endif %}
         </div>
         <div class="andr-foot">
             <span class="mgr">{{ t('auto.andromeda_teacher_roster.__andromeda__5511b35a', default='✨ ANDROMEDA 管轄') }}</span>
-            <span class="perf">⭐ {{ t.performance_score or 0 }}分</span>
+            <span class="perf">⭐ {{ teacher.performance_score or 0 }}分</span>
         </div>
         </div><!-- /andr-card-inner -->
     </div>
@@ -430,18 +430,18 @@ function andrRenderDetail(t) {
     const EDU_LABELS = {k12:'K12 (中小学)', higher:'高等教育', continuing:'再教育', adult:'成人教育', japanese:'日本語教育', english:'成人英語'};
     const ROLE_LABELS = {teacher:'AI 教师', department_head:'学科组长', class_advisor:'班主任/导员'};
 
-    const genderBadge = `<span class="andr-badge ${t.gender}">{{ t('auto.andromeda_teacher_roster.__t_gender___92db2d78') }}</span>`;
-    const roleBadge = `<span class="andr-badge role">🎯 ${ROLE_LABELS[t.role] || t.role}</span>`;
-    const regionBadge = t.dialect ? `<span class="andr-badge region">📍 ${andrVal(t.region,t.dialect)}${t.dialect&&t.dialect!==andrVal(t.region,'') ? ' · '+t.dialect : ''}</span>` : '';
-    const persBadge = t.personality_type ? `<span class="andr-badge pers">🧠 ${t.personality_type}</span>` : '';
-    const gradeBadge = t.grade_level ? `<span class="andr-badge">🎓 ${t.grade_level}</span>` : '';
-    const managedBadge = `<span class="andr-badge managed">✨ ${andrVal(t.managed_by,'ANDROMEDA')}</span>`;
+    const genderBadge = `<span class="andr-badge ${teacher.gender}">{{ t('auto.andromeda_teacher_roster.__t_gender___92db2d78') }}</span>`;
+    const roleBadge = `<span class="andr-badge role">🎯 ${ROLE_LABELS[teacher.role] || teacher.role}</span>`;
+    const regionBadge = teacher.dialect ? `<span class="andr-badge region">📍 ${andrVal(teacher.region,teacher.dialect)}${teacher.dialect&&teacher.dialect!==andrVal(teacher.region,'') ? ' · '+teacher.dialect : ''}</span>` : '';
+    const persBadge = teacher.personality_type ? `<span class="andr-badge pers">🧠 ${teacher.personality_type}</span>` : '';
+    const gradeBadge = teacher.grade_level ? `<span class="andr-badge">🎓 ${teacher.grade_level}</span>` : '';
+    const managedBadge = `<span class="andr-badge managed">✨ ${andrVal(teacher.managed_by,'ANDROMEDA')}</span>`;
 
     // style_json
     let styleHtml = '';
-    if (t.style_json) {
+    if (teacher.style_json) {
         try {
-            const sj = typeof t.style_json === 'string' ? JSON.parse(t.style_json) : t.style_json;
+            const sj = typeof teacher.style_json === 'string' ? JSON.parse(teacher.style_json) : teacher.style_json;
             const parts = [];
             if (sj.personality) parts.push(`<b>{{ t('auto.andromeda_teacher_roster.x__9652af58', default='性格:') }}</b> ${sj.personality}`);
             if (sj.style)       parts.push(`<b>{{ t('auto.andromeda_teacher_roster.x_x__1901aefa', default='教え方:') }}</b> ${sj.style}`);
@@ -452,37 +452,37 @@ function andrRenderDetail(t) {
 
     // specialties_json
     let skillsHtml = '';
-    if (t.specialties_json) {
-        const sp = typeof t.specialties_json === 'string' ? JSON.parse(t.specialties_json) : t.specialties_json;
+    if (teacher.specialties_json) {
+        const sp = typeof teacher.specialties_json === 'string' ? JSON.parse(teacher.specialties_json) : teacher.specialties_json;
         if (Array.isArray(sp) && sp.length) {
             skillsHtml = `<div class="andr-skills">${sp.map(s=>`<span class="andr-skill-chip">★ ${s}</span>`).join('')}</div>`;
         }
     }
 
-    const onboard = t.onboarded_at ? new Date(t.onboarded_at).toLocaleDateString('ja-JP') : '—';
-    const lastTr  = t.last_training_at ? new Date(t.last_training_at).toLocaleDateString('ja-JP') : '—';
+    const onboard = teacher.onboarded_at ? new Date(teacher.onboarded_at).toLocaleDateString('ja-JP') : '—';
+    const lastTr  = teacher.last_training_at ? new Date(teacher.last_training_at).toLocaleDateString('ja-JP') : '—';
 
     ANDR_MC.innerHTML = `
       <div class="andr-modal-head">
-        <div class="avatar">${t.avatar_emoji || '👤'}</div>
+        <div class="avatar">${teacher.avatar_emoji || '👤'}</div>
         <div style="flex:1;min-width:0">
-          <div class="nm">${t.name}</div>
-          ${t.name_kanji && t.name !== t.name_kanji ? `<div class="kj">${t.name_kanji}</div>` : ''}
-          <div class="sj">${andrVal(t.subject)}${t.subject_en ? ` · <span class="sj-en">${t.subject_en}</span>` : ''}</div>
+          <div class="nm">${teacher.name}</div>
+          ${teacher.name_kanji && teacher.name !== teacher.name_kanji ? `<div class="kj">${teacher.name_kanji}</div>` : ''}
+          <div class="sj">${andrVal(teacher.subject)}${teacher.subject_en ? ` · <span class="sj-en">${teacher.subject_en}</span>` : ''}</div>
           <div class="andr-badge-row">
             ${genderBadge}${roleBadge}${regionBadge}${persBadge}${gradeBadge}${managedBadge}
           </div>
         </div>
       </div>
       <div class="andr-modal-body">
-        ${t.description ? `<div class="andr-section"><h4>📝 プロフィール</h4><div class="andr-desc">${t.description}</div></div>` : ''}
+        ${teacher.description ? `<div class="andr-section"><h4>📝 プロフィール</h4><div class="andr-desc">${teacher.description}</div></div>` : ''}
 
         <div class="andr-section"><h4>📊 パフォーマンス</h4>
           <div class="andr-metrics">
-            <div class="andr-metric"><div class="n">${andrVal(t.performance_score,0)}</div><div class="l">{{ t('auto.andromeda_teacher_roster.x_44ad42bf', default='総合点') }}</div></div>
-            <div class="andr-metric"><div class="n">${andrVal(t.avg_rating,0)}</div><div class="l">{{ t('auto.andromeda_teacher_roster.x_3f85c93b', default='平均評価') }}</div></div>
-            <div class="andr-metric"><div class="n">${andrVal(t.sessions_completed,0)}</div><div class="l">セッション</div></div>
-            <div class="andr-metric"><div class="n">${andrVal(t.active_students,0)}</div><div class="l">{{ t('auto.andromeda_teacher_roster.x_7eb17971', default='生徒数') }}</div></div>
+            <div class="andr-metric"><div class="n">${andrVal(teacher.performance_score,0)}</div><div class="l">{{ t('auto.andromeda_teacher_roster.x_44ad42bf', default='総合点') }}</div></div>
+            <div class="andr-metric"><div class="n">${andrVal(teacher.avg_rating,0)}</div><div class="l">{{ t('auto.andromeda_teacher_roster.x_3f85c93b', default='平均評価') }}</div></div>
+            <div class="andr-metric"><div class="n">${andrVal(teacher.sessions_completed,0)}</div><div class="l">セッション</div></div>
+            <div class="andr-metric"><div class="n">${andrVal(teacher.active_students,0)}</div><div class="l">{{ t('auto.andromeda_teacher_roster.x_7eb17971', default='生徒数') }}</div></div>
           </div>
         </div>
 
@@ -492,14 +492,14 @@ function andrRenderDetail(t) {
 
         <div class="andr-section"><h4>{{ t('auto.andromeda_teacher_roster.__x_f74e0ade', default='📋 基本情報') }}</h4>
           <div class="andr-kv">
-            <div class="k">{{ t('auto.andromeda_teacher_roster.xid_a11cfb35', default='教师ID') }}</div><div class="v">${andrVal(t.teacher_id)}</div>
-            <div class="k">教育カテゴリ</div><div class="v">${EDU_LABELS[t.education_type] || andrVal(t.education_type)}</div>
-            ${t.class_size ? `<div class="k">{{ t('auto.andromeda_teacher_roster.___x_5264b6b3', default='クラス規模') }}</div><div class="v">{{ t('auto.andromeda_teacher_roster.__t_class_si_9e4239bb') }}</div>` : ''}
-            <div class="k">Tokens</div><div class="v">${andrVal(t.current_tokens,0)}</div>
-            <div class="k">モデル</div><div class="v">${andrVal(t.model_version,'andromeda-v1')}</div>
+            <div class="k">{{ t('auto.andromeda_teacher_roster.xid_a11cfb35', default='教师ID') }}</div><div class="v">${andrVal(teacher.teacher_id)}</div>
+            <div class="k">教育カテゴリ</div><div class="v">${EDU_LABELS[teacher.education_type] || andrVal(teacher.education_type)}</div>
+            ${teacher.class_size ? `<div class="k">{{ t('auto.andromeda_teacher_roster.___x_5264b6b3', default='クラス規模') }}</div><div class="v">{{ t('auto.andromeda_teacher_roster.__t_class_si_9e4239bb') }}</div>` : ''}
+            <div class="k">Tokens</div><div class="v">${andrVal(teacher.current_tokens,0)}</div>
+            <div class="k">モデル</div><div class="v">${andrVal(teacher.model_version,'andromeda-v1')}</div>
             <div class="k">{{ t('auto.andromeda_teacher_roster.x_9b25da02', default='起動日') }}</div><div class="v">${onboard}</div>
             <div class="k">{{ t('auto.andromeda_teacher_roster.x_82c306b2', default='最終研修') }}</div><div class="v">${lastTr}</div>
-            <div class="k">{{ t('auto.andromeda_teacher_roster.x_e668c2b1', default='管理元') }}</div><div class="v">✨ ${andrVal(t.managed_by,'ANDROMEDA')}</div>
+            <div class="k">{{ t('auto.andromeda_teacher_roster.x_e668c2b1', default='管理元') }}</div><div class="v">✨ ${andrVal(teacher.managed_by,'ANDROMEDA')}</div>
           </div>
         </div>
       </div>
