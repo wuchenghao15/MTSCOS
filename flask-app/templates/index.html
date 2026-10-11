@@ -184,7 +184,7 @@ body .uni-main { margin-left: 0 !important; width: 100% !important; }
 /* ── 仙女座 AI 生态摘要条 ── */
 .mts-eco {
     margin-top: 18px;
-    display:flex; justify-content:center; flex-wrap:wrap;
+    display:flex; justify-content:center; flex-wrap:nowrap;
     gap: 4px 18px;
     font-size: 11px; color:#7a8fa6;
     letter-spacing:.3px;
@@ -208,10 +208,15 @@ body .uni-main { margin-left: 0 !important; width: 100% !important; }
  * ╚══════════════════════════════════════════════════════════════╝ */
 
 /* ── 1. AI 生态: 图标容器 + hover 高亮 + 徽章边框 ── */
-.mts-eco { gap: 8px 20px; margin-top: 16px; padding-top: 14px;
-    border-top: 1px dashed rgba(99,102,241,.1); }
+.mts-eco { gap: 6px 6px; margin-top: 16px; padding-top: 14px;
+    border-top: 1px dashed rgba(99,102,241,.1);
+    flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden;
+    -webkit-overflow-scrolling: touch; scrollbar-width: none;
+    justify-content: flex-start; }
+.mts-eco::-webkit-scrollbar { display: none; }
+.mts-eco .eco-item { flex: 0 0 auto; white-space: nowrap; }
 .mts-eco .eco-item {
-    padding: 5px 10px; border-radius: 20px;
+    padding: 4px 8px; border-radius: 20px;
     background: rgba(99,102,241,.04);
     border: 1px solid rgba(99,102,241,.08);
     gap: 6px; align-items: center;
@@ -754,30 +759,30 @@ body {
 
     <!-- 仙女座 AI 生态摘要 (DB 驱动, 极简) -->
     <div class="mts-eco" data-andromeda-reveal>
-        <!-- 仙女座 AI 生态: 图标 + 渐变数字 + tooltip -->
+        <!-- 仙女座 AI 生态: 图标 + 渐变数字 + tooltip; 全部 30s 实时轮询 (data-evo-field) -->
         <span class="eco-item" title="AI 员工总数 (mtos_ai_employees + mtscos_ai_employees)">
             <i class="eco-icon fas fa-robot"></i>
-            <span class="eco-num">{{ andromeda_state.ai_employees | default(0) }}</span>
+            <span class="eco-num" data-evo-field="ai_employees">{{ andromeda_state.ai_employees | default(0) }}</span>
             <span class="eco-label">AI 员工</span>
         </span>
-        <span class="eco-item" title="仙女座守护进程在线 / 总数">
+        <span class="eco-item" title="仙女座守护进程在线 / 总数 (mt_daemon_registry 实时)">
             <i class="eco-icon fas fa-shield-heart"></i>
-            <span class="eco-num">{{ andromeda_state.daemon_running | default(0) }}</span>
-            <span class="eco-label">/{{ andromeda_state.daemon_total | default(0) }} 守护</span>
+            <span class="eco-num" data-evo-field="daemon_running">{{ andromeda_state.daemon_running | default(0) }}</span>
+            <span class="eco-label">/<span data-evo-field="daemon_total">{{ andromeda_state.daemon_total | default(0) }}</span> 守护</span>
         </span>
-        <span class="eco-item" title="AI 脑库知识投喂累计条数">
+        <span class="eco-item" title="AI 脑库知识投喂累计条数 (mt_ai_brain_feed_log)">
             <i class="eco-icon fas fa-brain"></i>
-            <span class="eco-num">{{ andromeda_state.brain_feeds | default(0) }}</span>
+            <span class="eco-num" data-evo-field="brain_feeds">{{ andromeda_state.brain_feeds | default(0) }}</span>
             <span class="eco-label">脑库投喂</span>
         </span>
-        <span class="eco-item" title="本地推理引擎节省 tokens, 零 API 消耗">
+        <span class="eco-item" title="本地推理引擎节省 tokens, 零 API 消耗 (mt_local_ai_inference_log)">
             <i class="eco-icon fas fa-coins"></i>
-            <span class="eco-num">{{ (andromeda_state.tokens_saved | default(0)) | int }}</span>
+            <span class="eco-num" data-evo-field="tokens_saved">{{ (andromeda_state.tokens_saved | default(0)) | int }}</span>
             <span class="eco-label">tokens 节省</span>
         </span>
-        <span class="eco-item" title="仙女座源码巡逻队扫描次数">
+        <span class="eco-item" title="仙女座源码巡逻队扫描次数 (mt_patrol_runs)">
             <i class="eco-icon fas fa-magnifying-glass-chart"></i>
-            <span class="eco-num">{{ andromeda_state.patrol_runs | default(0) }}</span>
+            <span class="eco-num" data-evo-field="patrol_runs">{{ andromeda_state.patrol_runs | default(0) }}</span>
             <span class="eco-label">源码巡逻</span>
         </span>
         <span class="eco-item" title="仙女座自我探研: Q5 头脑风暴提案经 EigenFlux 投票通过并建 §14 flow 的累计数">
