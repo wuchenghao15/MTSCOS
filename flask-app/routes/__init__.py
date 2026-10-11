@@ -617,22 +617,12 @@ def _sa_preauth_redirect():
     return None
 
 
-@home_bp.route('/', methods=['GET'])
+# v22.3.2 DISABLED: 冰山唯一主页入口 = server_real_db.index(), 不得被 home_bp 抢占
+# @home_bp.route('/', methods=['GET'])
 def _root_redirect():
-    """根路径 `/` → 按 NODE_ROLE 三环境分治:
-       DEV  (MacBook Pro)     → 本机全短路 Ops Console (开发调试需要)
-       SERVER (Mac mini)      → 本机 (127.0.0.1) 短路 Ops Console, 外部访问者 → 正常 index.html
-       CLIENT (iPhone/iPad/其他终端) → 正常 index.html (专用客户端首页)
-       CLIENT 定义: 所有 is_server=False 且 is_dev=False 的终端环境
-    """
-    try:
-        from app.node_role import NODE_ROLE as _nr, is_server as _is_srv, is_dev as _is_dev
-    except ImportError:
-        _nr = 'CLIENT'; _is_srv = False; _is_dev = False
-    
-    # ── DEV (智能开发机): 本机显示 Ops Console ──
-    if _is_dev:
-        return _server_ops_panel()
+    """v22.3.2 修复: 冰山唯一主页入口 = index.html — 无论什么 NODE_ROLE, 根路径一律走 index()"""
+    from flask import redirect, url_for
+    return redirect('/index', code=302)
     
     # ── SERVER (后端服务器): 仅 CLI 工具显示 Ops Console, 浏览器走新版首页 ──
     if _is_srv:
@@ -1369,7 +1359,8 @@ function restartDaemon(label){{if(confirm('Restart '+label+'?'))doAction('restar
 </body></html>"""
     return Response(panel, mimetype='text/html; charset=utf-8', status=200)
 
-@home_bp.route('/index', methods=['GET'])
+# v22.3.2 DISABLED: 冰山唯一主页入口 = server_real_db.index()
+# @home_bp.route('/index', methods=['GET'])
 def _index_entry():
     """/index — SERVER 模式运维面板 / 其他模式渲染 index.html。"""
     # 🔧 v22.10.6 + v22.10.20: SERVER 模式 Ops Console 短路 — 仅真本机显示
