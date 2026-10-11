@@ -399,6 +399,142 @@ body {
     animation: border-flow 4s linear infinite;
 }
 
+/* ╔══════════════════════════════════════════════════════════════╗
+ * ║  🎨 仙女座全团队调度 — 登录卡终极美化 (增量追加)              ║
+ * ║  设计: Andromeda UI 专家  动效: Motion 工程师                  ║
+ * ║  数据: AI 引擎组  合规: 冰山规则组                             ║
+ * ╚══════════════════════════════════════════════════════════════╝ */
+
+/* L1 登录卡背景: 纯白 → 微渐变 + 仙女座星点 */
+.mts-login {
+    background:
+        radial-gradient(ellipse at top, rgba(139,92,246,.04) 0%, transparent 60%),
+        radial-gradient(ellipse at bottom right, rgba(46,134,222,.03) 0%, transparent 50%),
+        linear-gradient(180deg, #fff 0%, #fafbff 100%);
+    border-color: rgba(99,102,241,.14);
+}
+/* 仙女座星点 (3 颗, 呼应 Logo) */
+.mts-login::after {
+    content:''; position:absolute; inset:0; pointer-events:none;
+    background:
+        radial-gradient(1.5px 1.5px at 15% 18%, #FCD34D 50%, transparent 100%),
+        radial-gradient(1px 1px at 82% 25%, #A78BFA 50%, transparent 100%),
+        radial-gradient(1px 1px at 60% 85%, #A78BFA 50%, transparent 100%);
+    opacity:.65;
+    animation: star-twinkle 4s ease-in-out infinite;
+}
+@keyframes star-twinkle {
+    0%,100% { opacity:.45; }
+    50%     { opacity:.8; }
+}
+
+/* L2 标题: 渐变字 + 🔐 微漂浮 */
+.mts-login .lm-title {
+    background: linear-gradient(135deg, #312E81 0%, #5B21B6 40%, #8B5CF6 70%, #A78BFA 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    letter-spacing: .5px;
+}
+.mts-login .lm-title::before {
+    display: inline-block;
+    animation: lock-bob 2.5s ease-in-out infinite;
+    -webkit-text-fill-color: initial; /* emoji 不走渐变 */
+}
+@keyframes lock-bob {
+    0%,100% { transform: translateY(0); }
+    50%     { transform: translateY(-2px); }
+}
+
+/* L3 输入框: focus 紫色光晕 + 仙女座内环 */
+.mts-login .field input {
+    background: linear-gradient(180deg, #fff 0%, #fafbff 100%);
+    transition: border-color .25s, box-shadow .25s, background .25s;
+}
+.mts-login .field input:focus {
+    border-color: var(--andromeda-purple-500, #8B5CF6);
+    box-shadow:
+        0 0 0 3px rgba(139,92,246,.12),
+        0 0 18px -4px rgba(139,92,246,.25);
+    background: #fff;
+}
+/* 输入框内 icon: focus 时变色 */
+.mts-login .field input:focus + i,
+.mts-login .field:focus-within i {
+    color: var(--andromeda-purple-500, #8B5CF6);
+    transform: translateY(-50%) scale(1.05);
+    transition: color .2s, transform .2s;
+}
+.mts-login .field i {
+    transition: color .2s, transform .2s;
+}
+
+/* L4 登录按钮: 粒子流动 + glow 脉冲 */
+.mts-login .btn {
+    position: relative; overflow: hidden;
+    background: linear-gradient(90deg, #7C3AED, #9B59B6, #2E86DE, #7C3AED);
+    background-size: 300% 100%;
+    animation: login-btn-flow 5s linear infinite;
+    box-shadow: 0 4px 16px -6px rgba(124,58,237,.4);
+}
+@keyframes login-btn-flow {
+    0%   { background-position: 0% 50%; box-shadow: 0 4px 16px -6px rgba(124,58,237,.4); }
+    50%  { background-position: 150% 50%; box-shadow: 0 6px 24px -4px rgba(46,134,222,.45); }
+    100% { background-position: 300% 50%; box-shadow: 0 4px 16px -6px rgba(124,58,237,.4); }
+}
+.mts-login .btn:hover {
+    animation-play-state: paused;
+    transform: translateY(-1px);
+    box-shadow: 0 8px 28px -6px rgba(124,58,237,.5);
+}
+/* 按钮闪光扫过 */
+.mts-login .btn::after {
+    content:''; position:absolute; top:0; left:-100%; width:60%; height:100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,.22), transparent);
+    animation: btn-shine 3.5s ease-in-out infinite;
+}
+@keyframes btn-shine {
+    0%,70%  { left: -100%; }
+    85%     { left: 120%; }
+    100%    { left: 120%; }
+}
+
+/* L5 登录卡顶部 daemon 健康度条 (仙女座数据驱动) */
+.mts-login .health-bar {
+    height: 2px; margin: 0 -28px 14px -28px;
+    background: rgba(11,31,58,.06);
+    position: relative; overflow: hidden;
+}
+.mts-login .health-fill {
+    height: 100%; border-radius: 0 2px 2px 0;
+    background: linear-gradient(90deg, #10B981, #34D399, #6EE7B7);
+    transition: width .6s cubic-bezier(.22,1,.36,1);
+    box-shadow: 0 0 8px rgba(16,185,129,.4);
+}
+.mts-login .health-fill.medium { background: linear-gradient(90deg, #F59E0B, #FBBF24); box-shadow: 0 0 8px rgba(245,158,11,.35); }
+.mts-login .health-fill.low    { background: linear-gradient(90deg, #EF4444, #F87171); box-shadow: 0 0 8px rgba(239,68,68,.4); }
+.mts-login .health-label {
+    display:flex; justify-content: space-between;
+    font-size: 9px; font-weight: 600; letter-spacing: 1px;
+    color: #9baab8; margin-bottom: 14px;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    text-transform: uppercase;
+}
+.mts-login .health-label .hl-status.ok   { color: #10B981; }
+.mts-login .health-label .hl-status.warn { color: #F59E0B; }
+.mts-login .health-label .hl-status.crit { color: #EF4444; }
+
+/* L6 登录卡底部装饰: 渐变分隔 + 品牌字 */
+.mts-login .mts-brand-foot {
+    text-align: center; margin-top: 16px; padding-top: 12px;
+    border-top: 1px dashed rgba(11,31,58,.08);
+    font-size: 9px; font-weight: 700; letter-spacing: 2px;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    color: #c8cfda; text-transform: uppercase;
+}
+.mts-login .mts-brand-foot span {
+    background: linear-gradient(135deg, #8B5CF6, #2E86DE);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+
 /* ⑨ Footer 融入背景 */
 .mts-footer {
     opacity: .6;
@@ -526,26 +662,42 @@ body {
     </div>
 
     <!-- 登录卡 (保留完整 CSRF + JS hook) -->
-    <div class="mts-login-wrap">
+    <div class="mts-login-wrap" data-andromeda-reveal>
         <form class="mts-login" id="bizLoginFormMain" onsubmit="return false;">
-            <div class="lm-title">安全登录 MTSCOS AI</div>
+            <!-- 🎯 仙女座数据驱动: daemon 健康度条 -->
+            {% set _daemon_running = andromeda_state.daemon_running | default(0) %}
+            {% set _daemon_total   = andromeda_state.daemon_total | default(1) %}
+            {% set _daemon_pct     = ((_daemon_running / _daemon_total * 100) | round | int) if _daemon_total > 0 else 0 %}
+            <div class="health-label" data-andromeda-reveal>
+                <span>DAEMON</span>
+                <span class="hl-status {% if _daemon_pct >= 90 %}ok{% elif _daemon_pct >= 60 %}warn{% else %}crit{% endif %}">
+                    {{ _daemon_running }}/{{ _daemon_total }} · {{ _daemon_pct }}%
+                </span>
+            </div>
+            <div class="health-bar"><div class="health-fill {% if _daemon_pct >= 90 %}{% elif _daemon_pct >= 60 %}medium{% else %}low{% endif %}" style="width:{{ _daemon_pct }}%"></div></div>
+
+            <div class="lm-title" data-andromeda-reveal>安全登录 MTSCOS AI</div>
             <input type="hidden" name="csrf_token" value="{{ page_csrf_token if page_csrf_token else (csrf_token if csrf_token else '') }}">
-            <div class="field">
+            <div class="field" data-andromeda-reveal>
                 <i class="fas fa-user"></i>
                 <input type="text" id="bizUsernameMain" name="username" autocomplete="username"
                        placeholder="{{ t('home.ph_username', default='请输入用户名') }}" required>
             </div>
-            <div class="field">
+            <div class="field" data-andromeda-reveal>
                 <i class="fas fa-lock"></i>
                 <input type="password" id="bizPasswordMain" name="password" autocomplete="current-password"
                        placeholder="{{ t('home.ph_password', default='请输入密码') }}" required>
             </div>
-            <label class="remember"><input type="checkbox" id="bizRememberMain"> {{ t('home.remember_me', default='7 天内免登录') }}</label>
-            <button type="submit" class="btn" id="bizLoginBtnMain">
+            <label class="remember" data-andromeda-reveal><input type="checkbox" id="bizRememberMain"> {{ t('home.remember_me', default='7 天内免登录') }}</label>
+            <button type="submit" class="btn" id="bizLoginBtnMain" data-andromeda-reveal>
                 <i class="fas fa-right-to-bracket"></i> {{ t('home.btn_login', default='登 录') }}
             </button>
             <div class="msg" id="bizLoginMsgMain"></div>
-            <div class="register"><i class="fas fa-user-plus"></i> 没有账号？<a href="{{ url_for('auth.register') }}">立即注册 →</a></div>
+            <div class="register" data-andromeda-reveal><i class="fas fa-user-plus"></i> 没有账号？<a href="{{ url_for('auth.register') }}">立即注册 →</a></div>
+            <!-- 仙女座 + 冰山双品牌底部 -->
+            <div class="mts-brand-foot">
+                <span>ANDROMEDA</span> × ICEBERG · SYSTEM v{{ version | default('23.0.0') }}
+            </div>
         </form>
     </div>
 
