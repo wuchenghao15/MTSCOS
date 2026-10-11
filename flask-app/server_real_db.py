@@ -7655,21 +7655,34 @@ def get_version_info():
        注意：system_versions 历史行可能为 MTENC 密文(含 created_at)，
        不能依赖 SQL `ORDER BY datetime(created_at)`(密文上为 NULL)，
        必须拉取多行→逐行解密→按解密后时间排序取最新。"""
-    version = None
+    # ── SSOT (V-05): 运行时版本号唯一权威 = flask-app/VERSION, 经 core.version_source 读取 ──
+    # system_versions / mt_rule_changelog 一律不得覆盖版本号 (历史教训: DB 陈旧/密文行/规则版本冒充系统版本)。
+    try:
+        from core import version_source as _vs
+        ssot_tag = _vs.get_system_version_tagged()   # 'v22.2.0'
+        ssot_core = _vs.get_system_version()         # '22.2.0'
+    except Exception:
+        ssot_tag, ssot_core = 'v22.2.0', '22.2.0'
+
     info = {
-        'version': None,
+        'version': ssot_tag,
         'codename': '',
         'build_number': '',
         'build_date': '',
         'status': '',
         'description': '',
-        'source': '',
+        'source': 'VERSION(SSOT)',
         'build_time': time.strftime('%Y-%m-%d %H:%M:%S'),
-        'commit': 'db-sourced',
+        'commit': 'version-file',
         'branch': 'main',
         'author': 'Chenghao Wu',
     }
+    version = ssot_tag
 
+    def _norm_ver(v):
+        return str(v or '').strip().lstrip('vV')
+
+    # system_versions 仅用于补充元数据: 只采信"版本号与 SSOT 一致"的最新解密行, 不改版本号。
     candidates = [
         (APP_DB, 'SELECT version,codename,build_number,build_date,status,description,created_at FROM system_versions'),
         (DATA_MTSCOS_DB, 'SELECT version,codename,build_number,build_date,status,description,created_at FROM system_versions'),
@@ -7682,7 +7695,6 @@ def get_version_info():
                 rows = conn.execute(sql).fetchall()
             if not rows:
                 continue
-            # 逐行解密(密文/明文兼容)，跳过解密后仍为密文或无版本号的坏行，按解密后时间取最新
             best = None
             best_key = ''
             for raw in rows:
@@ -7690,46 +7702,24 @@ def get_version_info():
                 ver = d.get('version')
                 if not ver or (isinstance(ver, str) and ver.startswith('MTENC:')):
                     continue
+                # 关键: DB 行版本号必须与 VERSION SSOT 一致, 否则视为陈旧/异库行, 只忽略不改版本
+                if _norm_ver(ver) != ssot_core:
+                    continue
                 key = _sv_sort_key(d)
                 if key >= best_key:
                     best_key = key
                     best = d
             if best:
-                version = best.get('version')
-                info['version'] = version
                 info['codename'] = best.get('codename') or ''
                 info['build_number'] = best.get('build_number') or ''
                 ca = best.get('created_at') or ''
                 info['build_date'] = best.get('build_date') or (str(ca)[:10] if ca else '')
                 info['status'] = best.get('status') or ''
                 info['description'] = best.get('description') or ''
-                info['source'] = os.path.basename(db_path) + '.system_versions'
+                info['source'] = 'VERSION(SSOT)+' + os.path.basename(db_path) + '.metadata'
                 break
         except Exception:
             continue
-
-    if not version and os.path.exists(VERSION_FILE):
-        try:
-            with open(VERSION_FILE, 'r', encoding='utf-8') as f:
-                _v_raw = f.read().strip()
-            # 安全校验：VERSION 文件必须是单行、短版本号格式 (vX.Y.Z 或 vX.Y.Z-tag)
-            # 防止被误写为注释块/环境变量文件 (历史教训: 986 字节注释被当 version 渲染)
-            import re as _re
-            _v_match = _re.match(r'^v\d+\.\d+\.\d+[\w.\-+]*$', _v_raw)
-            if _v_match and len(_v_raw) <= 50 and '\n' not in _v_raw:
-                version = _v_raw
-                info['version'] = version
-                info['source'] = 'VERSION file'
-            else:
-                # 文件内容异常（多行/过长/非版本号格式），跳过继续回退
-                pass
-        except Exception:
-            pass
-
-    if not version:
-        version = '1.0.0'
-        info['version'] = version
-        info['source'] = 'fallback default'
 
     latest_version = version
     return version, info, latest_version
@@ -9805,6 +9795,7 @@ def _get_andromeda_state():
         'daemon_pct': 0,
         'health': 'ok',
         'cache_at': None,
+        'rule_change_latest': '',   # 最新"规则"版本, 独立于系统版本, 禁止冒充
     }
     version = ''
     try:
@@ -9847,11 +9838,11 @@ def _get_andromeda_state():
             if state['patrol_runs'] == 0:
                 _v = _q(_dbp, "SELECT COUNT(*) FROM mt_patrol_runs")
                 if _v: state['patrol_runs'] = _v
-            # rule changelog version
-            if not version:
+            # rule changelog 最新"规则"版本 (仅信息字段, 绝不覆盖系统版本号)
+            if not state.get('rule_change_latest'):
                 try:
                     _c = sqlite3.connect(_dbp); _r = _c.execute("SELECT to_version FROM mt_rule_changelog ORDER BY created_at DESC LIMIT 1").fetchone(); _c.close()
-                    if _r and _r[0]: version = _r[0]
+                    if _r and _r[0]: state['rule_change_latest'] = _r[0]
                 except Exception: pass
         # 自动计算 daemon_pct + health
         total = state['daemon_total'] or 1
@@ -9898,6 +9889,13 @@ def _get_andromeda_state():
                 "SELECT COUNT(*) FROM mt_daemon_registry WHERE status='FAILED'")
             _ec.close()
     except Exception: pass
+
+    # 系统版本号唯一权威 = flask-app/VERSION (SSOT), 与规则版本 rule_change_latest 分离
+    try:
+        from core import version_source as _vs
+        version = _vs.get_system_version_tagged()
+    except Exception:
+        version = 'v22.2.0'
     return state, version
 
 
@@ -10056,9 +10054,9 @@ def index():
     _g = dict(globals())
     try:
         return render_template('index.html',
-            version=version if 'version' in locals() else _g.get('version', 'v22.3.2'),
-            latest_version=latest if 'latest' in locals() else _g.get('latest', ''),
-            system_version=version if 'version' in locals() else _g.get('version', 'v22.3.2'),
+            version=version,
+            latest_version=latest,
+            system_version=version,
             homepage_stats=stats if 'stats' in locals() else {},
             footer_info=footer_info if 'footer_info' in locals() else {},
             particle_config=particle_config if 'particle_config' in locals() else {},
