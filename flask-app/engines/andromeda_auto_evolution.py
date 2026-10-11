@@ -1402,11 +1402,11 @@ def auto_discover_gaps(min_nodes_per_subject: int = 10, top_n: int = 3) -> List[
         conn.execute('PRAGMA journal_mode=WAL')
         # 先看 k12_knowledge_points 里各学科的知识点数
         rows = conn.execute("""
-            SELECT 
-                subject, 
+            SELECT
+                subject,
                 count(*) as point_count,
-                (SELECT count(*) FROM knowledge_graph_nodes 
-                 WHERE knowledge_graph_nodes.node_name LIKE '%' || k.subject || '%' 
+                (SELECT count(*) FROM knowledge_graph_nodes
+                 WHERE knowledge_graph_nodes.node_name LIKE '%' || k.subject || '%'
                     OR knowledge_graph_nodes.node_type LIKE '%' || k.subject || '%'
                 ) as kg_nodes
             FROM k12_knowledge_points k
@@ -1479,7 +1479,7 @@ def auto_expand_knowledge(gaps: List[Dict], concepts_per_subject: int = 8) -> Di
 [{{"concept": "牛顿第二定律", "description": "F=ma, 力等于质量乘加速度", "related_to": "力学基础"}}]"""
 
             response = _ollama_chat(
-                prompt, 
+                prompt,
                 system='你是知识图谱构建专家. 只输出 JSON 数组.',
             )
             if not response:
@@ -1760,6 +1760,224 @@ def auto_meta_phase_advance(cp: Dict, stats: Dict[str, Any]) -> Dict[str, Any]:
 # 主入口: run_cycle — 十阶段串联 (原七阶段 + 自研拓展 + 广播 + Phase 升级)
 # ============================================================
 
+# ============================================================
+# 🆕 [2026-10-10] 自动建表迁移 — Stage 0-10 自修复
+# 之前踩过的所有缺表/缺列/类型转换坑, 一次性幂等修复
+# ============================================================
+
+_SCHEMA_DEFS = {
+    # Stage 0: eigenflux 摄入
+    'mt_ai_eigenflux_messages': {
+        'cols': [
+            ('id', 'INTEGER PRIMARY KEY AUTOINCREMENT'),
+            ('msg_id', 'INTEGER'),               # 源码硬编码 id_col
+            ('content', 'TEXT'),
+            ('sender_name', 'TEXT'),
+            ('receiver_name', 'TEXT'),
+            ('topic_key', 'TEXT'),                # 源码硬编码 topic 列
+            ('message_type', "TEXT DEFAULT 'chat'"),
+            ('knowledge_tags_json', "TEXT DEFAULT '[]'"),
+            ('eigenflux_score', 'REAL DEFAULT 0.0'),
+            ('learning_value', 'REAL DEFAULT 0.0'),  # 源码硬编码 lv 列
+            ('created_at', 'TEXT'),
+        ],
+        'indexes': [('msg_id', 'idx_eaem_msg_id')],
+    },
+    'eigenflux_messages': {
+        'cols': [
+            ('id', 'INTEGER PRIMARY KEY AUTOINCREMENT'),
+            ('message_id', 'INTEGER'),            # 源码硬编码 id_col
+            ('content', 'TEXT'),
+            ('sender_id', 'TEXT'),
+            ('receiver_id', 'TEXT'),
+            ('topic', 'TEXT'),
+            ('created_at', 'TEXT'),
+        ],
+    },
+    'eigenflux_comm_messages': {
+        'cols': [
+            ('id', 'INTEGER PRIMARY KEY AUTOINCREMENT'),
+            ('session_id', 'INTEGER'),
+            ('employee_id', 'INTEGER DEFAULT 0'),
+            ('employee_name', 'TEXT'),
+            ('employee_table', "TEXT DEFAULT 'ai_employee'"),
+            ('message_direction', "TEXT DEFAULT 'outbound'"),
+            ('message_type', "TEXT DEFAULT 'chat'"),
+            ('message_content', 'TEXT'),
+            ('knowledge_tags_json', "TEXT DEFAULT '[]'"),
+            ('learning_value', 'REAL DEFAULT 0.0'),
+            ('created_at', 'TEXT'),
+        ],
+    },
+    'eigenflux_comm_sessions': {
+        'cols': [
+            ('id', 'INTEGER PRIMARY KEY AUTOINCREMENT'),
+            ('session_name', 'TEXT'),
+            ('topic', 'TEXT'),
+            ('max_participants', 'INTEGER DEFAULT 6'),
+            ('status', "TEXT DEFAULT 'active'"),
+            ('created_at', 'TEXT'),
+        ],
+    },
+    # Stage 4: derive
+    'ai_brain_enhanced_knowledge': {
+        'cols': [
+            ('knowledge_id', 'TEXT PRIMARY KEY'),
+            ('category', 'TEXT'),                  # Stage 8 discover 用
+            ('title', 'TEXT'),
+            ('content', 'TEXT'),
+            ('knowledge_type', 'TEXT DEFAULT \"general\"'),
+            ('tags', "TEXT DEFAULT '[]'"),
+            ('confidence_score', 'REAL DEFAULT 0.5'),
+            ('usage_count', 'INTEGER DEFAULT 0'),
+            ('is_active', 'INTEGER DEFAULT 1'),
+            ('embedding', 'TEXT'),
+            ('embedding_model', 'TEXT'),
+            ('reinforced_count', 'INTEGER DEFAULT 0'),
+            ('created_at', 'TEXT'),
+            ('updated_at', 'TEXT'),
+        ],
+    },
+    # Stage 4.5 / 8: graph
+    'knowledge_graph_nodes': {
+        'cols': [
+            ('node_id', 'TEXT PRIMARY KEY'),
+            ('node_name', 'TEXT'),                 # 源码硬编码
+            ('node_type', 'TEXT'),
+            ('category', 'TEXT'),                  # Stage 8 discover 用 (ALTER TABLE 补列!)
+            ('content', 'TEXT'),
+            ('metadata', 'TEXT'),
+            ('importance_score', 'REAL DEFAULT 0.0'),
+            ('is_active', 'INTEGER DEFAULT 1'),
+            ('created_at', 'TEXT'),
+            ('updated_at', 'TEXT'),
+        ],
+    },
+    'knowledge_graph_relations': {
+        'cols': [
+            ('relation_id', 'TEXT PRIMARY KEY'),
+            ('source_node_id', 'TEXT'),
+            ('target_node_id', 'TEXT'),
+            ('relation_type', 'TEXT'),
+            ('weight', 'REAL DEFAULT 1.0'),
+            ('description', 'TEXT'),
+            ('is_active', 'INTEGER DEFAULT 1'),
+            ('created_at', 'TEXT'),
+        ],
+    },
+    # Stage 6: expand
+    'ai_enhancement_suggestions': {
+        'cols': [
+            ('id', 'INTEGER PRIMARY KEY AUTOINCREMENT'),
+            ('suggestion_type', 'TEXT'),
+            ('target_component', 'TEXT'),
+            ('description', 'TEXT'),
+            ('impact_score', 'REAL DEFAULT 0.5'),
+            ('difficulty', "TEXT DEFAULT 'medium'"),
+            ('status', "TEXT DEFAULT 'pending'"),
+            ('proposed_by', "TEXT DEFAULT 'auto_evolution'"),
+            ('created_at', 'TEXT'),
+        ],
+    },
+    # Cycle 记录
+    'mt_evolution_runs': {
+        'cols': [
+            ('run_id', 'INTEGER PRIMARY KEY AUTOINCREMENT'),
+            ('cycle_num', 'INTEGER'),
+            ('evolve_phase', 'INTEGER'),
+            ('stages_completed', "TEXT DEFAULT '[]'"),
+            ('total_vectors', 'INTEGER DEFAULT 0'),
+            ('total_derived', 'INTEGER DEFAULT 0'),
+            ('total_associations', 'INTEGER DEFAULT 0'),
+            ('total_reinforced', 'INTEGER DEFAULT 0'),
+            ('purpose_score', 'REAL DEFAULT 0.0'),
+            ('elapsed_ms', 'INTEGER DEFAULT 0'),
+            ('errors', 'TEXT'),
+            ('created_at', 'TEXT'),
+        ],
+    },
+}
+
+# 列级补全: 已有表但缺这些列 → ALTER TABLE ADD COLUMN
+_COLUMN_PATCHES = [
+    # (table, column, definition, description)
+    ('knowledge_graph_nodes', 'category', 'TEXT', 'Stage 8 discover 稀疏知识域扫描'),
+    ('knowledge_graph_relations', 'description', 'TEXT', '关系描述'),
+    ('knowledge_graph_relations', 'is_active', 'INTEGER DEFAULT 1', '激活状态'),
+    ('ai_brain_enhanced_knowledge', 'embedding', 'TEXT', 'embedding 向量(JSON)'),
+    ('ai_brain_enhanced_knowledge', 'embedding_model', 'TEXT', 'embedding 模型名'),
+    ('ai_brain_enhanced_knowledge', 'reinforced_count', 'INTEGER DEFAULT 0', '强化次数'),
+    ('ai_brain_enhanced_knowledge', 'is_active', 'INTEGER DEFAULT 1', '激活状态'),
+    ('mt_ai_employees', 'specialization', 'TEXT', '开发机/Mac mini 通用'),
+    ('mt_ai_employees', 'thinking_mode', 'TEXT', '开发机/Mac mini 通用'),
+    ('mt_ai_employees', 'updated_at', 'TEXT', '开发机/Mac mini 通用'),
+]
+
+
+def _ensure_schemas():
+    """[2026-10-10] 自动建表 + 补列 — 幂等, 每次 run_cycle 开头调用"""
+    try:
+        conn = _get_conn()
+    except Exception:
+        return  # DB 连不上就算了, 主流程继续
+
+    fixed_tables = 0
+    fixed_cols = 0
+
+    for tname, tdef in _SCHEMA_DEFS.items():
+        # 检查表是否存在
+        exists = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name=?", (tname,)
+        ).fetchone()
+        if not exists:
+            # CREATE TABLE
+            col_defs = ', '.join(f'{c[0]} {c[1]}' for c in tdef['cols'])
+            try:
+                conn.execute(f'CREATE TABLE IF NOT EXISTS {tname} ({col_defs})')
+                fixed_tables += 1
+                logger.info(f'[SCHEMA] 🆕 自动建表: {tname}')
+                # CREATE INDEX
+                for idx_col, idx_name in tdef.get('indexes', []):
+                    try:
+                        conn.execute(f'CREATE INDEX IF NOT EXISTS {idx_name} ON {tname}({idx_col})')
+                    except Exception:
+                        pass
+            except Exception as e:
+                logger.warning(f'[SCHEMA] ❌ 建表失败 {tname}: {e}')
+        else:
+            # 表存在 → 检查列 (缺列则 ALTER)
+            existing_cols = {r[1] for r in conn.execute(f'PRAGMA table_info({tname})')}
+            for col_name, col_def in [(c[0], c[1]) for c in tdef['cols']]:
+                if col_name not in existing_cols:
+                    try:
+                        conn.execute(f'ALTER TABLE {tname} ADD COLUMN {col_name} {col_def}')
+                        fixed_cols += 1
+                        logger.info(f'[SCHEMA] 🔧 补列: {tname}.{col_name}')
+                    except Exception as e:
+                        logger.warning(f'[SCHEMA] ❌ 补列失败 {tname}.{col_name}: {e}')
+
+    # 额外: _COLUMN_PATCHES 里的通用列补全 (跨表)
+    for tname, col, cdef, desc in _COLUMN_PATCHES:
+        try:
+            exists = conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name=?", (tname,)
+            ).fetchone()
+            if not exists:
+                continue
+            existing = {r[1] for r in conn.execute(f'PRAGMA table_info({tname})')}
+            if col not in existing:
+                conn.execute(f'ALTER TABLE {tname} ADD COLUMN {col} {cdef}')
+                fixed_cols += 1
+                logger.info(f'[SCHEMA] 🔧 {tname}.{col} ({desc})')
+        except Exception:
+            pass
+
+    if fixed_tables or fixed_cols:
+        conn.commit()
+        logger.info(f'[SCHEMA] ✅ 自修复完成: +{fixed_tables} 表, +{fixed_cols} 列')
+    conn.close()
+
+
 def run_cycle() -> Dict[str, Any]:
     """
     执行完整十阶段自演化循环 (2026-10-05 扩展).
@@ -1772,11 +1990,14 @@ def run_cycle() -> Dict[str, Any]:
     """
     global OLLAMA_HOST
     t0 = time.time()
+
+    # 🆕 [2026-10-10] 自动建表迁移 — 每次 cycle 开头自修复 Stage 0-10 所有依赖表/列
+    _ensure_schemas()
     
     # 🆕 每次刷新 Ollama 端口 (防止模块加载后 Ollama 切换了)
     OLLAMA_HOST = _detect_ollama_host()
     logger.info(f'[OLLAMA] 本轮使用: {OLLAMA_HOST} (model={DERIVE_MODEL}, embed={EMBED_MODEL})')
-    
+
     cp = _load_checkpoint()
     cycle_num = cp.get('cycle_count', 0) + 1
     cp['cycle_count'] = cycle_num
@@ -1917,10 +2138,17 @@ def run_cycle() -> Dict[str, Any]:
         logger.error(f'[Cycle #{cycle_num}] Stage10-meta 异常 (不影响主流程): {e}')
 
     # 更新 checkpoint (用最后一条 new_item 的 created_at)
+    # created_at 可能是 float 时间戳 或 '2026-08-23 16:59:22' 字符串, 兼容处理
     if new_items:
-        last_ts = max(
-            float(r['created_at'] or 0.0) for r in new_items
-        )
+        def _to_ts(v):
+            if v is None: return 0.0
+            try: return float(v)
+            except (ValueError, TypeError):
+                try:
+                    from datetime import datetime
+                    return datetime.strptime(v[:19], '%Y-%m-%d %H:%M:%S').timestamp()
+                except: return 0.0
+        last_ts = max(_to_ts(r['created_at'] if 'created_at' in r.keys() else None) for r in new_items)
         cp['created_at_checkpoint'] = max(cp.get('created_at_checkpoint', 0.0), last_ts)
         cp['last_knowledge_id'] = new_items[-1]['knowledge_id']
 

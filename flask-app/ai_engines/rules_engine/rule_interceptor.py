@@ -1,15 +1,16 @@
 """
-Flask before_request 规则拦截器
-================================
+Flask before_request 规则拦截器 v2.3.0
+==========================================
 
 强制执行规则约束, 拦截:
 1. 未走7步审批的规则文件修改 (POST /api/rules/*)
 2. 规则违反事件 (基于 mt_iron_rule_violations 触发)
-3. §14 MT_IR_D1~D8 铁律违反 (含 flow_id 校验, 状态转移校验)
+3. §14 MT_IR_D1~D10 铁律违反 (含 flow_id 校验, 状态转移校验)
+4. §14 MT_IR_D9 dev_activity_preflight 前置拦截 (v2.3.0 接入)
 
 拦截原则:
 - bypass_allowed=False, 禁止任何人绕过 (含超级管理员 wuchenghao15)
-- 拦截仅作用于规则修改相关路由, 非规则路由 0 开销
+- 开发活动检测 → 必须携带合法 flow_id (STEP_7+), 立即阻断 + 落库 + 告警
 - 违反触发后自动投喂 EigenFlux + AI脑库
 """
 
@@ -120,8 +121,16 @@ class RuleInterceptor:
 
 
 def register_interceptor(app, rule_db: Optional[RuleDB] = None) -> RuleInterceptor:
-    """注册 Flask before_request 拦截器"""
+    """注册 Flask before_request 拦截器 (v2.3.0 加 MT_IR_D9 preflight)"""
     interceptor = RuleInterceptor(rule_db=rule_db)
+
+    # v2.3.0: 动态导入 preflight (避免循环依赖)
+    try:
+        from .dev_activity_preflight import preflight_for_api_route as _preflight_api
+        _PREFLIGHT_READY = True
+    except Exception as _e:
+        _PREFLIGHT_READY = False
+        _PREFLIGHT_ERR = str(_e)
 
     try:
         from flask import request, jsonify
@@ -133,6 +142,30 @@ def register_interceptor(app, rule_db: Optional[RuleDB] = None) -> RuleIntercept
     def _rules_engine_before_request():
         path = request.path
         method = request.method
+
+        # §14 MT_IR_D9: dev_activity_preflight 前置检查 (v2.3.0 新增)
+        if _PREFLIGHT_READY and method in ("POST", "PUT", "PATCH", "DELETE"):
+            try:
+                try:
+                    body = request.get_json(silent=True) or {}
+                except Exception:
+                    body = {}
+                text = f"path={path} body={json.dumps(body, ensure_ascii=False)[:500]}"
+                flow_id = body.get("flow_id") or request.headers.get("X-Flow-ID")
+                pf_result = _preflight_api(text, flow_id=flow_id, path=path)
+                if not pf_result.get("allowed"):
+                    return jsonify({
+                        "code": "DEV-FLOW-VIOLATION-IRON-RULE",
+                        "violation": pf_result.get("violation", ""),
+                        "prompt": pf_result.get("prompt", ""),
+                        "matched_keyword": pf_result.get("matched_keyword", ""),
+                        "flow_id": pf_result.get("flow_id", ""),
+                    }), 403
+            except Exception as _pf_err:
+                # preflight 异常不阻断主流程 (preflight 是辅助拦截)
+                import sys as _sys
+                print(f"[§14 PREFLIGHT WARN] {_pf_err}", file=_sys.stderr)
+
         if method not in ("POST", "PUT", "PATCH", "DELETE"):
             return None
 

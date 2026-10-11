@@ -3,7 +3,7 @@
 仙女座自动研究引擎 — andromeda_research.py
 ============================================
 
-完全自主的"新功能孵化器" —— 让 Q5 定期头脑风暴, 自己给自己提需求, 
+完全自主的"新功能孵化器" —— 让 Q5 定期头脑风暴, 自己给自己提需求,
 自动走 dev_gate start → Step7 EXECUTE → 落地代码。
 
 工作流 (每 10 分钟一轮, smart_mount 自动拉):
@@ -156,7 +156,7 @@ def brainstorm_new_features(db: sqlite3.Connection, n: int = 3) -> list:
         # 快速相似度检查
         dup = False
         for existing in existing_props + recent_titles:
-            if existing and (existing in title or title in existing or 
+            if existing and (existing in title or title in existing or
                            len(set(title) & set(existing)) / max(len(set(title)), len(set(existing))) > 0.7):
                 dup = True; break
         if not dup:
@@ -183,7 +183,7 @@ def eigenflux_vote(title: str, summary: str, sensitivity: str) -> dict:
         n = len(EXPERTS)
         return simulate_vote(f"{title}: {summary[:100]}", sensitivity, max_experts=n)
     except Exception as e:
-        return {"approved": False, "pass_count": 0, "votes_needed": 99, 
+        return {"approved": False, "pass_count": 0, "votes_needed": 99,
                 "error": str(e), "votes": []}
 
 
@@ -236,7 +236,7 @@ def run_research_cycle(max_proposals: int = 2) -> dict:
         prop_id = f"research_{int(time.time())}_{abs(hash(title)) % 1000}"
         
         # 落库提案
-        db.execute("""INSERT INTO mt_research_proposals 
+        db.execute("""INSERT INTO mt_research_proposals
             (prop_id, title, summary, category, sensitivity, priority, eigenflux_vote_json, status)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
             (prop_id, title, summary, category, sens["level"],
@@ -259,7 +259,7 @@ def run_research_cycle(max_proposals: int = 2) -> dict:
             # 调 dev_gate start
             try:
                 r = subprocess.run(
-                    [sys.executable, str(BASE / "engines" / "dev_gate.py"), 
+                    [sys.executable, str(BASE / "engines" / "dev_gate.py"),
                      "start", title, summary],
                     cwd=str(BASE), capture_output=True, text=True, timeout=180
                 )

@@ -65,7 +65,7 @@ def notify(title, content, level="info", daemon=None):
         conn.execute("""
             INSERT INTO system_notifications (title, content, level, target_user, created_at, status)
             VALUES (?, ?, ?, ?, ?, 'unread')
-        """, (title[:50], content[:200], level, "super_admin", 
+        """, (title[:50], content[:200], level, "super_admin",
               datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
         conn.commit()
         conn.close()
@@ -96,7 +96,7 @@ def notify(title, content, level="info", daemon=None):
                 events = events[-20:]
                 
                 conn.execute("""
-                    UPDATE mt_daemon_registry 
+                    UPDATE mt_daemon_registry
                     SET config_json = ?, updated_at = ?
                     WHERE process_name = ?
                 """, (json.dumps({"recent_events": events, "last_notification": title}, ensure_ascii=False),

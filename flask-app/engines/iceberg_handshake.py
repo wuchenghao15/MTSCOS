@@ -29,7 +29,7 @@ Phase 3 已落地:
 from __future__ import annotations
 
 import json, os, socket, sqlite3, subprocess, sys, time, threading, hashlib, uuid, re
-from dataclasses import dataclass, field
+# [unused] from dataclasses import dataclass, field
 from pathlib import Path
 from enum import Enum, auto
 
@@ -890,7 +890,7 @@ class HandshakeEngine:
         """双方各出 3 专家 → Q5 主持 → 共享经验 / 脑库 / 特征."""
         try:
             import uuid as _uuid
-            import time as _t
+            # [unused] import time as _t
 
             my_experts = self._my_expert_pick()
             remote_experts = [

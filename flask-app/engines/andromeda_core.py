@@ -343,7 +343,7 @@ def council_dispatch(loop_name: str, task: str = "") -> list:
     """👥 派发天团执行. 返回 [exec_ids...]. 把任务分配给 mapped_loop=loop_name 的天团."""
     db = _db_connect()
     rows = db.execute("""
-        SELECT exec_id, name, council_no, domain, captain, members 
+        SELECT exec_id, name, council_no, domain, captain, members
         FROM mt_12_council_exec
         WHERE active=1 AND (mapped_loop=? OR mapped_loop='ALL')
         ORDER BY mapped_loop='ALL' ASC, council_no ASC
@@ -1084,7 +1084,7 @@ def loop_repair():
     for name, pid in db.execute("SELECT process_name, pid FROM mt_daemon_registry").fetchall():
         if pid:
             try: os.kill(int(pid), 0); alive += 1
-            except: 
+            except:
                 dead += 1
                 log(f"  🔴 daemon 死了: {name} (pid={pid})", "repair")
                 # 更新状态
@@ -1168,7 +1168,7 @@ def loop_patrol():
             if cur_step not in allowed_steps:
                 log(f"  🚫 OPEN flow {flow_id} step={cur_step} 不在允许范围内!", "patrol")
                 for fpath, age in recent_files[:3]:
-                    db.execute("""INSERT INTO mt_iron_rule_violations 
+                    db.execute("""INSERT INTO mt_iron_rule_violations
                         (viol_id, viol_rule, viol_stage, viol_action, viol_payload, viol_handler, viol_blocked, created_at, updated_at)
                         VALUES (?,?,?,?,?,?,1,?,?)""",
                         (f"viol_{flow_id}_D9_{int(now_ts)}", "MT_IR_D9", "dev_activity_preflight", "AUTO_BLOCK",
@@ -1179,7 +1179,7 @@ def loop_patrol():
             if len(recent_files) > 0:
                 log(f"  🚫§14 违规: 无 OPEN flow session 但检测到 {len(recent_files)} 个最近修改文件!", "patrol")
                 for fpath, age in recent_files[:5]:
-                    db.execute("""INSERT INTO mt_iron_rule_violations 
+                    db.execute("""INSERT INTO mt_iron_rule_violations
                         (viol_id, viol_rule, viol_stage, viol_action, viol_payload, viol_handler, viol_blocked, created_at, updated_at)
                         VALUES (?,?,?,?,?,?,1,?,?)""",
                         (f"viol_no_flow_D9_{int(now_ts)}_{iron_violations}", "MT_IR_D9", "dev_activity_preflight", "AUTO_BLOCK",
@@ -1505,9 +1505,9 @@ def loop_feature_build():
     
     # 从 awaken 日志取 TOP 3 最紧急的 gap (code 类)
     gaps = db.execute("""
-        SELECT id, scan_type, target, gap_detected, generated_patch 
-        FROM mt_awakening_log 
-        WHERE status='pending' AND generated_patch IS NOT NULL 
+        SELECT id, scan_type, target, gap_detected, generated_patch
+        FROM mt_awakening_log
+        WHERE status='pending' AND generated_patch IS NOT NULL
         ORDER BY id DESC LIMIT 3
     """).fetchall()
     
@@ -1825,8 +1825,8 @@ def loop_auto_fix():
         
         # ── 反馈闭环 (深度绑定核心!) ──
         new_status = "APPLIED" if (fix_applied and patch_ok) else ("FAILED" if fixed else "SKIPPED")
-        db.execute("""UPDATE mt_iceberg_optimization_log SET 
-            current_status=?, attempt_count=attempt_count+1, last_feedback=?, 
+        db.execute("""UPDATE mt_iceberg_optimization_log SET
+            current_status=?, attempt_count=attempt_count+1, last_feedback=?,
             applied_flow_id=COALESCE(applied_flow_id,?), last_attempt_at=CURRENT_TIMESTAMP, updated_at=CURRENT_TIMESTAMP
           WHERE opt_id=?""", (new_status, patch_feedback or "no fix", flow_id if fix_applied else None, opt_id))
         db.commit()
@@ -1834,8 +1834,8 @@ def loop_auto_fix():
     
     # ── 10.1 原逻辑: mt_awakening_log 紧急修复 ──
     fixables = db.execute("""
-        SELECT id, scan_type, target, gap_detected 
-        FROM mt_awakening_log 
+        SELECT id, scan_type, target, gap_detected
+        FROM mt_awakening_log
         WHERE status='pending' AND scan_type IN ('syntax_error','daemon_dead','route_decorator','arch_gap')
         ORDER BY id DESC LIMIT 3
     """).fetchall()
@@ -1980,7 +1980,7 @@ def loop_sniff():
     log("🔍 Loop 12: 仙女座自动嗅探 (auto_sniff_engine)", "sniff")
     try:
         sys.path.insert(0, str(BASE / "engines"))
-        from auto_sniff_engine import run_sniff_cycle, sniff_summary
+        # [unused] from auto_sniff_engine import run_sniff_cycle, sniff_summary
         result = run_sniff_cycle()
         log(f"  📊 嗅探结果: {result['total_findings']} 项 / 入库 {result['inserted_to_pool']} / {result['elapsed_seconds']}s", "sniff")
         # HIGH 级紧急建议 → 标记为高优先级供 Loop 10 autofix 消费
@@ -2022,8 +2022,8 @@ def loop_brain_feed():
     
     # ── 11.1 收集本轮 auto_applied 作为经验投喂 ──
     applied = db.execute("""
-        SELECT id, scan_type, target, gap_detected, generated_patch, verify_result, applied_at 
-        FROM mt_awakening_log 
+        SELECT id, scan_type, target, gap_detected, generated_patch, verify_result, applied_at
+        FROM mt_awakening_log
         WHERE status='auto_applied' AND fed_at IS NULL
         ORDER BY applied_at DESC LIMIT 5
     """).fetchall()
@@ -2128,7 +2128,7 @@ def run_cycle():
             items_ok = loop_result.get("alive", loop_result.get("applied", loop_result.get("fixed", 0)))
             items_total = loop_result.get("processed", loop_result.get("errors_found", loop_result.get("suggestions", 0)))
             if items_total or items_ok:
-                advisors = advisor_ask(domain=_LOOP_ADVISOR_MAP.get(name, "系统架构"), 
+                advisors = advisor_ask(domain=_LOOP_ADVISOR_MAP.get(name, "系统架构"),
                                     question=f"仙女座 loop {name} 执行完毕, ok={items_ok} total={items_total}, 下一步建议?")
                 for a in advisors[:1]:  # 只取第一位顾问的建议
                     log(f"  💡 [{a['name']}·{a['domain']}] 建议: {a['advice'][:80]}", "advisor")

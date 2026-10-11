@@ -107,8 +107,8 @@ def _ensure_flow() -> str | None:
         flow_id = f"flow_andromeda_loop_{int(time.time())}"
         now = time.strftime("%Y-%m-%d %H:%M:%S")
         
-        db.execute("""INSERT OR IGNORE INTO mt_dev_flow_session 
-            (flow_id, proposal_title, proposal_summary, proposal_json, 
+        db.execute("""INSERT OR IGNORE INTO mt_dev_flow_session
+            (flow_id, proposal_title, proposal_summary, proposal_json,
              final_status, current_step, created_at, updated_at, created_by)
             VALUES (?,?,?,?,?,?,?,?,?)""",
             (flow_id, "仙女座自律循环", "自律循环自我演化 (routine)",
@@ -202,14 +202,14 @@ def _loop_rule_strengthen() -> dict:
 
 def _loop_auto_implement() -> dict:
     """
-    建议池自动实施: 取 APPROVED 且 routine 的建议, 
+    建议池自动实施: 取 APPROVED 且 routine 的建议,
     用 Q5 生成修复 patch → 应用到代码
     """
     db = sqlite3.connect(str(DB))
     suggestions = db.execute("""
-        SELECT id, category, target, issue, suggestion, severity 
-        FROM mt_evolution_suggestions 
-        WHERE status='APPROVED' AND severity <= 2 
+        SELECT id, category, target, issue, suggestion, severity
+        FROM mt_evolution_suggestions
+        WHERE status='APPROVED' AND severity <= 2
           AND category IN ('hardcoded_color', 'root_file', 'perm_bypass', 'rule_scan')
         ORDER BY rowid DESC LIMIT 5
     """).fetchall()
@@ -281,7 +281,7 @@ def _loop_benchmark_if_needed() -> dict:
         speed = 10 / max(dt, 0.1)
         
         db = sqlite3.connect(str(DB))
-        db.execute("""INSERT INTO mt_evolution_runs 
+        db.execute("""INSERT INTO mt_evolution_runs
             (loop, started_at, finished_at, duration_s, items_processed, items_ok, notes)
             VALUES (?, ?, ?, ?, ?, ?, ?)""",
             ("benchmark", time.strftime("%Y-%m-%d %H:%M:%S"),
@@ -300,7 +300,7 @@ def _record_run(dt: float, results: dict):
     db = sqlite3.connect(str(DB))
     try:
         items = results.get("daemon", {}).get("restarted", 0) + results.get("rule", {}).get("fixed", 0) + results.get("auto_impl", {}).get("implemented", 0)
-        db.execute("""INSERT INTO mt_evolution_runs 
+        db.execute("""INSERT INTO mt_evolution_runs
             (loop, started_at, finished_at, duration_s, items_processed, items_ok, suggestion_count, notes)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
             ("SELF_LOOP",

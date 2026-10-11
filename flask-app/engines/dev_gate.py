@@ -125,8 +125,8 @@ def start_flow(proposal_title: str, proposal_summary: str = "") -> dict:
     now = time.strftime("%Y-%m-%d %H:%M:%S")
 
     # 1) 创建 session
-    db.execute(f"""INSERT INTO {SESSION_TABLE} 
-        (flow_id, proposal_title, proposal_summary, proposal_json, 
+    db.execute(f"""INSERT INTO {SESSION_TABLE}
+        (flow_id, proposal_title, proposal_summary, proposal_json,
          current_step, final_status, created_at, created_by)
         VALUES (?, ?, ?, ?, 'STEP_1_PROPOSAL', 'OPEN', ?, ?)""",
         (flow_id, proposal_title, proposal_summary,
@@ -136,7 +136,7 @@ def start_flow(proposal_title: str, proposal_summary: str = "") -> dict:
     # 2) 创建 18 steps
     for step_num, step_name, desc in STEP_DEFINITIONS:
         status = "IN_PROGRESS" if step_num == 1 else "PENDING"
-        db.execute(f"""INSERT INTO {STEP_TABLE} 
+        db.execute(f"""INSERT INTO {STEP_TABLE}
             (step_id, step_name, step_num, flow_id, status, entered_at, operator, notes, metadata_json)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (f"{flow_id}::{step_name}", step_name, step_num, flow_id, status,
@@ -293,7 +293,7 @@ def _auto_simulate_12_steps(db: sqlite3.Connection, flow_id: str, title: str, su
             sync_engine = sync_mod.SmartSyncEngine()
             sr = sync_engine.run(trigger="FINAL_DONE", dev_commit=flow_id)
             _update_session("git_sync_json", json.dumps({
-                "status": sr["status"], 
+                "status": sr["status"],
                 "files_synced": sr["files_synced"],
                 "db_tables": sr["db_tables_synced"],
                 "duration_s": sr["duration_s"],
@@ -382,7 +382,7 @@ def _auto_simulate_12_steps(db: sqlite3.Connection, flow_id: str, title: str, su
                 a_round_json = a_round_json.split("\n", 1)[-1].rsplit("```", 1)[0]
             try:
                 a_round = json.loads(a_round_json)
-            except:
+            except Exception:
                 a_round = {"summary": "AI自动A轮: PASS (routine快速通过)", "motions": [], "attendance": {}}
         else:
             a_round = {"summary": "AI自动A轮: PASS (Q5离线)", "motions": [], "attendance": {}}
@@ -579,8 +579,8 @@ def _auto_steps_8_12(db: sqlite3.Connection, flow_id: str, title: str, now: str)
     # ── Step 9A: PASS 或回环 ──
     # 自动模式: 验收分 ≥ 70 → PASS; 否则 LOOPBACK
     is_pass = accept_score >= 70
-    step9a = {"decision": "PASS" if is_pass else "LOOPBACK", 
-              "score": accept_score, 
+    step9a = {"decision": "PASS" if is_pass else "LOOPBACK",
+              "score": accept_score,
               "threshold": 70,
               "reason": "自动验收分 ≥ 70" if is_pass else "验收分不足, 建议回环改进"}
     _update_session("loopback_decision_json", json.dumps(step9a, ensure_ascii=False))
@@ -646,7 +646,7 @@ def _auto_steps_8_12(db: sqlite3.Connection, flow_id: str, title: str, now: str)
         sync_engine = sync_mod.SmartSyncEngine()
         sr = sync_engine.run(trigger="FINAL_DONE", dev_commit=flow_id)
         _update_session("git_sync_json", json.dumps({
-            "status": sr["status"], 
+            "status": sr["status"],
             "files_synced": sr["files_synced"],
             "db_tables": sr["db_tables_synced"],
             "duration_s": sr["duration_s"],
@@ -680,7 +680,7 @@ def _run_acceptance(db: sqlite3.Connection) -> dict:
                 _ast.parse(content)
             except SyntaxError as e:
                 syntax_errors += 1
-                issues.append({"file": str(py_file.relative_to(BASE)), 
+                issues.append({"file": str(py_file.relative_to(BASE)),
                               "type": "SYNTAX_ERROR", "detail": str(e)[:80]})
                 continue
             
@@ -887,20 +887,20 @@ def step_to(flow_id: str, target_step: str) -> dict:
     # ── 校验通过: 把 target 之前全部 DONE, target 设 IN_PROGRESS ──
     for step_num, step_name, _ in STEP_DEFINITIONS:
         if step_num < target_idx:
-            db.execute(f"""UPDATE {STEP_TABLE} 
-                SET status='DONE', completed_at=? 
+            db.execute(f"""UPDATE {STEP_TABLE}
+                SET status='DONE', completed_at=?
                 WHERE flow_id=? AND step_name=?""",
                 (now, flow_id, step_name))
         elif step_num == target_idx:
-            db.execute(f"""UPDATE {STEP_TABLE} 
-                SET status='IN_PROGRESS', entered_at=? 
+            db.execute(f"""UPDATE {STEP_TABLE}
+                SET status='IN_PROGRESS', entered_at=?
                 WHERE flow_id=? AND step_name=?""",
                 (now, flow_id, step_name))
 
     final_status = "DONE" if target_step == "FINAL_DONE" else row["final_status"]
 
-    db.execute(f"""UPDATE {SESSION_TABLE} 
-        SET current_step=?, final_status=?, updated_at=? 
+    db.execute(f"""UPDATE {SESSION_TABLE}
+        SET current_step=?, final_status=?, updated_at=?
         WHERE flow_id=?""",
         (target_step, final_status, now, flow_id))
 
@@ -922,9 +922,9 @@ def check_flow(flow_id: str = None) -> dict:
 
     # 如果没给 flow_id, 查最近一个 OPEN 的
     if not flow_id:
-        row = db.execute(f"""SELECT flow_id, current_step, final_status 
-            FROM {SESSION_TABLE} 
-            WHERE final_status='OPEN' 
+        row = db.execute(f"""SELECT flow_id, current_step, final_status
+            FROM {SESSION_TABLE}
+            WHERE final_status='OPEN'
             ORDER BY rowid DESC LIMIT 1""").fetchone()
         if not row:
             db.close()
@@ -963,7 +963,7 @@ def complete_flow(flow_id: str) -> dict:
 
 def resume_flow(flow_id: str, decision: str = "NOT_USE_SUSPEND") -> dict:
     """
-    BLOCKER-4 + BLOCKER-3 修复: 
+    BLOCKER-4 + BLOCKER-3 修复:
     恢复 sensitive/major 暂停的 flow, 同时实现 SUSPEND 分支。
     
     decision 取值:
@@ -1100,7 +1100,7 @@ def _simulate_b_round(db: sqlite3.Connection, flow_id: str, title: str) -> str:
 
 
 def _auto_clerk_record(db: sqlite3.Connection, flow_id: str, row: sqlite3.Row, now: str):
-    clerk = {"secretary": "孙文档 (AI 文档专员)", "recorded_by": "dev_gate_resume", 
+    clerk = {"secretary": "孙文档 (AI 文档专员)", "recorded_by": "dev_gate_resume",
              "summary": f"resume NOT_USE_SUSPEND → 自动推进"}
     db.execute(f"UPDATE {SESSION_TABLE} SET clerk_record_json=?, updated_at=? WHERE flow_id=?",
                (json.dumps(clerk, ensure_ascii=False), now, flow_id))
@@ -1117,7 +1117,7 @@ def _auto_impl_team(db: sqlite3.Connection, flow_id: str, row: sqlite3.Row, now:
 
 
 def _auto_ai_team_coord(db: sqlite3.Connection, flow_id: str, row: sqlite3.Row, now: str):
-    ai_coord = {"triad": {"manager": "田经理", "inspector": "石监理", "captain": "韩队长"}, 
+    ai_coord = {"triad": {"manager": "田经理", "inspector": "石监理", "captain": "韩队长"},
                 "auto_generated": True, "resumed": True}
     try:
         from eigenflux_dynamic_invite import match_experts
@@ -1135,7 +1135,7 @@ def _auto_ai_team_coord(db: sqlite3.Connection, flow_id: str, row: sqlite3.Row, 
 def list_flows(status_filter: str = None) -> list:
     """列出所有 flow session"""
     db = _get_conn()
-    sql = f"""SELECT flow_id, proposal_title, current_step, final_status, created_at 
+    sql = f"""SELECT flow_id, proposal_title, current_step, final_status, created_at
               FROM {SESSION_TABLE}"""
     params = []
     if status_filter:
@@ -1161,7 +1161,7 @@ def record_violation(violation_code: str, viol_rule: str, detail: str) -> dict:
     db = _get_conn()
     now_ts = time.time()
     viol_id = f"viol_dev_gate_{violation_code}_{int(now_ts)}"
-    db.execute(f"""INSERT INTO {VIOL_TABLE} 
+    db.execute(f"""INSERT INTO {VIOL_TABLE}
         (viol_id, viol_rule, viol_stage, viol_action, viol_payload, viol_handler, viol_blocked, created_at, updated_at)
         VALUES (?,?,?,?,?,?,1,?,?)""",
         (viol_id, viol_rule, "dev_gate_check", "BLOCK_ATTEMPT",

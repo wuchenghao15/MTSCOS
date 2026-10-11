@@ -32,7 +32,19 @@ from typing import Any, Dict, Optional, Tuple
 _RULES_ENGINE_DIR = os.path.dirname(os.path.abspath(__file__))
 _AI_ENGINES_DIR = os.path.dirname(_RULES_ENGINE_DIR)
 _FLASK_APP_DIR = os.path.dirname(_AI_ENGINES_DIR)
-_APP_DB = os.path.join(_FLASK_APP_DIR, "database", "app.db")
+
+# ⚠️ v2.3.0 修复: 优先用 Flask 的 get_db_path('app.db') — 硬编码 database/app.db 与 Flask APP_DB 不一致!
+# Flask APP_DB = 项目根 app.db, preflight 之前硬编码 flask-app/database/app.db → 永远查不到 flow_id
+try:
+    _sys_path = os.path.dirname(_FLASK_APP_DIR)
+    if _sys_path not in sys.path:
+        sys.path.insert(0, _sys_path)
+    from core.db_path import get_db_path as _get_mtscos_db_path
+    _APP_DB = _get_mtscos_db_path("app.db")
+except Exception:
+    # Fallback: 项目根 app.db (Flask 实际用的路径)
+    _PROJECT_ROOT = os.path.dirname(_FLASK_APP_DIR)
+    _APP_DB = os.path.join(_PROJECT_ROOT, "app.db")
 
 # mt_dev_flow_session 表名（与 mt_ir14_dev_flow.MT_SESSION_TABLE 保持一致）
 _MT_SESSION_TABLE = "mt_dev_flow_session"

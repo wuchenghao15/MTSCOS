@@ -8,7 +8,7 @@
 #
 # 作者: 文学天团 · 2026-09-19
 # ─────────────────────────────────────────────────────────────
-import sqlite3, json, os, sys, re, hashlib, time, uuid, textwrap
+# [unused] import sqlite3, json, os, sys, re, hashlib, time, uuid, textwrap
 
 # 🆕 2026-09-20: DB 锁争用修复 — patch_sqlite3_connect (WAL + busy_timeout=60s)
 try:
@@ -195,7 +195,7 @@ def run_troupe_writing():
     # 1. 查出所有文学天团成员
     writers = conn.execute("""
         SELECT id, name, skill_level, group_tag, specialties
-        FROM ai_employees 
+        FROM ai_employees
         WHERE group_tag IN ('文学巨匠·世界','艺术巨匠·世界','诸子百家·先秦','哲学思想')
         AND is_enabled = 1
         ORDER BY group_tag, id
@@ -230,7 +230,7 @@ def run_troupe_writing():
                 (knowledge_id, category, title, content, knowledge_type, tags,
                  confidence_score, usage_count, is_active, created_at, updated_at)
                 VALUES (?, ?, ?, ?, ?, ?, 0.95, 0, 1, ?, ?)
-            """, (kid, "script_writing", 
+            """, (kid, "script_writing",
                   f"{wname} 短视频爆款文案",
                   script, "literary_troupe_script",
                   json.dumps(["short_video", "script", wname, tag, persona["style"]], ensure_ascii=False),
@@ -241,7 +241,7 @@ def run_troupe_writing():
                 INSERT INTO mt_ai_self_evolution_log
                 (trigger_type, target_task, rationale, approved_by, applied, created_at)
                 VALUES (?, ?, ?, ?, 1, ?)
-            """, ("LITERARY_TROUPE_SCRIPT", 
+            """, ("LITERARY_TROUPE_SCRIPT",
                   f"{wname} 文案生产 ({persona['style'][:20]})",
                   json.dumps({"writer": wname, "group": tag, "style": persona["style"], "script_length": len(script)}, ensure_ascii=False),
                   "literary_troupe",

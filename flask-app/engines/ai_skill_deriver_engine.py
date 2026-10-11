@@ -174,7 +174,7 @@ description: "一句话描述本 Skill 做什么 + 什么时候触发 (200字内
 """
     try:
         # 通过 MCP local_ai_chat
-        import requests as _r
+        # [unused] import requests as _r
         # local_ai_chat 是 MCP tool, 无法直接 subprocess. 走本地 Ollama
         result = subprocess.run(
             ["ollama", "run", "qwen2.5:7b", prompt],

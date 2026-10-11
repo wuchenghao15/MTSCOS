@@ -30,9 +30,9 @@ driver: sys_employee_auto_empower daemon (300s 周期)
 
 from __future__ import annotations
 import sys, os, sqlite3, json, random, uuid
-from datetime import datetime, timedelta
+# [unused] from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+# [unused] from typing import Dict, List, Optional, Tuple
 
 _PROJECT_ROOT = Path(__file__).parent.parent
 _DB_PATH = _PROJECT_ROOT / 'database' / 'app.db'

@@ -4,7 +4,7 @@
 =======================================
 在 listening_qbank_build_v2.py 的基础上批量添加新题.
 """
-import asyncio, json, sqlite3, subprocess, uuid
+# [unused] import asyncio, json, sqlite3, subprocess, uuid
 from pathlib import Path
 
 _here = Path(__file__).resolve().parent
