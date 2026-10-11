@@ -612,6 +612,12 @@
         .ops-fold > *:not(summary) {
             padding: 14px 18px;
         }
+
+        /* ═══ 🎯 用户要求: 侧栏折叠 + 主区撑满 ═══ */
+        body .uni-sidebar { display: none !important; }
+        body .uni-main { margin-left: 0 !important; width: 100% !important; }
+        body .uni-header .uni-hamburger { display: none !important; }
+        body .uni-header-title { display: none !important; }
     </style>
     {# v24.3.3: 始终加载 SA 双密钥 CSS — 选择器限定 body.layout-mode-SA_PROPRIETARY，非 SA 态零影响 #}
     <link rel="stylesheet" href="{{ url_for('static', filename='css/sa_proprietary.css') }}">
@@ -626,6 +632,86 @@
 <!-- ═══════════════ MAIN CONTENT ═══════════════ -->
 <main class="biz-main">
 
+<!-- 👋 欢迎 + 登录卡 (未登录时突出显示) -->
+    {% if not (is_authenticated() and current_user and current_user.username) %}
+    <section class="biz-welcome-banner" id="welcomeBanner">
+        <div class="wb-left">
+            <div class="wb-icon"><i class="fas fa-sparkles"></i></div>
+            <div>
+                <div class="wb-title">欢迎来到 <span style="color:var(--andromeda-purple,var(--andromeda-purple-400))">MTSCOS AI</span></div>
+                <div class="wb-sub" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+                    <span style="color:var(--andromeda-purple,var(--andromeda-purple-400));font-weight:600">🧠 仙女座 AI · 在线学习伙伴</span>
+                    <span class="num-mono" style="color:var(--andromeda-purple,var(--andromeda-purple-400));opacity:.55" id="evCycleWrap" hidden>演化 <strong id="evCycleLogin">—</strong></span>
+                    <span id="evDaemonLogin" style="opacity:.55" hidden>守护 —</span>
+                    <span id="evMiniLogin" style="opacity:.55" hidden>推理 —</span>
+                    <span id="evStatusLogin" style="padding:1px 8px;border-radius:999px;font-size:10px;font-weight:700;background:rgba(34,197,94,.1);color:#166534;border:1px solid rgba(34,197,94,.3)">● 欢迎体验</span>
+                </div>
+                <!-- 🌌 仙女座功能亮点 (未登录也能看到) -->
+                <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
+                    <span style="padding:3px 10px;border-radius:12px;font-size:11px;background:rgba(155,89,182,.1);color:var(--andromeda-purple-400);border:1px solid rgba(155,89,182,.25);">🧠 本地 Ollama · 零 token</span>
+                    <span style="padding:3px 10px;border-radius:12px;font-size:11px;background:rgba(46,134,222,.1);color:var(--iceberg-blue-400);border:1px solid rgba(46,134,222,.25);">💡 发散思维引擎</span>
+                    <span style="padding:3px 10px;border-radius:12px;font-size:11px;background:rgba(52,211,153,.1);color:#10B981;border:1px solid rgba(52,211,153,.25);">📚 永久化脑库</span>
+                    <span style="padding:3px 10px;border-radius:12px;font-size:11px;background:rgba(251,191,36,.1);color:#F59E0B;border:1px solid rgba(251,191,36,.25);">⚡ 智能守护集群</span>
+                </div>
+            </div>
+        </div>
+        <form class="wb-login" id="bizLoginFormMain" onsubmit="return false;">
+            <div class="wb-login-title"><i class="fas fa-user-shield" style="color:var(--andromeda-purple,var(--andromeda-purple-400));font-size:13px"></i> 安全登录 MTSCOS AI</div>
+            <input type="hidden" name="csrf_token" value="{{ page_csrf_token if page_csrf_token else (csrf_token if csrf_token else '') }}">
+            <div class="wb-field">
+                <i class="fas fa-user"></i>
+                <input type="text" id="bizUsernameMain" name="username" autocomplete="username" placeholder="{{ t('home.ph_username', default='请输入用户名') }}" required>
+            </div>
+            <div class="wb-field">
+                <i class="fas fa-lock"></i>
+                <input type="password" id="bizPasswordMain" name="password" autocomplete="current-password" placeholder="{{ t('home.ph_password', default='请输入密码') }}" required>
+            </div>
+            <label class="wb-remember"><input type="checkbox" id="bizRememberMain"> {{ t('home.remember_me', default='7 天内免登录') }}</label>
+            <button type="submit" class="wb-btn" id="bizLoginBtnMain">
+                <i class="fas fa-right-to-bracket"></i><span class="btn-text">{{ t('home.btn_login', default='登 录') }}</span>
+            </button>
+            <div class="wb-msg" id="bizLoginMsgMain"></div>
+            <div class="wb-register-link"><i class="fas fa-user-plus"></i> 没有账号？<a href="{{ url_for('auth.register') }}">立即注册 →</a></div>
+        </form>
+    </section>
+    {% else %}
+    <!-- 已登录欢迎条 — 仙女座个性化 role_hero + 聊天入口 -->
+    <section class="biz-welcome-banner logged">
+        <div class="wb-left">
+            <div class="wb-icon" style="background:linear-gradient(135deg,var(--mtscos-primary-base),var(--mtscos-secondary-base))">{{ current_user.username[0]|upper }}</div>
+            <div>
+                {% if personalized and role_hero %}
+                <div class="wb-title" style="font-size:16px;">{{ role_hero.greeting|default('你好') }}, <span style="color:var(--andromeda-purple,var(--andromeda-purple-400));">{{ current_user.username }}</span>!</div>
+                <div class="wb-sub" style="line-height:1.6;">
+                    {% if role_hero.subtitle %}{{ role_hero.subtitle }} · {% endif %}
+                    <span style="opacity:.7;">仙女座 AI 在线 · 你的专属学习伙伴已就绪 🧠</span>
+                </div>
+                {% if recommendations %}
+                <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
+                    {% for rec in recommendations[:3] %}
+                    <span style="padding:3px 10px;border-radius:12px;font-size:11px;background:rgba(46,134,222,.1);color:var(--iceberg-blue-400);border:1px solid rgba(46,134,222,.25);">🎯 {{ rec }}</span>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                {% else %}
+                <div class="wb-title">欢迎回来{{ get_role_name(current_user.role) if current_user.role else '用户' }}{% if current_user.username %}, {{ current_user.username }}{% endif %}!</div>
+                <div class="wb-sub">仙女座 AI 在线 · 你的专属学习伙伴已就绪 🧠</div>
+                {% endif %}
+            </div>
+        </div>
+        <div style="display:flex;gap:8px;">
+            <a href="/local-chat" class="wb-btn" style="background:linear-gradient(135deg,var(--andromeda-purple-400),var(--iceberg-blue-400));color:#fff;"><i class="fas fa-brain"></i> 🧠 仙女座聊天</a>
+            <a href="/student_portal" class="wb-btn"><i class="fas fa-gauge-high"></i> {{ t('home.workspace', default='工作台') }}</a>
+        </div>
+    </section>
+    {% endif %}
+
+    <!-- 🔖 极简版本条 (一行, 不抢眼) -->
+    <section class="biz-meta-bar" style="margin-bottom:16px;">
+        <div class="bm-left">
+            <span class="bm-ver"><i class="fas fa-code-branch"></i> v{{ version | default('23.0.0') }}</span>
+        </div>
+    </section>
 
     <!-- �️ 仙女座品牌家族 — 7 子品牌矩阵 -->
     <section class="biz-brand-family">
