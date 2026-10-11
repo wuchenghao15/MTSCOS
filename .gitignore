@@ -126,6 +126,7 @@ flask-app/routes/*
 flask-app/templates/*
 !flask-app/templates/admin_app/
 flask-app/templates/admin_app/*
+!flask-app/templates/admin_app/base.html
 !flask-app/templates/admin_app/eigenflux_center.html
 !flask-app/templates/admin_app/ai_team_hub.html
 !flask-app/templates/admin_app/dev_flow_dashboard.html
@@ -202,7 +203,10 @@ flask-app/src/html/assets/css/*
 !flask-app/static/
 flask-app/static/*
 !flask-app/static/css/
+!flask-app/static/js/
 flask-app/static/css/*
+flask-app/static/js/*
+!flask-app/static/js/andromeda-beautify.js
 !flask-app/static/css/mtscos_design_tokens.css
 
 # 大文件归档（不推送）
