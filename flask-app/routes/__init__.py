@@ -1812,6 +1812,8 @@ def register_all_blueprints(app):
     # 🆕 v25.0: 仙女座灰度发布蓝图 — gray_release_engine.py 状态机+门禁+哈希分流
     ('gray_release_routes', 'gray_bp'),
     # 🆕 v25.0: 仙女座统一角色设置蓝图 — role_settings_engine.py (DB 深度绑定)
+    # 🆕 v26.0: copy_studio 文案创作中台 — /andromeda/copy_studio/* + /andromeda/api/copy_studio/*
+    ('copy_studio_routes', 'bp'),
     ('role_settings_routes', 'role_bp'),
     # 🆕 v25.0: 仙女座 × 冰山 元域蓝图 — iceberg_meta_model.py + iceberg_consciousness.py (五自绑定层)
     ('iceberg_meta_routes', 'iceberg_bp'),
