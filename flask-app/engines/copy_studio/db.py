@@ -155,6 +155,34 @@ CREATE INDEX IF NOT EXISTS idx_copy_scenes_project ON mt_copy_scenes(project_id)
 CREATE INDEX IF NOT EXISTS idx_copy_consistency_project ON mt_copy_consistency_log(project_id);
 CREATE INDEX IF NOT EXISTS idx_copy_rag_project ON mt_copy_rag_inject_log(project_id);
 CREATE INDEX IF NOT EXISTS idx_copy_projects_init ON mt_copy_projects(initiator, status);
+
+-- v26.0 P3 daemon 日志表 (统一由 ensure_schema 管理, 避免 daemon 分散 CREATE)
+CREATE TABLE IF NOT EXISTS mt_copy_learning_log (
+  log_id INTEGER PRIMARY KEY AUTOINCREMENT,
+  patterns_json TEXT,
+  feedback_json TEXT,
+  suggestions_json TEXT,
+  created_at TEXT
+);
+
+CREATE TABLE IF NOT EXISTS mt_copy_expansion_log (
+  log_id TEXT PRIMARY KEY,
+  trigger_type TEXT,
+  details_json TEXT,
+  parliament_proposal_id TEXT,
+  created_at TEXT
+);
+
+CREATE TABLE IF NOT EXISTS mt_parliament_proposals (
+  proposal_id TEXT PRIMARY KEY,
+  title TEXT,
+  content TEXT,
+  author TEXT DEFAULT 'sys_copy_expander',
+  status TEXT DEFAULT 'pending_vote',
+  votes_for INTEGER DEFAULT 0,
+  votes_against INTEGER DEFAULT 0,
+  created_at TEXT
+);
 """
 
 
