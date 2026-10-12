@@ -151,7 +151,8 @@ def is_in_gray(user_id: str, pct: int, salt: str = 'release_default') -> bool:
 # ═══════════════════════════════════════════════════════════
 class GrayReleaseEngine:
     def __init__(self, db_path: Path = DB_PATH):
-        self.db = sqlite3.connect(str(db_path), timeout=10)
+        self._db_path = Path(db_path)
+        self.db = sqlite3.connect(str(self._db_path), timeout=10)
         self.db.row_factory = sqlite3.Row
         self.db.executescript(SCHEMA)
         self.db.commit()
@@ -185,7 +186,8 @@ class GrayReleaseEngine:
         try:
             sys.path.insert(0, str(_PROJECT_ROOT))
             from engines.approvals_engine import ApprovalEngine
-            appr = ApprovalEngine()
+            # 关键: ApprovalEngine 必须用 GrayReleaseEngine 同一个库 (旧代码漏传导致主库锁竞争)
+            appr = ApprovalEngine(db_path=self._db_path)
             appr_id = appr.submit(
                 category='release',
                 initiator=initiator,
