@@ -563,6 +563,31 @@ def _skill_slug(prop_id: str, category: str) -> str:
     return ("andromeda-%s-%s" % (slug, tail))[:48]
 
 
+def _stale_skill_path_if_valid(prop_id: str, category: str):
+    """崩溃恢复探测: 该提案受控名的 SKILL.md 若已落盘且 frontmatter 合法(name 精确匹配),
+    返回其路径; 不存在/不合法返回 None。用于"写盘成功但落库前中断"的幂等补登, 避免重算。"""
+    try:
+        import ai_skill_deriver_engine as deriver
+        skill_name = _skill_slug(prop_id, category)
+        target = os.path.join(deriver.SKILLS_DIR, skill_name, "SKILL.md")
+        if not os.path.exists(target):
+            return None
+        with open(target, "r", encoding="utf-8") as f:
+            txt = f.read()
+        if not txt.startswith("---"):
+            return None
+        parts = txt.split("---", 2)
+        if len(parts) < 3:
+            return None
+        nm = re.search(r'name:\s*"([^"]+)"', parts[1])
+        ds = re.search(r'description:\s*"([^"]+)"', parts[1])
+        if not nm or not ds or nm.group(1).strip() != skill_name:
+            return None
+        return target
+    except Exception:
+        return None
+
+
 def _loop_consume_derivatives() -> dict:
     """节流消费 RESEARCH_DERIVE: 研究提案 → 本地 Ollama 生成 Skill 草案 → 写盘校验 → 落库.
 
@@ -579,17 +604,48 @@ def _loop_consume_derivatives() -> dict:
     today = time.strftime("%Y-%m-%d")
     db = sqlite3.connect(str(DB))
     try:
-        # 0) 崩溃恢复: 陈旧 EVALUATED 租约回 PENDING
+        # 0) 崩溃恢复: 陈旧 EVALUATED 租约 (>600s)
+        #    a) 若同名合法 Skill 已落盘(写盘成功但落库前中断) → 幂等补登 DEPLOYED 并收口, 立即收敛;
+        #    b) 否则 → 回 PENDING, 由后续轮重新认领生成(attempts 已在 impl 持久化)。
+        #    本步在 30min 节流之前, 已成功产物的补登不被节流推迟。
         stale = db.execute(
             "SELECT suggestion_id, meta_json FROM mt_ai_suggestion_pool "
             "WHERE source_type='RESEARCH_DERIVE' AND status='EVALUATED' AND evaluated_at IS NOT NULL "
             "AND CAST((julianday(?) - julianday(evaluated_at)) * 86400 AS INTEGER) > 600",
             (now_str,)).fetchall()
+        adopted = 0; reaped = 0
         for sid, _m in stale:
-            db.execute("UPDATE mt_ai_suggestion_pool SET status='PENDING' WHERE suggestion_id=? AND status='EVALUATED'", (sid,))
+            info = db.execute(
+                """SELECT p.flow_id, pr.category, i.impl_id
+                     FROM mt_ai_suggestion_pool p
+                     JOIN mt_research_proposals pr ON pr.prop_id = p.flow_id
+                LEFT JOIN mt_research_implementations i ON i.suggestion_id = p.suggestion_id
+                    WHERE p.suggestion_id=?""", (sid,)).fetchone()
+            target = _stale_skill_path_if_valid(info[0], info[1]) if info else None
+            if info and target:
+                prop_id, _cat, impl_id = info
+                db.execute(
+                    "UPDATE mt_ai_suggestion_pool SET status='DEPLOYED', deployed_at=? "
+                    "WHERE suggestion_id=? AND status='EVALUATED'", (now_str, sid))
+                if impl_id:
+                    db.execute(
+                        "UPDATE mt_research_implementations SET artifact_path=?, status='DEPLOYED', "
+                        "error='', updated_at=? WHERE impl_id=?", (target, now_str, impl_id))
+                db.commit(); adopted += 1
+                try:
+                    import andromeda_research as _ar
+                    _ar.close_research_proposal(prop_id, artifact=target)
+                except Exception as e:
+                    log(f"  consume: 补登 {sid} DEPLOYED, §14 收口异常: {str(e)[:80]}")
+                log(f"  consume: 陈旧租约 {sid} Skill 已落盘, 幂等补登 DEPLOYED (免重算)")
+            else:
+                db.execute(
+                    "UPDATE mt_ai_suggestion_pool SET status='PENDING' "
+                    "WHERE suggestion_id=? AND status='EVALUATED'", (sid,))
+                reaped += 1
         if stale:
             db.commit()
-            log(f"  consume: 回收 {len(stale)} 个陈旧租约 → PENDING")
+            log(f"  consume: 陈旧租约恢复 — 补登已落盘 {adopted} 个, 回 PENDING 重算 {reaped} 个")
 
         # 1) 节流: 间隔
         last = db.execute(
