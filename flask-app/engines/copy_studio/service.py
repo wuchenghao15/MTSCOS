@@ -9,7 +9,7 @@ from __future__ import annotations
 import json, uuid, time, datetime
 from pathlib import Path
 from typing import Optional, Dict, Any, List
-from .db import get_conn, ensure_schema
+from .db import get_conn, ensure_schema, db_retry
 from .policy import (GENRE_CONFIG, GENRE_NOVEL, GENRE_SCRIPT, GENRE_AD_COPY,
                      assess_risk, get_sla_hours, is_llm_safe_to_auto_pass)
 from .generator import (ollama_call, generate_outline, write_chapter_text, polish_text,
@@ -44,7 +44,7 @@ class ApprovalService:
         risk = assess_risk(genre, target_words, initiator_role)
         now = NOW_F()
         with get_conn() as c:
-            c.execute("BEGIN IMMEDIATE")
+            c.execute("BEGIN")
             c.execute(
                 """INSERT INTO mt_copy_projects
                 (project_id, title, genre, sub_genre, target_words, current_words,
@@ -113,7 +113,7 @@ class ApprovalService:
         if outline is None:
             return None
         with get_conn() as c:
-            c.execute("BEGIN IMMEDIATE")
+            c.execute("BEGIN")
             c.execute(
                 "UPDATE mt_copy_projects SET outline_json=?, status=?, updated_at=? WHERE project_id=?",
                 (json.dumps(outline, ensure_ascii=False), PROJECT_OUTLINING, NOW_F(), project_id))
@@ -201,7 +201,7 @@ class ApprovalService:
 
         actual_words = len(content)
         with get_conn() as c:
-            c.execute("BEGIN IMMEDIATE")
+            c.execute("BEGIN")
             c.execute(
                 """UPDATE mt_copy_chapters SET
                    content=?, actual_words=?, status=?, updated_at=?
@@ -223,6 +223,7 @@ class ApprovalService:
 
         return {
             'chapter_id': ch['chapter_id'],
+            'content': content,
             'content_length': actual_words,
             'duration_sec': round(duration, 1),
             'ollama_ok': OLLAMA_OK,
@@ -288,7 +289,7 @@ class ApprovalService:
 
     # ── 审批对接 ──
 
-    def submit_for_approval(self, project_id: str) -> Optional[str]:
+    def submit_for_approval(self, project_id: str, reason: str = '') -> Optional[str]:
         """提交 approval 中台. 返回 approval_id."""
         p = self.get_project(project_id)
         if not p:
@@ -305,6 +306,7 @@ class ApprovalService:
                 initiator_role=p['initiator_role'],
                 risk_level=p['risk_level'],
                 sla_hours=get_sla_hours(p['risk_level']),
+                reason=reason,
                 genre=p['genre'],
                 target_words=p['target_words'],
                 current_words=p.get('current_words', 0),
