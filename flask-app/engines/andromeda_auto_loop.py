@@ -113,7 +113,10 @@ def run_self_loop():
     _safe("research", _loop_self_research)
     _safe("promote", _loop_promote_derivatives)
     _safe("consume", _loop_consume_derivatives)
-    
+    # 8. 代码与文件卫生巡检（引擎内部按 60min/30min 节流 + AST 全量分批, 指纹去重落库）
+    _safe("hygiene_code", _loop_hygiene_code)
+    _safe("hygiene_file", _loop_hygiene_file)
+
     dt = time.time() - t0
     log(f"══════ 自律循环完成 ({dt:.1f}s) ══════")
     log(f"  结果: {json.dumps(results, ensure_ascii=False)}")
@@ -817,6 +820,26 @@ def _loop_benchmark_if_needed() -> dict:
         return {"error": str(e), "skipped": False}
 
 
+def _loop_hygiene_code() -> dict:
+    """代码卫生 chunk（AST 屎山检测）。引擎内部按 60min 节流、跨 tick 分批全量扫自研 .py。
+    sweep 完成轮才做陈旧关单 / 安全项自动修 / HIGH 晋升建议池。"""
+    try:
+        import andromeda_code_hygiene_engine as hyg
+        return hyg.loop_code_tick()
+    except Exception as e:
+        return {"phase": "error", "error": str(e)[:200]}
+
+
+def _loop_hygiene_file() -> dict:
+    """零散/未归类文件检测（项目根散落 + 目录职责错放 + 异常命名, 含 git 维度）。
+    引擎内部按 30min 节流, 只检测落库, 不移动文件。"""
+    try:
+        import andromeda_code_hygiene_engine as hyg
+        return hyg.loop_file_tick()
+    except Exception as e:
+        return {"phase": "error", "error": str(e)[:200]}
+
+
 def _record_run(dt: float, results: dict):
     """记录到 mt_evolution_runs"""
     db = sqlite3.connect(str(DB))
@@ -828,7 +851,9 @@ def _record_run(dt: float, results: dict):
         items = (_n("daemon", "repair_requested") + _n("rule", "fixed")
                  + _n("auto_impl", "implemented") + _n("research", "voted")
                  + _n("research", "started") + _n("promote", "promoted")
-                 + _n("consume", "deployed"))
+                 + _n("consume", "deployed")
+                 + _n("hygiene_code", "new") + _n("hygiene_file", "new")
+                 + _n("hygiene_code", "promoted") + _n("hygiene_code", "fixed"))
         db.execute("""INSERT INTO mt_evolution_runs
             (loop, started_at, finished_at, duration_s, items_processed, items_ok, suggestion_count, notes)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",

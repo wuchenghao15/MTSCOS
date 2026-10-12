@@ -32,7 +32,7 @@ import traceback
 import sqlite3
 import threading
 import logging
-# [unused] from collections import defaultdict, deque
+from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Dict, List
@@ -41,6 +41,10 @@ logger = logging.getLogger('AutoPatrol')
 _BASE = os.path.dirname(os.path.abspath(__file__))
 if _BASE not in sys.path:
     sys.path.insert(0, _BASE)
+# mt_ir14_dev_flow 位于 ai_engines/ 而非 engines/, 必须补路径否则永远走假成功 fallback
+_AI_ENGINES = os.path.join(os.path.dirname(_BASE), 'ai_engines')
+if _AI_ENGINES not in sys.path:
+    sys.path.insert(0, _AI_ENGINES)
 try:
     from mt_ir14_dev_flow import _get_conn, _LOCK, feed_brain, ensure_tables
     HAS_DEV_FLOW = True

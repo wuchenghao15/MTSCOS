@@ -1972,43 +1972,28 @@ def loop_auto_fix():
     return {"flow_count": flow_count, "fixed": fixed, "applied": applied}
 
 # ═══════════════════════════════════════════════
-# 🆕 Loop 12: 仙女座自动嗅探 (auto_sniff_engine)
-# 扫描 routes/ + engines/ + middlewares/ → 产出建议池
-# 产出的 HIGH/MEDIUM 建议会被后续 Loop (autofix/rule) 消费
+# 🔄 Loop 12: 代码与文件卫生巡检 (andromeda_code_hygiene_engine)
+# 2026-10-12 起原 auto_sniff_engine 三条规则并入卫生引擎:
+#   指纹去重落 mt_hygiene_findings + OPEN/FIXED 状态机 + HIGH 才晋升建议池。
+# 与 andromeda_auto_loop 的 hygiene 步骤共用同一节流 (代码60min/文件30min)
+# 与分批游标, 双调度器调用也不会重复扫描。
 # ═══════════════════════════════════════════════
 def loop_sniff():
-    log("🔍 Loop 12: 仙女座自动嗅探 (auto_sniff_engine)", "sniff")
+    log("🔍 Loop 12: 代码/文件卫生巡检 (andromeda_code_hygiene_engine)", "sniff")
     try:
         sys.path.insert(0, str(BASE / "engines"))
-        # [unused] from auto_sniff_engine import run_sniff_cycle, sniff_summary
-        result = run_sniff_cycle()
-        log(f"  📊 嗅探结果: {result['total_findings']} 项 / 入库 {result['inserted_to_pool']} / {result['elapsed_seconds']}s", "sniff")
-        # HIGH 级紧急建议 → 标记为高优先级供 Loop 10 autofix 消费
-        db = _db_connect()
-        try:
-            high_count = db.execute(
-                "SELECT COUNT(*) FROM mt_ai_suggestion_pool "
-                "WHERE source_name='auto_sniff_engine' "
-                "AND json_extract(meta_json, '$.severity')='HIGH' "
-                "AND created_at > datetime('now', '-6 hours')"
-            ).fetchone()[0]
-            if high_count > 0:
-                db.execute(
-                    "UPDATE mt_ai_suggestion_pool SET priority=10 "
-                    "WHERE source_name='auto_sniff_engine' "
-                    "AND json_extract(meta_json, '$.severity')='HIGH' "
-                    "AND created_at > datetime('now', '-6 hours')"
-                )
-                db.commit()
-                log(f"  ⚠️ HIGH 级嗅探建议已提权 → priority=10 (供 Loop 10 autofix)", "sniff")
-        finally:
-            db.close()
-        return result
+        import andromeda_code_hygiene_engine as hyg
+        code_r = hyg.loop_code_tick()
+        file_r = hyg.loop_file_tick()
+        log(f"  📊 卫生巡检 code={code_r.get('phase')} new={code_r.get('new', 0)} "
+            f"fixed={code_r.get('fixed', 0)} promoted={code_r.get('promoted', 0)} / "
+            f"file={file_r.get('phase')} new={file_r.get('new', 0)}", "sniff")
+        return {"code": code_r, "file": file_r}
     except ImportError as e:
-        log(f"  ⚠️ auto_sniff_engine 未安装: {e}", "sniff")
+        log(f"  ⚠️ andromeda_code_hygiene_engine 未安装: {e}", "sniff")
         return {"skipped": f"import_error: {e}"}
     except Exception as e:
-        log(f"  ⚠️ sniff 异常: {e}", "sniff")
+        log(f"  ⚠️ 卫生巡检异常: {e}", "sniff")
         return {"error": str(e)}
 
 # ═══════════════════════════════════════════════
