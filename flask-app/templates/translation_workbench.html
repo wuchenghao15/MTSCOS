@@ -64,11 +64,12 @@ pointer-events:none;z-index:0}
 .tw-spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,215,0,0.3);border-top-color:#ffd700;border-radius:50%;animation:spin 1s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 
-/* emoji fallback - 如果 macOS 显示不了 flag, 显示 country code */
-.tw-flag{font-family:"Apple Color Emoji","Segoe UI Emoji",sans-serif;display:inline-block;min-width:24px;text-align:center}
-.tw-flag-fallback{display:none;font-family:monospace;background:rgba(255,215,0,0.15);color:#ffd700;padding:1px 4px;border-radius:3px;font-size:11px}
-/* macOS 10.12-10.14 可能不支持 🇹🇼, 这时隐藏 emoji 显示 fallback */
-@supports not (font-variation-settings: "FILL" 0){}
+/* 国旗 chip - 用彩色缩写方块代替 emoji (macOS 版本可能不支持 🇹🇼) */
+.tw-flag-box{display:inline-flex;align-items:center;justify-content:center;width:22px;height:16px;border-radius:2px;font-size:10px;font-weight:bold;color:#fff;letter-spacing:-0.5px;flex-shrink:0}
+.tw-flag-box.flag-cn{background:#de2910;border:1px solid #ff4040}
+.tw-flag-box.flag-us{background:#3c3b6e;border:1px solid #5c5b9e}
+.tw-flag-box.flag-jp{background:#ffffff;border:1px solid #ddd;color:#bc002d}
+.tw-flag-box.flag-tw{background:#0047bb;border:1px solid #2067db}
 </style>
 {% endblock %}
 {% block content %}
@@ -159,12 +160,14 @@ function renderLangChips(){
   const tgtBox = document.getElementById('tw-tgt-chips');
   srcBox.innerHTML = ''; tgtBox.innerHTML = '';
   LANGS.forEach(l => {
-    // 用显式 codepoint flag + flag_code 作为文本 fallback
+    // 🔴 用彩色缩写方块 (macOS 版本可能不支持 🇹🇼 emoji, 用 CSS 方块 fallback)
+    const flag_cls = `flag-${l.code.replace('zh_tw','tw').replace('zh','cn')}`;
+    const flag_html = `<span class="tw-flag-box ${flag_cls}">${l.flag_code}</span>`;
     const srcActive = l.code === state.src ? 'active' : '';
     const tgtActive = l.code === state.tgt ? 'active' : '';
-    srcBox.innerHTML += `<div class="tw-lang-chip ${srcActive}" data-lang="${l.code}" data-role="src" title="${l.flag_code}"><span class="tw-flag">${l.flag}</span> ${l.native}</div>`;
+    srcBox.innerHTML += `<div class="tw-lang-chip ${srcActive}" data-lang="${l.code}" data-role="src">${flag_html} ${l.native}</div>`;
     if(l.code !== state.src) {
-      tgtBox.innerHTML += `<div class="tw-lang-chip ${tgtActive}" data-lang="${l.code}" data-role="tgt" title="${l.flag_code}"><span class="tw-flag">${l.flag}</span> ${l.native}</div>`;
+      tgtBox.innerHTML += `<div class="tw-lang-chip ${tgtActive}" data-lang="${l.code}" data-role="tgt">${flag_html} ${l.native}</div>`;
     }
   });
   // 重新绑 click
