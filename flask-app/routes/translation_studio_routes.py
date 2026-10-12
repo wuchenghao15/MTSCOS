@@ -124,3 +124,23 @@ def api_trans_quick():
     r = translate_full(d.get('text',''), d.get('src','zh'), d.get('tgt','en'),
                       quality=d.get('quality','standard'))
     return jsonify({'success': r.get('error_segments',0)==0, 'data': r})
+
+# 🔥 集成冰山: 翻译+自动注入 content_matrix, 让 t(key) 四语言无缝生效
+@bp.route('/api/translation_studio/publish_to_iceberg', methods=['POST'])
+@_sc(require_auth='login')
+def api_trans_publish_iceberg():
+    """
+    翻译一段原文 → 自动四语言 → 注入冰山 mt_iceberg_content_matrix.
+    返回 content_key, 之后任何冰山模板用 t(content_key) 自动按 session i18n_lang 取四国译文.
+    """
+    from engines.translation_studio.iceberg_bridge import auto_translate_and_publish
+    d = request.get_json() or {}
+    r = auto_translate_and_publish(
+        source_text=d.get('source_text',''),
+        source_lang=d.get('source_lang','zh'),
+        target_langs=d.get('target_langs'),   # None = en+ja+zh_tw
+        domain=d.get('domain','global'),
+        content_key=d.get('content_key'),
+        quality=d.get('quality','standard'),
+    )
+    return jsonify({'success': 'error' not in r, 'data': r})

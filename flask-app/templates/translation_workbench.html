@@ -131,8 +131,17 @@ pointer-events:none;z-index:0}
   <button class="tw-btn tw-btn-gold" id="tw-copy-btn2">📋 复制译文</button>
   <button class="tw-btn tw-btn-secondary" id="tw-save-btn">💾 保存任务</button>
   <span style="flex:1"></span>
-  <button class="tw-btn tw-btn-gold" id="tw-publish-btn">🚀 发布到四国</button>
 </div>
+<!-- 🔥 发布到冰山 (集成点) -->
+<div class="tw-actions" id="tw-publish-row" style="display:none;padding:8px 0;border-top:1px dashed rgba(255,215,0,0.3)">
+  <span style="color:#ffd700;font-size:13px;padding:4px 8px;background:rgba(255,215,0,0.1);border-radius:6px">🔥 集成冰山</span>
+  <button class="tw-btn tw-btn-gold" id="tw-publish-btn">🚀 发布到冰山 (四语言)</button>
+  <input id="tw-publish-domain" placeholder="域: copy_studio / wenquxing / global" value="global"
+         style="padding:6px 12px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#c8c8e0;font-size:13px;width:200px">
+  <input id="tw-publish-key" placeholder="content_key (留空自动 hash)"
+         style="padding:6px 12px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#c8c8e0;font-size:13px;width:240px">
+</div>
+<div id="tw-all-translations" style="margin-top:12px"></div>
 
 <!-- 术语表 -->
 <div class="tw-glossary">
@@ -222,7 +231,6 @@ document.getElementById('tw-translate-btn').addEventListener('click', async ()=>
   btn.disabled = true; btn.innerHTML = '<span class="tw-spinner"></span> 翻译中...';
   document.getElementById('tw-target').value = '';
   try{
-    // 快速翻译接口 (不建任务)
     const r = await fetch(`${API}/quick`, {
       method:'POST', credentials:'include',
       headers:{'Content-Type':'application/json'},
@@ -233,16 +241,55 @@ document.getElementById('tw-translate-btn').addEventListener('click', async ()=>
       document.getElementById('tw-target').value = d.data.translated;
       document.getElementById('tw-copy-btn').style.display = 'inline-block';
       document.getElementById('tw-copy-btn2').style.display = 'inline-block';
+      // 显示发布按钮 + domain 输入
+      document.getElementById('tw-publish-row').style.display = 'flex';
       showToast(`✅ 翻译完成 (${d.data.segments_ok}/${d.data.segments_total} 段, ${d.data.backend})`);
     } else {
-      document.getElementById('tw-target').value = '❌ 翻译失败';
-      showToast('❌ 翻译失败: ' + (d.data.error || '未知'));
+      showToast('❌ 翻译失败: ' + (d.data?.error || '未知'));
     }
   } catch(e){
-    document.getElementById('tw-target').value = '❌ ' + e.message;
     showToast('❌ ' + e.message);
   }
   btn.disabled = false; btn.innerHTML = '🤖 开始翻译';
+});
+
+// 🔥 发布到冰山 (翻译 → 自动注入 content_matrix → 四国无缝)
+document.getElementById('tw-publish-btn').addEventListener('click', async ()=>{
+  const txt = src.value.trim();
+  if(!txt){ alert('请输入原文再发布'); return; }
+  const btn = document.getElementById('tw-publish-btn');
+  btn.disabled = true; btn.innerHTML = '<span class="tw-spinner"></span> 四语言翻译中 → 注入冰山...';
+  const domain = document.getElementById('tw-publish-domain').value || 'translation_studio';
+  const contentKey = document.getElementById('tw-publish-key').value || '';
+  try{
+    const r = await fetch(`${API}/publish_to_iceberg`, {
+      method:'POST', credentials:'include',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        source_text: txt, source_lang: state.src,
+        target_langs: ['en','ja','zh_tw'], domain,
+        content_key: contentKey || null, quality: state.quality,
+      })
+    });
+    const d = await r.json();
+    if(d.success){
+      const key = d.data.content_key;
+      const langs = Object.keys(d.data.translations || {}).join(', ');
+      showToast(`🎉 已注入冰山! key=${key} · 覆盖 ${langs}`);
+      // 显示所有四语言译文 (对比用)
+      const all = d.data.translations || {};
+      const rows = Object.entries(all).map(([k,v])=>
+        `<div style="padding:4px 8px;background:rgba(0,0,0,0.2);border-radius:6px;margin-bottom:4px">
+          <b style="color:#ffd700">${k}</b>: ${v.slice(0,80)}${v.length>80?'...':''}</div>`
+      ).join('');
+      document.getElementById('tw-all-translations').innerHTML = rows;
+    } else {
+      showToast('❌ 发布失败: ' + (d.data?.error || '未知'));
+    }
+  } catch(e){
+    showToast('❌ ' + e.message);
+  }
+  btn.disabled = false; btn.innerHTML = '🚀 发布到冰山';
 });
 
 document.getElementById('tw-clear-btn').onclick = ()=>{
