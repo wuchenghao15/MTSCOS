@@ -14,11 +14,14 @@ auto_sniff_engine.py — 仙女座 · 自动嗅探引擎
   6. bare_except           — except: 没有指定异常类型
   7. todo_fixme            — 源码里 TODO/FIXME/HACK 标记
 
-产出:
-  mt_ai_suggestion_pool (source_name='auto_sniff_engine', flow_id='auto_sniff_v1')
+产出 (2026-10-12 起):
+  不再直写 mt_ai_suggestion_pool (历史 6816 条噪音已归档 DEFERRED)。
+  endpoint_duplicate/missing_import/legacy_kwargs 已并入
+  andromeda_code_hygiene_engine: 指纹去重落 mt_hygiene_findings,
+  仅 HIGH 且重复出现者晋升建议池。run_sniff() 保留供 dry-run 排查。
 
 用法:
-  python3 auto_sniff_engine.py run          # 完整一轮嗅探 + 入库
+  python3 auto_sniff_engine.py run          # 完整一轮嗅探 (只扫描, 不入库)
   python3 auto_sniff_engine.py scan         # 只扫描不入库（dry-run）
   python3 auto_sniff_engine.py summary      # 上一轮嗅探结果
   python3 auto_sniff_engine.py routes       # 只扫 routes/ 目录
@@ -415,64 +418,30 @@ def run_sniff(target_dirs: list[Path] | None = None, include_info: bool = False)
 
 
 def write_suggestions(findings: list[dict]) -> int:
-    """把嗅探结果写入 mt_ai_suggestion_pool"""
-    conn = sqlite3.connect(str(DB), timeout=15)
-    conn.execute('PRAGMA busy_timeout=15000')
-    ts = time.strftime('%Y-%m-%d %H:%M:%S')
-    inserted = 0
+    """[弃用 2026-10-12] 不再直写 mt_ai_suggestion_pool。
 
-    for f in findings:
-        rule = next((r for r in SNIFF_RULES if r["id"] == f["rule_id"]), None)
-        rule_name = rule["name"] if rule else f["rule_id"]
+    历史问题: 每轮嗅探把全部发现以 status='EVALUATED' 直灌建议池,
+    仅靠 flow_id 做 IntegrityError 假去重 (规则级 flow_id 撞了就静默丢弃,
+    换文件/换行就重复灌), 累计 6816 条噪音污染建议池。
 
-        # 建议标题: [severity] rule_name — file:line
-        title = f"[{f['severity']}] {rule_name} — {f['file']}:{f.get('line','?')}"
-        # 建议正文
-        body = f"## {rule_name}\n\n**详情**: {f['detail']}\n\n**建议**: {f['suggestion']}\n\n**文件**: {f['file']}\n**行号**: {f.get('line','?')}"
-        meta = json.dumps({
-            "rule_id": f["rule_id"],
-            "severity": f["severity"],
-            "file": f["file"],
-            "line": f.get("line"),
-            "func_name": f.get("func_name"),
-            "source": "auto_sniff_engine",
-            "discovered_at": ts,
-        }, ensure_ascii=False)
-
-        try:
-            conn.execute("""
-                INSERT INTO mt_ai_suggestion_pool
-                (source_type, source_name, suggestion_text, priority,
-                 feasibility_score, value_score, cost_score, risk_score,
-                 status, flow_id, meta_json, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'EVALUATED', ?, ?, ?)
-            """, (
-                "CODE_SNIFF",
-                "auto_sniff_engine",
-                body,
-                {"HIGH": 9, "MEDIUM": 7, "LOW": 5, "INFO": 3}.get(f["severity"], 5),
-                0.90,  # feasibility: sniffer 输出的都是可验证的
-                {"HIGH": 0.90, "MEDIUM": 0.75, "LOW": 0.50, "INFO": 0.30}.get(f["severity"], 0.50),
-                0.10,  # cost: 修复通常一行代码
-                0.05,  # risk: 自动嗅探建议风险极低
-                f"auto_sniff_{f['rule_id']}",
-                meta,
-                ts,
-            ))
-            inserted += 1
-        except sqlite3.IntegrityError:
-            pass  # 重复 flow_id 跳过
-        except Exception as e:
-            print(f"  ⚠️ write err: {e}")
-
-    conn.commit()
-    conn.close()
-    print(f"  ✅ 入库: {inserted} / {len(findings)}")
-    return inserted
+    现由 andromeda_code_hygiene_engine 统一接管:
+      - endpoint_duplicate / missing_import / legacy_kwargs 三条规则
+        以稳定指纹 (不含行号) 落 mt_hygiene_findings, OPEN/ACK/FIXED 状态机;
+      - 仅 HIGH 且重复出现的 finding 才晋升建议池 (promote_high_to_pool);
+      - run_sniff() 保留, 供 scan/dry-run 人工排查使用。
+    本函数保留签名以兼容旧调用方, 但不再写库。
+    """
+    print(f"  ⏭️ write_suggestions 已弃用: {len(findings)} 项发现不再直写建议池, "
+          f"统一由 andromeda_code_hygiene_engine 指纹落库/晋升")
+    return 0
 
 
 def run_sniff_cycle(target_dirs: list[Path] | None = None) -> dict:
-    """完整一轮嗅探 + 入库 — andromeda_core Loop 7 调用入口"""
+    """完整一轮嗅探 (只扫描不入库) — andromeda_core Loop 7 调用入口
+
+    2026-10-12 起发现统一走 andromeda_code_hygiene_engine,
+    本入口保留扫描能力用于观测, inserted_to_pool 恒为 0。
+    """
     t0 = time.time()
     findings = run_sniff(target_dirs)
     inserted = write_suggestions(findings)
