@@ -88,6 +88,28 @@ AI_EMPLOYEE_TEMPLATES = [
      "description": "负责AI-EigenFlux网络保活", "model_version": "v2.8.0"},
     {"name": "智能挂载调度员", "role": "smart_mount", "specialties": "建议收集,权重计算,进程挂载,心跳监控",
      "description": "负责智能挂载自动化进程", "model_version": "v2.8.0"},
+    # ── v26.0 新增: copy_studio 文案创作类 ──
+    {"name": "大纲架构师", "role": "copy_outline_writer", "specialties": "故事大纲,世界观构建,主线支线设计,三幕式/五幕式结构",
+     "description": "负责长篇小说/短剧的大纲与世界观", "model_version": "v26.0"},
+    {"name": "角色设计师", "role": "copy_character_designer", "specialties": "角色档案,性格卡,人物弧光,关系网,MERI/MBTI建模",
+     "description": "负责角色设定与关系网", "model_version": "v26.0"},
+    {"name": "章节规划师", "role": "copy_chapter_planner", "specialties": "分卷分章,节奏把控,钩子悬念,章节标题",
+     "description": "负责章节结构与节奏规划", "model_version": "v26.0"},
+    {"name": "章节写手", "role": "copy_chapter_writer", "specialties": "场景描写,对话编排,心理活动,五感细节",
+     "description": "负责单章正文撰写(多实例并发)", "model_version": "v26.0"},
+    {"name": "文风润色师", "role": "copy_polisher", "specialties": "文笔润色,节奏优化,情感浓度,去AI味",
+     "description": "负责文风节奏与润色增强", "model_version": "v26.0"},
+    {"name": "设定校验员", "role": "copy_consistency_checker", "specialties": "前后一致性,角色OOC,时间线矛盾,设定冲突",
+     "description": "负责设定/时间线/人物一致性巡检", "model_version": "v26.0"},
+    {"name": "RAG上下文管家", "role": "copy_rag_keeper", "specialties": "角色卡向量,设定RAG,章节上下文窗口,续写建议",
+     "description": "负责RAG上下文注入与续写辅助", "model_version": "v26.0"},
+    # ── v26.0 新增: 文案法务合规类 ──
+    {"name": "版权合规审核员", "role": "copy_copyright_auditor", "specialties": "版权侵权检测,抄袭检测,素材合法性,来源溯源",
+     "description": "负责文案版权合规审核", "model_version": "v26.0"},
+    {"name": "敏感词过滤员", "role": "copy_sensitive_filter", "specialties": "敏感词库,未成年保护,内容分级,法律红线",
+     "description": "负责敏感词过滤与内容分级", "model_version": "v26.0"},
+    {"name": "法务法律顾问", "role": "copy_legal_advisor", "specialties": "著作权法,民法典合同编,商标法,内容合规",
+     "description": "负责文案法律风险评估", "model_version": "v26.0"},
 ]
 
 # EigenFlux专家模板
@@ -128,6 +150,25 @@ EIGENFLUX_EXPERT_TEMPLATES = [
     {"name": "物联网专家", "role": "iot_expert", "role_cn": "物联网专家",
      "domain": "iot", "domain_cn": "物联网", "level": "EXPERT",
      "skills": "Arduino,ESP32,传感器网络,BLE,WiFi,串口通信"},
+    # ── v26.0 新增: copy_studio 文学与法务专家 ──
+    {"name": "EigenFlux_小说家", "role": "copy_novelist", "role_cn": "小说家",
+     "domain": "copy_novel", "domain_cn": "长篇小说", "level": "EXPERT",
+     "skills": "大纲质量,人物弧光,节奏把控,百万字结构,伏笔回收,多视角叙事"},
+    {"name": "EigenFlux_编剧", "role": "copy_screenwriter", "role_cn": "编剧",
+     "domain": "copy_script", "domain_cn": "短剧剧本", "level": "EXPERT",
+     "skills": "场景分镜,镜头语言,台词精炼,三幕式,人物动机,冲突设计"},
+    {"name": "EigenFlux_诗人", "role": "copy_poet", "role_cn": "诗人",
+     "domain": "copy_poetry", "domain_cn": "修辞意境", "level": "SENIOR",
+     "skills": "文笔韵律,修辞对仗,意象营造,情感密度,语言节奏"},
+    {"name": "EigenFlux_文学评论家", "role": "copy_critic", "role_cn": "文学评论家",
+     "domain": "copy_criticism", "domain_cn": "文学评论", "level": "SENIOR",
+     "skills": "整体文学性,风格深度,主题分析,文本细读,比较文学"},
+    {"name": "EigenFlux_版权律师", "role": "copy_copyright_lawyer", "role_cn": "版权律师",
+     "domain": "legal_copyright", "domain_cn": "版权法", "level": "EXPERT",
+     "skills": "著作权法,合理使用,抄袭判定,素材授权,合同起草"},
+    {"name": "EigenFlux_内容合规官", "role": "copy_content_officer", "role_cn": "内容合规官",
+     "domain": "legal_compliance", "domain_cn": "内容合规", "level": "EXPERT",
+     "skills": "敏感词过滤,未成年保护,内容分级,法律法规,监管红线"},
 ]
 
 # v2.0: 维护升级任务模板 (domain -> [task_type, title, description, deliverable])
