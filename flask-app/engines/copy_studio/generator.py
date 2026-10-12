@@ -12,61 +12,128 @@ from typing import Optional, Dict, Any, List
 from .policy import GENRE_CONFIG, GENRE_NOVEL, GENRE_SCRIPT, GENRE_AD_COPY
 
 # ═══════════════════════════════════════════════════════════
-# Ollama 检测 (复用 andromeda_cluster_matrix.py 模式)
+# Ollama / llama-server 双后端动态发现 (防端口漂移)
 # ═══════════════════════════════════════════════════════════
-OLLAMA_BASE = os.environ.get('OLLAMA_URL', 'http://127.0.0.1:11434')
+import subprocess as _sp
 
-def _ollama_available() -> bool:
+# 常见静态端口 + 环境变量覆盖
+_STATIC_OLLAMA = os.environ.get('OLLAMA_URL', 'http://127.0.0.1:11434')
+_STATIC_LLAMA  = os.environ.get('LLAMA_SERVER_URL', 'http://127.0.0.1:62916')
+# 常见候选端口 (Ollama serve 漂移 / llama-server 漂移)
+_OLLAMA_PORTS = [11434, 11435, 11436]
+_LLAMA_PORTS  = [62916, 64799]
+
+_backend = None   # 'ollama' | 'llama' | None
+_model_name = ''
+_active_base = ''   # 当前活跃 base URL
+
+
+def _find_llama_port_from_ps() -> Optional[int]:
+    """从 ps 输出中 grep llama-server --port=XXXX."""
     try:
-        req = urllib.request.Request(f"{OLLAMA_BASE}/api/tags")
+        out = _sp.run(['ps', 'aux'], capture_output=True, text=True, timeout=3).stdout
+        for line in out.splitlines():
+            if 'llama-server' in line:
+                m = re.search(r'--port\s+(\d+)', line) or re.search(r'--port=(\d+)', line)
+                if m: return int(m.group(1))
+    except Exception: pass
+    return None
+
+
+def _probe(url: str, path: str) -> Optional[dict]:
+    try:
+        req = urllib.request.Request(f"{url}{path}")
         resp = urllib.request.urlopen(req, timeout=2)
-        return resp.status == 200
+        return json.loads(resp.read())
     except Exception:
-        return False
+        return None
 
-def _detect_model() -> str:
-    if not _ollama_available():
-        return 'qwen2.5:14b'
-    try:
-        req = urllib.request.Request(f"{OLLAMA_BASE}/api/tags")
-        resp = urllib.request.urlopen(req, timeout=3)
-        models = json.loads(resp.read()).get('models', [])
-        if models:
-            return next((m['name'] for m in models if 'qwen' in m['name'].lower()), models[0]['name'])
-    except Exception:
-        pass
-    return 'qwen2.5:14b'
 
-OLLAMA_OK = _ollama_available()
-OLLAMA_MODEL = _detect_model()
+def _refresh_backend() -> tuple[Optional[str], str, str]:
+    """刷新后端: 扫常见端口 + ps grep llama-server port. 返回 (backend, model, base)."""
+    # 1. Ollama 标准 API — 环境变量 + 静态端口
+    candidates = [_STATIC_OLLAMA] + [f"http://127.0.0.1:{p}" for p in _OLLAMA_PORTS]
+    for base in candidates:
+        tags = _probe(base, '/api/tags')
+        if tags and tags.get('models'):
+            m = next((m['name'] for m in tags['models'] if 'qwen' in m['name'].lower()),
+                     tags['models'][0]['name'])
+            return 'ollama', m, base
+    # 2. llama-server — ps 发现优先, 再扫静态端口
+    ps_port = _find_llama_port_from_ps()
+    if ps_port:
+        candidates = [f"http://127.0.0.1:{ps_port}"] + [_STATIC_LLAMA] + [f"http://127.0.0.1:{p}" for p in _LLAMA_PORTS]
+    else:
+        candidates = [_STATIC_LLAMA] + [f"http://127.0.0.1:{p}" for p in _LLAMA_PORTS]
+    for base in candidates:
+        models = _probe(base, '/v1/models')
+        if models and models.get('data'):
+            return 'llama', models['data'][0]['id'], base
+    return None, '', ''
+
+
+_backend, _model_name, _active_base = _refresh_backend()
+OLLAMA_OK = _backend is not None
+OLLAMA_MODEL = _model_name
 
 
 def ollama_call(prompt: str, system: str = '', model: Optional[str] = None,
-                temperature: float = 0.7, max_tokens: int = 2048) -> Optional[str]:
-    """单次 Ollama generate. 返回文本或 None (失败)."""
-    if not OLLAMA_OK:
+                temperature: float = 0.7, max_tokens: int = 2048,
+                _retry: int = 2) -> Optional[str]:
+    """统一 LLM 调用. 自动路由 + 失败重试 + 刷新后端."""
+    # 首次调用时若后端 None, 先 refresh 一次
+    global _backend, _model_name, _active_base, OLLAMA_OK
+    if not _backend:
+        _backend, _model_name, _active_base = _refresh_backend()
+        OLLAMA_OK = _backend is not None
+    if not _backend:
         return None
-    m = model or OLLAMA_MODEL
-    payload = {
-        'model': m,
-        'prompt': prompt,
-        'system': system,
-        'stream': False,
-        'options': {'temperature': temperature, 'num_predict': max_tokens},
-    }
-    try:
-        req = urllib.request.Request(
-            f"{OLLAMA_BASE}/api/generate",
-            data=json.dumps(payload).encode(),
-            headers={'Content-Type': 'application/json'},
-            method='POST',
-        )
-        resp = urllib.request.urlopen(req, timeout=180)
-        data = json.loads(resp.read())
-        return data.get('response', '')
-    except Exception as e:
-        print(f"  [ollama_call FAILED] {e}")
-        return None
+    m = model or _model_name
+
+    last_err = None
+    for attempt in range(_retry + 1):
+        try:
+            if _backend == 'ollama':
+                payload = {
+                    'model': m, 'prompt': prompt, 'system': system, 'stream': False,
+                    'options': {'temperature': temperature, 'num_predict': max_tokens},
+                }
+                req = urllib.request.Request(
+                    f"{_active_base}/api/generate",
+                    data=json.dumps(payload).encode(),
+                    headers={'Content-Type': 'application/json'}, method='POST')
+                resp = urllib.request.urlopen(req, timeout=180)
+                data = json.loads(resp.read())
+                return data.get('response', '')
+
+            elif _backend == 'llama':
+                messages = []
+                if system: messages.append({'role': 'system', 'content': system})
+                messages.append({'role': 'user', 'content': prompt})
+                payload = {
+                    'model': m, 'messages': messages,
+                    'temperature': temperature, 'max_tokens': max_tokens, 'stream': False,
+                }
+                req = urllib.request.Request(
+                    f"{_active_base}/v1/chat/completions",
+                    data=json.dumps(payload).encode(),
+                    headers={'Content-Type': 'application/json'}, method='POST')
+                resp = urllib.request.urlopen(req, timeout=180)
+                data = json.loads(resp.read())
+                return data['choices'][0]['message']['content']
+
+        except Exception as e:
+            last_err = e
+            # 连接类错误 → 刷新后端后重试
+            if attempt < _retry:
+                time.sleep(1 + attempt)
+                _backend, _model_name, _active_base = _refresh_backend()
+                OLLAMA_OK = _backend is not None
+                if _backend is None:
+                    continue  # 刷新后还是没后端, 跳过重试
+
+    print(f"  [llm_call FAILED ×{_retry+1}] {last_err}")
+    return None
 
 
 # ═══════════════════════════════════════════════════════════
