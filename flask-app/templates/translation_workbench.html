@@ -1,0 +1,316 @@
+{% extends "base_unified.html" %}
+{% block title %}🌐 translation_studio · 四国翻译工作台 · MTSCOS AI{% endblock %}
+{% block extra_head %}
+<style>
+/* 星座宇宙美学 (对齐 copy_workbench) */
+.tw-void{background:radial-gradient(ellipse at top,#0a0a2e 0%,#000 60%);min-height:100vh;color:#c8c8e0;font-family:-apple-system,"PingFang SC","Noto Sans CJK SC",sans-serif}
+.tw-void::before{content:'';position:fixed;top:0;left:0;width:100%;height:100%;background-image:
+  radial-gradient(2px 2px at 20% 30%,rgba(255,215,0,0.5),transparent),
+  radial-gradient(1px 1px at 60% 70%,rgba(100,200,255,0.4),transparent),
+  radial-gradient(2px 2px at 80% 20%,rgba(255,200,100,0.3),transparent),
+  radial-gradient(1px 1px at 30% 80%,rgba(200,150,255,0.3),transparent);
+pointer-events:none;z-index:0}
+.tw-wrap{position:relative;z-index:1;padding:20px;max-width:1600px;margin:0 auto}
+.tw-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;padding:18px 28px;background:rgba(255,215,0,0.05);border:1px solid rgba(255,215,0,0.2);border-radius:14px}
+.tw-header h1{font-size:26px;color:#ffd700;margin:0;text-shadow:0 0 15px rgba(255,215,0,0.4)}
+.tw-stats{display:flex;gap:12px}
+.tw-stat{padding:8px 16px;background:rgba(255,215,0,0.08);border-radius:8px;font-size:14px;color:#c8c8e0}
+.tw-stat b{color:#ffd700}
+
+/* 四国旗选择 */
+.tw-lang-bar{display:flex;align-items:center;gap:16px;margin-bottom:20px;padding:14px 24px;background:rgba(30,30,60,0.6);border-radius:12px;border:1px solid rgba(255,255,255,0.1)}
+.tw-lang-group{display:flex;align-items:center;gap:8px;font-size:15px}
+.tw-lang-chip{padding:6px 14px;border-radius:20px;cursor:pointer;border:1px solid rgba(255,255,255,0.2);background:rgba(0,0,0,0.3);transition:all .2s}
+.tw-lang-chip:hover{border-color:#ffd700}
+.tw-lang-chip.active{background:#ffd700;color:#000;border-color:#ffd700;font-weight:bold}
+.tw-arrow{color:#ffd700;font-size:20px}
+
+/* 主区域 */
+.tw-main{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
+.tw-panel{background:rgba(30,30,60,0.5);border:1px solid rgba(255,255,255,0.1);border-radius:12px;overflow:hidden;display:flex;flex-direction:column}
+.tw-panel-header{padding:12px 20px;background:rgba(0,0,0,0.3);border-bottom:1px solid rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:space-between}
+.tw-panel-header h3{margin:0;color:#ffd700;font-size:15px}
+.tw-panel-body{flex:1;min-height:300px;position:relative}
+.tw-textarea{width:100%;height:100%;min-height:400px;background:rgba(0,0,0,0.4);border:none;color:#e8e8f0;padding:16px;font-size:15px;resize:none;font-family:"SF Mono","JetBrains Mono",monospace;outline:none}
+.tw-textarea:focus{background:rgba(0,0,0,0.5)}
+
+/* 按钮栏 */
+.tw-actions{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+.tw-btn{padding:10px 22px;border-radius:8px;border:none;cursor:pointer;font-size:14px;font-weight:bold;transition:all .2s}
+.tw-btn-primary{background:linear-gradient(135deg,#ffd700,#ffaa00);color:#000}
+.tw-btn-primary:hover{transform:translateY(-1px);box-shadow:0 4px 15px rgba(255,215,0,0.4)}
+.tw-btn-secondary{background:rgba(255,255,255,0.1);color:#c8c8e0;border:1px solid rgba(255,255,255,0.2)}
+.tw-btn-secondary:hover{border-color:#ffd700}
+.tw-btn-gold{background:rgba(255,215,0,0.15);color:#ffd700;border:1px solid rgba(255,215,0,0.4)}
+.tw-btn-gold:hover{background:rgba(255,215,0,0.25)}
+.tw-btn:disabled{opacity:.5;cursor:not-allowed}
+
+/* 术语表 */
+.tw-glossary{background:rgba(30,30,60,0.5);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:16px}
+.tw-glossary h3{color:#ffd700;margin:0 0 12px 0;font-size:15px}
+.tw-glossary-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px}
+.tw-glossary-item{padding:6px 12px;background:rgba(0,0,0,0.3);border-radius:6px;font-size:13px}
+.tw-glossary-item b{color:#ffd700}
+
+/* 任务列表 */
+.tw-tasks{margin-top:16px}
+.tw-task-row{padding:10px 16px;background:rgba(0,0,0,0.3);border-radius:8px;margin-bottom:6px;display:flex;align-items:center;gap:12px;font-size:13px}
+.tw-task-row .status{padding:2px 10px;border-radius:10px;font-size:12px}
+.status-done{background:rgba(0,200,100,0.2);color:#6f6}
+.status-running{background:rgba(255,200,0,0.2);color:#fc0}
+.status-pending{background:rgba(100,150,255,0.2);color:#69f}
+
+/* spinner */
+.tw-spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,215,0,0.3);border-top-color:#ffd700;border-radius:50%;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* emoji fallback - 如果 macOS 显示不了 flag, 显示 country code */
+.tw-flag{font-family:"Apple Color Emoji","Segoe UI Emoji",sans-serif;display:inline-block;min-width:24px;text-align:center}
+.tw-flag-fallback{display:none;font-family:monospace;background:rgba(255,215,0,0.15);color:#ffd700;padding:1px 4px;border-radius:3px;font-size:11px}
+/* macOS 10.12-10.14 可能不支持 🇹🇼, 这时隐藏 emoji 显示 fallback */
+@supports not (font-variation-settings: "FILL" 0){}
+</style>
+{% endblock %}
+{% block content %}
+<div class="tw-void">
+<div class="tw-wrap">
+
+<div class="tw-header">
+  <h1>🌐 COPY-STUDIO · 四国翻译工作台</h1>
+  <div class="tw-stats" id="tw-stats">
+    <div class="tw-stat">任务总数: <b id="st-total">-</b></div>
+    <div class="tw-stat">已完成: <b id="st-done">-</b></div>
+    <div class="tw-stat">术语: <b id="st-glossary">-</b></div>
+    <div class="tw-stat" id="st-ollama">🤖 Ollama: <b>-</b></div>
+  </div>
+</div>
+
+<!-- 语言选择栏 (四国旗动态从后端 LANG_LABELS 加载, 避免 macOS emoji 渲染问题) -->
+<div class="tw-lang-bar">
+  <div class="tw-lang-group">
+    <span style="color:#a0a0c0">翻译方向</span>
+    <div id="tw-src-chips" style="display:flex;gap:6px"></div>
+    <span class="tw-arrow">→</span>
+    <div id="tw-tgt-chips" style="display:flex;gap:6px"></div>
+  </div>
+  <div style="flex:1"></div>
+  <div class="tw-lang-group">
+    <span style="color:#a0a0c0">质量</span>
+    <div class="tw-lang-chip active" data-quality="standard">⚡ 标准</div>
+    <div class="tw-lang-chip" data-quality="premium">💎 精品</div>
+  </div>
+</div>
+
+<!-- 主编辑区 -->
+<div class="tw-main">
+  <div class="tw-panel">
+    <div class="tw-panel-header">
+      <h3>📥 原文输入</h3>
+      <span id="tw-src-info" style="font-size:12px;color:#8888aa">- 字</span>
+    </div>
+    <div class="tw-panel-body">
+      <textarea class="tw-textarea" id="tw-source" placeholder="粘贴要翻译的文本 (任意长度, 自动分段)"></textarea>
+    </div>
+  </div>
+  <div class="tw-panel">
+    <div class="tw-panel-header">
+      <h3>📤 译文输出</h3>
+      <button class="tw-btn-secondary" id="tw-copy-btn" style="padding:4px 12px;font-size:12px;display:none">📋 复制</button>
+    </div>
+    <div class="tw-panel-body">
+      <textarea class="tw-textarea" id="tw-target" readonly placeholder="译文将在这里显示..."></textarea>
+    </div>
+  </div>
+</div>
+
+<!-- 操作按钮 -->
+<div class="tw-actions">
+  <button class="tw-btn tw-btn-primary" id="tw-translate-btn">🤖 开始翻译</button>
+  <button class="tw-btn tw-btn-secondary" id="tw-clear-btn">🗑️ 清空</button>
+  <button class="tw-btn tw-btn-gold" id="tw-copy-btn2">📋 复制译文</button>
+  <button class="tw-btn tw-btn-secondary" id="tw-save-btn">💾 保存任务</button>
+  <span style="flex:1"></span>
+  <button class="tw-btn tw-btn-gold" id="tw-publish-btn">🚀 发布到四国</button>
+</div>
+
+<!-- 术语表 -->
+<div class="tw-glossary">
+  <h3>📚 内置术语表 (仙女座域专有名词自动保留译法)</h3>
+  <div class="tw-glossary-grid" id="tw-glossary-list">加载中...</div>
+</div>
+
+<!-- 任务列表 -->
+<div class="tw-tasks">
+  <h3 style="color:#ffd700;margin:20px 0 10px 0">📜 最近翻译任务</h3>
+  <div id="tw-task-list">加载中...</div>
+</div>
+
+</div>
+</div>
+
+<script>
+const API = '/andromeda/api/translation_studio';
+let state = {src: 'zh', tgt: 'en', quality: 'standard', taskId: null};
+
+// 🔴 动态渲染四国旗 (从后端 LANG_LABELS 拿显式 codepoint, 避免 macOS emoji 渲染问题)
+let LANGS = [];
+function renderLangChips(){
+  const srcBox = document.getElementById('tw-src-chips');
+  const tgtBox = document.getElementById('tw-tgt-chips');
+  srcBox.innerHTML = ''; tgtBox.innerHTML = '';
+  LANGS.forEach(l => {
+    // 用显式 codepoint flag + flag_code 作为文本 fallback
+    const srcActive = l.code === state.src ? 'active' : '';
+    const tgtActive = l.code === state.tgt ? 'active' : '';
+    srcBox.innerHTML += `<div class="tw-lang-chip ${srcActive}" data-lang="${l.code}" data-role="src" title="${l.flag_code}"><span class="tw-flag">${l.flag}</span> ${l.native}</div>`;
+    if(l.code !== state.src) {
+      tgtBox.innerHTML += `<div class="tw-lang-chip ${tgtActive}" data-lang="${l.code}" data-role="tgt" title="${l.flag_code}"><span class="tw-flag">${l.flag}</span> ${l.native}</div>`;
+    }
+  });
+  // 重新绑 click
+  document.querySelectorAll('#tw-src-chips .tw-lang-chip').forEach(c=>{
+    c.addEventListener('click', ()=>{
+      state.src = c.dataset.lang;
+      // 如果 src==tgt, 自动切 tgt 到下一个
+      if(state.tgt === state.src){
+        const others = LANGS.filter(x=>x.code !== state.src);
+        state.tgt = others[0].code;
+      }
+      renderLangChips();
+    });
+  });
+  document.querySelectorAll('#tw-tgt-chips .tw-lang-chip').forEach(c=>{
+    c.addEventListener('click', ()=>{
+      state.tgt = c.dataset.lang;
+      renderLangChips();
+    });
+  });
+}
+
+// 先硬编码初始四国 (后端 API 还没加载完时显示)
+LANGS = [
+  {code:'zh',    flag:'\u{1F1E8}\u{1F1F3}', flag_code:'CN', native:'中文'},
+  {code:'en',    flag:'\u{1F1FA}\u{1F1F8}', flag_code:'US', native:'English'},
+  {code:'ja',    flag:'\u{1F1EF}\u{1F1F5}', flag_code:'JP', native:'日本語'},
+  {code:'zh_tw', flag:'\u{1F1F9}\u{1F1FC}', flag_code:'TW', native:'繁體'},
+];
+renderLangChips();
+
+// 质量 chip (保留静态)
+document.querySelectorAll('[data-quality]').forEach(c=>{
+  c.addEventListener('click', ()=>{
+    document.querySelectorAll('[data-quality]').forEach(x=>x.classList.remove('active'));
+    c.classList.add('active');
+    state.quality = c.dataset.quality;
+  });
+});
+
+// 字数统计
+const src = document.getElementById('tw-source');
+src.addEventListener('input', ()=>{
+  document.getElementById('tw-src-info').textContent = src.value.length + ' 字';
+});
+
+// 翻译
+document.getElementById('tw-translate-btn').addEventListener('click', async ()=>{
+  const txt = src.value.trim();
+  if(!txt){ alert('请输入要翻译的文本'); return; }
+  const btn = document.getElementById('tw-translate-btn');
+  btn.disabled = true; btn.innerHTML = '<span class="tw-spinner"></span> 翻译中...';
+  document.getElementById('tw-target').value = '';
+  try{
+    // 快速翻译接口 (不建任务)
+    const r = await fetch(`${API}/quick`, {
+      method:'POST', credentials:'include',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({text:txt, src:state.src, tgt:state.tgt, quality:state.quality})
+    });
+    const d = await r.json();
+    if(d.success){
+      document.getElementById('tw-target').value = d.data.translated;
+      document.getElementById('tw-copy-btn').style.display = 'inline-block';
+      document.getElementById('tw-copy-btn2').style.display = 'inline-block';
+      showToast(`✅ 翻译完成 (${d.data.segments_ok}/${d.data.segments_total} 段, ${d.data.backend})`);
+    } else {
+      document.getElementById('tw-target').value = '❌ 翻译失败';
+      showToast('❌ 翻译失败: ' + (d.data.error || '未知'));
+    }
+  } catch(e){
+    document.getElementById('tw-target').value = '❌ ' + e.message;
+    showToast('❌ ' + e.message);
+  }
+  btn.disabled = false; btn.innerHTML = '🤖 开始翻译';
+});
+
+document.getElementById('tw-clear-btn').onclick = ()=>{
+  src.value=''; document.getElementById('tw-target').value='';
+  document.getElementById('tw-copy-btn').style.display='none';
+  document.getElementById('tw-src-info').textContent = '- 字';
+};
+document.getElementById('tw-copy-btn2').onclick = async ()=>{
+  const t = document.getElementById('tw-target').value;
+  await navigator.clipboard.writeText(t); showToast('📋 已复制到剪贴板');
+};
+document.getElementById('tw-copy-btn').onclick = ()=>document.getElementById('tw-copy-btn2').click();
+
+function showToast(msg){
+  const el = document.createElement('div');
+  el.textContent = msg;
+  Object.assign(el.style,{position:'fixed',bottom:'30px',left:'50%',transform:'translateX(-50%)',
+    background:'rgba(0,0,0,0.8)',color:'#ffd700',padding:'10px 24px',borderRadius:'8px',
+    border:'1px solid rgba(255,215,0,0.3)',zIndex:9999,fontSize:'14px'});
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(), 2500);
+}
+
+// 加载数据
+async function loadStats(){
+  try{
+    const r = await fetch(`${API}/stats`); const d = await r.json();
+    if(d.success){
+      document.getElementById('st-total').textContent = d.data.total_tasks;
+      document.getElementById('st-done').textContent = d.data.done;
+      document.getElementById('st-glossary').textContent = d.data.glossary_terms;
+      const ok = d.data.ollama_ok;
+      document.getElementById('st-ollama').innerHTML = ok ? '🤖 Ollama: <span style="color:#6f6">在线</span>' : '🤖 Ollama: <span style="color:#f66">离线</span>';
+    }
+  }catch(e){}
+}
+
+async function loadGlossary(){
+  try{
+    const r = await fetch(`${API}/glossary`); const d = await r.json();
+    if(d.success && d.data.length){
+      const shown = d.data.slice(0,20);
+      document.getElementById('tw-glossary-list').innerHTML = shown.map(g=>
+        `<div class="tw-glossary-item"><b>${g.source_term}</b> → ${g.target_term} <span style="color:#666;font-size:11px">(${g.src_lang}→${g.tgt_lang})</span></div>`
+      ).join('');
+    } else {
+      document.getElementById('tw-glossary-list').innerHTML = '<span style="color:#888">暂无术语</span>';
+    }
+  }catch(e){}
+}
+
+async function loadTasks(){
+  try{
+    const r = await fetch(`${API}/tasks?limit=10`); const d = await r.json();
+    if(d.success && d.data.length){
+      document.getElementById('tw-task-list').innerHTML = d.data.map(t=>{
+        const status_color = t.status==='done'?'status-done':t.status==='running'?'status-running':'status-pending';
+        return `<div class="tw-task-row">
+          <span class="status ${status_color}">${t.status}</span>
+          <b>${t.source_lang}→${t.target_lang}</b>
+          <span style="flex:1;color:#8888aa">${t.source_text.substring(0,40)}...</span>
+          <span style="color:#666;font-size:11px">${t.created_at?.substring(5,16)||''}</span>
+        </div>`;
+      }).join('');
+    } else {
+      document.getElementById('tw-task-list').innerHTML = '<span style="color:#666">暂无翻译任务</span>';
+    }
+  }catch(e){}
+}
+
+loadStats(); loadGlossary(); loadTasks();
+setInterval(loadStats, 30000);
+</script>
+{% endblock %}
