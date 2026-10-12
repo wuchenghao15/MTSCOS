@@ -214,7 +214,7 @@ def consciousness_pulse() -> Dict:
         'brain_feed_total': brain_feed,
         'parliament_proposals': proposals,
         'copy_studio_projects': copy_projects,
-        'bindings': 72,  # 8 domain × 9 self
+        'bindings': 72,  # 8 domain × 9 self (v26.0: 35→72)
         'core_engines': 137,
         'sm_daemons': 38,  # +5 copy_studio daemons
         'iceberg_nav_entries': 13,  # +1 copy_studio nav
@@ -228,21 +228,35 @@ def consciousness_pulse() -> Dict:
             'assist': '🤝 assisting',
             'study': '📚 learning',
             'expand': '🚀 expanding',
-        }
+        },
+        # v26.0 向后兼容: 保留 five_self 键名, 但内容与 nine_self 相同
+        'five_self': {
+            'strengthen': '💪 enforcing',
+            'awaken': '🧠 conscious',
+            'upgrade': '⬆️ ready',
+            'polish': '✨ polishing',
+            'research': '🔬 proposing',
+            'heal': '🩹 healing',
+            'assist': '🤝 assisting',
+            'study': '📚 learning',
+            'expand': '🚀 expanding',
+        },
     }
     db.close()
     return pulse
 
 
 def domain_stats(domain_key: str) -> Dict:
-    """单个冰山域的九自能力绑定详情"""
+    """单个冰山域的九自能力绑定详情 (v26.0 向后兼容: 同时返回 nine_self 和 five_self)"""
     domain = ICEBERG_DOMAINS.get(domain_key)
     if not domain: return {'error': 'domain not found'}
     bindings = [b for b in build_binding_matrix() if b['domain'] == domain_key]
-    return {'domain': domain, 'bindings': bindings, 'nine_self': {
+    self_map = {
         s: [b for b in bindings if b['self']==s]
         for s in SELF_CAPABILITIES
-    }}
+    }
+    return {'domain': domain, 'bindings': bindings,
+            'nine_self': self_map, 'five_self': self_map}
 
 
 # ── CLI ──
