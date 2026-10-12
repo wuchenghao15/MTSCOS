@@ -59,7 +59,7 @@ ICEBERG_DOMAINS: Dict[str, Dict[str, Any]] = {
         'label': '文案创作冰山', 'desc': '长篇小说 · 短剧剧本 · 广告文案 · 三层兜底(AI员工+EigenFlux+法务)',
         'roles': ['super_admin','admin','professor','teacher'],
         'core_tables': ['mt_copy_projects','mt_copy_chapters','mt_copy_characters','mt_copy_scenes','mt_copy_consistency_log','mt_approval_requests'],
-        'daemons': ['sys_copy_consistency','sys_copy_auto_repair','sys_rag_context','sys_copy_learner','sys_copy_expander','sys_local_inference'],
+        'daemons': ['sys_copy_consistency','sys_copy_auto_repair','sys_copy_rag_context','sys_copy_learner','sys_copy_expander','sys_local_inference'],
     },
 }
 
