@@ -24,6 +24,7 @@ from __future__ import annotations
 import json, datetime, uuid
 from flask import Blueprint, jsonify, request, render_template, session as _sess
 from pathlib import Path
+from app.middlewares.system_container import system_container
 
 # ── 蓝图 (独立注册, url_prefix=/andromeda 与 andromeda_dashboard_bp 对齐) ──
 bp = Blueprint('copy_studio', __name__, url_prefix='/andromeda')
@@ -46,6 +47,7 @@ def _user():
 # ═══════════════════════════════════════════════════════════
 
 @bp.route('/copy_studio/workbench', methods=['GET'])
+@system_container(require_auth='guest')
 def copy_workbench():
     """📖 文案创作工作台 — 根据 genre 自动路由模板 (服务端模板选择 = 自动编译)"""
     genre = request.args.get('genre', 'novel')
@@ -68,6 +70,7 @@ def copy_workbench():
 # ═══════════════════════════════════════════════════════════
 
 @bp.route('/api/copy_studio/projects', methods=['POST'])
+@system_container(require_auth='login')
 def api_create_project():
     data = request.get_json(force=True) or {}
     title = (data.get('title') or '').strip()
@@ -89,6 +92,7 @@ def api_create_project():
 
 
 @bp.route('/api/copy_studio/projects', methods=['GET'])
+@system_container(require_auth='login')
 def api_list_projects():
     username = _sess.get('username') or _sess.get('authenticated_username')
     genre = request.args.get('genre')
@@ -100,6 +104,7 @@ def api_list_projects():
 
 
 @bp.route('/api/copy_studio/projects/<project_id>', methods=['GET'])
+@system_container(require_auth='login')
 def api_get_project(project_id: str):
     svc = _svc()
     p = svc.get_project(project_id)
@@ -116,6 +121,7 @@ def api_get_project(project_id: str):
 
 
 @bp.route('/api/copy_studio/projects/<project_id>/outline', methods=['POST'])
+@system_container(require_auth='login')
 def api_generate_outline(project_id: str):
     svc = _svc()
     p = svc.get_project(project_id)
@@ -132,6 +138,7 @@ def api_generate_outline(project_id: str):
 # ═══════════════════════════════════════════════════════════
 
 @bp.route('/api/copy_studio/projects/<project_id>/chapters', methods=['POST'])
+@system_container(require_auth='login')
 def api_add_chapter(project_id: str):
     data = request.get_json(force=True) or {}
     chapter_no = int(data.get('chapter_no') or 0)
@@ -146,6 +153,7 @@ def api_add_chapter(project_id: str):
 
 
 @bp.route('/api/copy_studio/projects/<project_id>/chapters', methods=['GET'])
+@system_container(require_auth='login')
 def api_list_chapters(project_id: str):
     svc = _svc()
     chs = svc.list_chapters(project_id)
@@ -153,6 +161,7 @@ def api_list_chapters(project_id: str):
 
 
 @bp.route('/api/copy_studio/chapters/<chapter_id>/write', methods=['POST'])
+@system_container(require_auth='login')
 def api_write_chapter(chapter_id: str):
     svc = _svc()
     # 先找到 project_id (从 chapter 表)
@@ -168,6 +177,7 @@ def api_write_chapter(chapter_id: str):
 
 
 @bp.route('/api/copy_studio/chapters/<chapter_id>/polish', methods=['POST'])
+@system_container(require_auth='login')
 def api_polish_chapter(chapter_id: str):
     data = request.get_json(force=True) or {}
     style_hint = (data.get('style_hint') or '').strip()
@@ -183,6 +193,7 @@ def api_polish_chapter(chapter_id: str):
 # ═══════════════════════════════════════════════════════════
 
 @bp.route('/api/copy_studio/projects/<project_id>/check', methods=['POST'])
+@system_container(require_auth='login')
 def api_consistency_check(project_id: str):
     svc = _svc()
     issues = svc.run_consistency_check(project_id)
@@ -190,6 +201,7 @@ def api_consistency_check(project_id: str):
 
 
 @bp.route('/api/copy_studio/projects/<project_id>/submit', methods=['POST'])
+@system_container(require_auth='login')
 def api_submit_approval(project_id: str):
     svc = _svc()
     aid = svc.submit_for_approval(project_id)
@@ -199,6 +211,7 @@ def api_submit_approval(project_id: str):
 
 
 @bp.route('/api/copy_studio/stats', methods=['GET'])
+@system_container(require_auth='login')
 def api_stats():
     svc = _svc()
     return jsonify({'code': 0, 'data': svc.stats()})
