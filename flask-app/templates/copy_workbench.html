@@ -1,0 +1,437 @@
+{% extends "base_unified.html" %}
+{% block title %}copy_studio · {{ genre_cfg.label }}{% endblock %}
+
+{% block extra_head %}
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;500;700;900&family=JetBrains+Mono:wght@400;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<style>
+  :root {
+    --ink-void:#0B0F1A; --ink-deep:#111729; --ink-mid:#1B2440; --ink-surface:#222C4A;
+    --ink-line:#2E3A5C; --ink-text:#C8D3E8; --ink-dim:#7B8AA8; --ink-muted:#4A5775;
+    --gold:#D4A853; --gold-bright:#F0C878; --gold-deep:#8B6F3F;
+    --iceberg:#7FB3D5; --iceberg-deep:#3498DB; --iceberg-glow:rgba(127,179,213,0.25);
+    --constellation:#E8F4FD; --star-dim:rgba(232,244,253,0.3);
+    --danger:#E74C3C; --success:#27AE60; --warning:#F39C12;
+    --radius-sm:6px; --radius-md:10px; --radius-lg:16px;
+    --shadow-sm:0 1px 3px rgba(0,0,0,0.3); --shadow-md:0 4px 16px rgba(0,0,0,0.4); --shadow-lg:0 12px 32px rgba(0,0,0,0.5);
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{background:var(--ink-void);color:var(--ink-text);min-height:100vh;line-height:1.7;
+    font-family:'Noto Serif SC',-apple-system,BlinkMacSystemFont,serif;overflow-x:hidden}
+  /* Cosmic background */
+  body::before{
+    content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+    background:
+      radial-gradient(ellipse 1200px 800px at 15% 10%,rgba(52,152,219,0.08),transparent 60%),
+      radial-gradient(ellipse 900px 600px at 85% 90%,rgba(212,168,83,0.06),transparent 60%),
+      radial-gradient(ellipse 600px 400px at 50% 50%,rgba(127,179,213,0.04),transparent 70%);
+  }
+  body::after{
+    content:"";position:fixed;inset:0;z-index:1;pointer-events:none;
+    background-image:radial-gradient(1px 1px at 20% 30%,var(--star-dim),transparent),
+                     radial-gradient(1px 1px at 60% 70%,var(--star-dim),transparent),
+                     radial-gradient(2px 2px at 80% 20%,var(--star-dim),transparent),
+                     radial-gradient(1px 1px at 30% 85%,var(--star-dim),transparent),
+                     radial-gradient(1px 1px at 90% 60%,var(--star-dim),transparent);
+    opacity:0.6;animation:twinkle 6s ease-in-out infinite;
+  }
+  @keyframes twinkle{0%,100%{opacity:0.4}50%{opacity:0.8}}
+  .cs-app{position:relative;z-index:2;max-width:1600px;margin:0 auto;padding:24px}
+  .cs-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;padding:16px 24px;
+    background:linear-gradient(135deg,rgba(17,23,41,0.9),rgba(27,36,64,0.85));
+    border:1px solid var(--ink-line);border-radius:var(--radius-lg);backdrop-filter:blur(12px);
+    box-shadow:var(--shadow-md)}
+  .cs-logo{display:flex;align-items:center;gap:14px}
+  .cs-logo-icon{width:44px;height:44px;border-radius:50%;
+    background:radial-gradient(circle at 30% 30%,var(--gold-bright),var(--gold) 60%,var(--gold-deep));
+    display:flex;align-items:center;justify-content:center;font-size:22px;
+    box-shadow:0 0 20px rgba(212,168,83,0.3)}
+  .cs-title{font-family:'Space Grotesk',sans-serif;font-size:1.1rem;font-weight:700;color:var(--constellation);letter-spacing:1px}
+  .cs-sub{font-size:0.72rem;color:var(--ink-muted);letter-spacing:2px;margin-top:2px}
+  .cs-ollama-chip{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:16px;font-size:0.7rem}
+  .cs-ollama-chip.online{border:1px solid rgba(39,174,96,0.4);color:#27AE60;background:rgba(39,174,96,0.08)}
+  .cs-ollama-chip.offline{border:1px solid rgba(231,76,60,0.4);color:#E74C3C;background:rgba(231,76,60,0.08)}
+  .cs-ollama-dot{width:6px;height:6px;border-radius:50%}
+  .cs-ollama-chip.online .cs-ollama-dot{background:#27AE60;animation:pulse 2s infinite}
+  .cs-ollama-chip.offline .cs-ollama-dot{background:#E74C3C}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+
+  /* Genre nav */
+  .cs-genre-nav{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+  .cs-genre-btn{padding:10px 18px;border:1px solid var(--ink-line);border-radius:var(--radius-md);
+    background:rgba(17,23,41,0.6);cursor:pointer;color:var(--ink-dim);font-family:inherit;font-size:0.8rem;
+    transition:all 0.25s ease;display:flex;align-items:center;gap:8px}
+  .cs-genre-btn:hover{border-color:var(--iceberg);color:var(--iceberg);transform:translateY(-1px)}
+  .cs-genre-btn.active{background:linear-gradient(135deg,var(--ink-mid),var(--ink-deep));
+    border-color:var(--iceberg);color:var(--iceberg);
+    box-shadow:0 0 20px var(--iceberg-glow)}
+
+  /* Main grid */
+  .cs-layout{display:grid;grid-template-columns:280px minmax(0,1fr) 320px;gap:16px;min-height:calc(100vh - 180px)}
+  .cs-col{display:flex;flex-direction:column;gap:12px}
+  .cs-panel{background:rgba(17,23,41,0.85);border:1px solid var(--ink-line);border-radius:var(--radius-lg);
+    box-shadow:var(--shadow-md);backdrop-filter:blur(8px);overflow:hidden}
+  .cs-panel-head{padding:14px 18px;border-bottom:1px solid var(--ink-line);
+    font-family:'Space Grotesk',sans-serif;font-size:0.72rem;font-weight:600;color:var(--ink-dim);
+    letter-spacing:2px;text-transform:uppercase;display:flex;align-items:center;gap:8px}
+  .cs-panel-head::before{content:"";width:14px;height:2px;background:var(--gold)}
+  .cs-panel-body{padding:14px 18px;flex:1;overflow-y:auto}
+
+  /* Left column — project list */
+  .cs-proj-item{padding:12px;border-radius:var(--radius-md);cursor:pointer;
+    border:1px solid transparent;transition:all 0.2s;background:rgba(27,36,64,0.4);margin-bottom:8px}
+  .cs-proj-item:hover{border-color:var(--ink-line);background:rgba(27,36,64,0.8)}
+  .cs-proj-item.active{border-color:var(--iceberg);background:rgba(52,152,219,0.1);box-shadow:0 0 12px var(--iceberg-glow)}
+  .cs-proj-title{font-size:0.9rem;color:var(--ink-text);font-weight:600}
+  .cs-proj-meta{font-size:0.68rem;color:var(--ink-muted);margin-top:4px;display:flex;gap:10px;align-items:center}
+  .cs-proj-status{font-family:'JetBrains Mono',monospace;padding:2px 8px;border-radius:10px;font-size:0.62rem}
+  .cs-proj-status.draft{background:rgba(127,179,213,0.15);color:var(--iceberg)}
+  .cs-proj-status.writing{background:rgba(243,156,18,0.15);color:var(--warning)}
+  .cs-proj-status.reviewing{background:rgba(212,168,83,0.15);color:var(--gold)}
+  .cs-proj-status.approved{background:rgba(39,174,96,0.15);color:var(--success)}
+  .cs-proj-status.archived{background:rgba(127,127,127,0.15);color:var(--ink-muted)}
+
+  /* Middle — editor */
+  .cs-editor-toolbar{display:flex;gap:8px;padding:10px 14px;border-bottom:1px solid var(--ink-line);
+    align-items:center;flex-wrap:wrap}
+  .cs-btn{padding:8px 16px;border:1px solid var(--ink-line);border-radius:var(--radius-md);
+    background:transparent;color:var(--ink-dim);cursor:pointer;font-family:inherit;font-size:0.78rem;
+    transition:all 0.2s;display:inline-flex;align-items:center;gap:6px}
+  .cs-btn:hover{border-color:var(--iceberg);color:var(--iceberg)}
+  .cs-btn.primary{background:linear-gradient(135deg,var(--ink-mid),var(--ink-deep));border-color:var(--iceberg);color:var(--iceberg);
+    box-shadow:0 0 12px var(--iceberg-glow)}
+  .cs-btn.primary:hover{color:var(--constellation);box-shadow:0 0 20px var(--iceberg-glow)}
+  .cs-btn.gold{border-color:var(--gold);color:var(--gold)}
+  .cs-btn.gold:hover{background:rgba(212,168,83,0.1)}
+  .cs-btn:disabled{opacity:0.4;cursor:not-allowed}
+
+  .cs-editor-area{min-height:400px;max-height:60vh;overflow-y:auto}
+  .cs-editor-area textarea{width:100%;min-height:400px;background:transparent;border:none;color:var(--ink-text);
+    font-family:'Noto Serif SC',serif;font-size:0.95rem;line-height:2;resize:none;outline:none;padding:20px}
+  .cs-preview{padding:20px;font-family:'Noto Serif SC',serif;font-size:0.95rem;line-height:2;color:var(--ink-text)}
+  .cs-preview h1,.cs-preview h2,.cs-preview h3{color:var(--constellation);margin:16px 0 8px;font-family:'Space Grotesk',sans-serif}
+  .cs-preview p{margin-bottom:12px}
+
+  /* Right — creation form */
+  .cs-field{margin-bottom:14px}
+  .cs-field label{display:block;font-size:0.7rem;color:var(--ink-dim);letter-spacing:1px;margin-bottom:6px;font-family:'Space Grotesk',sans-serif;text-transform:uppercase}
+  .cs-field input,.cs-field select,.cs-field textarea{width:100%;padding:10px 12px;background:rgba(11,15,26,0.6);border:1px solid var(--ink-line);
+    border-radius:var(--radius-sm);color:var(--ink-text);font-family:inherit;font-size:0.85rem;transition:all 0.2s}
+  .cs-field input:focus,.cs-field select:focus,.cs-field textarea:focus{border-color:var(--iceberg);outline:none;box-shadow:0 0 0 3px var(--iceberg-glow)}
+  .cs-field textarea{min-height:80px;resize:vertical}
+  .cs-range{display:flex;align-items:center;gap:10px}
+  .cs-range input[type=range]{flex:1;accent-color:var(--gold)}
+  .cs-range-val{font-family:'JetBrains Mono',monospace;color:var(--gold);font-size:0.8rem;min-width:60px;text-align:right}
+
+  /* Sub-genre chips */
+  .cs-chips{display:flex;flex-wrap:wrap;gap:6px}
+  .cs-chip{padding:4px 10px;border:1px solid var(--ink-line);border-radius:12px;font-size:0.68rem;
+    cursor:pointer;background:transparent;color:var(--ink-dim);transition:all 0.15s}
+  .cs-chip:hover{border-color:var(--iceberg);color:var(--iceberg)}
+  .cs-chip.active{background:rgba(127,179,213,0.15);border-color:var(--iceberg);color:var(--iceberg)}
+
+  /* Stats row */
+  .cs-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
+  .cs-stat{background:rgba(17,23,41,0.85);border:1px solid var(--ink-line);border-radius:var(--radius-md);padding:12px}
+  .cs-stat-num{font-family:'JetBrains Mono',monospace;font-size:1.3rem;color:var(--constellation);font-weight:600}
+  .cs-stat-lbl{font-size:0.65rem;color:var(--ink-muted);margin-top:4px;letter-spacing:1px}
+  .cs-stat.gold .cs-stat-num{color:var(--gold)}
+  .cs-stat.ice .cs-stat-num{color:var(--iceberg)}
+
+  /* Loading */
+  .cs-loading{display:none;text-align:center;padding:20px;color:var(--ink-muted);font-size:0.8rem}
+  .cs-loading.active{display:block}
+  .cs-loading::after{content:"";display:inline-block;width:12px;height:12px;border:2px solid var(--iceberg);border-top-color:transparent;
+    border-radius:50%;animation:spin 0.8s linear infinite;margin-left:10px;vertical-align:middle}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* Toasts */
+  .cs-toast{position:fixed;bottom:24px;right:24px;padding:14px 20px;border-radius:var(--radius-md);
+    font-size:0.8rem;z-index:1000;animation:slideIn 0.3s ease;
+    box-shadow:var(--shadow-lg);backdrop-filter:blur(12px)}
+  .cs-toast.ok{background:rgba(39,174,96,0.9);color:#fff;border:1px solid #27AE60}
+  .cs-toast.err{background:rgba(231,76,60,0.9);color:#fff;border:1px solid #E74C3C}
+  @keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+
+  /* Responsive */
+  @media(max-width:1200px){.cs-layout{grid-template-columns:240px 1fr 280px}}
+  @media(max-width:900px){.cs-layout{grid-template-columns:1fr}.cs-col{min-height:auto}}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="cs-app" id="csApp">
+
+  <!-- Header -->
+  <div class="cs-header">
+    <div class="cs-logo">
+      <div class="cs-logo-icon">✦</div>
+      <div>
+        <div class="cs-title">COPY STUDIO · {{ genre_cfg.label }}</div>
+        <div class="cs-sub">仙女座文案创作中台 · 冰山域 v26.0 · 三层兜底</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:12px;align-items:center">
+      <span class="cs-ollama-chip {{ 'online' if ollama_ok else 'offline' }}">
+        <span class="cs-ollama-dot"></span>
+        Ollama {{ '在线' if ollama_ok else '离线' }}
+        {% if ollama_ok %}<span style="opacity:0.6;margin-left:6px">{{ ollama_model }}</span>{% endif %}
+      </span>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="cs-stats">
+    <div class="cs-stat gold"><div class="cs-stat-num" id="statProjs">{{ stats.projects_total }}</div><div class="cs-stat-lbl">项目总数</div></div>
+    <div class="cs-stat ice"><div class="cs-stat-num" id="statWords">{{ stats.total_words_written }}</div><div class="cs-stat-lbl">累计产出字数</div></div>
+    <div class="cs-stat"><div class="cs-stat-num" id="statIssues">{{ stats.consistency_issues }}</div><div class="cs-stat-lbl">一致性问题</div></div>
+    <div class="cs-stat"><div class="cs-stat-num">{{ stats.ollama_ok|string|upper }}</div><div class="cs-stat-lbl">本地推理</div></div>
+  </div>
+
+  <!-- Genre nav (auto-compile trigger) -->
+  <div class="cs-genre-nav">
+    {% for g in genres %}
+    <button class="cs-genre-btn {% if g.key==genre %}active{% endif %}"
+            onclick="location.href='/andromeda/copy_studio/workbench?genre={{ g.key }}'">
+      <span>{{ g.icon }}</span><span>{{ g.label }}</span>
+    </button>
+    {% endfor %}
+  </div>
+
+  <!-- Main workbench -->
+  <div class="cs-layout">
+
+    <!-- Left: Projects -->
+    <div class="cs-col">
+      <div class="cs-panel" style="flex:1">
+        <div class="cs-panel-head">📚 我的项目</div>
+        <div class="cs-panel-body" id="projectList">
+          <div style="color:var(--ink-muted);font-size:0.8rem;text-align:center;padding:20px">加载中...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Center: Editor -->
+    <div class="cs-col">
+      <div class="cs-panel" style="flex:1;display:flex;flex-direction:column">
+        <div class="cs-panel-head" id="editorTitle">✍️ 编辑器 · 选择或创建项目</div>
+        <div class="cs-editor-toolbar" id="editorToolbar" style="display:none">
+          <button class="cs-btn primary" onclick="svc.generateOutline()"><span>🌌</span> 生成大纲</button>
+          <button class="cs-btn" onclick="svc.addChapter()"><span>➕</span> 添加章节</button>
+          <button class="cs-btn primary" onclick="svc.writeChapter()" {% if not ollama_ok %}disabled{% endif %}><span>🤖</span> AI 写此章</button>
+          <button class="cs-btn gold" onclick="svc.polish()" {% if not ollama_ok %}disabled{% endif %}><span>✨</span> 润色</button>
+          <button class="cs-btn" onclick="svc.runCheck()"><span>🔍</span> 自巡检</button>
+          <button class="cs-btn gold" onclick="svc.submitApproval()"><span>📋</span> 提交审批</button>
+        </div>
+        <div class="cs-editor-area" id="editorArea">
+          <div style="padding:40px;text-align:center;color:var(--ink-muted)">
+            <div style="font-size:3rem;margin-bottom:12px">📖</div>
+            选择左侧已有项目开始编辑，或在右侧创建新项目
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Create form + chapters -->
+    <div class="cs-col">
+      <div class="cs-panel">
+        <div class="cs-panel-head">✨ 创建新项目</div>
+        <div class="cs-panel-body">
+          <div class="cs-field">
+            <label>标题</label>
+            <input id="fTitle" placeholder="给作品起个名字...">
+          </div>
+          <div class="cs-field">
+            <label>子类型</label>
+            <div class="cs-chips" id="fSubGenres">
+              {% for sg in genre_cfg.sub_genres %}
+              <span class="cs-chip" onclick="selectSub(this,'{{ sg }}')">{{ sg }}</span>
+              {% endfor %}
+            </div>
+          </div>
+          <div class="cs-field">
+            <label>目标字数</label>
+            <div class="cs-range">
+              <input type="range" id="fWords" min="500" max="{% if genre=='novel' %}200000{% elif genre=='script' %}30000{% else %}10000{% endif %}" step="500" value="{{ genre_cfg.default_target_words }}"
+                     oninput="document.getElementById('wVal').textContent=this.value.toLocaleString()">
+              <span class="cs-range-val" id="wVal">{{ genre_cfg.default_target_words }}</span>
+            </div>
+          </div>
+          <div class="cs-field">
+            <label>创意/提案</label>
+            <textarea id="fIntent" placeholder="描述你的故事核心、主题、风格..."></textarea>
+          </div>
+          <div style="text-align:right">
+            <button class="cs-btn primary" onclick="svc.createProject()">🚀 创建项目</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="cs-panel" style="flex:1">
+        <div class="cs-panel-head">📑 章节目录 (选中项目后显示)</div>
+        <div class="cs-panel-body" id="chapterList" style="max-height:400px;overflow-y:auto">
+          <div style="color:var(--ink-muted);font-size:0.78rem;text-align:center;padding:16px">未选择项目</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  const API = '/andromeda/api/copy_studio';
+  const genre = '{{ genre }}';
+  const ollamaOnline = {{ 'true' if ollama_ok else 'false' }};
+  let state = { projects:[], active:null, activeChapters:[], editingChapter:null };
+
+  function toast(msg, ok=true){
+    const t = document.createElement('div');
+    t.className = 'cs-toast ' + (ok?'ok':'err');
+    t.textContent = msg; document.body.appendChild(t);
+    setTimeout(()=>t.remove(), 3000);
+  }
+  async function api(method, path, body){
+    const opts = {method, headers:{'Content-Type':'application/json'}};
+    if(body) opts.body = JSON.stringify(body);
+    const r = await fetch(API + path, opts);
+    const d = await r.json();
+    if(d.code !== 0) throw new Error(d.msg || 'API error');
+    return d.data;
+  }
+
+  const svc = {
+    async loadProjects(){
+      const items = await api('GET','/projects?limit=50');
+      state.projects = items;
+      const el = document.getElementById('projectList');
+      if(!items.length){
+        el.innerHTML = '<div style="color:var(--ink-muted);font-size:0.8rem;text-align:center;padding:20px">暂无项目, 在右侧创建</div>';
+        return;
+      }
+      el.innerHTML = items.map(p=>`
+        <div class="cs-proj-item ${state.active===p.project_id?'active':''}" onclick="svc.open('${p.project_id}')">
+          <div class="cs-proj-title">${p.title}</div>
+          <div class="cs-proj-meta">
+            <span class="cs-proj-status ${p.status}">${p.status}</span>
+            <span>📖 ${p.genre}</span>
+            <span>📝 ${p.current_words||0}字</span>
+          </div>
+        </div>`).join('');
+    },
+    async open(pid){
+      state.active = pid;
+      const p = await api('GET','/projects/'+pid);
+      state.activeChapters = p.chapters || [];
+      svc.render();
+      svc.loadProjects();
+    },
+    render(){
+      const title = document.getElementById('editorTitle');
+      const toolbar = document.getElementById('editorToolbar');
+      const area = document.getElementById('editorArea');
+      const listEl = document.getElementById('chapterList');
+      if(!state.active){
+        title.textContent = '✍️ 编辑器 · 选择或创建项目';
+        toolbar.style.display='none';
+        area.innerHTML = '<div style="padding:40px;text-align:center;color:var(--ink-muted)"><div style="font-size:3rem;margin-bottom:12px">📖</div>选择左侧已有项目开始编辑, 或在右侧创建新项目</div>';
+        listEl.innerHTML = '<div style="color:var(--ink-muted);font-size:0.78rem;text-align:center;padding:16px">未选择项目</div>';
+        return;
+      }
+      const p = state.projects.find(x=>x.project_id===state.active) || {};
+      title.textContent = '✍️ ' + p.title;
+      toolbar.style.display='flex';
+      // 章节列表
+      if(!state.activeChapters.length){
+        listEl.innerHTML = '<div style="color:var(--ink-muted);font-size:0.78rem;padding:12px">暂无章节, 点"➕ 添加章节"</div>';
+        area.innerHTML = '<div style="padding:40px;text-align:center;color:var(--ink-muted)"><div style="font-size:3rem;margin-bottom:12px">📝</div>请先添加章节</div>';
+        return;
+      }
+      listEl.innerHTML = state.activeChapters.map((ch,i)=>`
+        <div class="cs-proj-item ${state.editingChapter===ch.chapter_id?'active':''}"
+             onclick="svc.editChapter('${ch.chapter_id}')" style="margin-bottom:6px">
+          <div class="cs-proj-title" style="font-size:0.82rem">${ch.chapter_no}. ${ch.title||'未命名'}</div>
+          <div class="cs-proj-meta">
+            <span class="cs-proj-status ${ch.status==='done'||ch.status==='polished'||ch.status==='checked'?'approved':(ch.status==='writing'?'writing':'draft')}">${ch.status}</span>
+            <span>${ch.actual_words||0}/${ch.target_words||0}</span>
+          </div>
+        </div>`).join('');
+    },
+    editChapter(cid){
+      const ch = state.activeChapters.find(c=>c.chapter_id===cid);
+      if(!ch) return;
+      state.editingChapter = cid;
+      const area = document.getElementById('editorArea');
+      area.innerHTML = `<textarea oninput="this.style.height=this.scrollHeight+'px'" style="height:400px">${(ch.content||'').replace(/"/g,'&quot;')}</textarea>`;
+      svc.render();
+    },
+    async createProject(){
+      const title = document.getElementById('fTitle').value.trim();
+      if(!title){ toast('请输入标题',false); return; }
+      const subGen = document.querySelector('#fSubGenres .cs-chip.active');
+      const data = await api('POST','/projects',{
+        title, genre,
+        sub_genre: subGen?.textContent || '',
+        target_words: parseInt(document.getElementById('fWords').value),
+        user_intent: document.getElementById('fIntent').value,
+      });
+      toast(`✅ 创建成功: ${data.project_id}`);
+      document.getElementById('fTitle').value='';
+      document.getElementById('fIntent').value='';
+      await svc.loadProjects();
+      await svc.open(data.project_id);
+    },
+    async generateOutline(){
+      if(!state.active) return;
+      toast('🌌 AI 生成大纲中...');
+      const out = await api('POST','/projects/'+state.active+'/outline',{});
+      toast('✅ 大纲生成完成');
+      state.activeProject = await api('GET','/projects/'+state.active);
+    },
+    async addChapter(){
+      if(!state.active) return;
+      const n = state.activeChapters.length + 1;
+      const title = prompt(`第 ${n} 章 标题?`);
+      if(title === null) return;
+      await api('POST','/projects/'+state.active+'/chapters',{
+        chapter_no: n, title: title || `第${n}章`, target_words: state.activeProject?.target_words || 3000
+      });
+      await svc.open(state.active);
+      toast('✅ 章节已添加');
+    },
+    async writeChapter(){
+      if(!state.editingChapter){ toast('请先选中章节',false); return; }
+      toast('🤖 AI 写作中 (本地 Ollama, 零 token)...');
+      const r = await api('POST','/chapters/'+state.editingChapter+'/write',{});
+      toast(`✅ 完成! ${r.content_length} 字 / ${r.duration_sec}s`);
+      await svc.open(state.active);
+      await svc.editChapter(state.editingChapter);
+    },
+    async polish(){
+      if(!state.editingChapter){ toast('请先选中章节',false); return; }
+      const r = await api('POST','/chapters/'+state.editingChapter+'/polish',{});
+      toast('✨ 润色完成');
+      await svc.open(state.active);
+      await svc.editChapter(state.editingChapter);
+    },
+    async runCheck(){
+      if(!state.active) return;
+      const r = await api('POST','/projects/'+state.active+'/check',{});
+      if(r.count===0) toast('✅ 无一致性问题');
+      else toast(`⚠️ 发现 ${r.count} 个问题`);
+    },
+    async submitApproval(){
+      if(!state.active) return;
+      toast('📋 提交审批中...');
+      const r = await api('POST','/projects/'+state.active+'/submit',{});
+      toast(`✅ 审批单: ${r.approval_id}`);
+    },
+  };
+
+  function selectSub(el, val){
+    el.parentNode.querySelectorAll('.cs-chip').forEach(c=>c.classList.remove('active'));
+    el.classList.add('active');
+  }
+
+  svc.loadProjects();
+</script>
+{% endblock %}
