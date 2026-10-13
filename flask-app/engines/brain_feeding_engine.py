@@ -374,6 +374,7 @@ class BrainFeedingEngine:
                 if idx > len(KNOWLEDGE_POOL):
                     break
         gated = gated[:batch_size if batch_size >= _MIN_FEEDS_PER_ROUND else _MIN_FEEDS_PER_ROUND]
+        vec_items = []  # 向量化增量队列 (flow_vector_brain_20261014)
 
         for m in gated:
             feed_id = self._gen_id('F')
@@ -429,6 +430,7 @@ class BrainFeedingEngine:
 
                     conn.commit()
                     fed_count += 1
+                    vec_items.append((knowledge_id, m['title'], m['content']))
             except Exception as e:
                 logger.error(f"  ✗ 投喂知识失败: {e}")
 
@@ -436,6 +438,21 @@ class BrainFeedingEngine:
         logger.info(f"  ✓ 投喂完成VII: {fed_count}条已注入脑库 (总计:{self.feeding_count}, 低质丢弃:{rejected_lowq}, 配额达标:{feed_quota_ok(fed_count)})")
         self._log_maintenance('brain_feeding', 'ai_brain', 'success',
                              f'VII多源投喂{fed_count}条, 来源:{set(m["source"] for m in gated)}, 低质丢弃:{rejected_lowq}')
+        if vec_items:
+            self._enqueue_vectorize(vec_items)
+
+    def _enqueue_vectorize(self, items):
+        """投喂成功后向量化增量入队 (flow_vector_brain_20261014, 内容随队快照; 任何失败不影响投喂主流程)"""
+        try:
+            import sys as _sys
+            _eng_dir = os.path.dirname(os.path.abspath(__file__))
+            if _eng_dir not in _sys.path:
+                _sys.path.insert(0, _eng_dir)
+            from ai_brain_vector_engine import enqueue_content_batch
+            n = enqueue_content_batch(items)
+            logger.info(f"  ✓ [向量化] 已入队 {n} 条待向量化 (本地零token)")
+        except Exception as e:
+            logger.debug(f"[向量化] 入队失败(不影响投喂): {e}")
 
     # ========== 2. 网络学习 ==========
 
