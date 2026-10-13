@@ -849,3 +849,189 @@ def api_andromeda_eigenflux_pending():
         })
     except Exception as e:
         return jsonify({"success": False, "msg": str(e)}), 500
+
+
+# ════════════════════════════════════════════════════════════════
+#  v22.17.0 邀请流程增强 (flow_id=flow_sa_ai_invite_enhance_20261013)
+#  GET  /api/andromeda/invite/status       邀请状态跟踪
+#  POST /api/andromeda/invite/batch        批量邀请
+#  POST /api/andromeda/invite/retry        邀请重试
+#  GET  /api/andromeda/invite/mutual_stats 好友互推统计
+# ════════════════════════════════════════════════════════════════
+
+def _invite_db_conn():
+    """邀请增强端点统一 DB 连接 (主库 database/app.db)
+    注: PROJECT_ROOT = flask-app 目录 (见文件头 L33)"""
+    from flask import current_app
+    db_path = current_app.config.get("DATABASE", "database/app.db")
+    if not os.path.isabs(db_path):
+        db_path = os.path.join(str(PROJECT_ROOT), db_path)
+        if not os.path.exists(db_path):
+            db_path = os.path.join(str(PROJECT_ROOT), "database", "app.db")
+    conn = sqlite3.connect(db_path, timeout=30)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+@andromeda_bp.route('/invite/status', methods=['GET'])
+def api_invite_status():
+    """邀请状态跟踪: invite_log 状态/来源分布 + 重试历史 + pending 明细"""
+    try:
+        conn = _invite_db_conn()
+        cur = conn.cursor()
+
+        status_dist = {}
+        try:
+            cur.execute("SELECT invite_status, COUNT(*) FROM mt_eigenflux_invite_log GROUP BY 1")
+            status_dist = {r[0]: r[1] for r in cur.fetchall()}
+        except Exception:
+            pass
+
+        source_dist = {}
+        try:
+            cur.execute("SELECT invite_source, COUNT(*) FROM mt_eigenflux_invite_log GROUP BY 1")
+            source_dist = {r[0]: r[1] for r in cur.fetchall()}
+        except Exception:
+            pass
+
+        recent = []
+        try:
+            cur.execute("""
+                SELECT invite_id, expert_name, expert_domain, invite_source,
+                       invite_status, COALESCE(retry_count, 0) AS retry_count,
+                       last_retry_at, invited_at
+                FROM mt_eigenflux_invite_log
+                ORDER BY invited_at DESC LIMIT 20
+            """)
+            recent = [dict(r) for r in cur.fetchall()]
+        except Exception:
+            pass
+
+        pending_count = 0
+        try:
+            cur.execute("SELECT COUNT(*) FROM eigenflux_registrations WHERE registration_status='pending_invite'")
+            pending_count = cur.fetchone()[0]
+        except Exception:
+            pass
+
+        retry_summary = {}
+        try:
+            cur.execute("""
+                SELECT COALESCE(retry_count, 0) AS rc, COUNT(*)
+                FROM mt_eigenflux_invite_log GROUP BY rc ORDER BY rc
+            """)
+            retry_summary = {str(r[0]): r[1] for r in cur.fetchall()}
+        except Exception:
+            pass
+
+        conn.close()
+        return jsonify({
+            "success": True,
+            "status_distribution": status_dist,
+            "source_distribution": source_dist,
+            "retry_summary": retry_summary,
+            "pending_invite_count": pending_count,
+            "recent_invites": recent,
+        })
+    except Exception as e:
+        return jsonify({"success": False, "msg": str(e)}), 500
+
+
+@andromeda_bp.route('/invite/batch', methods=['POST'])
+def api_invite_batch():
+    """批量邀请: {count, domain, source} — 同步执行 (纯 INSERT, 秒级)"""
+    try:
+        payload = request.get_json(silent=True) or {}
+        count = payload.get("count", 5)
+        domain = payload.get("domain")
+        source = payload.get("source", "SA_BATCH_INVITE")
+
+        sys.path.insert(0, os.path.join(str(PROJECT_ROOT), "engines"))
+        from ai_auto_hire_engine import batch_invite
+        result = batch_invite(count=count, domain=domain, source=source)
+
+        return jsonify({"success": True, "result": result})
+    except Exception as e:
+        return jsonify({"success": False, "msg": str(e)}), 500
+
+
+@andromeda_bp.route('/invite/retry', methods=['POST'])
+def api_invite_retry():
+    """邀请重试: {max_retry} — 非 ACCEPTED 且未达上限的重发一轮"""
+    try:
+        payload = request.get_json(silent=True) or {}
+        max_retry = payload.get("max_retry", 3)
+
+        sys.path.insert(0, os.path.join(str(PROJECT_ROOT), "engines"))
+        from ai_auto_hire_engine import retry_pending_invites
+        result = retry_pending_invites(max_retry=max_retry)
+
+        return jsonify({"success": True, "result": result})
+    except Exception as e:
+        return jsonify({"success": False, "msg": str(e)}), 500
+
+
+@andromeda_bp.route('/invite/mutual_stats', methods=['GET'])
+def api_invite_mutual_stats():
+    """好友互推统计: 基于 mt_ai_eigenflux_connections 二度好友推荐数据"""
+    try:
+        conn = _invite_db_conn()
+        cur = conn.cursor()
+
+        total = connected = 0
+        try:
+            cur.execute("SELECT COUNT(*) FROM mt_ai_eigenflux_connections")
+            total = cur.fetchone()[0]
+            cur.execute("SELECT COUNT(*) FROM mt_ai_eigenflux_connections WHERE handshake_state='CONNECTED'")
+            connected = cur.fetchone()[0]
+        except Exception:
+            pass
+
+        relation_dist = {}
+        try:
+            cur.execute("SELECT relation_level, COUNT(*) FROM mt_ai_eigenflux_connections GROUP BY 1")
+            relation_dist = {r[0]: r[1] for r in cur.fetchall()}
+        except Exception:
+            pass
+
+        friend_recommended = 0
+        try:
+            cur.execute("""
+                SELECT COUNT(*) FROM mt_ai_eigenflux_connections
+                WHERE shared_topics_json LIKE '%friend_recommendation%'
+            """)
+            friend_recommended = cur.fetchone()[0]
+        except Exception:
+            pass
+
+        recent_24h = 0
+        try:
+            cur.execute("""
+                SELECT COUNT(*) FROM mt_ai_eigenflux_connections
+                WHERE created_at >= datetime('now', '-1 day')
+            """)
+            recent_24h = cur.fetchone()[0]
+        except Exception:
+            pass
+
+        avg_strength = 0.0
+        try:
+            cur.execute("SELECT AVG(strength) FROM mt_ai_eigenflux_connections WHERE handshake_state='CONNECTED'")
+            v = cur.fetchone()[0]
+            avg_strength = round(float(v), 3) if v is not None else 0.0
+        except Exception:
+            pass
+
+        conn.close()
+        return jsonify({
+            "success": True,
+            "total_connections": total,
+            "connected": connected,
+            "relation_level_distribution": relation_dist,
+            "friend_recommended": friend_recommended,
+            "friend_recommendation_ratio": round(friend_recommended / total, 3) if total else 0.0,
+            "new_connections_24h": recent_24h,
+            "avg_connected_strength": avg_strength,
+        })
+    except Exception as e:
+        return jsonify({"success": False, "msg": str(e)}), 500

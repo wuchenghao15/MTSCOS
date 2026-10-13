@@ -419,6 +419,28 @@
         <div id="efPendingList" style="margin-top:8px; max-height:80px; overflow-y:auto; font-size:11px;"></div>
     </div>
 
+    <!-- 面板 8: 邀请中心 (v22.17.0 flow_sa_ai_invite_enhance_20261013) -->
+    <div class="sa-panel">
+        <h2><i class="fa-solid fa-paper-plane"></i>邀请中心</h2>
+        <div class="sa-row"><span class="k">邀请状态分布</span><span class="v" id="invStatusDist" style="font-size:11px;">—</span></div>
+        <div class="sa-row"><span class="k">待邀请 (pending)</span><span class="v" id="invPendingCount" style="color:#fca5a5;">—</span></div>
+        <div class="sa-row"><span class="k">互推连接占比</span><span class="v" id="invMutualRatio">—</span></div>
+        <div class="sa-row"><span class="k">近 24h 新连接</span><span class="v" id="invNew24h">—</span></div>
+        <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap;">
+            <button id="invBatchBtn" class="chip on" style="cursor:pointer; padding:8px 14px; font-size:12px; border:none;">
+                <i class="fa-solid fa-layer-group"></i> 批量邀请×5
+            </button>
+            <button id="invRetryBtn" class="chip on" style="cursor:pointer; padding:8px 14px; font-size:12px; border:none; background:rgba(255,255,255,0.1);">
+                <i class="fa-solid fa-rotate-left"></i> 邀请重试
+            </button>
+            <button id="invStatsBtn" class="chip on" style="cursor:pointer; padding:8px 14px; font-size:12px; border:none; background:rgba(255,255,255,0.1);">
+                <i class="fa-solid fa-chart-simple"></i> 互推统计
+            </button>
+        </div>
+        <div id="invActionStatus" style="margin-top:10px; font-size:12px; color:var(--sa-text-dim);"></div>
+        <div id="invRecentList" style="margin-top:8px; max-height:90px; overflow-y:auto; font-size:11px;"></div>
+    </div>
+
 </div>
 
 {% else %}
@@ -637,7 +659,87 @@
         }).catch(function(){});
     }
 
-    function loadAll(){ loadAndromedaPool(); loadAIEmployees(); loadEigenfluxPending(); }
+    function loadAll(){ loadAndromedaPool(); loadAIEmployees(); loadEigenfluxPending(); loadInviteCenter(); }
+
+    // ═══ 面板 8: 邀请中心 (v22.17.0) ═══
+    function loadInviteCenter(){
+        fetch('/api/andromeda/invite/status', {cache:'no-store'}).then(r=>r.json()).then(function(d){
+            if(!d.success) return;
+            var dist = Object.entries(d.status_distribution || {});
+            get('invStatusDist').innerHTML = dist.map(function(x){
+                var cls = x[0]==='ACCEPTED' ? 'color:#6ee7b7;' : (x[0]==='PENDING' ? 'color:#fca5a5;' : (x[0]==='RETRYING' ? 'color:#fbbf24;' : ''));
+                return '<span style="'+cls+'">'+x[0]+': '+x[1]+'</span>';
+            }).join(' · ') || '—';
+            get('invPendingCount').textContent = d.pending_invite_count || 0;
+            var recent = d.recent_invites || [];
+            get('invRecentList').innerHTML = recent.slice(0,8).map(function(p){
+                var icon = p.invite_status==='ACCEPTED' ? '<span style="color:#6ee7b7;">✓</span>'
+                         : (p.invite_status==='PENDING' ? '<span style="color:#fca5a5;">⏳</span>' : '<span style="color:#fbbf24;">↻</span>');
+                return '<div style="padding:1px 0;">'+icon+' ' + p.expert_name +
+                    ' <span style="opacity:0.6;">(' + p.invite_status + ' · 重试' + (p.retry_count||0) + ')</span></div>';
+            }).join('') || '<div style="opacity:0.6;">暂无邀请记录</div>';
+        }).catch(function(){});
+        fetch('/api/andromeda/invite/mutual_stats', {cache:'no-store'}).then(r=>r.json()).then(function(d){
+            if(!d.success) return;
+            get('invMutualRatio').textContent = ((d.friend_recommendation_ratio||0)*100).toFixed(1) + '% (' + (d.friend_recommended||0) + '/' + (d.total_connections||0) + ')';
+            get('invNew24h').textContent = (d.new_connections_24h||0) + ' 条 (均强度 ' + (d.avg_connected_strength||0) + ')';
+        }).catch(function(){});
+    }
+
+    function invAct(btn, url, body, loading, okfmt){
+        var status = get('invActionStatus');
+        btn.disabled = true;
+        var orig = btn.innerHTML;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> ' + loading;
+        fetch(url, {
+            method:'POST', credentials:'same-origin',
+            headers:{'Content-Type':'application/json'},
+            body: JSON.stringify(body || {})
+        }).then(function(r){ return r.json(); }).then(function(d){
+            if(d.success){
+                status.innerHTML = '✅ ' + okfmt(d.result || {});
+                loadInviteCenter();
+                setTimeout(loadEigenfluxPending, 1000);
+            } else {
+                status.innerHTML = '❌ ' + (d.msg||'失败');
+            }
+            btn.disabled = false;
+            btn.innerHTML = orig;
+        }).catch(function(err){
+            status.innerHTML = '❌ ' + err.message;
+            btn.disabled = false;
+            btn.innerHTML = orig;
+        });
+    }
+
+    var invBatchBtn = get('invBatchBtn');
+    if(invBatchBtn){
+        invBatchBtn.addEventListener('click', function(){
+            invAct(invBatchBtn, '/api/andromeda/invite/batch', {count:5, source:'SA_DASHBOARD'},
+                '批量邀请中…', function(r){ return '批量邀请完成: 创建 ' + r.created + '/' + r.requested + ' 条 (domain=' + r.domain + ')'; });
+        });
+    }
+    var invRetryBtn = get('invRetryBtn');
+    if(invRetryBtn){
+        invRetryBtn.addEventListener('click', function(){
+            invAct(invRetryBtn, '/api/andromeda/invite/retry', {max_retry:3},
+                '重试中…', function(r){ return '重试完成: ' + r.retried + ' 条, 接受 ' + r.accepted + ' 条'; });
+        });
+    }
+    var invStatsBtn = get('invStatsBtn');
+    if(invStatsBtn){
+        invStatsBtn.addEventListener('click', function(){
+            invStatsBtn.disabled = true;
+            fetch('/api/andromeda/invite/mutual_stats', {cache:'no-store'}).then(r=>r.json()).then(function(d){
+                var status = get('invActionStatus');
+                if(d.success){
+                    status.innerHTML = '📊 互推统计: 总连接 <b>' + d.total_connections + '</b> · CONNECTED <b>' + d.connected +
+                        '</b> · 互推来源 <b>' + d.friend_recommended + '</b> (' + ((d.friend_recommendation_ratio||0)*100).toFixed(1) + '%) · 24h 新增 <b>' + d.new_connections_24h + '</b>';
+                } else { status.innerHTML = '❌ 统计失败'; }
+            }).catch(function(err){ get('invActionStatus').innerHTML = '❌ ' + err.message; });
+            invStatsBtn.disabled = false;
+        });
+    }
 
     // Hire 按钮
     var hireBtn = get('andromedaHireBtn');
