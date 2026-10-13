@@ -131,9 +131,11 @@ CREATE TABLE IF NOT EXISTS mt_copy_consistency_log (
   issue_type TEXT NOT NULL,
   severity TEXT NOT NULL DEFAULT 'medium',
   description TEXT,
+  suggestion TEXT,
   auto_fix_status TEXT DEFAULT 'pending',
   fixed_content TEXT,
   created_at TEXT,
+  updated_at TEXT,
   FOREIGN KEY (project_id) REFERENCES mt_copy_projects(project_id) ON DELETE CASCADE
 );
 
@@ -157,6 +159,37 @@ CREATE INDEX IF NOT EXISTS idx_copy_rag_project ON mt_copy_rag_inject_log(projec
 CREATE INDEX IF NOT EXISTS idx_copy_projects_init ON mt_copy_projects(initiator, status);
 
 -- v26.0 P3 daemon 日志表 (统一由 ensure_schema 管理, 避免 daemon 分散 CREATE)
+CREATE TABLE IF NOT EXISTS mt_copy_chapter_versions (
+  version_id TEXT PRIMARY KEY,
+  chapter_id TEXT NOT NULL,
+  version_no INTEGER NOT NULL DEFAULT 1,
+  content TEXT,
+  actual_words INTEGER DEFAULT 0,
+  trigger_type TEXT NOT NULL DEFAULT 'auto',  -- auto_write / polish / manual_restore / manual_edit
+  ai_worker_role TEXT,
+  note TEXT,
+  created_at TEXT,
+  FOREIGN KEY (chapter_id) REFERENCES mt_copy_chapters(chapter_id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_copy_versions_chapter ON mt_copy_chapter_versions(chapter_id, version_no);
+
+-- v26.0 Step4: Embedding RAG 向量块表
+CREATE TABLE IF NOT EXISTS mt_copy_chunks (
+  chunk_id TEXT PRIMARY KEY,
+  project_id TEXT NOT NULL,
+  chapter_id TEXT NOT NULL,
+  chunk_idx INTEGER NOT NULL DEFAULT 0,
+  chunk_text TEXT,
+  embedding_json TEXT,          -- JSON array of float, nomic-embed-text = 768-dim
+  embed_model TEXT DEFAULT '',  -- nomic-embed-text / fastembed_tfidf_fallback
+  tokens_estimate INTEGER DEFAULT 0,
+  created_at TEXT,
+  FOREIGN KEY (project_id) REFERENCES mt_copy_projects(project_id) ON DELETE CASCADE,
+  FOREIGN KEY (chapter_id) REFERENCES mt_copy_chapters(chapter_id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_copy_chunks_project ON mt_copy_chunks(project_id);
+CREATE INDEX IF NOT EXISTS idx_copy_chunks_chapter ON mt_copy_chunks(chapter_id, chunk_idx);
+
 CREATE TABLE IF NOT EXISTS mt_copy_learning_log (
   log_id INTEGER PRIMARY KEY AUTOINCREMENT,
   patterns_json TEXT,
@@ -192,11 +225,19 @@ def _existing_columns(conn: sqlite3.Connection, table: str) -> set:
 
 @db_retry()
 def ensure_schema(db_path: Optional[Path | str] = None) -> None:
-    """幂等迁移. 每次都跑 CREATE TABLE IF NOT EXISTS (天然幂等)."""
+    """幂等迁移. 每次都跑 CREATE TABLE IF NOT EXISTS (天然幂等) + 已知 ALTER."""
     path = str(Path(db_path) if db_path else DB_PATH)
     with _LOCK:
         with get_conn(path) as conn:
             conn.executescript(SCHEMA)
+            # v26.0 Step5: mt_copy_consistency_log.suggestion (老库无此列时 ALTER)
+            try:
+                cols = [r[1] for r in conn.execute("PRAGMA table_info(mt_copy_consistency_log)").fetchall()]
+                for col in ('suggestion', 'updated_at'):
+                    if col not in cols:
+                        conn.execute(f"ALTER TABLE mt_copy_consistency_log ADD COLUMN {col} TEXT")
+            except Exception:
+                pass
         _MIGRATED.add(path)
 
 

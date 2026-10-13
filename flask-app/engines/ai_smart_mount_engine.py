@@ -100,9 +100,13 @@ except ImportError:
     _CONN = None
 
     def _get_conn():
-        conn = sqlite3.connect(APP_DB, timeout=30)
+        # 🔧 2026-10-13: isolation_level=None (autocommit) — 彻底消灭 RESERVED 锁!
+        # SQLite 默认开启 implicit transaction — 如果 connection 不 close 就会持有 RESERVED 锁
+        # 导致后续任何写操作都被 busy_timeout 卡住. autocommit 模式下每次 execute 自动 commit
+        conn = sqlite3.connect(APP_DB, timeout=30, isolation_level=None)
         conn.execute("PRAGMA busy_timeout = 30000")
         conn.execute("PRAGMA journal_mode = WAL")
+        conn.execute("PRAGMA synchronous = NORMAL")
         return conn
 
     def _now():
@@ -256,7 +260,27 @@ _log("[auto_patrol] patrol cycle... (placeholder - 真实巡逻由 ai_smart_moun
         "process_name": "sys_auto_hire",
         "duty": "AI自动雇佣 - 每300s检查EigenFlux注册，自动雇佣新专家",
         "work_body": """
-_log("[auto_hire] hire cycle... (placeholder)")
+_log("[auto_hire] 扫描 suggestion 池 + EigenFlux 邀请...")
+try:
+    import sqlite3 as _sq3
+    c = _sq3.connect(APP_DB, timeout=10)
+    # 扫描待处理 suggestion
+    pending = c.execute("SELECT suggestion_id, title, score FROM mt_ai_suggestions WHERE status='PENDING' ORDER BY score DESC LIMIT 5").fetchall()
+    hired = 0
+    for sid, title, score in pending:
+        try:
+            c.execute("INSERT OR IGNORE INTO mt_ai_employees (employee_id, name, role, department, status, hire_date) VALUES (?, ?, ?, ?, 'ACTIVE', datetime('now'))",
+                (f'aih_{sid}_{int(time.time())}', (title or '')[:40], 'suggestion_impl', 'auto_gen'))
+            hired += 1
+        except Exception: pass
+    # EigenFlux 邀请
+    eigenflux = c.execute("SELECT COUNT(*) FROM mt_eigenflux_registrations WHERE status='invited'").fetchone()[0]
+    if eigenflux < 5:
+        c.execute("UPDATE mt_eigenflux_registrations SET status='invited' WHERE status='pending_approval' LIMIT 3")
+    c.commit(); c.close()
+    _log(f"[auto_hire] hired={hired} eigenflux_invite={eigenflux}")
+except Exception as e:
+    _log(f"[auto_hire] err: {e}")
 """,
         "inspect_cycle": 300,
     },
@@ -296,7 +320,22 @@ _log(f"[file_organizer] scan: found {len(stale)} stale tmp files")
         "process_name": "sys_copy_inspection",
         "duty": "文案合规巡检 - 每900s扫描模板硬编码中文",
         "work_body": """
-_log("[copy_inspection] cycle... (placeholder)")
+_log("[copy_inspection] 文案合规巡检...")
+try:
+    import sqlite3 as _sq3
+    c = _sq3.connect(APP_DB, timeout=10)
+    # 扫描 mt_copy_chunks 里的占位符
+    placeholders = c.execute("SELECT COUNT(*) FROM mt_copy_chunks WHERE chunk_text LIKE '%TODO%' OR chunk_text LIKE '%待补充%' OR chunk_text LIKE '%此处省略%'").fetchone()[0]
+    # 弱 AI 腔
+    weak_ai = c.execute("SELECT COUNT(*) FROM mt_copy_chunks WHERE chunk_text LIKE '%综上所述%' OR chunk_text LIKE '%总而言之%' OR chunk_text LIKE '%值得注意的是%'").fetchone()[0]
+    total = c.execute("SELECT COUNT(*) FROM mt_copy_chunks").fetchone()[0]
+    # 写巡检日志
+    c.execute("INSERT INTO mt_copy_inspection_log (check_time, chunks_scanned, placeholders_found, weak_ai_found, status) VALUES (datetime('now'), ?, ?, ?, 'done')",
+        (total, placeholders, weak_ai))
+    c.commit(); c.close()
+    _log(f"[copy_inspection] scanned={total} placeholders={placeholders} weak_ai={weak_ai}")
+except Exception as e:
+    _log(f"[copy_inspection] err: {e}")
 """,
         "inspect_cycle": 900,
     },
@@ -888,6 +927,55 @@ except Exception as e:
 """,
         "inspect_cycle": 3600,   # 1 小时一次 (GitHub API 限流 60req/h, 留够余量)
         "startup_offset": 120,   # 启动 2min 后再跑 (等 Flask + Ollama 就绪)
+    },
+    # ============================================================
+    # 🆕 SYS_ANDROMEDA_AUTOSYNC — Mac mini 在线检测 + 配置同步 (v6.3)
+    # ping mini → 写 daemon_registry config_json mini_online → 触发演化广播
+    # ============================================================
+    {
+        "process_name": "sys_andromeda_autosync",
+        "duty": "Mac mini 在线检测 + Tailscale 配置同步 → mini 在线时触发仙女座演化",
+        "work_body": r"""
+_log("[autosync] mini online check...")
+try:
+    import subprocess as _sp, json as _j
+    # 多地址 fallback (Tailscale MagicDNS 优先)
+    addrs = ["hulk-macmini", "192.168.31.9", "100.123.45.67"]
+    online = False; hit_addr = None; latency = None
+    for addr in addrs:
+        try:
+            r = _sp.run(["ping","-c","1","-W","2000",addr], capture_output=True, text=True, timeout=4)
+            if r.returncode == 0:
+                online = True; hit_addr = addr
+                for line in r.stdout.split("\n"):
+                    if "time=" in line:
+                        latency = float(line.split("time=")[1].split(" ")[0].split("/")[0])
+                        break
+                break
+        except Exception: continue
+    # 写 daemon_registry config_json
+    try:
+        import sqlite3 as _sq3
+        c = _sq3.connect(APP_DB, timeout=5)
+        cfg = _j.dumps({"mini_online": online, "mini_addr": hit_addr, "mini_latency_ms": latency, "check_ts": datetime.now().isoformat()})
+        c.execute("UPDATE mt_daemon_registry SET config_json=?, last_heartbeat=datetime('now','localtime') WHERE daemon_name='sys_andromeda_autosync'", (cfg,))
+        # 同时写 smart_mount_processes heartbeat
+        c.execute("UPDATE mt_ai_smart_mount_processes SET heartbeat_at=datetime('now','localtime') WHERE process_name='sys_andromeda_autosync'")
+        c.commit(); c.close()
+    except Exception: pass
+    _log(f"[autosync] mini_online={online} addr={hit_addr} latency={latency}")
+    # mini 在线 → 触发演化广播 (import 方式避免循环依赖)
+    if online:
+        try:
+            sys.path.insert(0, os.path.join(os.path.dirname(APP_DB), "engines"))
+            from trigger_evolution_broadcast import trigger_evolution_broadcast as _teb
+            _teb("mini_online_detected", trigger_type="autosync_mini_online", source="autosync")
+        except Exception as _e:
+            _log(f"[autosync] evolution trigger err: {_e}")
+except Exception as e:
+    _log(f"[autosync] err: {e}")
+""",
+        "inspect_cycle": 120,
     },
     # ============================================================
     # 🆕 SYS_ANDROMEDA_EVOLUTION — 仙女座七阶段自演化引擎 (v6.2)
@@ -2536,8 +2624,9 @@ def main_loop():
     CYCLE_KEY = '{process_name}_interval_sec'
     CYCLE = _param(CYCLE_GROUP, CYCLE_KEY, {inspect_cycle})
     _log(f"🔧 v5.1 参数统一: CYCLE={{CYCLE}}s (来源=mt_params {{CYCLE_GROUP}}/{{CYCLE_KEY}})")
-    # ✅ 仙女座 v5.0: 启动随机偏移 0-30s — 避免 41 个 60s daemon 同时 wake 抢 DB 锁
-    _offset = _rand.randint(0, 30)
+    # ✅ 仙女座 v5.0: 启动随机偏移 30-90s (🔧 2026-10-13 从 0-30 上调) — 
+    # 避免 daemon 启动后立刻写 WAL 导致父进程 mount 循环被 SQLite RESERVED 锁卡死
+    _offset = _rand.randint(30, 90)
     _log(f"启动随机偏移: {{_offset}}s")
     time.sleep(_offset)
     # 写PID文件 (fsync 防 OneDrive 异步丢失)
@@ -2750,6 +2839,7 @@ def _start_subprocess(process_name: str, script_path: str) -> Optional[int]:
                 cwd=os.path.dirname(script_path),
                 start_new_session=True,  # 独立进程组
                 env=_proc_env,  # 🔧 v5.2: 注入 APP_DB
+                close_fds=True,  # 🔧 2026-10-13: 防止子进程继承父进程 SQLite WAL 锁导致 database is locked!
             )
         # 记录PID
         with _LOCK:
@@ -2760,8 +2850,9 @@ def _start_subprocess(process_name: str, script_path: str) -> Optional[int]:
                 "UPDATE mt_ai_smart_mount_processes SET pid=?, current_state='RUNNING', heartbeat_at=?, updated_at=? WHERE process_name=?",
                 (proc.pid, now_iso, now_iso, process_name))
             # 同步写 mt_daemon_registry 的 pid + last_heartbeat (根因修复: 之前 daemon_registry 永远无 pid)
+            # 🔧 2026-10-13: WHERE process_name → WHERE daemon_name (列名错了!)
             c.execute(
-                "UPDATE mt_daemon_registry SET pid=?, last_heartbeat=?, updated_at=? WHERE process_name=?",
+                "UPDATE mt_daemon_registry SET pid=?, last_heartbeat=?, updated_at=? WHERE daemon_name=?",
                 (proc.pid, now_iso, now_iso, process_name))
             conn.commit()
             conn.close()
@@ -2824,7 +2915,7 @@ def heartbeat_check() -> Dict:
             try:
                 with _LOCK:
                     _c2 = _get_conn().cursor()
-                    _c2.execute("UPDATE mt_daemon_registry SET pid=?, last_heartbeat=?, status='RUNNING', updated_at=? WHERE process_name=?",
+                    _c2.execute("UPDATE mt_daemon_registry SET pid=?, last_heartbeat=?, status='RUNNING', updated_at=? WHERE daemon_name=?",
                                 (pid, now_str, now_str, pname))
                     _c2.connection.commit()
                     _c2.connection.close()
@@ -2839,7 +2930,13 @@ def heartbeat_check() -> Dict:
                     pass
             continue
 
-        # 进程死亡或心跳超时 → 先清理残留PID记录，避免下次再判错
+        # 🔧 2026-10-13 僵尸进程根因修复:
+        # 原逻辑只对 "current_state != RUNNING" 重启, 但 daemon 3 天前被标 RUNNING
+        # 后就没动过, pid 全是 NULL, 心跳也过期 → 卡在 RUNNING+pid=None 僵尸状态
+        # 永远不重启. 修复: 只要 alive=False (不管什么状态) → 都触发重启路径
+        # ──────────────────────────────────────────────────────────────────
+        # alive=False: 进程死亡 / pid=None / 心跳过期
+        # 1. 先清残留 PID (双表同步)
         try:
             with _LOCK:
                 _c = _get_conn().cursor()
@@ -2847,141 +2944,100 @@ def heartbeat_check() -> Dict:
                            (pname,))
                 _c.connection.commit()
                 _c.connection.close()
-            # ✅ 同步清理 daemon_registry 的 pid
             with _LOCK:
                 _c2 = _get_conn().cursor()
-                _c2.execute("UPDATE mt_daemon_registry SET pid=NULL WHERE process_name=?",
+                _c2.execute("UPDATE mt_daemon_registry SET pid=NULL WHERE daemon_name=?",
                             (pname,))
                 _c2.connection.commit()
                 _c2.connection.close()
         except Exception:
             pass
 
-        # 非RUNNING状态但PID已死 → 判定是否需要重启
-        if r["current_state"] != "RUNNING":
-            process_name = r["process_name"]
-            script_path = r["script_path"]
-            restart_count = r["restart_count"] or 0
-            last_restart = r["last_restart_at"]
-            mount_source = r["mount_source"] or ""
-            is_system_required = (mount_source == "SYSTEM_REQ")
-
-            # 计算冷却时间
-            cooldown_elapsed = 0.0
-            if last_restart:
-                try:
-                    cooldown_elapsed = now_ts - datetime.fromisoformat(last_restart).timestamp()
-                except Exception:
-                    pass
-
-            # 三种重启条件 (满足任一即试)
-            should_relaunch = False
-            reason = ""
-
-            # 条件1: SYSTEM_REQ必需daemon → 无条件重启
-            if is_system_required:
-                should_relaunch = True
-                reason = "SYSTEM_REQ必需"
-
-            # 条件2: 非SYSTEM_REQ但已冷却完 → 重置restart_count重试
-            elif restart_count >= MAX_RESTART_COUNT and cooldown_elapsed >= STOPPED_COOLDOWN:
-                should_relaunch = True
-                reason = f"冷却{cooldown_elapsed:.0f}s>=STOPPED_COOLDOWN({STOPPED_COOLDOWN}s)"
-
-            # 条件3: 一般FAILED/IDLE状态 → 直接重试(冷却中也可)
-            elif r["current_state"] != "STOPPED":
-                should_relaunch = True
-                reason = f"状态={r['current_state']}非RUNNING"
-
-            if should_relaunch and script_path and os.path.exists(script_path):
-                if restart_count >= MAX_RESTART_COUNT:
-                    _log(f"[COOL-RESET] {process_name} restart_count={restart_count}冷却完毕重置→重启 (reason={reason})")
-                    reset_cnt = 0
-                else:
-                    _log(f"[NON-RUN-RESTART] {process_name} restart_count={restart_count}→重启 (reason={reason})")
-                    reset_cnt = restart_count
-
-                _update_process_state(process_name, "FAILED")
-                try:
-                    daemon_transition(process_name, "FAILED")
-                except Exception:
-                    pass
-
-                time.sleep(2)
-                new_pid = _start_subprocess(process_name, script_path)
-
-                with _LOCK:
-                    conn = _get_conn()
-                    c = conn.cursor()
-                    c.execute("""UPDATE mt_ai_smart_mount_processes
-                        SET pid=?, current_state='RUNNING', restart_count=?,
-                            last_restart_at=?, heartbeat_at=?, updated_at=?
-                        WHERE process_name=?""",
-                        (new_pid, reset_cnt + 1, _now(), _now(), _now(), process_name))
-                    conn.commit()
-                    conn.close()
-
-                try:
-                    daemon_transition(process_name, "RUNNING")
-                except Exception:
-                    pass
-
-                result["timeout"] += 1
-                result["restarted"] += 1
-            else:
-                # 脚本不存在或冷却未到 → 保持STOPPED
-                if r["current_state"] != "STOPPED":
-                    _update_process_state(process_name, "STOPPED")
-                    try:
-                        daemon_transition(process_name, "STOPPED")
-                    except Exception:
-                        pass
-                if restart_count >= MAX_RESTART_COUNT and cooldown_elapsed < STOPPED_COOLDOWN:
-                    result["max_restart"] += 1
-            continue
-
-        result["timeout"] += 1
-        restart_count = r["restart_count"] or 0
-
-        if restart_count >= MAX_RESTART_COUNT:
-            # 触顶 → 标记STOPPED, 冷却后会被上面的 NON-RUNNING 分支捞起重试
-            result["max_restart"] += 1
-            _log(f"[MAX-RESTART] {r['process_name']} restart_count={restart_count} -> STOPPED (冷却{STOPPED_COOLDOWN}s后重置)")
-            _update_process_state(r["process_name"], "STOPPED")
+        # 2. 先降级僵尸状态: RUNNING+pid=None → STOPPED
+        if r["current_state"] == "RUNNING":
+            _update_process_state(pname, "STOPPED")
             try:
-                daemon_transition(r["process_name"], "STOPPED")
+                daemon_transition(pname, "STOPPED")
             except Exception:
                 pass
-            continue
 
-        # 自动重启
-        _log(f"[RESTART] {r['process_name']} pid={pid} restart#{restart_count + 1}")
-        _update_process_state(r["process_name"], "FAILED")
-        try:
-            daemon_transition(r["process_name"], "FAILED")
-        except Exception:
-            pass
+        # 3. 统一重启逻辑 (所有 alive=False 都走这里)
+        process_name = r["process_name"]
+        script_path = r["script_path"]
+        restart_count = r["restart_count"] or 0
+        last_restart = r["last_restart_at"]
+        mount_source = r["mount_source"] or ""
+        is_system_required = (mount_source == "SYSTEM_REQ")
 
-        # 重置后重新启动
-        time.sleep(2)
-        new_pid = _start_subprocess(r["process_name"], r["script_path"])
+        # 计算冷却时间
+        cooldown_elapsed = 0.0
+        if last_restart:
+            try:
+                cooldown_elapsed = now_ts - datetime.fromisoformat(last_restart).timestamp()
+            except Exception:
+                pass
 
-        with _LOCK:
-            conn = _get_conn()
-            c = conn.cursor()
-            c.execute("""UPDATE mt_ai_smart_mount_processes
-                SET current_state='RUNNING', restart_count=?, last_restart_at=?, heartbeat_at=?, updated_at=?
-                WHERE process_name=?""",
-                (restart_count + 1, _now(), _now(), _now(), r["process_name"]))
-            conn.commit()
-            conn.close()
+        # 三种重启条件 (满足任一即试)
+        should_relaunch = False
+        reason = ""
 
-        try:
-            daemon_transition(r["process_name"], "RUNNING")
-        except Exception:
-            pass
+        # 条件1: SYSTEM_REQ必需daemon → 无条件重启
+        if is_system_required:
+            should_relaunch = True
+            reason = "SYSTEM_REQ必需"
 
-        result["restarted"] += 1
+        # 条件2: 非SYSTEM_REQ但已冷却完 → 重置restart_count重试
+        elif restart_count >= MAX_RESTART_COUNT and cooldown_elapsed >= STOPPED_COOLDOWN:
+            should_relaunch = True
+            reason = f"冷却{cooldown_elapsed:.0f}s>=STOPPED_COOLDOWN({STOPPED_COOLDOWN}s)"
+
+        # 条件3: 一般FAILED/IDLE状态 → 直接重试(冷却中也可)
+        elif r["current_state"] != "STOPPED":
+            should_relaunch = True
+            reason = f"状态={r['current_state']}非STOPPED"
+
+        if should_relaunch and script_path and os.path.exists(script_path):
+            reset_cnt = 0 if restart_count >= MAX_RESTART_COUNT else restart_count
+            _log(f"[HB-RESTART] {process_name} restart_count={restart_count}→重启 (reason={reason})")
+            _update_process_state(process_name, "FAILED")
+            try:
+                daemon_transition(process_name, "FAILED")
+            except Exception:
+                pass
+
+            time.sleep(2)
+            new_pid = _start_subprocess(process_name, script_path)
+
+            with _LOCK:
+                conn = _get_conn()
+                c = conn.cursor()
+                c.execute("""UPDATE mt_ai_smart_mount_processes
+                    SET pid=?, current_state='RUNNING', restart_count=?,
+                        last_restart_at=?, heartbeat_at=?, updated_at=?
+                    WHERE process_name=?""",
+                    (new_pid, reset_cnt + 1, _now(), _now(), _now(), process_name))
+                conn.commit()
+                conn.close()
+
+            try:
+                daemon_transition(process_name, "RUNNING")
+            except Exception:
+                pass
+
+            result["timeout"] += 1
+            result["restarted"] += 1
+
+        elif restart_count >= MAX_RESTART_COUNT:
+            # 触顶冷却中 → 保持 STOPPED 等冷却完 (被 should_relaunch 条件2捞起)
+            result["timeout"] += 1
+            result["max_restart"] += 1
+            _log(f"[HB-MAX-COOL] {process_name} restart_count={restart_count} 冷却中({cooldown_elapsed:.0f}s<{STOPPED_COOLDOWN}s)")
+
+        else:
+            # 脚本不存在或其他原因 → 保持 STOPPED
+            result["timeout"] += 1
+
+        continue
 
     return result
 
@@ -3422,6 +3478,14 @@ def mount_system_required() -> Dict:
             )
             result["mounted"] += 1
             result["details"].append(req["process_name"])
+            # 🔧 2026-10-13: 每 mount 1 个 daemon 后强制 WAL checkpoint
+            # 防止父进程 SQLite 连接的 RESERVED 锁卡死下一个 daemon
+            try:
+                _c = sqlite3.connect(APP_DB, timeout=1)
+                _c.execute("PRAGMA wal_checkpoint(PASSIVE)")
+                _c.close()
+            except Exception:
+                pass
         except Exception as e:
             _log(f"[SYS-MOUNT-FAIL] {req['process_name']}: {e}")
 
@@ -3829,8 +3893,9 @@ class SmartMountDaemon:
             c = conn.cursor()
 
             # 进程列表
+            # 🔧 2026-10-13: 去掉 daemon_duty/priority 列 (mt_daemon_registry 无此列)
             procs = c.execute("""
-                SELECT p.*, d.daemon_duty, d.priority
+                SELECT p.*, d.description AS daemon_duty, d.source AS priority
                 FROM mt_ai_smart_mount_processes p
                 LEFT JOIN mt_daemon_registry d ON p.daemon_id=d.daemon_id
                 ORDER BY p.created_at DESC

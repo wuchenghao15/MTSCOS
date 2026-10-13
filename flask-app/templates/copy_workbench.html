@@ -112,6 +112,13 @@
   .cs-preview h1,.cs-preview h2,.cs-preview h3{color:var(--constellation);margin:16px 0 8px;font-family:'Space Grotesk',sans-serif}
   .cs-preview p{margin-bottom:12px}
 
+  /* Editor tabs (Step2) */
+  .cs-tabs{display:none;gap:4px;padding:8px 14px 0;border-bottom:1px solid var(--ink-line)}
+  .cs-tab{padding:8px 18px;border:1px solid transparent;border-bottom:none;border-radius:8px 8px 0 0;
+    background:transparent;color:var(--ink-muted);cursor:pointer;font-family:inherit;font-size:0.78rem;transition:all .2s}
+  .cs-tab:hover{color:var(--iceberg)}
+  .cs-tab.active{background:rgba(127,179,213,0.1);border-color:var(--ink-line);color:var(--iceberg);margin-bottom:-1px}
+
   /* Right — creation form */
   .cs-field{margin-bottom:14px}
   .cs-field label{display:block;font-size:0.7rem;color:var(--ink-dim);letter-spacing:1px;margin-bottom:6px;font-family:'Space Grotesk',sans-serif;text-transform:uppercase}
@@ -217,11 +224,16 @@
         <div class="cs-panel-head" id="editorTitle">✍️ 编辑器 · 选择或创建项目</div>
         <div class="cs-editor-toolbar" id="editorToolbar" style="display:none">
           <button class="cs-btn primary" onclick="svc.generateOutline()"><span>🌌</span> 生成大纲</button>
+          <button class="cs-btn" onclick="svc.showOutline()"><span>👁️</span> 大纲预览</button>
           <button class="cs-btn" onclick="svc.addChapter()"><span>➕</span> 添加章节</button>
           <button class="cs-btn primary" onclick="svc.writeChapter()" {% if not ollama_ok %}disabled{% endif %}><span>🤖</span> AI 写此章</button>
           <button class="cs-btn gold" onclick="svc.polish()" {% if not ollama_ok %}disabled{% endif %}><span>✨</span> 润色</button>
           <button class="cs-btn" onclick="svc.runCheck()"><span>🔍</span> 自巡检</button>
           <button class="cs-btn gold" onclick="svc.submitApproval()"><span>📋</span> 提交审批</button>
+        </div>
+        <div class="cs-tabs" id="editorTabs">
+          <button class="cs-tab active" data-tab="text" onclick="svc.switchTab('text')">📝 正文</button>
+          <button class="cs-tab" data-tab="chars" onclick="svc.switchTab('chars')">👥 角色卡</button>
         </div>
         <div class="cs-editor-area" id="editorArea">
           <div style="padding:40px;text-align:center;color:var(--ink-muted)">
@@ -282,7 +294,11 @@
   const API = '/andromeda/api/copy_studio';
   const genre = '{{ genre }}';
   const ollamaOnline = {{ 'true' if ollama_ok else 'false' }};
-  let state = { projects:[], active:null, activeChapters:[], editingChapter:null };
+  let state = { projects:[], active:null, activeChapters:[], editingChapter:null, activeProject:null,
+                tab:'text', activeChars:[], editingChar:null };
+  const ROLE_LABELS = { protagonist:'主角', antagonist:'反派', supporting:'配角' };
+
+  const esc = s => (s||'').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 
   function toast(msg, ok=true){
     const t = document.createElement('div');
@@ -321,6 +337,7 @@
     async open(pid){
       state.active = pid;
       const p = await api('GET','/projects/'+pid);
+      state.activeProject = p;
       state.activeChapters = p.chapters || [];
       svc.render();
       svc.loadProjects();
@@ -328,11 +345,13 @@
     render(){
       const title = document.getElementById('editorTitle');
       const toolbar = document.getElementById('editorToolbar');
+      const tabs = document.getElementById('editorTabs');
       const area = document.getElementById('editorArea');
       const listEl = document.getElementById('chapterList');
       if(!state.active){
         title.textContent = '✍️ 编辑器 · 选择或创建项目';
         toolbar.style.display='none';
+        tabs.style.display='none';
         area.innerHTML = '<div style="padding:40px;text-align:center;color:var(--ink-muted)"><div style="font-size:3rem;margin-bottom:12px">📖</div>选择左侧已有项目开始编辑, 或在右侧创建新项目</div>';
         listEl.innerHTML = '<div style="color:var(--ink-muted);font-size:0.78rem;text-align:center;padding:16px">未选择项目</div>';
         return;
@@ -340,10 +359,13 @@
       const p = state.projects.find(x=>x.project_id===state.active) || {};
       title.textContent = '✍️ ' + p.title;
       toolbar.style.display='flex';
+      tabs.style.display='flex';
       // 章节列表
       if(!state.activeChapters.length){
         listEl.innerHTML = '<div style="color:var(--ink-muted);font-size:0.78rem;padding:12px">暂无章节, 点"➕ 添加章节"</div>';
-        area.innerHTML = '<div style="padding:40px;text-align:center;color:var(--ink-muted)"><div style="font-size:3rem;margin-bottom:12px">📝</div>请先添加章节</div>';
+        if(state.tab !== 'chars'){
+          area.innerHTML = '<div style="padding:40px;text-align:center;color:var(--ink-muted)"><div style="font-size:3rem;margin-bottom:12px">📝</div>请先添加章节</div>';
+        } else { svc.renderChars(); }
         return;
       }
       listEl.innerHTML = state.activeChapters.map((ch,i)=>`
@@ -355,13 +377,181 @@
             <span>${ch.actual_words||0}/${ch.target_words||0}</span>
           </div>
         </div>`).join('');
+      if(state.tab === 'chars') svc.renderChars();
+    },
+    setActiveTab(t){
+      state.tab = t;
+      document.querySelectorAll('#editorTabs .cs-tab').forEach(b=>b.classList.toggle('active', b.dataset.tab===t));
+    },
+    switchTab(t){
+      if(!state.active){ toast('请先选择项目', false); return; }
+      svc.setActiveTab(t);
+      if(t === 'chars'){ svc.renderChars(); return; }
+      if(state.editingChapter){ svc.editChapter(state.editingChapter); return; }
+      document.getElementById('editorArea').innerHTML =
+        '<div style="padding:40px;text-align:center;color:var(--ink-muted)"><div style="font-size:3rem;margin-bottom:12px">📝</div>选择章节开始编辑</div>';
+    },
+    // ── 角色卡 (Step2) ──
+    _parseJsonList(v){
+      try { const a = JSON.parse(v||'[]'); return Array.isArray(a) ? a.join(', ') : (v||''); }
+      catch(e){ return v||''; }
+    },
+    async renderChars(){
+      const area = document.getElementById('editorArea');
+      area.innerHTML = '<div style="padding:24px;text-align:center;color:var(--ink-muted);font-size:0.8rem">加载角色中...</div>';
+      let chars = [];
+      try { chars = await api('GET','/projects/'+state.active+'/characters'); }
+      catch(e){ area.innerHTML = `<div style="padding:24px;text-align:center;color:var(--danger)">加载失败: ${esc(e.message)}</div>`; return; }
+      state.activeChars = chars;
+      const head = `<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 20px;border-bottom:1px solid var(--ink-line)">
+        <span style="font-family:'Space Grotesk',sans-serif;font-size:0.8rem;color:var(--iceberg)">👥 角色卡 (${chars.length})
+          <span style="color:var(--ink-muted);font-size:0.68rem;margin-left:8px">生成大纲后自动落草稿 · 角色摘要会注入 AI 写作上下文</span></span>
+        <button class="cs-btn primary" style="padding:6px 14px" onclick="svc.showCharForm()">➕ 新建角色</button></div>`;
+      if(!chars.length){
+        area.innerHTML = head + '<div style="padding:40px;text-align:center;color:var(--ink-muted)"><div style="font-size:3rem;margin-bottom:12px">👥</div>暂无角色 — 生成大纲后自动创建草稿, 或手动新建</div>';
+        return;
+      }
+      area.innerHTML = head + '<div style="padding:16px 20px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px">' +
+        chars.map(c=>`
+          <div style="border:1px solid var(--ink-line);border-radius:var(--radius-md);padding:14px;background:rgba(27,36,64,0.45)">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <span style="color:var(--gold);font-weight:600;font-size:0.9rem">${esc(c.name)}</span>
+              <span class="cs-proj-status draft" style="font-size:0.62rem">${esc(ROLE_LABELS[c.role_type]||c.role_type||'配角')}</span>
+            </div>
+            ${c.personality?`<div style="font-size:0.78rem;color:var(--ink-dim);margin-top:8px">🎭 ${esc(c.personality).slice(0,90)}</div>`:''}
+            ${c.goals?`<div style="font-size:0.74rem;color:var(--ink-muted);margin-top:5px">🎯 ${esc(c.goals).slice(0,70)}</div>`:''}
+            ${c.backstory?`<div style="font-size:0.72rem;color:var(--ink-muted);margin-top:5px;line-height:1.6;opacity:0.8">${esc(c.backstory).slice(0,90)}…</div>`:''}
+            <div style="display:flex;gap:8px;margin-top:10px">
+              <button class="cs-btn" style="padding:4px 12px;font-size:0.7rem" onclick="svc.showCharForm('${c.character_id}')">✏️ 编辑</button>
+              <button class="cs-btn" style="padding:4px 12px;font-size:0.7rem;color:var(--danger);border-color:rgba(231,76,60,0.4)" onclick="svc.deleteChar('${c.character_id}')">🗑️</button>
+            </div>
+          </div>`).join('') + '</div>';
+    },
+    showCharForm(cid){
+      state.editingChar = cid || null;
+      const c = cid ? (state.activeChars.find(x=>x.character_id===cid) || {}) : {};
+      const area = document.getElementById('editorArea');
+      area.innerHTML = `<div style="padding:20px 24px">
+        <div style="font-family:'Space Grotesk',sans-serif;color:var(--iceberg);font-size:0.85rem;margin-bottom:14px">${cid?'✏️ 编辑角色':'➕ 新建角色'}</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 16px">
+          <div class="cs-field"><label>姓名 *</label><input id="cfName" value="${esc(c.name||'')}" placeholder="角色名"></div>
+          <div class="cs-field"><label>角色类型</label><select id="cfRole">
+            <option value="protagonist" ${c.role_type==='protagonist'?'selected':''}>主角</option>
+            <option value="antagonist" ${c.role_type==='antagonist'?'selected':''}>反派</option>
+            <option value="supporting" ${(!c.role_type||c.role_type==='supporting')?'selected':''}>配角</option>
+          </select></div>
+        </div>
+        <div class="cs-field"><label>性格</label><textarea id="cfPersonality" style="min-height:56px">${esc(c.personality||'')}</textarea></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 16px">
+          <div class="cs-field"><label>目标</label><textarea id="cfGoals" style="min-height:56px">${esc(c.goals||'')}</textarea></div>
+          <div class="cs-field"><label>冲突</label><textarea id="cfConflicts" style="min-height:56px">${esc(c.conflicts||'')}</textarea></div>
+        </div>
+        <div class="cs-field"><label>外貌</label><textarea id="cfAppearance" style="min-height:56px">${esc(c.appearance||'')}</textarea></div>
+        <div class="cs-field"><label>背景故事</label><textarea id="cfBackstory" style="min-height:72px">${esc(c.backstory||'')}</textarea></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 16px">
+          <div class="cs-field"><label>关系 (逗号分隔)</label><input id="cfRel" value="${esc(svc._parseJsonList(c.relationships_json))}" placeholder="如: 苏晚, 林晚"></div>
+          <div class="cs-field"><label>标签 (逗号分隔)</label><input id="cfTags" value="${esc(svc._parseJsonList(c.tags_json))}" placeholder="如: 冷静, 毒舌"></div>
+        </div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:6px">
+          <button class="cs-btn" onclick="svc.renderChars()">取消</button>
+          <button class="cs-btn primary" onclick="svc.saveChar()">💾 保存</button>
+        </div></div>`;
+    },
+    async saveChar(){
+      const name = document.getElementById('cfName').value.trim();
+      if(!name){ toast('请输入角色名', false); return; }
+      const body = {
+        name,
+        role_type: document.getElementById('cfRole').value,
+        personality: document.getElementById('cfPersonality').value,
+        goals: document.getElementById('cfGoals').value,
+        conflicts: document.getElementById('cfConflicts').value,
+        appearance: document.getElementById('cfAppearance').value,
+        backstory: document.getElementById('cfBackstory').value,
+        relationships: document.getElementById('cfRel').value,
+        tags: document.getElementById('cfTags').value,
+      };
+      try {
+        if(state.editingChar) await api('PUT','/characters/'+state.editingChar, body);
+        else await api('POST','/projects/'+state.active+'/characters', body);
+        toast('✅ 角色已保存');
+        state.editingChar = null;
+        await svc.renderChars();
+      } catch(e){ toast('❌ ' + (e.message || '保存失败'), false); }
+    },
+    async deleteChar(cid){
+      if(!confirm('确定删除该角色?')) return;
+      try { await api('DELETE','/characters/'+cid); toast('🗑️ 角色已删除'); await svc.renderChars(); }
+      catch(e){ toast('❌ ' + (e.message || '删除失败'), false); }
+    },
+    // ── 版本历史 (Step3) ──
+    _TRIGGER_LABELS: {auto_write:'AI写作前快照', polish:'润色前快照', manual_restore:'回滚前自动备份', manual_edit:'手动编辑前备份'},
+    async toggleVersions(cid){
+      const panel = document.getElementById('versPanel');
+      if(!panel) return;
+      if(panel.style.display === 'block'){ panel.style.display='none'; return; }
+      panel.style.display='block';
+      panel.innerHTML = '<div style="color:var(--ink-muted);font-size:0.72rem">加载中...</div>';
+      let vers = [];
+      try { vers = await api('GET','/chapters/'+cid+'/versions'); }
+      catch(e){ panel.innerHTML = `<div style="color:var(--danger);font-size:0.72rem">加载失败</div>`; return; }
+      if(!vers.length){ panel.innerHTML = '<div style="color:var(--ink-muted);font-size:0.72rem">暂无历史 (首次 AI 写作或润色后自动生成)</div>'; return; }
+      panel.innerHTML = vers.map(v=>`
+        <div style="border:1px solid var(--ink-line);border-radius:6px;padding:8px 12px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;background:rgba(17,23,41,0.6)">
+          <div style="flex:1;min-width:0">
+            <div style="font-size:0.76rem;color:var(--constellation);font-weight:600">v${v.version_no} <span style="color:var(--ink-muted);font-size:0.66rem;margin-left:6px">${esc(svc._TRIGGER_LABELS[v.trigger_type]||v.trigger_type)}</span></div>
+            <div style="font-size:0.68rem;color:var(--ink-muted);margin-top:2px">${v.actual_words||0} 字 · ${esc(v.created_at||'')}</div>
+          </div>
+          <div style="display:flex;gap:6px">
+            <button class="cs-btn" style="padding:3px 10px;font-size:0.68rem" onclick="svc.viewVersion('${v.version_id}')">👁️</button>
+            <button class="cs-btn gold" style="padding:3px 10px;font-size:0.68rem" onclick="svc.restoreVersion('${v.version_id}')">↺ 回滚</button>
+          </div>
+        </div>`).join('');
+    },
+    async viewVersion(vid){
+      const v = await api('GET','/versions/'+vid);
+      if(!v) return;
+      const area = document.getElementById('editorArea');
+      area.innerHTML = `<div style="padding:20px;border-bottom:1px solid var(--ink-line);display:flex;justify-content:space-between;align-items:center">
+        <div style="font-family:'Space Grotesk',sans-serif;color:var(--iceberg);font-size:0.8rem">📜 版本 v${v.version_no} · ${esc(svc._TRIGGER_LABELS[v.trigger_type]||v.trigger_type)} · ${v.actual_words||0} 字</div>
+        <button class="cs-btn" style="padding:4px 12px;font-size:0.72rem" onclick="svc.editChapter('${v.chapter_id}')">← 返回编辑器</button>
+      </div>
+      <div class="cs-preview" style="padding:20px">${esc(v.content||'')}</div>`;
+    },
+    async restoreVersion(vid){
+      const v = await api('GET','/versions/'+vid);
+      if(!v) return;
+      if(!confirm(`确定将此章节回滚到 v${v.version_no} (${v.actual_words||0} 字) 吗?\n\n⚠️ 回滚前系统会自动对当前版本再拍一张备份`)) return;
+      try {
+        const r = await api('POST','/versions/'+vid+'/restore',{});
+        toast(`✅ 已回滚到 v${r.restored_from_version} (回滚前自动备份当前版本)`);
+        const cid = r.chapter_id;
+        await svc.open(state.active);
+        svc.editChapter(cid);
+      } catch(e){ toast('❌ ' + (e.message||'回滚失败'), false); }
     },
     editChapter(cid){
       const ch = state.activeChapters.find(c=>c.chapter_id===cid);
       if(!ch) return;
       state.editingChapter = cid;
+      svc.setActiveTab('text');
       const area = document.getElementById('editorArea');
-      area.innerHTML = `<textarea oninput="this.style.height=this.scrollHeight+'px'" style="height:400px">${(ch.content||'').replace(/"/g,'&quot;')}</textarea>`;
+      area.innerHTML = `<div id="versBar" style="padding:6px 14px;border-bottom:1px solid var(--ink-line);display:flex;justify-content:space-between;align-items:center;cursor:pointer"
+        onclick="svc.toggleVersions('${cid}')">
+        <span style="color:var(--ink-muted);font-size:0.72rem">📜 版本历史</span>
+        <span id="versCount" style="color:var(--ink-muted);font-size:0.7rem">加载中...</span>
+      </div>
+      <div id="versPanel" style="display:none;border-bottom:1px solid var(--ink-line);padding:10px 14px;background:rgba(27,36,64,0.45);max-height:260px;overflow-y:auto"></div>
+      <textarea oninput="this.style.height=this.scrollHeight+'px'" style="height:400px;border-top:1px solid var(--ink-line)">${esc(ch.content||'')}</textarea>`;
+      // 异步拉版本数
+      fetch(API + '/chapters/' + cid + '/versions', {headers:{'Content-Type':'application/json'}})
+        .then(r=>r.json()).then(d=>{
+          if(d.code===0){
+            const n = d.data.length;
+            const bar = document.getElementById('versCount');
+            if(bar) bar.textContent = n ? `已存 ${n} 版 · 点击展开` : '暂无历史 · 首次写后自动记录';
+          }
+        }).catch(()=>{});
       svc.render();
     },
     async createProject(){
@@ -382,10 +572,88 @@
     },
     async generateOutline(){
       if(!state.active) return;
-      toast('🌌 AI 生成大纲中...');
-      const out = await api('POST','/projects/'+state.active+'/outline',{});
-      toast('✅ 大纲生成完成');
-      state.activeProject = await api('GET','/projects/'+state.active);
+      toast('🌌 AI 生成大纲中 (本地推理, 约 1-3 分钟)...');
+      try {
+        await api('POST','/projects/'+state.active+'/outline',{});
+        toast('✅ 大纲生成完成, 角色草稿已同步');
+        await svc.open(state.active);
+        svc.setActiveTab('chars');
+        await svc.renderChars();
+      } catch(e) {
+        toast('❌ ' + (e.message || '大纲生成失败'), false);
+      }
+    },
+    async showOutline(){
+      if(!state.active) return;
+      let p;
+      try { p = await api('GET','/projects/'+state.active); }
+      catch(e){ toast('❌ 项目加载失败', false); return; }
+      state.activeProject = p;
+      const o = p.outline || {};
+      const area = document.getElementById('editorArea');
+      if(!o || (!o.chapters && !o.raw_outline)){
+        area.innerHTML = '<div style="padding:40px;text-align:center;color:var(--ink-muted)"><div style="font-size:3rem;margin-bottom:12px">🌌</div>尚未生成大纲, 请点击「生成大纲」</div>';
+        return;
+      }
+      if(o.raw_outline){
+        area.innerHTML = `<div class="cs-preview"><h3>🌌 大纲 (原始输出, JSON 解析失败)</h3><pre style="white-space:pre-wrap;font-family:inherit;color:var(--ink-dim)">${esc(o.raw_outline)}</pre></div>`;
+        return;
+      }
+      let html = '<div class="cs-preview">';
+      if(o.worldview){
+        html += '<h3>🌍 世界观</h3><div style="color:var(--ink-dim);font-size:0.85rem;line-height:1.9">';
+        if(typeof o.worldview === 'string'){
+          html += esc(o.worldview);
+        } else {
+          html += Object.entries(o.worldview).map(([k,v]) =>
+            `<div><b style="color:var(--iceberg)">${esc(k)}</b>: ${esc(typeof v==='object'?JSON.stringify(v):v)}</div>`).join('');
+        }
+        html += '</div>';
+      }
+      if(Array.isArray(o.characters) && o.characters.length){
+        html += `<h3>👥 角色设计 (${o.characters.length})</h3>`;
+        html += o.characters.map(c=>`
+          <div style="border:1px solid var(--ink-line);border-radius:10px;padding:10px 14px;margin-bottom:8px;background:rgba(27,36,64,0.4)">
+            <div style="color:var(--gold);font-weight:600">${esc(c.name||'未命名')}
+              <span style="color:var(--ink-muted);font-size:0.7rem">${esc(c.role_type||'')}${c.protagonist?' · 主角':''}</span></div>
+            <div style="color:var(--ink-dim);font-size:0.8rem;margin-top:4px">${esc(c.personality||c.backstory||'')}</div>
+          </div>`).join('');
+      }
+      if(Array.isArray(o.chapters) && o.chapters.length){
+        html += `<h3>📑 章节规划 (${o.chapters.length})</h3>`;
+        html += o.chapters.map(c=>`
+          <div style="display:flex;gap:12px;padding:8px 0;border-bottom:1px dashed var(--ink-line)">
+            <span style="font-family:'JetBrains Mono',monospace;color:var(--iceberg);min-width:52px">第${esc(c.chapter_no)}章</span>
+            <div style="flex:1"><div style="color:var(--ink-text);font-weight:500">${esc(c.title||'未命名')}</div>
+            <div style="color:var(--ink-muted);font-size:0.78rem;margin-top:2px">${esc((c.summary||'').slice(0,150))}</div>
+            <div style="color:var(--ink-muted);font-size:0.7rem;margin-top:2px">🎯 ${esc(c.target_words||3000)} 字${c.main_characters?(' · ' + esc(Array.isArray(c.main_characters)?c.main_characters.join(' / '):c.main_characters)):''}</div></div>
+          </div>`).join('');
+        html += '<div style="margin-top:14px"><button class="cs-btn primary" onclick="svc.syncChaptersFromOutline()">📥 一键同步为章节目录</button></div>';
+      }
+      if(Array.isArray(o.themes) && o.themes.length){
+        html += `<h3>🎯 核心主题</h3><div class="cs-chips">${o.themes.map(t=>`<span class="cs-chip">${esc(t)}</span>`).join('')}</div>`;
+      }
+      html += '</div>';
+      area.innerHTML = html;
+    },
+    async syncChaptersFromOutline(){
+      if(!state.active) return;
+      const p = await api('GET','/projects/'+state.active);
+      const o = p.outline || {};
+      if(!Array.isArray(o.chapters) || !o.chapters.length){ toast('大纲无章节数据', false); return; }
+      const existing = new Set((p.chapters||[]).map(c=>c.chapter_no));
+      let added = 0;
+      for(const c of o.chapters){
+        const no = parseInt(c.chapter_no);
+        if(!no || existing.has(no)) continue;
+        await api('POST','/projects/'+state.active+'/chapters',{
+          chapter_no: no, title: c.title || ('第'+no+'章'),
+          summary: c.summary || '', target_words: parseInt(c.target_words) || 3000,
+        });
+        added++;
+      }
+      toast(added ? `✅ 已从大纲同步 ${added} 章` : '章节目录已是最新');
+      await svc.open(state.active);
     },
     async addChapter(){
       if(!state.active) return;
@@ -400,9 +668,52 @@
     },
     async writeChapter(){
       if(!state.editingChapter){ toast('请先选中章节',false); return; }
-      toast('🤖 AI 写作中 (本地 Ollama, 零 token)...');
-      const r = await api('POST','/chapters/'+state.editingChapter+'/write',{});
-      toast(`✅ 完成! ${r.content_length} 字 / ${r.duration_sec}s`);
+      const area = document.getElementById('editorArea');
+      area.innerHTML = '<textarea id="streamTa" style="height:400px" placeholder="🤖 AI 正在写作..."></textarea>';
+      const ta = document.getElementById('streamTa');
+      try {
+        const resp = await fetch(`${API}/chapters/${state.editingChapter}/write_stream`, {
+          method:'POST', headers:{'Content-Type':'application/json'}, body:'{}'
+        });
+        if(!resp.ok || !resp.body){
+          toast('❌ 流式写作失败 (HTTP ' + resp.status + ', Ollama 离线?)', false);
+          await svc.open(state.active);
+          return;
+        }
+        const reader = resp.body.getReader();
+        const decoder = new TextDecoder('utf-8');
+        let buf = '', finished = false;
+        while(!finished){
+          const {value, done} = await reader.read();
+          if(done) break;
+          buf += decoder.decode(value, {stream:true});
+          const parts = buf.split('\n\n');
+          buf = parts.pop();
+          for(const part of parts){
+            const line = part.trim();
+            if(!line.startsWith('data:')) continue;
+            let ev; try { ev = JSON.parse(line.slice(5).trim()); } catch(e){ continue; }
+            if(ev.type === 'chunk'){
+              ta.value += ev.text;
+              ta.scrollTop = ta.scrollHeight;
+            } else if(ev.type === 'done'){
+              let t = `✅ 完成! ${ev.data.content_length} 字 / ${ev.data.duration_sec}s`;
+              if(ev.data.rag_info){
+                const ri = ev.data.rag_info;
+                if(ri.rag_chunks_used) t += ` · RAG 跨章参考已注入`;
+                if(ri.n_chunks_indexed > 0) t += ` · ${ri.n_chunks_indexed} chunks 已索引`;
+              }
+              toast(t);
+              finished = true;
+            } else if(ev.type === 'error'){
+              toast('❌ ' + (ev.msg || '生成失败'), false);
+              finished = true;
+            }
+          }
+        }
+      } catch(e) {
+        toast('❌ ' + (e.message || '流式请求异常'), false);
+      }
       await svc.open(state.active);
       await svc.editChapter(state.editingChapter);
     },
@@ -415,9 +726,83 @@
     },
     async runCheck(){
       if(!state.active) return;
-      const r = await api('POST','/projects/'+state.active+'/check',{});
-      if(r.count===0) toast('✅ 无一致性问题');
-      else toast(`⚠️ 发现 ${r.count} 个问题`);
+      toast('🔍 一致性巡检中...');
+      const r = await api('POST','/projects/'+state.active+'/check',{auto_fix:true});
+      if(r.count===0){ toast('✅ 无一致性问题'); return; }
+      const sc = r.severity_count || {};
+      let msg = `⚠️ 发现 ${r.count} 个问题`;
+      const sevParts = [];
+      if(sc.medium) sevParts.push(`⚠️ ${sc.medium}`);
+      if(sc.low) sevParts.push(`💡 ${sc.low}`);
+      if(sc.info) sevParts.push(`ℹ️ ${sc.info}`);
+      if(sevParts.length) msg += ' (' + sevParts.join(' ') + ')';
+      toast(msg);
+      // 有 draft_ready → 弹出修复面板
+      const draftable = (r.issues||[]).filter(i => i.auto_fix_status==='draft_ready' && i.log_id);
+      if(draftable.length){
+        svc.showAutoFixPanel(draftable);
+      }
+    },
+    showAutoFixPanel(draftable){
+      // 关闭已有
+      const old = document.getElementById('autoFixPanel'); if(old) old.remove();
+      const div = document.createElement('div');
+      div.id = 'autoFixPanel';
+      div.style.cssText='position:fixed;top:60px;right:20px;width:480px;max-height:80vh;overflow-y:auto;'+
+        'background:#1e1e2e;border:1px solid #444;border-radius:12px;padding:16px;z-index:9999;box-shadow:0 12px 40px rgba(0,0,0,0.5);font-size:13px;color:#eee';
+      const esc = s => (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+      div.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <b style="font-size:15px">🔧 可自动修复 (${draftable.length})</b>
+        <span onclick="document.getElementById('autoFixPanel').remove()" style="cursor:pointer;color:#888;font-size:20px">×</span>
+      </div>
+      <div style="color:#aaa;margin-bottom:12px;line-height:1.5">点击"接受"应用修复 (自动快照旧版本 + 更新正文 + 重索引 RAG), "拒绝"放弃.</div>
+      ${draftable.map(i => `
+        <div data-logid="${i.log_id}" style="border:1px solid #333;border-radius:8px;padding:10px;margin-bottom:10px;background:#252535">
+          <div style="font-weight:600;color:#ffc857;margin-bottom:4px">${esc(i.issue_type)}${i.chapter_no?` · ch${i.chapter_no}`:''}</div>
+          <div style="color:#bbb;margin-bottom:8px">${esc(i.description||'')}</div>
+          <div style="max-height:120px;overflow-y:auto;background:#0f0f1a;border-radius:4px;padding:8px;font-family:monospace;font-size:11px;color:#8affc1;white-space:pre-wrap;margin-bottom:8px">${esc((i.fixed_content||'').slice(0,400))}</div>
+          <div style="display:flex;gap:8px">
+            <button class="cs-accept" data-logid="${i.log_id}" style="flex:1;padding:6px;background:#27AE60;color:#fff;border:none;border-radius:6px;cursor:pointer">✅ 接受</button>
+            <button class="cs-reject" data-logid="${i.log_id}" style="flex:1;padding:6px;background:#E74C3C;color:#fff;border:none;border-radius:6px;cursor:pointer">❌ 拒绝</button>
+          </div>
+        </div>`).join('')}
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button id="cs-accept-all" data-logids="${esc(draftable.map(i=>i.log_id).join(','))}" style="flex:1;padding:8px;background:#27AE60;color:#fff;border:none;border-radius:6px;cursor:pointer">全部接受</button>
+        <button id="cs-reject-all" data-logids="${esc(draftable.map(i=>i.log_id).join(','))}" style="flex:1;padding:8px;background:#555;color:#fff;border:none;border-radius:6px;cursor:pointer">全部拒绝</button>
+      </div>`;
+      document.body.appendChild(div);
+      // addEventListener 绑定 (避免 inline onclick + JSON 注入 + 保留闭包安全)
+      div.querySelectorAll('.cs-accept').forEach(b => b.onclick = () => svc.applyOneFix(+b.dataset.logid, true));
+      div.querySelectorAll('.cs-reject').forEach(b => b.onclick = () => svc.applyOneFix(+b.dataset.logid, false));
+      document.getElementById('cs-accept-all').onclick = () => svc.applyAllFixes(
+        document.getElementById('cs-accept-all').dataset.logids.split(',').map(Number), true);
+      document.getElementById('cs-reject-all').onclick = () => svc.applyAllFixes(
+        document.getElementById('cs-reject-all').dataset.logids.split(',').map(Number), false);
+    },
+    async applyOneFix(logId, accept){
+      const r = await api('POST','/fix/'+logId,{accept});
+      if(r.data && r.data.status==='applied'){
+        toast(`✅ 已接受 (快照版本 v${r.data.old_version_no})`);
+      } else if(r.data && r.data.status==='rejected'){
+        toast('已拒绝');
+      } else if(r.data && r.data.status==='already_applied'){
+        toast('已处理过', true);
+      } else {
+        toast('❌ 操作失败', false); return;
+      }
+      // 移除面板中对应项
+      const item = document.querySelector(`#autoFixPanel [data-logid="${logId}"]`);
+      if(item) item.remove();
+      const panel = document.getElementById('autoFixPanel');
+      if(panel && !panel.querySelector('[data-logid]')) panel.remove();
+      await svc.open(state.active); await svc.editChapter(state.editingChapter);
+    },
+    async applyAllFixes(logIds, accept){
+      if(!logIds.length) return;
+      const r = await api('POST','/fix_batch',{log_ids:logIds, accept});
+      toast(`${accept?'✅ 已全部接受':'已全部拒绝'} (${r.data?.success||0}/${logIds.length})`);
+      const panel = document.getElementById('autoFixPanel'); if(panel) panel.remove();
+      await svc.open(state.active); if(state.editingChapter) await svc.editChapter(state.editingChapter);
     },
     async submitApproval(){
       if(!state.active) return;
