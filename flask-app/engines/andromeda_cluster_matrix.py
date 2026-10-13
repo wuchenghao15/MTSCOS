@@ -260,7 +260,7 @@ async def execute_round_async(topic=None):
     # round_id
     try:
         round_id = "round_" + datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d%H%M%S")
-    except:
+    except Exception:
         round_id = "round_" + datetime.datetime.utcnow().strftime("%Y%m%d%H%M%S")
     
     print(f"\n{'='*60}")
@@ -380,7 +380,7 @@ def _pick_topic(conn):
         ).fetchall()
         if topics and topics[0]:
             return topics[0][0][:80]
-    except:
+    except Exception:
         pass
     fixed = [
         "仙女座集群矩阵 EigenFlux 12专家圆桌会议协作",

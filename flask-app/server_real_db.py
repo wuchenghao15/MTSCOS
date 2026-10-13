@@ -10126,27 +10126,11 @@ def api_andromeda_state():
         }), 503
 
 
-@app.route('/api/andromeda/health', methods=['GET'])
-def api_andromeda_health():
-    """极简健康度端点 — 只返回 daemon 状态, 适合高频轮询.
-    客户端用这个刷新状态条/健康度条, 省带宽.
-    """
-    try:
-        state, _ = _get_andromeda_state()
-        slim = {
-            'daemon_running': state['daemon_running'],
-            'daemon_total': state['daemon_total'],
-            'daemon_pct': state['daemon_pct'],
-            'health': state['health'],
-            'cache_at': state.get('cache_at'),
-        }
-        resp = jsonify(slim)
-        resp.headers['Cache-Control'] = 'no-store'
-        return resp
-    except Exception:
-        return jsonify({'daemon_running': 0, 'daemon_total': 0,
-                        'daemon_pct': 0, 'health': 'crit', 'cache_at': None}), 503
-
+# ════════════════════════════════════════════════════════════════════
+# /api/andromeda/health — 已迁移至 app/api/andromeda_api.py (andromeda_bp)
+# 包含 Ollama 多端口探测 + daemon 心跳检测 (ISO/SPACE 格式兼容)
+# 保留此路由只是注释说明, 实际端点由 blueprint 注册
+# ════════════════════════════════════════════════════════════════════
 
 def _sa_safe_next(raw_next):
     """登录回跳白名单：仅允许站内相对路径（以/开头且非//），防开放重定向。"""
