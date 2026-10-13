@@ -547,6 +547,111 @@ def auto_invite_experts() -> Dict:
 
 
 # ============================================================
+# 2.5 v22.17.0: 邀请流程增强 (flow_id=flow_sa_ai_invite_enhance_20261013)
+#   - batch_invite: 批量邀请 → eigenflux_registrations(pending_invite) + invite_log
+#   - retry_pending_invites: 邀请重试 (retry_count 上限, 成功翻转注册状态)
+# ============================================================
+def _ensure_invite_log_columns(conn) -> None:
+    """invite_log 兼容扩展列: retry_count / last_retry_at (幂等)"""
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(mt_eigenflux_invite_log)").fetchall()}
+    if "retry_count" not in cols:
+        conn.execute("ALTER TABLE mt_eigenflux_invite_log ADD COLUMN retry_count INTEGER DEFAULT 0")
+    if "last_retry_at" not in cols:
+        conn.execute("ALTER TABLE mt_eigenflux_invite_log ADD COLUMN last_retry_at TEXT")
+
+
+def batch_invite(count: int = 5, domain: Optional[str] = None,
+                 source: str = "SA_BATCH_INVITE",
+                 name_prefix: str = "EigenFlux专家") -> Dict:
+    """批量邀请 count 位专家 (单轮上限 50, 注册初始态 pending_invite)"""
+    try:
+        count = max(1, min(int(count), 50))
+    except (TypeError, ValueError):
+        count = 5
+    ensure_hire_tables()
+    now = _now()
+    created = 0
+    eff_domain = (domain or "general").strip() or "general"
+    with _LOCK:
+        conn = sqlite3.connect(APP_DB, timeout=30)
+        _ensure_invite_log_columns(conn)
+        for i in range(count):
+            expert_id = "EF-EXP-%s" % uuid.uuid4().hex[:10]
+            name = "%s-%s-%d" % (name_prefix, eff_domain, i + 1)
+            try:
+                conn.execute(
+                    """INSERT INTO eigenflux_registrations
+                    (employee_id, employee_name, employee_type, registration_status,
+                     last_heartbeat, created_at, updated_at)
+                    VALUES (?,?,?,?,?,?,?)""",
+                    (expert_id, name, "eigenflux_expert", "pending_invite",
+                     now, now, now),
+                )
+                conn.execute(
+                    """INSERT INTO mt_eigenflux_invite_log
+                    (invite_id, expert_name, expert_role, expert_domain,
+                     invite_source, invite_status, invited_at, retry_count, last_retry_at)
+                    VALUES (?,?,?,?,?,?,?,?,?)""",
+                    ("INV-%s" % uuid.uuid4().hex[:10], name, eff_domain,
+                     eff_domain, source, "PENDING", now, 0, None),
+                )
+                created += 1
+            except Exception as e:
+                _log(f"[BATCH_INVITE] skip {name}: {e}")
+        conn.commit()
+        conn.close()
+    _log(f"[BATCH_INVITE] requested={count} created={created} domain={eff_domain} source={source}")
+    return {"requested": count, "created": created, "domain": eff_domain, "source": source}
+
+
+def retry_pending_invites(max_retry: int = 3) -> Dict:
+    """邀请重试: 非 ACCEPTED 且 retry_count < max_retry 的邀请重发一轮;
+       若对应注册从 pending_invite 翻转成功 → invite_log 置 ACCEPTED"""
+    try:
+        max_retry = max(1, min(int(max_retry), 10))
+    except (TypeError, ValueError):
+        max_retry = 3
+    ensure_hire_tables()
+    now = _now()
+    retried = accepted = 0
+    with _LOCK:
+        conn = sqlite3.connect(APP_DB, timeout=30)
+        _ensure_invite_log_columns(conn)
+        rows = conn.execute(
+            """SELECT invite_id, expert_name, COALESCE(retry_count, 0)
+            FROM mt_eigenflux_invite_log
+            WHERE invite_status NOT IN ('ACCEPTED', 'EXPIRED')
+              AND COALESCE(retry_count, 0) < ?
+            ORDER BY invited_at ASC LIMIT 100""",
+            (max_retry,),
+        ).fetchall()
+        for invite_id, expert_name, rc in rows:
+            retried += 1
+            try:
+                cur = conn.execute(
+                    """UPDATE eigenflux_registrations
+                    SET registration_status='active', updated_at=?
+                    WHERE employee_name=? AND registration_status='pending_invite'""",
+                    (now, expert_name),
+                )
+                new_status = "ACCEPTED" if cur.rowcount > 0 else "RETRYING"
+                conn.execute(
+                    """UPDATE mt_eigenflux_invite_log
+                    SET invite_status=?, retry_count=?, last_retry_at=?
+                    WHERE invite_id=?""",
+                    (new_status, rc + 1, now, invite_id),
+                )
+                if new_status == "ACCEPTED":
+                    accepted += 1
+            except Exception as e:
+                _log(f"[INVITE_RETRY] {invite_id}: {e}")
+        conn.commit()
+        conn.close()
+    _log(f"[INVITE_RETRY] retried={retried} accepted={accepted} max_retry={max_retry}")
+    return {"retried": retried, "accepted": accepted, "max_retry": max_retry}
+
+
+# ============================================================
 # 3.5 v2.0: 专家参与系统维护升级 - 任务分配
 # ============================================================
 def ensure_maintenance_task_tables() -> None:
@@ -1052,6 +1157,8 @@ def run_hire_cycle() -> Dict:
     results["andromeda_bridge"] = andromeda_hiring_bridge()   # 仙女座专家优先
     results["hire_employees"] = auto_hire_employees()
     results["invite_experts"] = auto_invite_experts()
+    # v22.17.0: 邀请流程增强 — 邀请后自动重试未接受邀请
+    results["invite_retry"] = retry_pending_invites()
     # v2.0: 邀请后立即分配维护升级任务, 让专家参与系统维护
     results["assign_maintenance"] = assign_expert_maintenance_tasks()
     results["recommend_friends"] = auto_recommend_friends()
