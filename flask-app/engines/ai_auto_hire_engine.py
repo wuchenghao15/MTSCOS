@@ -39,13 +39,26 @@ from datetime import datetime
 from typing import Dict, List, Optional
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 AI_ENGINES_DIR = os.path.join(ROOT, "ai_engines")
-APP_DB = os.path.join(ROOT, "..", "_runtime", "databases", "Database", "app.db")
+
+# DB 路径: 优先用 Flask 真实 DB (database/app.db), 兼容多候选
+_DB_CANDIDATES = [
+    os.path.join(ROOT, "database", "app.db"),                                # 主: flask-app/database/app.db (2.2GB)
+    os.path.join(ROOT, "..", "_runtime", "databases", "Database", "app.db"),  # 旧路径 (可能损坏)
+    os.path.join(ROOT, "app.db"),                                            # 根级 fallback
+]
+APP_DB = next(
+    (p for p in _DB_CANDIDATES if os.path.exists(p) and os.path.getsize(p) > 1_000_000),
+    _DB_CANDIDATES[0],
+)
 ENGINE_DIR = os.path.join(ROOT, "engines")
 RUNTIME_DIR = os.path.join(ROOT, "..", "_runtime")
 LOG_DIR = os.path.join(RUNTIME_DIR, "logs")
 PID_DIR = os.path.join(RUNTIME_DIR, "pids")
 PID_FILE = os.path.join(PID_DIR, "ai_auto_hire_engine.pid")
 LOG_FILE = os.path.join(LOG_DIR, "ai_auto_hire_engine.log")
+
+print(f"[AUTO_HIRE] ✅ APP_DB = {APP_DB} (exists={os.path.exists(APP_DB)} "
+      f"size={os.path.getsize(APP_DB) if os.path.exists(APP_DB) else 0})")
 
 for _d in [LOG_DIR, PID_DIR]:
     os.makedirs(_d, exist_ok=True)
@@ -892,10 +905,151 @@ def auto_complete_patrol_team() -> Dict:
 
 
 # ============================================================
+# 6.5 仙女座桥接 — 从 mt_andromeda_employee_registry 拉取专家入库
+# ============================================================
+def andromeda_hiring_bridge(max_hire: int = 30, min_level: int = 7) -> Dict:
+    """
+    从仙女座员工注册表 (mt_andromeda_employee_registry, 33,602 rows) 选专家:
+      - level >= 7 (专家级, 100 人: 26+26+25+23)
+      - enabled = 1
+      - 还没在 ai_employees / eigenflux_registrations 中出现
+    写入: ai_employees + mtscos_ai_employees + eigenflux_registrations
+    """
+    ensure_hire_tables()
+    now = _now()
+    bridged = 0
+    skipped_exists = 0
+    skipped_level = 0
+
+    with _LOCK:
+        conn = sqlite3.connect(APP_DB, timeout=30)
+
+        # 已存在员工名集合
+        existing_names = set()
+        for tbl in ["ai_employees", "eigenflux_registrations", "mtscos_ai_employees"]:
+            try:
+                col = "name" if tbl == "ai_employees" else (
+                    "employee_name" if tbl == "eigenflux_registrations" else "name"
+                )
+                existing_names.update(
+                    row[0] for row in conn.execute(
+                        f"SELECT [{col}] FROM [{tbl}] LIMIT 10000"
+                    ).fetchall()
+                    if row[0]
+                )
+            except Exception:
+                pass
+
+        # 从仙女座选候选人
+        try:
+            candidates = conn.execute(
+                """SELECT employee_id, name, employee_type, level,
+                          employee_source, neuralhub_task, custom_system_prompt,
+                          route_priority, host_id
+                   FROM mt_andromeda_employee_registry
+                   WHERE enabled = 1 AND level >= ?
+                   ORDER BY level DESC, call_count DESC
+                   LIMIT ?""",
+                (min_level, max_hire * 3),  # 多拿点, 过滤掉已存在的
+            ).fetchall()
+        except Exception as e:
+            _log(f"[ANDROMEDA] ❌ 读注册表失败: {e}")
+            conn.close()
+            return {"bridged": 0, "error": str(e)}
+
+        for cand in candidates:
+            emp_id, name, emp_type, level, source, task, prompt, route, host = cand
+            # 跳过已存在
+            if name in existing_names:
+                skipped_exists += 1
+                continue
+
+            uid = f"MTS:AND-{uuid.uuid4().hex[:8]}"
+            specialties = emp_type + (f",{task}" if task else "")
+
+            # 1. ai_employees
+            try:
+                conn.execute(
+                    """INSERT OR IGNORE INTO ai_employees
+                    (name, employee_code, description, capabilities, specialties, status,
+                     accuracy, total_tasks, successful_fixes, failed_fixes,
+                     knowledge_base_size, model_version, created_at, updated_at)
+                    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                    (name, uid, f"仙女座专家 level={level} ({emp_type})",
+                     emp_type, specialties, "active",
+                     0.85 + (level - 7) * 0.02, 0, 0, 0,
+                     200 + level * 50, f"andromeda_L{level}", now, now),
+                )
+            except Exception:
+                pass
+
+            # 2. mtscos_ai_employees
+            try:
+                conn.execute(
+                    """INSERT OR IGNORE INTO mtscos_ai_employees
+                    (uid, name, role, status, created_at)
+                    VALUES (?,?,?,?,?)""",
+                    (uid, name, emp_type, "ACTIVE", now),
+                )
+            except Exception:
+                pass
+
+            # 3. eigenflux_registrations — 让 EigenFlux 网络引擎自动拉去注册/握手
+            try:
+                conn.execute(
+                    """INSERT OR IGNORE INTO eigenflux_registrations
+                    (employee_id, employee_name, employee_type, registration_status,
+                     last_heartbeat, created_at, updated_at)
+                    VALUES (?,?,?,?,?,?,?)""",
+                    (uid, name, f"andromeda_L{level}_{emp_type}",
+                     "pending_invite", now, now, now),
+                )
+            except Exception:
+                pass
+
+            # 4. 日志
+            hire_id = f"AND-HIRE-{uuid.uuid4().hex[:10]}"
+            try:
+                conn.execute(
+                    """INSERT INTO mt_ai_auto_hire_log
+                    (hire_id, hire_type, employee_name, employee_role, source, details_json, hired_at)
+                    VALUES (?,?,?,?,?,?,?)""",
+                    (hire_id, "ANDROMEDA_EXPERT", name, emp_type,
+                     "ANDROMEDA_REGISTRY",
+                     json.dumps({
+                         "employee_id": emp_id,
+                         "level": level,
+                         "source": source,
+                         "neuralhub_task": task,
+                         "route_priority": route,
+                         "host_id": host,
+                     }, ensure_ascii=False),
+                     now),
+                )
+            except Exception:
+                pass
+
+            existing_names.add(name)
+            bridged += 1
+
+        conn.commit()
+        conn.close()
+
+    _log(f"[ANDROMEDA] bridged={bridged} skipped_exists={skipped_exists} level>={min_level}")
+    return {
+        "bridged": bridged,
+        "skipped_exists": skipped_exists,
+        "candidate_level": min_level,
+        "total_registry": 33602,
+    }
+
+
+# ============================================================
 # 7. 执行一轮完整循环
 # ============================================================
 def run_hire_cycle() -> Dict:
     results = {}
+    results["andromeda_bridge"] = andromeda_hiring_bridge()   # 仙女座专家优先
     results["hire_employees"] = auto_hire_employees()
     results["invite_experts"] = auto_invite_experts()
     # v2.0: 邀请后立即分配维护升级任务, 让专家参与系统维护
