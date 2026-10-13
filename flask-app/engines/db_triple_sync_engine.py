@@ -252,11 +252,14 @@ def sync_all(dry_run: bool = False) -> Dict:
             report["tables"][table] = {"error": "无共有列"}
             continue
         # 汇集三方全量行 (每个源库贡献自己的行)
-        pool: Dict[Tuple, sqlite3.Row] = {}
+        pool: Dict[str, sqlite3.Row] = {}
         if table == "mt_dev_flow_session":
             for db in ALL_DBS:
                 for row in _load_rows(db, table, cols):
-                    pool[row["flow_id"]] = row  # 同 flow_id 后读者不覆盖先读者, newest-wins 在 upsert 内处理
+                    # newest-wins 汇集: 同 flow_id 取时间戳最新行 (并列时先读者=主库优先)
+                    _ex = pool.get(row["flow_id"])
+                    if _ex is None or _row_ts(row) > _row_ts(_ex):
+                        pool[row["flow_id"]] = row
             table_stats = {}
             for db in ALL_DBS:
                 table_stats[os.path.relpath(db, _PROJECT_ROOT)] = (
