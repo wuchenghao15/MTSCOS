@@ -30,6 +30,8 @@
    [--chunk 10000] [--limit N] [--dry-run] [--status] [--verify] [--reset] [--feed-brain]
 ================================================================================
 """
+from __future__ import annotations
+
 import argparse
 import hashlib
 import json

@@ -264,21 +264,21 @@ _log("[auto_hire] 扫描 suggestion 池 + EigenFlux 邀请...")
 try:
     import sqlite3 as _sq3
     c = _sq3.connect(APP_DB, timeout=10)
-    # 扫描待处理 suggestion
-    pending = c.execute("SELECT suggestion_id, title, score FROM mt_ai_suggestions WHERE status='PENDING' ORDER BY score DESC LIMIT 5").fetchall()
+    # bugfix flow_bugfix_squad_20261014: mt_ai_suggestions 表不存在 → 实际建议池为 mt_ai_suggestion_pool (status='NEW' 为待处理)
+    pending = c.execute("SELECT id, COALESCE(suggestion_text, suggestion, source), priority FROM mt_ai_suggestion_pool WHERE status='NEW' ORDER BY priority DESC LIMIT 5").fetchall()
     hired = 0
     for sid, title, score in pending:
         try:
-            c.execute("INSERT OR IGNORE INTO mt_ai_employees (employee_id, name, role, department, status, hire_date) VALUES (?, ?, ?, ?, 'ACTIVE', datetime('now'))",
+            c.execute("INSERT OR IGNORE INTO mt_ai_employees (employee_id, name, role, department, status, created_at) VALUES (?, ?, ?, ?, 'ACTIVE', datetime('now'))",
                 (f'aih_{sid}_{int(time.time())}', (title or '')[:40], 'suggestion_impl', 'auto_gen'))
+            # 雇佣后标记已评估, 防止下一周期重复雇佣
+            c.execute("UPDATE mt_ai_suggestion_pool SET status='EVALUATED' WHERE id=? AND status='NEW'", (sid,))
             hired += 1
         except Exception: pass
-    # EigenFlux 邀请
-    eigenflux = c.execute("SELECT COUNT(*) FROM mt_eigenflux_registrations WHERE status='invited'").fetchone()[0]
-    if eigenflux < 5:
-        c.execute("UPDATE mt_eigenflux_registrations SET status='invited' WHERE status='pending_approval' LIMIT 3")
+    # EigenFlux 邀请 (bugfix: mt_eigenflux_registrations 无 status 列且 SQLite 无 UPDATE LIMIT → 只做注册数观测, 邀请由 ai_eigenflux_network_engine 负责)
+    eigenflux = c.execute("SELECT COUNT(*) FROM mt_eigenflux_registrations").fetchone()[0]
     c.commit(); c.close()
-    _log(f"[auto_hire] hired={hired} eigenflux_invite={eigenflux}")
+    _log(f"[auto_hire] hired={hired} eigenflux_registered={eigenflux}")
 except Exception as e:
     _log(f"[auto_hire] err: {e}")
 """,

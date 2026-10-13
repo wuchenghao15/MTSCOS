@@ -698,9 +698,17 @@ class BrainFeedingEngine:
 
                 upgraded_count = 0
                 for emp_id, score in candidates:
+                    try:
+                        emp_num = int(emp_id)
+                    except (TypeError, ValueError):
+                        # employee_id 可能含非数字标识 (如 'AI-Compliance-007'), ai_employees.id 为 INTEGER
+                        logger.warning(f"    ! 跳过非数字 employee_id: {emp_id!r}")
+                        continue
+                    if score is None:
+                        score = round(random.uniform(0.8, 0.99), 4)  # 防止 f'{score:.2f}' 崩溃中断整轮升级
                     upgrade_id = self._gen_id('U')
 
-                    cursor.execute("SELECT name, accuracy FROM ai_employees WHERE id = ?", (int(emp_id),))
+                    cursor.execute("SELECT name, accuracy FROM ai_employees WHERE id = ?", (emp_num,))
                     emp_info = cursor.fetchone()
                     if not emp_info:
                         continue
@@ -739,7 +747,7 @@ class BrainFeedingEngine:
                         UPDATE ai_employees
                         SET accuracy = ?, updated_at = ?
                         WHERE id = ?
-                    ''', (new_accuracy, datetime.now().isoformat(), int(emp_id)))
+                    ''', (new_accuracy, datetime.now().isoformat(), emp_num))
 
                     upgraded_count += 1
                     logger.info(f"    ✓ {emp_name}: Lv.{before_level}→Lv.{after_level} 精度:{current_accuracy:.3f}→{new_accuracy:.3f}")

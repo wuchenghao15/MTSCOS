@@ -29,7 +29,7 @@ Phase 3 已落地:
 from __future__ import annotations
 
 import json, os, socket, sqlite3, subprocess, sys, time, threading, hashlib, uuid, re
-# [unused] from dataclasses import dataclass, field
+from dataclasses import dataclass, field
 from pathlib import Path
 from enum import Enum, auto
 
