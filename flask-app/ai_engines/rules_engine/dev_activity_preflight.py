@@ -23,6 +23,7 @@ import json
 import os
 import re
 import sqlite3
+import sys
 import threading
 import time
 from datetime import datetime
@@ -100,6 +101,9 @@ _FLOW_CACHE: Dict[str, Tuple[str, float]] = {}
 _CACHE_TTL = 30.0  # 秒
 _CACHE_LOCK = threading.Lock()
 
+# Agent 侧自动发现的活动 flow 缓存: (flow_id, expire_timestamp)
+_ACTIVE_FLOW_CACHE: Optional[Tuple[str, float]] = None
+
 
 def _get_conn() -> sqlite3.Connection:
     """获取数据库连接"""
@@ -143,6 +147,43 @@ def _clear_cache(flow_id: str) -> None:
     """清除指定 flow_id 的缓存（状态转移后调用）"""
     with _CACHE_LOCK:
         _FLOW_CACHE.pop(flow_id, None)
+        global _ACTIVE_FLOW_CACHE
+        _ACTIVE_FLOW_CACHE = None
+
+
+def _discover_active_flow() -> Optional[str]:
+    """
+    Agent 侧自动发现：查询是否存在 OPEN 且 current_step 在允许实施集合的 flow_id
+    取 created_at 最新的一条（TTL=30s 缓存）
+    """
+    global _ACTIVE_FLOW_CACHE
+    now = time.time()
+    with _CACHE_LOCK:
+        if _ACTIVE_FLOW_CACHE is not None:
+            cached_flow, expire_ts = _ACTIVE_FLOW_CACHE
+            if now < expire_ts:
+                return cached_flow
+            _ACTIVE_FLOW_CACHE = None
+
+    flow_id: Optional[str] = None
+    try:
+        conn = _get_conn()
+        placeholders = ",".join("?" for _ in _ALLOWED_IMPL_STEPS)
+        row = conn.execute(
+            f"SELECT flow_id FROM {_MT_SESSION_TABLE} "
+            f"WHERE final_status='OPEN' AND current_step IN ({placeholders}) "
+            "ORDER BY created_at DESC, rowid DESC LIMIT 1",
+            tuple(sorted(_ALLOWED_IMPL_STEPS)),
+        ).fetchone()
+        conn.close()
+        if row is not None:
+            flow_id = row["flow_id"]
+    except Exception:
+        flow_id = None
+
+    with _CACHE_LOCK:
+        _ACTIVE_FLOW_CACHE = (flow_id, now + _CACHE_TTL)
+    return flow_id
 
 
 def _is_public_path(path: str) -> bool:
@@ -173,10 +214,11 @@ def _record_violation(flow_id: Optional[str], detail: str, dev_activity_type: st
     try:
         conn = _get_conn()
         conn.execute(
-            f"INSERT INTO {_MT_VIOL_TABLE}(flow_id, viol_rule, detail, created_at) "
-            "VALUES(?,?,?,?)",
+            f"INSERT INTO {_MT_VIOL_TABLE}(flow_id, viol_rule, detail, dev_activity_type, created_at) "
+            "VALUES(?,?,?,?,?)",
             (flow_id, "MT_IR_D9",
-             f"[MT_IR_D9] {detail} | dev_activity_type={dev_activity_type}", now)
+             f"[MT_IR_D9] {detail} | dev_activity_type={dev_activity_type}",
+             dev_activity_type, now)
         )
         conn.commit()
         conn.close()
@@ -309,6 +351,119 @@ def preflight_for_api_route(
     return preflight_check(body_text, flow_id=flow_id, path=path, source="api_route")
 
 
+def preflight_for_agent_edit(
+    file_path: str, flow_id: Optional[str] = None
+) -> Dict[str, Any]:
+    """
+    §14 v1.3.0 §3.4 第4层前置检查 — Agent 侧扩展（IDE Write/Edit 前调用）
+
+    校验逻辑：
+      1. 显式携带 flow_id → 复用标准校验（存在性 + 允许实施步骤）
+      2. 未携带 flow_id → 自动发现 OPEN 且 current_step 在允许集合的最新 flow
+      3. 两者皆无 → 阻断并落库 mt_iron_rule_violations (MT_IR_D9)
+
+    参数:
+        file_path: Agent 即将写入/编辑的文件路径
+        flow_id: 可选的 flow_id（若 Agent 已持有12步骤会话）
+
+    返回:
+        {
+            "allowed": bool,
+            "file_path": str,
+            "flow_id": str,           # 使用/自动发现的 flow_id
+            "current_step": str,
+            "discovered_flow": bool,  # 是否为自动发现
+            "violation": str,
+            "prompt": str,
+        }
+    """
+    result = {
+        "allowed": True, "file_path": file_path, "flow_id": flow_id or "",
+        "current_step": "", "discovered_flow": False, "violation": "", "prompt": "",
+    }
+
+    # 路径 1: 显式 flow_id → 标准校验
+    if flow_id:
+        current_step = _query_flow_state(flow_id)
+        result["current_step"] = current_step or ""
+        if current_step is None:
+            result["allowed"] = False
+            result["violation"] = (
+                f"[§14 IRON_RULE MT_IR_D9] Agent Write/Edit {file_path}: "
+                f"flow_id={flow_id} 不在 {_MT_SESSION_TABLE} 中"
+            )
+            result["prompt"] = (
+                f"[§14 IRON_RULE MT_IR_D9] flow_id={flow_id} 非法，"
+                "必须先走12步骤注册合法 flow_id。"
+            )
+            _record_violation(flow_id, result["violation"], "agent_edit")
+            return result
+        if current_step not in _ALLOWED_IMPL_STEPS:
+            result["allowed"] = False
+            result["violation"] = (
+                f"[§14 IRON_RULE MT_IR_D9] Agent Write/Edit {file_path}: "
+                f"flow_id={flow_id} current_step={current_step} 不在允许实施步骤集合中"
+            )
+            result["prompt"] = (
+                f"[§14 IRON_RULE MT_IR_D9] flow_id={flow_id} 当前步骤={current_step}，"
+                "必须推进到 STEP_7_EXECUTE 后方可写码。"
+            )
+            _record_violation(flow_id, result["violation"], "agent_edit")
+            return result
+        return result
+
+    # 路径 2: 未携带 flow_id → 自动发现活动 flow
+    discovered = _discover_active_flow()
+    if discovered:
+        result["flow_id"] = discovered
+        result["current_step"] = _query_flow_state(discovered) or ""
+        result["discovered_flow"] = True
+        result["prompt"] = (
+            f"[§14 IRON_RULE] 自动发现活动 flow_id={discovered}"
+            f"（current_step={result['current_step']}），"
+            "请将该 flow_id 写入 commit message（flow_id=xxx）。"
+        )
+        return result
+
+    # 路径 3: 无任何活动 flow → 阻断
+    result["allowed"] = False
+    result["violation"] = (
+        f"[§14 IRON_RULE MT_IR_D9] Agent Write/Edit {file_path}: "
+        f"无 OPEN 且处于允许实施步骤的 flow_id"
+    )
+    result["prompt"] = (
+        "[§14 IRON_RULE MT_IR_D9] 检测到 Agent 写码活动，但无合法 flow_id。\n"
+        "必须先注册 flow_id（INSERT mt_dev_flow_session, current_step='STEP_1_PROPOSAL'）"
+        "并依序推进至 STEP_4_PLAN → STEP_7_EXECUTE 后方可实施。"
+    )
+    _record_violation(None, result["violation"], "agent_edit")
+    return result
+
+
+def _cli_main(argv: Optional[list] = None) -> int:
+    """CLI 入口: python3 dev_activity_preflight.py --agent-edit <file> [--flow-id xxx]"""
+    import argparse
+    parser = argparse.ArgumentParser(
+        prog="dev_activity_preflight",
+        description="§14 IRON_RULE 第4层前置检查器 CLI",
+    )
+    parser.add_argument("--agent-edit", metavar="FILE",
+                        help="Agent Write/Edit 前置检查（写码前调用）")
+    parser.add_argument("--flow-id", default=None, help="显式 flow_id（可选）")
+    parser.add_argument("--health", action="store_true", help="健康检查")
+    args = parser.parse_args(argv)
+
+    if args.health:
+        print(json.dumps(health_check(), ensure_ascii=False, indent=2))
+        return 0
+    if args.agent_edit:
+        r = preflight_for_agent_edit(args.agent_edit, flow_id=args.flow_id)
+        print(json.dumps(r, ensure_ascii=False, indent=2))
+        return 0 if r["allowed"] else 1
+    parser.print_help()
+    return 0
+
+
 # 健康检查接口
 def health_check() -> Dict[str, Any]:
     """前置检查器健康状态"""
@@ -322,3 +477,7 @@ def health_check() -> Dict[str, Any]:
         "allowed_impl_steps": list(_ALLOWED_IMPL_STEPS),
         "status": "ACTIVE",
     }
+
+
+if __name__ == "__main__":
+    raise SystemExit(_cli_main(sys.argv[1:]))
