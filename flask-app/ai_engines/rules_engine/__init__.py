@@ -29,6 +29,7 @@ from .dev_activity_preflight import (
     preflight_for_ai_chat,
     preflight_for_cli,
     preflight_for_api_route,
+    preflight_for_agent_edit,
 )
 
 __version__ = "v1.3.0"
@@ -51,6 +52,7 @@ __all__ = [
     "preflight_for_ai_chat",
     "preflight_for_cli",
     "preflight_for_api_route",
+    "preflight_for_agent_edit",
 ]
 
 # 9篇规则代码注册表 (RULE_ID → 文件名)
