@@ -369,8 +369,12 @@ class BulkInjector:
                 log(f"块{nblk}: +{n_inj}注入/{n_skip}跳过/{n_fix}ts错峰 | "
                     f"水位={last_pos} | 累计注入={inj0 + total_inj} | {rate:.0f}行/s")
                 if self.limit and (inj0 + total_inj) >= self.limit:
-                    log(f"--limit {self.limit} 达到, 暂停 (断点已落库, 重跑即续传)")
-                    done = False
+                    more = c_s.execute(block_sql, (last_pos, 1)).fetchone()
+                    done = not more   # limit 达到且源已耗尽 → DONE; 否则暂停可续传
+                    if done:
+                        log(f"--limit {self.limit} 达到且源已读完, 完成")
+                    else:
+                        log(f"--limit {self.limit} 达到, 暂停 (断点已落库, 重跑即续传)")
                     break
         finally:
             if not self.dry and nblk:
