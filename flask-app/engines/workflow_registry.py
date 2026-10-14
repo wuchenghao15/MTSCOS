@@ -31,17 +31,18 @@ handler 契约:
   启动时 scan 每个目录下的 workflows.py → importlib → register_workflows(registry)
 """
 import os, sys, time, importlib.util, traceback
-from pathlib import Path
+# [unused] from pathlib import Path
 
 # 全局 registry — andromeda_workflow_engine 会 import 这个
 WORKFLOW_REGISTRY: dict[str, dict] = {}
 
 # 需要扫描的子系统目录 (相对 flask-app/)
 _AUTO_DISCOVERY_DIRS = [
-    "engines/copy_studio",
-    "engines/translation_studio",
-    "engines/approval",
-    "engines/_common",          # 也放引擎级 workflow (如 vectorize/knowledge_ingest)
+    "engines/_common",           # 引擎级基础 (6)
+    "engines/copy_studio",       # 文案工作室 (2)
+    "engines/translation_studio", # 翻译工作室 (1)
+    "engines/approval",          # 审批域 (1)
+    "engines/iceberg",           # 冰山系统 (12)
 ]
 
 
