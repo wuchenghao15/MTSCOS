@@ -396,3 +396,4 @@ MTSCOS_AI/
 # 大文件 DB 备份防再犯 (bak_ 带时间戳后缀不被 *.bak 匹配)
 *.bak_*
 *.auto_repair_backup
+flask-app/routes/auto_gen_*
