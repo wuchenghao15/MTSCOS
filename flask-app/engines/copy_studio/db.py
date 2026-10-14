@@ -216,6 +216,31 @@ CREATE TABLE IF NOT EXISTS mt_parliament_proposals (
   votes_against INTEGER DEFAULT 0,
   created_at TEXT
 );
+
+-- v26.1 workflow 持久化表 (mt_copy_variant/mt_copy_semantic_audit)
+CREATE TABLE IF NOT EXISTS mt_copy_variants (
+  variant_id INTEGER PRIMARY KEY AUTOINCREMENT,
+  seed_hash TEXT NOT NULL,
+  variant_text TEXT NOT NULL,
+  domain TEXT DEFAULT 'copy_studio',
+  source TEXT DEFAULT 'workflow',
+  created_at TEXT DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_copy_variants_seed ON mt_copy_variants(seed_hash);
+CREATE INDEX IF NOT EXISTS idx_copy_variants_domain ON mt_copy_variants(domain, created_at);
+
+CREATE TABLE IF NOT EXISTS mt_copy_audit_log (
+  audit_id INTEGER PRIMARY KEY AUTOINCREMENT,
+  workflow_id TEXT NOT NULL,          -- wf_copy_semantic_audit / wf_copy_consistency_check
+  text_hash TEXT NOT NULL,
+  text_preview TEXT,
+  flags_json TEXT,                    -- JSON array
+  flag_count INTEGER DEFAULT 0,
+  passed INTEGER DEFAULT 1,
+  wall_ms INTEGER DEFAULT 0,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_copy_audit_workflow ON mt_copy_audit_log(workflow_id, created_at);
 """
 
 
