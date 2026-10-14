@@ -350,3 +350,10 @@ if __name__ == '__main__':
             SYNC._sync_peer(mac_id, peer)
     else:
         SYNC.sync_loop()
+
+# auto_repair: ensure env-first PROD DB
+try:
+    from engines._common.db_resolver import get_app_db
+    APP_DB = get_app_db()
+except Exception:
+    pass

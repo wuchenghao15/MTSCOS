@@ -376,3 +376,10 @@ if __name__ == "__main__":
         for src, st, n in rows:
             print(f"  {st:12s} {n}")
         c.close()
+
+# auto_repair: ensure env-first PROD DB
+try:
+    from engines._common.db_resolver import get_app_db
+    APP_DB = get_app_db()
+except Exception:
+    pass

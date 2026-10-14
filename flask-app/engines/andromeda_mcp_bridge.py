@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+from __future__ import annotations
+
 """
 仙女座 MCP Hub v2.3.0 — §14 强制接入版
 ===========================================

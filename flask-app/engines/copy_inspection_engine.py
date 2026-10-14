@@ -5,6 +5,7 @@ CHMS-06: 文案合规巡检（缺失/重复/占位/硬编码检测）
 归档: flask-app/engines/copy_inspection_engine.py
 流程: §14 12步骤 STEP_7_EXECUTE
 """
+from __future__ import annotations
 import os
 import re
 import sqlite3

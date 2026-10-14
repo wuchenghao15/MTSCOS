@@ -9,6 +9,7 @@
 #
 # 作者: Andromeda Σ · 2026-09-19
 # ─────────────────────────────────────────────────────────────
+from __future__ import annotations
 import sqlite3, json, time, uuid, os, sys, re, hashlib
 
 # 🆕 2026-09-20: DB 锁争用修复 — patch_sqlite3_connect (WAL + busy_timeout=60s)

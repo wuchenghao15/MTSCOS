@@ -4,6 +4,7 @@ approval/workflows.py — 审批域工作流
 
 子系统自注册: approval 自己定义 workflow.
 """
+from __future__ import annotations
 import os, sys, time, json, sqlite3
 
 def _get_app_db():

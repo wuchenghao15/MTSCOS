@@ -1,4 +1,6 @@
 """
+from __future__ import annotations
+
 仙女座星系子系统 — DB 层 (8 张表 + DAO)
 
 flow_id: galaxy_db_schema

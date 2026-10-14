@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from __future__ import annotations
 """
 MTSCOS AI - 自动化巡检诊断修复引擎 (ai_auto_diagnose_and_fix_engine)
 ====================================================================
@@ -729,3 +730,10 @@ if __name__ == "__main__":
         print(json.dumps(res, ensure_ascii=False, indent=2))
     else:
         ap.print_help()
+
+# auto_repair: ensure env-first PROD DB
+try:
+    from engines._common.db_resolver import get_app_db
+    APP_DB = get_app_db()
+except Exception:
+    pass

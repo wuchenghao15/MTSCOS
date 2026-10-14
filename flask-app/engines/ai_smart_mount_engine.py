@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+from __future__ import annotations
+
 """
 AI智能挂载自动化进程引擎 (Smart Mount Engine)
 ================================================

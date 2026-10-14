@@ -457,3 +457,10 @@ if __name__ == "__main__":
         print("\n" + "=" * 60)
         print("✅ 仙女座自动研究循环完成!")
         print(json.dumps(result, ensure_ascii=False, indent=2))
+
+# auto_repair: ensure env-first PROD DB
+try:
+    from engines._common.db_resolver import get_app_db
+    APP_DB = get_app_db()
+except Exception:
+    pass

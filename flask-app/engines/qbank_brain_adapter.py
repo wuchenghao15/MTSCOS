@@ -28,7 +28,7 @@ import sqlite3
 import sys
 import time
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+# [unused] from typing import Any, Dict, List, Optional
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 if _HERE not in sys.path:

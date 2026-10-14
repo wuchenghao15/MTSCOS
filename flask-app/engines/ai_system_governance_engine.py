@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+from __future__ import annotations
 """
 ai_system_governance_engine.py — 系统治理与AI主动参与引擎 (VII代 v22.10.0)
 ================================================================================

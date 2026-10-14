@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+from __future__ import annotations
 """
 ai_edu_thinking_engine.py — 教辅思维轮巡引擎 (VI代 v22.9.0)
 ================================================================================

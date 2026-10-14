@@ -20,6 +20,7 @@
   向量: embedding BLOB 存储 numpy float32 矩阵（预留向量语义检索）
   Token: 预计算 token_count + token_weight 用于 LLM context budgeting
 """
+from __future__ import annotations
 import sqlite3 as _sqlite3
 import os as _os
 # [unused] import json as _json

@@ -41,7 +41,7 @@ import sqlite3
 import sys
 import time
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+# [unused] from typing import Any, Dict, List, Optional, Tuple
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_DB = os.path.normpath(os.path.join(_HERE, "..", "database", "app.db"))

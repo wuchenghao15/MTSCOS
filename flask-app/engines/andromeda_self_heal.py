@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+from __future__ import annotations
 """
 仙女座自愈引擎 (Andromeda Self-Heal Engine) v2.0.0
 ===================================================
