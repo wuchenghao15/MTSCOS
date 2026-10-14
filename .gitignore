@@ -108,6 +108,7 @@ flask-app/app/utils/*
 # 允许 flask-app/routes/ 下路由文件入库 (v22.2.0 冰山守护补齐)
 !flask-app/routes/
 flask-app/routes/*
+!flask-app/routes/*.py
 !flask-app/routes/__init__.py
 !flask-app/routes/_governance_helpers.py
 !flask-app/routes/eigenflux_routes.py
