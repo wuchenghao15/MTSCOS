@@ -31,11 +31,11 @@ andromeda_bp = Blueprint("andromeda", __name__, url_prefix="/api/andromeda")
 
 # ─── 常量 ───
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-# 多 DB candidate (和 server_real_db._get_andromeda_state 对齐, 防数据库漂移)
+# database/app.db 是 SSOT (单数据源), engines/app.db 旧迷你同步副本, 优先级先主库
 _DB_CANDIDATES = [
-    PROJECT_ROOT / "engines" / "app.db",   # Mac mini 完整 AI 表
-    PROJECT_ROOT / "database" / "app.db",  # Flask 主库
-    PROJECT_ROOT / "app.db",              # fallback
+    PROJECT_ROOT / "database" / "app.db",   # ① 主库 SSOT
+    PROJECT_ROOT / "engines" / "app.db",   # ② engines 副本
+    PROJECT_ROOT / "app.db",              # ③ fallback
 ]
 CHECKPOINT_PATH = PROJECT_ROOT / "ai_engines" / "_runtime" / "evolution_checkpoint.json"
 DAEMON_NAMES = ("sys_andromeda_autosync", "sys_andromeda_auto_evolution")
@@ -102,8 +102,8 @@ def _read_db_counts() -> dict:
         placeholders = ",".join("?" * len(DAEMON_NAMES))
         db_versions = DAEMON_NAMES
         hb_rows = cur.execute(
-            f"SELECT daemon_name, last_heartbeat, status, restart_count FROM mt_daemon_registry "
-            f"WHERE daemon_name IN ({placeholders})",
+            f"SELECT process_name, last_heartbeat, status, restart_count FROM mt_daemon_registry "
+            f"WHERE process_name IN ({placeholders})",
             db_versions
         ).fetchall()
         for name, hb, status, restart in hb_rows:
@@ -398,7 +398,7 @@ def api_andromeda_health():
         cur = conn.cursor()
         for name in DAEMON_NAMES:
             row = cur.execute(
-                "SELECT last_heartbeat FROM mt_daemon_registry WHERE daemon_name=?",
+                "SELECT last_heartbeat FROM mt_daemon_registry WHERE process_name=?",
                 (name,)
             ).fetchone()
             db_alive[name] = _is_daemon_alive(row[0] if row else None)
