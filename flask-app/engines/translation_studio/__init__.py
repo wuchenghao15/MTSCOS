@@ -10,7 +10,7 @@ copy_studio 配套子能力. 文案创作 → 翻译 → 四国语言发布.
 from __future__ import annotations
 import os, re, uuid, datetime, json, time, functools, sqlite3
 from pathlib import Path
-from typing import Optional, Dict, Any, List, Callable
+# [unused] from typing import Optional, Dict, Any, List, Callable
 
 # ═══════════════════════════════════════════════════════════
 # 四国语言定义

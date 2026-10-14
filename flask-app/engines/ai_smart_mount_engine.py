@@ -227,7 +227,7 @@ conn.commit(); conn.close()
         "work_body": """
 import urllib.request, json
 try:
-    r = urllib.request.urlopen("http://127.0.0.1:11435/api/tags", timeout=3)
+    r = urllib.request.urlopen("http://127.0.0.1:11434/api/tags", timeout=3)
     models = [m['name'] for m in json.loads(r.read()).get('models',[])]
     _log(f"[local_inference] Ollama online, models={models}")
 except Exception as e:
@@ -495,7 +495,7 @@ try:
         "stream":False,
         "options":{"temperature":0.1,"num_predict":3000}
     }
-    req = urllib.request.Request("http://127.0.0.1:11435/api/chat", data=json.dumps(payload).encode(), headers={"Content-Type":"application/json"})
+    req = urllib.request.Request("http://127.0.0.1:11434/api/chat", data=json.dumps(payload).encode(), headers={"Content-Type":"application/json"})
     with urllib.request.urlopen(req, timeout=120) as resp:
         raw = json.loads(resp.read()).get("message",{}).get("content","")
     dc_clean, conf, ver_clean, vs = _sanitize(raw)
@@ -545,7 +545,7 @@ if rows:
     for cid, subj, q in rows:
         try:
             payload = {"model":"qwen2.5:7b","prompt":f"问题:{q}\n为什么错?思维卡在哪?如何纠正?输出结构化JSON","stream":False,"options":{"temperature":0.3}}
-            req = urllib.request.Request("http://127.0.0.1:11435/api/generate", data=json.dumps(payload).encode(), headers={"Content-Type":"application/json"})
+            req = urllib.request.Request("http://127.0.0.1:11434/api/generate", data=json.dumps(payload).encode(), headers={"Content-Type":"application/json"})
             with urllib.request.urlopen(req, timeout=90) as resp: chain = json.loads(resp.read()).get("response","")
             conn.execute("UPDATE mt_error_thinking_chain SET thinking_chain=?, ai_model='qwen2.5:7b' WHERE chain_id=?", (chain[:3000], cid))
             conn.commit(); print(f"[错题消化] #{cid} [{subj}] OK")
@@ -1005,7 +1005,7 @@ os.environ['ANDROMEDA_DB'] = DB_PATH
 # Ollama 自动探测: 端口跨平台 + 模型自适应 (开发机 11435 / Mac mini 11434)
 def _detect_ollama():
     import urllib.request, json as _j
-    ports = [11435, 11434, 11436, 8080]
+    ports = [11434, 11435, 11436, 8080]  # 11434 优先 (实际工作端口)
     models = ['qwen2.5:14b', 'qwen2.5:7b', 'qwen2.5:14b-q5', 'qwen2.5-coder:14b', 'qwen2.5-coder:7b']
     host, model = None, None
     for p in ports:
@@ -1070,7 +1070,7 @@ PROJECT_ROOT = os.environ.get('PROJECT_ROOT', os.path.dirname(os.path.dirname(os
 if PROJECT_ROOT not in sys.path: sys.path.insert(0, PROJECT_ROOT)
 DB_PATH = os.environ.get('APP_DB', os.path.join(PROJECT_ROOT, 'database', 'app.db'))
 os.environ['APP_DB'] = DB_PATH
-os.environ.setdefault('OLLAMA_HOST', 'http://localhost:11435')
+os.environ.setdefault('OLLAMA_HOST', 'http://localhost:11434')
 os.environ.setdefault('OLLAMA_MODEL', 'qwen2.5:7b')
 
 log.info('🧠 === 仙女座思维闭环 启动 ===')
@@ -1124,7 +1124,7 @@ except Exception as _e:
 # Ollama 健康
 try:
     import urllib.request as _ur
-    resp = _ur.urlopen(os.environ.get('OLLAMA_HOST','http://localhost:11435') + '/api/tags', timeout=3)
+    resp = _ur.urlopen(os.environ.get('OLLAMA_HOST','http://localhost:11434') + '/api/tags', timeout=3)
     models = [m['name'] for m in json.loads(resp.read()).get('models',[])]
     signals['ollama_online'] = True
     signals['ollama_models'] = len(models)
@@ -1146,7 +1146,7 @@ if signals.get('ollama_online') and signals.get('weak_words_total', 0) > 0:
         )
         import urllib.request as _ur
         req = _ur.Request(
-            os.environ.get('OLLAMA_HOST','http://localhost:11435') + '/api/generate',
+            os.environ.get('OLLAMA_HOST','http://localhost:11434') + '/api/generate',
             data=json.dumps({
                 "model": os.environ.get('OLLAMA_MODEL','qwen2.5:7b'),
                 "prompt": prompt,
@@ -2624,7 +2624,7 @@ def main_loop():
     CYCLE_KEY = '{process_name}_interval_sec'
     CYCLE = _param(CYCLE_GROUP, CYCLE_KEY, {inspect_cycle})
     _log(f"🔧 v5.1 参数统一: CYCLE={{CYCLE}}s (来源=mt_params {{CYCLE_GROUP}}/{{CYCLE_KEY}})")
-    # ✅ 仙女座 v5.0: 启动随机偏移 30-90s (🔧 2026-10-13 从 0-30 上调) — 
+    # ✅ 仙女座 v5.0: 启动随机偏移 30-90s (🔧 2026-10-13 从 0-30 上调) —
     # 避免 daemon 启动后立刻写 WAL 导致父进程 mount 循环被 SQLite RESERVED 锁卡死
     _offset = _rand.randint(30, 90)
     _log(f"启动随机偏移: {{_offset}}s")
@@ -3247,6 +3247,7 @@ def _infer_work_body(suggestion: Dict) -> str:
     elif "[CLEANUP" in t: action = "CLEANUP"
     elif "[SYNC_PARAM" in t: action = "SYNC_PARAM"
     elif "[OPTIMIZE_UI" in t or t.startswith("[OPTIMIZE"): action = "OPTIMIZE_UI"
+    elif "[UPGRADE" in t: action = "UPGRADE_MANIFEST"
     
     # FIX_DAEMON: 重启 FAILED daemon
     FIX_BODY = (
@@ -3381,11 +3382,29 @@ def _infer_work_body(suggestion: Dict) -> str:
         "                _log(f'OPTIMIZE_UI err: {e}')"
     )
     
+    # UPGRADE_MANIFEST: base64 预编码三域升级套件 -> engines/auto_gen_upgrade/ (v22.21.0)
+    UPGRADE_BODY = (
+        "            # UPGRADE_MANIFEST: 幂等写入三域升级套件\n"
+        "            try:\n"
+        "                import base64\n"
+        "                _dir = os.path.join(_PROJECT_ROOT, 'flask-app', 'engines', 'auto_gen_upgrade')\n"
+        "                os.makedirs(_dir, exist_ok=True)\n"
+        "                _fp = os.path.join(_dir, 'upgrade_suite.py')\n"
+        "                if not os.path.exists(_fp):\n"
+        "                    _code = base64.b64decode('IyAtKi0gY29kaW5nOiB1dGYtOCAtKi0KIiIiCmFuZHJvbWVkYV91cGdyYWRlX3N1aXRlLnB5IOKAlCDlhrDlsbEv55+l6K+GL+S7meWls+W6pyDkuInln5/ljYfnuqflpZfku7YgKGF1dG9fZ2VuX3VwZ3JhZGUpCueUsSBzbWFydF9tb3VudCBVUEdSQURFIGRhZW1vbiDoh6rliqjkuqflh7ogKGZsb3c6IGJ1bGtfYW5kcm9tZWRhX3VwZ3JhZGVfMjAyNjEwMTQpCueJiOacrDogdjIyLjIxLjAtdXBncmFkZS1zdWl0ZSB8IOaXpeacnzogMjAyNi0xMC0xNAoK5LiJ5Z+f5Yqf6IO9OgogIEEuIGljZWJlcmdfZG9tYWluKCkgICDigJQg5Yaw5bGxIDgg5byV5pOO5Y2H57qn54q25oCB5b+r54WnICsg5Y2H57qn6aG56JC95bqTCiAgQi4ga25vd2xlZGdlX2RvbWFpbigpIOKAlCDnn6Xor4blupPlop7ph4/nu5/orqEgKGJyYWluX2tub3dsZWRnZS9LRy9laWdlbmZsdXgpCiAgQy4gYW5kcm9tZWRhX2RvbWFpbigpIOKAlCDku5nlpbPluqflrZDns7vnu5/lgaXlurcgKGRhZW1vbi/lu7rorq7msaAvS0foioLngrnovrkpCiAgbWFpbjog5LiJ5Z+f5ZCE6LeR5LiA5qyhIOKGkiBtdF91cGdyYWRlX3N1aXRlX2xvZyAoZW5naW5lcy9hcHAuZGIpIOefreS6i+WKoeiQveW6kwoiIiIKaW1wb3J0IG9zCmltcG9ydCBzcWxpdGUzCmltcG9ydCBkYXRldGltZQoKQVBQX0RCID0gb3MuZW52aXJvbi5nZXQoCiAgICAnQVBQX0RCJywKICAgIG9zLnBhdGguam9pbihvcy5wYXRoLmRpcm5hbWUob3MucGF0aC5hYnNwYXRoKF9fZmlsZV9fKSksICcuLicsICdhcHAuZGInKSkKTUFJTl9EQiA9IG9zLnBhdGguam9pbigKICAgIG9zLnBhdGguZGlybmFtZShvcy5wYXRoLmRpcm5hbWUob3MucGF0aC5kaXJuYW1lKG9zLnBhdGguZGlybmFtZSgKICAgICAgICBvcy5wYXRoLmFic3BhdGgoX19maWxlX18pKSkpKSwKICAgICdmbGFzay1hcHAnLCAnZGF0YWJhc2UnLCAnYXBwLmRiJykKCklDRUJFUkdfRU5HSU5FUyA9IFsKICAgICdpY2ViZXJnX21ldGFfbW9kZWwucHknLCAnaWNlYmVyZ19jb250ZW50X21hdHJpeC5weScsCiAgICAnaWNlYmVyZ19jb25zY2lvdXNuZXNzLnB5JywgJ2ljZWJlcmdfaGFuZHNoYWtlLnB5JywKICAgICdpY2ViZXJnX3NsYW5nX3N1YnN0aXR1dGlvbi5weScsICdpY2ViZXJnX2FyZHVpbm9fYWkucHknLAogICAgJ2ljZWJlcmdfcWJhbmtfYWRhcHRpdmUucHknLCAnaWNlYmVyZ19jb21tYW5kLnB5JywKXQpBTkRST01FREFfRU5HSU5FUyA9IFsKICAgICdhbmRyb21lZGFfY29yZS5weScsICdhbmRyb21lZGFfYmFzZS5weScsICdhbmRyb21lZGFfYXV0b19sb29wLnB5JywKICAgICdhbmRyb21lZGFfYXV0b19ldm9sdXRpb24ucHknLCAnYW5kcm9tZWRhX2NsdXN0ZXJfbWF0cml4LnB5JywKICAgICdhbmRyb21lZGFfcmVzZWFyY2gucHknLCAnYW5kcm9tZWRhX3NlbGZfaGVhbC5weScsCiAgICAnYW5kcm9tZWRhX2NvZGVfaHlnaWVuZV9lbmdpbmUucHknLApdCktOT1dMRURHRV9FTkdJTkVTID0gWwogICAgJ2JyYWluX2ZlZWRpbmdfZW5naW5lLnB5JywgJ2FpX2tub3dsZWRnZV9hZ2dyZWdhdG9yX2VuZ2luZS5weScsCiAgICAnYWlfc2VsZl9sZWFybmluZ19lbmdpbmUucHknLApdCgoKZGVmIF9jb25uKGRiLCB0aW1lb3V0PTE1KToKICAgIGMgPSBzcWxpdGUzLmNvbm5lY3QoZGIsIHRpbWVvdXQ9dGltZW91dCkKICAgIGMuZXhlY3V0ZSgnUFJBR01BIGJ1c3lfdGltZW91dD0xNTAwMCcpCiAgICByZXR1cm4gYwoKCmRlZiBfZW5naW5lX3NuYXBzaG90KG5hbWVzKToKICAgIGJhc2UgPSBvcy5wYXRoLmRpcm5hbWUob3MucGF0aC5kaXJuYW1lKG9zLnBhdGguYWJzcGF0aChfX2ZpbGVfXykpKQogICAgb3V0ID0gW10KICAgIGZvciBuIGluIG5hbWVzOgogICAgICAgIHAgPSBvcy5wYXRoLmpvaW4oYmFzZSwgbikKICAgICAgICBpZiBvcy5wYXRoLmV4aXN0cyhwKToKICAgICAgICAgICAgc3QgPSBvcy5zdGF0KHApCiAgICAgICAgICAgIG91dC5hcHBlbmQoKG4sIHN0LnN0X3NpemUsIGRhdGV0aW1lLmRhdGV0aW1lLmZyb210aW1lc3RhbXAoCiAgICAgICAgICAgICAgICBzdC5zdF9tdGltZSkuc3RyZnRpbWUoJyVZLSVtLSVkICVIOiVNOiVTJykpKQogICAgICAgIGVsc2U6CiAgICAgICAgICAgIG91dC5hcHBlbmQoKG4sIC0xLCAnTUlTU0lORycpKQogICAgcmV0dXJuIG91dAoKCmRlZiBpY2ViZXJnX2RvbWFpbigpOgogICAgIiIi5Yaw5bGxIDgg5byV5pOO5Y2H57qn5b+r54WnIiIiCiAgICBzbmFwID0gX2VuZ2luZV9zbmFwc2hvdChJQ0VCRVJHX0VOR0lORVMpCiAgICBvayA9IHN1bSgxIGZvciBfLCBzaXplLCBfIGluIHNuYXAgaWYgc2l6ZSA+IDApCiAgICByZXR1cm4geydkb21haW4nOiAnaWNlYmVyZycsICdlbmdpbmVzX3RvdGFsJzogbGVuKHNuYXApLAogICAgICAgICAgICAnZW5naW5lc19vayc6IG9rLCAnc25hcHNob3QnOiBzbmFwfQoKCmRlZiBrbm93bGVkZ2VfZG9tYWluKCk6CiAgICAiIiLnn6Xor4blupPlop7ph4/nu5/orqEgKOWPquivu+S4u+W6kywg6KGo5a656ZSZKSIiIgogICAgc3RhdHMgPSB7fQogICAgdHJ5OgogICAgICAgIGMgPSBfY29ubihNQUlOX0RCKQogICAgICAgIGZvciB0YmwsIGtleSBpbiBbKCdtdF9haV9icmFpbl9mZWVkX2xvZycsICdicmFpbl9mZWVkX3Jvd3MnKSwKICAgICAgICAgICAgICAgICAgICAgICAgICgnbXRfYWlfZWlnZW5mbHV4X21lc3NhZ2VzJywgJ2VpZ2VuZmx1eF9tc2dzJyksCiAgICAgICAgICAgICAgICAgICAgICAgICAoJ2JyYWluX2tub3dsZWRnZScsICdicmFpbl9rbm93bGVkZ2UnKSwKICAgICAgICAgICAgICAgICAgICAgICAgICgnZ3JhcGhfbm9kZXMnLCAna2dfbm9kZXMnKSwKICAgICAgICAgICAgICAgICAgICAgICAgICgnZ3JhcGhfcmVsYXRpb25zJywgJ2tnX2VkZ2VzJyldOgogICAgICAgICAgICB0cnk6CiAgICAgICAgICAgICAgICBzdGF0c1trZXldID0gYy5leGVjdXRlKAogICAgICAgICAgICAgICAgICAgICdTRUxFQ1QgQ09VTlQoKikgRlJPTSAnICsgdGJsKS5mZXRjaG9uZSgpWzBdCiAgICAgICAgICAgIGV4Y2VwdCBFeGNlcHRpb246CiAgICAgICAgICAgICAgICBzdGF0c1trZXldID0gLTEKICAgICAgICBjLmNsb3NlKCkKICAgIGV4Y2VwdCBFeGNlcHRpb24gYXMgZToKICAgICAgICBzdGF0c1snZXJyb3InXSA9IHN0cihlKQogICAgc3RhdHNbJ2tub3dsZWRnZV9lbmdpbmVzJ10gPSBsZW4oS05PV0xFREdFX0VOR0lORVMpCiAgICByZXR1cm4geydkb21haW4nOiAna25vd2xlZGdlJywgJ3N0YXRzJzogc3RhdHN9CgoKZGVmIGFuZHJvbWVkYV9kb21haW4oKToKICAgICIiIuS7meWls+W6p+WtkOezu+e7n+WBpeW6tyAoZW5naW5lcy9hcHAuZGIpIiIiCiAgICBzdGF0cyA9IHsnZGFlbW9uX3N0YXRlcyc6IHt9LCAnc3VnZ2VzdGlvbnMnOiB7fX0KICAgIHRyeToKICAgICAgICBjID0gX2Nvbm4oQVBQX0RCKQogICAgICAgIGZvciBzdCwgbiBpbiBjLmV4ZWN1dGUoCiAgICAgICAgICAgICAgICAnU0VMRUNUIGN1cnJlbnRfc3RhdGUsIENPVU5UKCopIEZST00gbXRfYWlfc21hcnRfbW91bnRfcHJvY2Vzc2VzJwogICAgICAgICAgICAgICAgJyBHUk9VUCBCWSBjdXJyZW50X3N0YXRlJykuZmV0Y2hhbGwoKToKICAgICAgICAgICAgc3RhdHNbJ2RhZW1vbl9zdGF0ZXMnXVtzdF0gPSBuCiAgICAgICAgdHJ5OgogICAgICAgICAgICBmb3Igc3QsIG4gaW4gYy5leGVjdXRlKAogICAgICAgICAgICAgICAgICAgICdTRUxFQ1Qgc3RhdHVzLCBDT1VOVCgqKSBGUk9NIG10X2FpX3N1Z2dlc3Rpb25fcG9vbCcKICAgICAgICAgICAgICAgICAgICAnIEdST1VQIEJZIHN0YXR1cyBMSU1JVCA4JykuZmV0Y2hhbGwoKToKICAgICAgICAgICAgICAgIHN0YXRzWydzdWdnZXN0aW9ucyddW3N0XSA9IG4KICAgICAgICBleGNlcHQgRXhjZXB0aW9uOgogICAgICAgICAgICBwYXNzCiAgICAgICAgYy5jbG9zZSgpCiAgICBleGNlcHQgRXhjZXB0aW9uIGFzIGU6CiAgICAgICAgc3RhdHNbJ2Vycm9yJ10gPSBzdHIoZSkKICAgIHN0YXRzWydzdWJzeXN0ZW1fZW5naW5lcyddID0gbGVuKEFORFJPTUVEQV9FTkdJTkVTKQogICAgcmV0dXJuIHsnZG9tYWluJzogJ2FuZHJvbWVkYScsICdzdGF0cyc6IHN0YXRzfQoKCmRlZiBfZW5zdXJlX2xvZ190YWJsZShjKToKICAgIGMuZXhlY3V0ZSgnJydDUkVBVEUgVEFCTEUgSUYgTk9UIEVYSVNUUyBtdF91cGdyYWRlX3N1aXRlX2xvZyAoCiAgICAgICAgaWQgSU5URUdFUiBQUklNQVJZIEtFWSBBVVRPSU5DUkVNRU5ULAogICAgICAgIHJ1bl9hdCBURVhUIERFRkFVTFQgKGRhdGV0aW1lKCdub3cnKSksCiAgICAgICAgc3VpdGVfdmVyc2lvbiBURVhUIERFRkFVTFQgJ3YyMi4yMS4wLXVwZ3JhZGUtc3VpdGUnLAogICAgICAgIGRvbWFpbiBURVhULCBwYXlsb2FkX2pzb24gVEVYVCknJycpCgoKZGVmIHJ1bl9zdWl0ZSgpOgogICAgIiIi5LiJ5Z+f5ZCE6LeR5LiA5qyhICsg55+t5LqL5Yqh6JC95bqTIiIiCiAgICByZXN1bHRzID0gW2ljZWJlcmdfZG9tYWluKCksIGtub3dsZWRnZV9kb21haW4oKSwgYW5kcm9tZWRhX2RvbWFpbigpXQogICAgaW1wb3J0IGpzb24KICAgIHRyeToKICAgICAgICBjID0gX2Nvbm4oQVBQX0RCKQogICAgICAgIF9lbnN1cmVfbG9nX3RhYmxlKGMpCiAgICAgICAgZm9yIHIgaW4gcmVzdWx0czoKICAgICAgICAgICAgYy5leGVjdXRlKCdJTlNFUlQgSU5UTyBtdF91cGdyYWRlX3N1aXRlX2xvZyAoZG9tYWluLCBwYXlsb2FkX2pzb24pJwogICAgICAgICAgICAgICAgICAgICAgJyBWQUxVRVMgKD8sPyknLCAoclsnZG9tYWluJ10sIGpzb24uZHVtcHMoCiAgICAgICAgICAgICAgICAgICAgICAgICAgciwgZW5zdXJlX2FzY2lpPUZhbHNlLCBkZWZhdWx0PXN0cikpKQogICAgICAgIGMuY29tbWl0KCkKICAgICAgICBjLmNsb3NlKCkKICAgIGV4Y2VwdCBFeGNlcHRpb24gYXMgZToKICAgICAgICByZXN1bHRzLmFwcGVuZCh7J2RvbWFpbic6ICdsb2dfZXJyb3InLCAnZXJyb3InOiBzdHIoZSl9KQogICAgcmV0dXJuIHJlc3VsdHMKCgppZiBfX25hbWVfXyA9PSAnX19tYWluX18nOgogICAgZm9yIHIgaW4gcnVuX3N1aXRlKCk6CiAgICAgICAgbGluZSA9ICdbJXNdICcgJSByLmdldCgnZG9tYWluJywgJz8nKQogICAgICAgIGlmICdlbmdpbmVzX3RvdGFsJyBpbiByOgogICAgICAgICAgICBsaW5lICs9ICdlbmdpbmVzICVkLyVkIG9rJyAlIChyWydlbmdpbmVzX29rJ10sIHJbJ2VuZ2luZXNfdG90YWwnXSkKICAgICAgICBlbGlmICdzdGF0cycgaW4gcjoKICAgICAgICAgICAgbGluZSArPSBzdHIoclsnc3RhdHMnXSlbOjE2MF0KICAgICAgICBwcmludChsaW5lKQo=').decode('utf-8')\n"
+        "                    with open(_fp, 'w') as _f: _f.write(_code)\n"
+        "                    _log('UPGRADE_MANIFEST: upgrade_suite.py generated OK')\n"
+        "                else:\n"
+        "                    _log('UPGRADE_MANIFEST: upgrade_suite.py already present')\n"
+        "            except Exception as e:\n"
+        "                _log('UPGRADE_MANIFEST err: ' + str(e))"
+    )
     if action == "FIX_DAEMON": return FIX_BODY
     elif action == "ADD_ROUTE": return ROUTE_BODY
     elif action == "CLEANUP": return CLEAN_BODY
     elif action == "SYNC_PARAM": return SYNC_PARAM_BODY
     elif action == "OPTIMIZE_UI": return OPTIMIZE_UI_BODY
+    elif action == "UPGRADE_MANIFEST": return UPGRADE_BODY
     return PATROL_BODY
 
 def mount_system_required() -> Dict:

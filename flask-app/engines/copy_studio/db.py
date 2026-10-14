@@ -8,7 +8,7 @@
 from __future__ import annotations
 import sqlite3, threading, time, os, functools, datetime
 from pathlib import Path
-from typing import Optional, Iterator
+# [unused] from typing import Optional, Iterator
 from . import DB_PATH
 
 # ═══════════════════════════════════════════════════════════

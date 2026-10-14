@@ -578,7 +578,7 @@ def _ollama_chat(prompt: str, system: str = '', timeout: int = 30) -> str:
             "options": {"temperature": 0.7}
         }).encode()
         req = urllib.request.Request(
-            "http://localhost:11435/api/generate",
+            "http://localhost:11434/api/generate",
             data=payload, headers={"Content-Type": "application/json"}
         )
         with urllib.request.urlopen(req, timeout=timeout) as resp:

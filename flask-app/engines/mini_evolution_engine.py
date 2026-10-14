@@ -27,7 +27,7 @@ DB   = BASE / "app.db"             # Mac mini: flask-app/app.db
 ENGINES = BASE / "engines"
 AI_ENGINES = BASE / "ai_engines"
 
-OLLAMA_URL = "http://localhost:11435"
+OLLAMA_URL = "http://localhost:11434"
 # MacBook 本机: 等 qwen2.5-coder:14b 下载完即启用
 # Mac mini (远程): 已有 qwen2.5-coder:14b, 直接用
 OLLAMA_MODEL = "qwen2.5:14b-q5"

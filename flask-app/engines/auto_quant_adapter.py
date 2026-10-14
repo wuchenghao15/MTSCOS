@@ -234,7 +234,7 @@ def verify_inference(tag: str, prompt: str = "你好, 用一句话介绍自己")
     try:
         payload = json.dumps({"model":tag,"prompt":prompt,"stream":False}).encode()
         t0 = time.time()
-        r = ur.urlopen(ur.Request("http://localhost:11435/api/generate",
+        r = ur.urlopen(ur.Request("http://localhost:11434/api/generate",
                                  data=payload, headers={"Content-Type":"application/json"}), timeout=60)
         resp = json.loads(r.read())
         dt = time.time()-t0
@@ -288,7 +288,7 @@ def cmd_benchmark():
                 payload = json.dumps({"model":name,"prompt":"1+1等于几?","stream":False}).encode()
                 t0 = time.time()
                 import urllib.request as ur
-                r = ur.urlopen(ur.Request("http://localhost:11435/api/generate",
+                r = ur.urlopen(ur.Request("http://localhost:11434/api/generate",
                                          data=payload, headers={"Content-Type":"application/json"}), timeout=60)
                 resp = json.loads(r.read())
                 dt = time.time()-t0

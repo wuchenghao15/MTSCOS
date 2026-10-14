@@ -20,7 +20,7 @@ import argparse
 import json
 import sys
 from datetime import datetime
-from pathlib import Path
+# [unused] from pathlib import Path
 
 from .db import get_conn, DB_PATH
 from .state_machine import finalize_request

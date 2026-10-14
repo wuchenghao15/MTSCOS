@@ -14,7 +14,7 @@ Lang 映射 (对齐两边):
 """
 from __future__ import annotations
 import json, time, datetime, sqlite3, functools, re, hashlib
-from pathlib import Path
+# [unused] from pathlib import Path
 from typing import Optional, Dict, Any, List
 
 # ═══════════════════════════════════════════════════════════

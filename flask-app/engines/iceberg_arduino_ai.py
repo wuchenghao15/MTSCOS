@@ -117,7 +117,7 @@ def ollama(sys_p: str, user_p: str, timeout: int = 25) -> str | None:
             {"role": "user", "content": user_p}
         ], "stream": False}).encode()
         r = urllib.request.urlopen(urllib.request.Request(
-            "http://localhost:11435/api/chat",
+            "http://localhost:11434/api/chat",
             data=payload, headers={"Content-Type":"application/json"}),
             timeout=timeout)
         return json.loads(r.read())["message"]["content"]

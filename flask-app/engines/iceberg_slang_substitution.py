@@ -29,7 +29,7 @@ import os, sys, sqlite3, json, re, time, random, datetime, hashlib
 # ────────────────────────────────────────────────────────────
 BASE = os.path.dirname(os.path.abspath(__file__))
 DB   = os.path.join(BASE, "..", "database", "app.db")
-OLLAMA_URL = "http://localhost:11435/api/generate"
+OLLAMA_URL = "http://localhost:11434/api/generate"
 OLLAMA_MODEL = "qwen2.5:14b-q5"
 USER_AGENTS = [
     "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1",

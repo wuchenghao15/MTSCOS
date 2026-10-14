@@ -190,7 +190,7 @@ def _auto_simulate_12_steps(db: sqlite3.Connection, flow_id: str, title: str, su
     # 快速检查 Ollama
     try:
         import urllib.request
-        urllib.request.urlopen("http://localhost:11435/api/tags", timeout=2)
+        urllib.request.urlopen("http://localhost:11434/api/tags", timeout=2)
         ollama_ok = True
     except Exception:
         ollama_ok = False
@@ -203,7 +203,7 @@ def _auto_simulate_12_steps(db: sqlite3.Connection, flow_id: str, title: str, su
                 {"role": "user", "content": user}
             ], "stream": False}).encode()
             r = urllib.request.urlopen(urllib.request.Request(
-                "http://localhost:11435/api/chat", data=payload,
+                "http://localhost:11434/api/chat", data=payload,
                 headers={"Content-Type":"application/json"}), timeout=timeout)
             return json.loads(r.read())["message"]["content"]
         except Exception:

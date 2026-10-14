@@ -30,7 +30,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 # ── Ollama 调用 (零积分本地推理) ──
-OLLAMA_URL = "http://localhost:11435/api/chat"
+OLLAMA_URL = "http://localhost:11434/api/chat"
 MODEL = "qwen2.5:14b-q5"
 
 def ollama_chat(system: str, user: str, timeout: int = 30) -> str:
@@ -199,7 +199,7 @@ def main():
     import urllib.request
     # 快速检查 Ollama 是否在线
     try:
-        urllib.request.urlopen("http://localhost:11435/api/tags", timeout=2)
+        urllib.request.urlopen("http://localhost:11434/api/tags", timeout=2)
     except Exception as e:
         print(f"❌ Ollama 离线: {e}")
         sys.exit(1)
