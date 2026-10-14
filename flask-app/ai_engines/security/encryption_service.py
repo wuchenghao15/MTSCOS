@@ -201,7 +201,7 @@ def encrypt_field(plaintext: str | bytes, classification: str,
             serial = getattr(provider, "serial", None)
             if not serial:
                 raise RuntimeError("VIKEY 硬件狗序列号不可读")
-            ok, reason = provider.verify_dual_key_atomic(timeout=5.0)
+            ok, reason = provider.verify_dual_key_atomic(timeout=12.0)
             if not ok:
                 raise RuntimeError(f"VIKEY 双因子认证失败: {reason}")
         except RuntimeError:

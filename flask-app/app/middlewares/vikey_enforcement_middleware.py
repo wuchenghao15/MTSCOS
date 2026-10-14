@@ -591,13 +591,25 @@ class VikeyEnforcementMiddleware:
         else:
             both = False  # 非 SA 永远不能 SA_PROPRIETARY
 
-        # ---- 终端绑定：SA 必须从插钥终端访问（fail-closed：ip缺失=未绑定）----
+        # ---- 终端绑定：双密钥在位时降级为警告 (2026-10-14 允许远程 SA) ----
+        # 原逻辑：SA 必须从插钥终端访问，未绑定 → 直接 both=False
+        # 新逻辑：双密钥 AND Provider 原子校验 OK → 服务器本身是硬件锚点，
+        #         终端绑定降级为 info 记录（不拦截）；仅在双密钥离线时终端绑定
+        #         继续作为 fail-closed 额外防线
         terminal_bound = None
         if is_sa:
             terminal_bound = self._is_bound_terminal(ip)
-            if not terminal_bound:
+            if not terminal_bound and not both:
                 both = False
-                dual_reason = 'terminal_not_bound'  # 覆盖 Provider reason
+                dual_reason = 'terminal_not_bound'
+            elif not terminal_bound and both:
+                # 双密钥 OK → 允许远程 SA，记录日志但不拦截
+                dual_reason = 'ok_remote_sa_allowed'
+                self._log_automation_console(
+                    'remote_sa_allowed',
+                    f"远程 SA 登录放行 dual_keys=ON terminal=UNBOUND ip={ip}",
+                    severity='info',
+                    extra={'ip': ip, 'username': username, 'dual_reason': 'remote_ok'})
         layout = 'SA_PROPRIETARY' if both else 'STANDARD'
         # ---- 密钥驱动检测 + 规则检测 + 系统规则检测 ----
         drivers = self._check_drivers()
@@ -716,9 +728,11 @@ class VikeyEnforcementMiddleware:
                     'szu100_status': szu100['auth_status'],
                     'network_status': network_status,
                 }
-            # ---- 终端绑定（2026-08-30）：SA 必须从插钥终端(服务器本机)访问 ----
+            # ---- 终端绑定（2026-10-14 远程 SA 放行） ----
+            # 双密钥已通过原子校验 → 服务器本身是硬件锚点，跳过终端绑定拦截
             _term = dual.get('terminal') or {}
-            if _term.get('required') and _term.get('bound') is not True:
+            _dual_ok = bool(dual.get('both_authenticated'))
+            if _term.get('required') and _term.get('bound') is not True and not _dual_ok:
                 reason = 'SA必须从插钥终端(服务器本机)访问，当前终端未绑定'
                 self._log_event('terminal_denied', 'critical',
                                 f'超级管理员访问被拒绝: {reason}, 路径: {path}, ip={extra.get("ip")}',
@@ -891,31 +905,34 @@ class VikeyEnforcementMiddleware:
         result['is_sa'] = is_sa
         result['auth_stage'] = 'full_auth' if is_sa else 'pre_auth'
 
-        # ② Terminal 绑定（loopback 防远程绕过；纯本地判断，最快先短路）
-        term_bound = cls._is_bound_terminal(ip)
-        result['terminal_bound'] = term_bound
-        if not term_bound:
-            result['reason'] = 'terminal_not_bound_remote_access_blocked'
-            return result
-
-        # ① 双密钥原子校验（threading.Lock + 双线程，provider 内建短缓存）
-        #    该校验为机器级硬件状态，与会话登录无关：guest 在线同样返回 True
+        # ① 双密钥原子校验（2026-10-14: 提到首位，避免远程 SA 被终端绑定 short-circuit）
+        #    双密钥 OK → 服务器本身是硬件锚点，跳过终端绑定；仅在双密钥离线时终端
+        #    绑定作为 fail-closed 额外防线
         dual_ok = False
         dual_reason = 'unknown'
         try:
             from core.services.vikey_driver import get_hardware_key_provider
             provider = get_hardware_key_provider()
-            dual_ok, dual_reason = provider.verify_dual_key_atomic(timeout=5.0)
+            dual_ok, dual_reason = provider.verify_dual_key_atomic(timeout=12.0)
         except Exception as _e:
             dual_reason = f'provider_unavailable: {_e}'
         result['dual_ok'] = bool(dual_ok)
+
+        # ② Terminal 绑定 (loopback + extra_bound_ips)
+        term_bound = cls._is_bound_terminal(ip)
+        result['terminal_bound'] = term_bound
+
+        # 双密钥 OK → 终端绑定降级（远程 SA 允许）; 双密钥 NOT OK → 终端绑定作为 fail-closed
+        if not term_bound and not dual_ok:
+            result['reason'] = 'dual_key_offline_and_terminal_not_bound'
+            return result
         if not dual_ok:
             result['reason'] = f'dual_key_offline:{dual_reason}'
             return result
 
-        # 两条件全满足 → 预认证跳转（登录在 SA 页面内完成）
+        # 两条件全满足（或 dual key OK + remote 允许）→ 预认证跳转
         result['should_redirect'] = True
-        result['reason'] = 'ok'
+        result['reason'] = 'ok' if term_bound else 'ok_remote_sa_allowed'
         return result
 
     @staticmethod

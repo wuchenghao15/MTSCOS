@@ -113,7 +113,7 @@ class PortGuardDaemon:
             result["szu100_present"] = provider.detect_szu100()
             result["szu100_authentic"] = result["szu100_present"]
 
-            dual_ok, dual_reason = provider.verify_dual_key_atomic(timeout=5.0)
+            dual_ok, dual_reason = provider.verify_dual_key_atomic(timeout=12.0)
             result["dual_authenticated"] = dual_ok
             result["trigger_reason"] = dual_reason if not dual_ok else ""
 

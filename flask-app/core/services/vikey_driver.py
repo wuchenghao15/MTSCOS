@@ -3323,7 +3323,7 @@ class HardwareKeyProvider(ABC):
         """检测 SZU100 专用 U盘是否连接"""
         ...
 
-    def verify_dual_key_atomic(self, timeout: float = 5.0) -> Tuple[bool, str]:
+    def verify_dual_key_atomic(self, timeout: float = 12.0) -> Tuple[bool, str]:
         """双密钥原子校验（threading.Lock + 超时降级）
 
         张晓峰综1: 双密钥原子校验实施细节
@@ -3336,6 +3336,8 @@ class HardwareKeyProvider(ABC):
             (False, 'both_missing')   — 双密钥均缺失
             (False, 'timeout_degrade') — 超时降级（非拒绝，提示重试）
         """
+        # timeout 5s → 12s (2026-10-14): detect_vikey 内部 ioreg(8s)+sprof(10s) OR 串行,
+        # detect_szu100 也可能 3-4s; 双线程并发 5s 不足, 12s 给足安全余量
         timeout = max(0.1, min(float(timeout), 15.0))
         result_holder: Dict[str, Any] = {'vikey_ok': False, 'szu100_ok': False}
 
@@ -3398,7 +3400,7 @@ class HardwareKeyProvider(ABC):
             else:
                 return (False, 'szu100_missing')
 
-    def get_dual_auth_state(self, timeout: float = 5.0) -> Dict[str, Any]:
+    def get_dual_auth_state(self, timeout: float = 12.0) -> Dict[str, Any]:
         """Return a safe, non-secret snapshot for session renewal and auditing."""
         checked_at = time.time()
         verified, reason = self.verify_dual_key_atomic(timeout=timeout)
