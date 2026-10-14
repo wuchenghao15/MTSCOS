@@ -86,14 +86,14 @@ def _to_zh_subject(category: str) -> str:
 
 def _row_to_qbank(r: sqlite3.Row) -> Optional[Dict[str, Any]]:
     """脑库行 → question_bank 映射, 返回 dict 或 None 跳过"""
-    content = (r["content"] or "").strip()
-    if not content:
-        return None
     kid = r["knowledge_id"]
-    kt = r.get("knowledge_type") or ""
-    cat = r.get("category") or ""
-    title = r.get("title") or ""
-    tags_raw = r.get("tags") or ""
+    content = (r["content"] or "").strip()
+    if not content or not kid:
+        return None
+    kt = r["knowledge_type"] or ""
+    cat = r["category"] or ""
+    title = r["title"] or ""
+    tags_raw = r["tags"] or ""
     try:
         tags = json.loads(tags_raw) if isinstance(tags_raw, str) else list(tags_raw)
     except Exception:
@@ -101,7 +101,8 @@ def _row_to_qbank(r: sqlite3.Row) -> Optional[Dict[str, Any]]:
     tags.append(kt)
     if cat: tags.append(cat)
 
-    explanation = (r.get("confidence_score") and f"来源{kt} 置信度{r['confidence_score']}") or "脑库知识自动转题库, 待教师审核"
+    conf = r["confidence_score"]
+    explanation = (conf and f"来源{kt} 置信度{conf}") or "脑库知识自动转题库, 待教师审核"
 
     return {
         "question_id": kid,
@@ -115,15 +116,23 @@ def _row_to_qbank(r: sqlite3.Row) -> Optional[Dict[str, Any]]:
         "explanation": explanation,
         "knowledge_points": json.dumps([cat] if cat else [], ensure_ascii=False),
         "source": _infer_source(kid, cat, kt),
-        "created_at": r.get("created_at") or datetime.now().isoformat(),
+        "created_at": r["created_at"] or datetime.now().isoformat(),
         "status": "published",
         "quality_score": 60.0,
         "rule_level": "WARNING",
         "tags": json.dumps(tags[:8], ensure_ascii=False),
     }
 
+def _open_wr() -> sqlite3.Connection:
+    """开 WAL + busy_timeout 适配多进程并发"""
+    c = sqlite3.connect(DB, timeout=30)
+    c.execute("PRAGMA journal_mode=WAL")
+    c.execute("PRAGMA busy_timeout=30000")
+    c.row_factory = sqlite3.Row
+    return c
+
 def ensure_tables() -> None:
-    c = sqlite3.connect(DB, timeout=5)
+    c = _open_wr()
     try:
         begin_immediate(c)
         c.execute(CK_DDL)
@@ -132,34 +141,42 @@ def ensure_tables() -> None:
         c.close()
 
 def adapt(limit: int = 0, prefix: str = "", dry_run: bool = False, chunk: int = BATCH) -> Dict[str, Any]:
-    """脑库→题库转换"""
+    """脑库→题库转换 (WAL + busy_timeout 续传友好)
+    
+    去重策略: question_bank.question_id UNIQUE + INSERT OR IGNORE
+    — 省掉 NOT EXISTS 子查询 (O(N×M) 反连接), 直接按 rowid 流式扫描
+    """
     chunk = max(500, min(int(chunk or BATCH), 20000))
     ensure_tables()
     ck_key = f"brain2qbank:{prefix or 'ALL'}"
 
-    c = sqlite3.connect(DB, timeout=5)
-    c.row_factory = sqlite3.Row
+    c = _open_wr()
     try:
         begin_immediate(c)
         c.execute(f"INSERT OR IGNORE INTO {CK_TABLE} (job_key, status, created_at, updated_at)"
                   " VALUES (?, 'RUNNING', ?, ?)", (ck_key, datetime.now().isoformat(), datetime.now().isoformat()))
         c.commit()
-        last_rowid = c.execute(f"SELECT last_rowid FROM {CK_TABLE} WHERE job_key=?", (ck_key,)).fetchone()[0]
+        ck_row = c.execute(f"SELECT last_rowid, done, skipped FROM {CK_TABLE} WHERE job_key=?", (ck_key,)).fetchone()
+        last_rowid = ck_row["last_rowid"] or 0
+        done_prev = ck_row["done"] or 0
+        skip_prev = ck_row["skipped"] or 0
 
-        # 目标已存在的 question_id 跳过
-        cond = "b.rowid > ? AND NOT EXISTS (SELECT 1 FROM question_bank q WHERE q.question_id = b.knowledge_id)"
+        # 纯 rowid 流式扫描, 无 NOT EXISTS (INSERT OR IGNORE 去重)
+        cond = "b.rowid > ?"
         params: list = [last_rowid]
         if prefix:
             cond += " AND b.knowledge_id LIKE ?"
             params.append(prefix + "%")
 
-        todo = c.execute(f"SELECT COUNT(*) FROM ai_brain_enhanced_knowledge b WHERE {cond}", params).fetchone()[0]
-        log(f"adapt[{ck_key}] 起点 rowid>{last_rowid} 待转换 {todo:,} 行"
+        log(f"adapt[{ck_key}] 起点 rowid>{last_rowid} done_prev={done_prev} skip_prev={skip_prev}"
             + (f" (limit={limit})" if limit else "") + (" [DRY-RUN]" if dry_run else ""))
         if dry_run:
+            # dry-run 才做 COUNT 估算
+            todo = c.execute(f"SELECT COUNT(*) FROM ai_brain_enhanced_knowledge b WHERE {cond}", params).fetchone()[0]
             return {"todo": todo, "last_rowid": last_rowid, "dry_run": True}
 
         done = skipped = failed = 0
+        t0 = datetime.now()
         try:
             while True:
                 if limit and done >= limit: break
@@ -185,6 +202,7 @@ def adapt(limit: int = 0, prefix: str = "", dry_run: bool = False, chunk: int = 
                     c.execute(f"UPDATE {CK_TABLE} SET last_rowid=?, skipped=skipped+?, updated_at=? WHERE job_key=?",
                               (ck_last, len(rows), datetime.now().isoformat(), ck_key))
                     c.commit()
+                    params[0] = ck_last
                     continue
 
                 begin_immediate(c)
@@ -193,24 +211,28 @@ def adapt(limit: int = 0, prefix: str = "", dry_run: bool = False, chunk: int = 
                            " explanation, knowledge_points, source, created_at, status, quality_score, rule_level, tags)"
                            " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)")
                 cur = c.executemany(ins_sql, vals)
-                inserted = cur.rowcount if cur.rowcount > 0 else 0
+                inserted = cur.rowcount if cur.rowcount and cur.rowcount > 0 else 0
                 skipped_now = len(vals) - inserted
                 if inserted:
                     try:
-                        # 向量入队 (可选, 失败不阻塞)
-                        c.execute(
-                            f"INSERT OR REPLACE INTO mt_brain_vector_queue "
+                        # 批入向量队列 (INSERT OR REPLACE 去重)
+                        now_iso = datetime.now().isoformat()
+                        c.executemany(
+                            "INSERT OR REPLACE INTO mt_brain_vector_queue "
                             "(knowledge_id, title, content, enqueued_at, status) VALUES (?,?,?,?, 'PENDING')",
-                            (m["question_id"], m["content"][:200], m["content"], datetime.now().isoformat()))
-                    except Exception as e:
-                        log(f"  向量入队失败(不影响主流程): {e}")
+                            [(v[0], v[5][:200], v[5], now_iso) for v in vals])
+                    except Exception:
+                        pass  # 向量入队失败不阻塞
                 c.execute(f"UPDATE {CK_TABLE} SET last_rowid=?, done=done+?, skipped=skipped+?, updated_at=? WHERE job_key=?",
                           (ck_last, inserted, skipped_now + skipped, datetime.now().isoformat(), ck_key))
                 c.commit()
                 done += inserted
                 skipped += skipped_now
+                params[0] = ck_last
+                elapsed = (datetime.now() - t0).total_seconds()
                 if done % 5000 == 0 or (limit and done >= limit):
-                    log(f"  进度 done={done:,} skipped={skipped:,} failed={failed} 水位={ck_last}")
+                    log(f"  进度 +{done:,} (累计 {done_prev+done:,}) skipped={skip_prev+skipped:,} 水位={ck_last} "
+                        f"速度={done/max(elapsed,1):.0f}/s")
         except Exception as e:
             c.execute(f"UPDATE {CK_TABLE} SET status='PAUSED', updated_at=? WHERE job_key=?",
                       (datetime.now().isoformat(), ck_key))
