@@ -26,7 +26,12 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-DB_PATH = os.environ.get('APP_DB', str(PROJECT_ROOT / 'database' / 'app.db'))
+# DB 候选: env APP_DB > MTSCOS_PROD 本地 (非 OneDrive, 100% 可访问) > OneDrive (容易 I/O error)
+_PROD_DB = str(Path.home() / "MTSCOS_PROD" / "flask-app" / "database" / "app.db")
+_ONEDRIVE_DB = str(PROJECT_ROOT / "database" / "app.db")
+DB_PATH = os.environ.get('APP_DB') or (
+    _PROD_DB if Path(_PROD_DB).exists() else _ONEDRIVE_DB
+)
 
 # 确保 flask-app 根在 sys.path (CLI 跑时)
 for _p in (str(PROJECT_ROOT), str(PROJECT_ROOT / 'engines')):
@@ -394,7 +399,8 @@ def _evolution_full_cycle(input_data):
     engines_dir = str(PROJECT_ROOT / "engines")
     if engines_dir not in sys.path: sys.path.insert(0, engines_dir)
     from andromeda_auto_evolution import run_cycle
-    return run_cycle(reason=input_data.get("reason", "workflow_evolution"))
+    # run_cycle() 无参数签名, reason 通过 engine 内部常量生效
+    return run_cycle()
 
 
 def _code_hygiene(input_data, stages):
