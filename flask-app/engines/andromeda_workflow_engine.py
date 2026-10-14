@@ -311,37 +311,49 @@ def _knowledge_ingest(input_data, stages):
     stages.append({"stage": "vectorize", "t0": t0, "t1": time.time(),
                    "status": "SUCCESS" if vectors else "WARN", "count": len(vectors)})
 
-    # 直连 app.db → 写 ai_brain_enhanced_knowledge
+    # 直连 DB → 写 ai_brain_enhanced_knowledge (PROD schema: 11 列, created_at REAL)
     conn = sqlite3.connect(DB_PATH, timeout=10)
     cur = conn.cursor()
     ingested = 0
+    ingested_via_omega = 0
+    now_ts = time.time()
     for (title, content, domain), emb in zip(normalized, vectors):
         kid = f"KNLEDGE-{uuid.uuid4().hex[:8]}"
+        # ── 主表 ai_brain_enhanced_knowledge (匹配 PROD 真 schema) ──
         try:
             cur.execute(
                 """INSERT OR IGNORE INTO ai_brain_enhanced_knowledge
-                (knowledge_id, title, content, source_domain, source_type, metadata, embedding)
-                VALUES(?,?,?,?,?,?,?)""",
-                (kid, title, content[:8000], domain, "workflow_ingest",
-                 json.dumps({"domain": domain, "source": "wf_knowledge_ingest"}, ensure_ascii=False),
-                 json.dumps(emb) if emb else None))
+                (knowledge_id, category, title, content, knowledge_type, tags,
+                 confidence_score, usage_count, is_active, created_at, updated_at)
+                VALUES(?,?,?,?,?,?,?,?,?,?,?)""",
+                (kid, domain, title, content[:8000], "workflow_ingest",
+                 json.dumps({"domain": domain, "source": "wf_knowledge_ingest",
+                              "embedding_dim": len(emb) if emb else 0}, ensure_ascii=False),
+                 0.95, 0, 1, now_ts, now_ts))
             if cur.rowcount: ingested += 1
+            continue  # 成功了就不降级
         except Exception:
-            # 表 schema 不同则降级: 写 mt_omega_ai_knowledge
-            try:
-                cur.execute(
-                    """INSERT OR IGNORE INTO mt_omega_ai_knowledge
-                    (knowledge_id, title, content, domain, source, embedding, created_at)
-                    VALUES(?,?,?,?,?,?,?)""",
-                    (kid, title, content[:8000], domain, "wf_knowledge_ingest",
-                     json.dumps(emb) if emb else None,
-                     datetime.now(timezone.utc).isoformat()))
-                if cur.rowcount: ingested += 1
-            except Exception:
-                pass
+            pass
+        # ── 降级: mt_omega_ai_knowledge (PROD schema 无 embedding 列) ──
+        try:
+            cur.execute(
+                """INSERT OR IGNORE INTO mt_omega_ai_knowledge
+                (knowledge_id, domain, category, title, content, source,
+                 tags_json, confidence, created_at, updated_at, is_active)
+                VALUES(?,?,?,?,?,?,?,?,?,?,?)""",
+                (kid, domain, "andromeda_workflow", title, content[:8000],
+                 "wf_knowledge_ingest",
+                 json.dumps({"source": "wf_knowledge_ingest",
+                              "embedding_dim": len(emb) if emb else 0}, ensure_ascii=False),
+                 0.95, datetime.now(timezone.utc).isoformat(),
+                 datetime.now(timezone.utc).isoformat(), 1))
+            if cur.rowcount: ingested_via_omega += 1
+        except Exception:
+            pass
     conn.commit(); conn.close()
     stages.append({"stage": "broadcast", "t0": time.time(), "t1": time.time(),
-                   "status": "SUCCESS", "count": ingested})
+                   "status": "SUCCESS", "count": ingested + ingested_via_omega,
+                   "primary": ingested, "omega_fallback": ingested_via_omega})
     return {"ingested": ingested, "vectorized": sum(1 for v in vectors if v)}
 
 
@@ -358,9 +370,9 @@ def _hire_employee(input_data, stages):
         stages.append({"stage": "bridge", "t0": t0, "status": "SUCCESS"})
         cycle = {
             "andromeda_bridge": andromeda_hiring_bridge(
-                max_andromeda=int(input_data.get("count", 30)),
+                max_hire=int(input_data.get("count", 30)),
                 min_level=int(input_data.get("min_level", 7))),
-            "hire_employees": auto_hire_employees(max_new=int(input_data.get("count", 30))),
+            "hire_employees": auto_hire_employees(),
             "invite_experts": auto_invite_experts(),
         }
         result = {
