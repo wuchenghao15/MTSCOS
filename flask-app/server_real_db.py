@@ -10265,7 +10265,7 @@ def api_arduino_auto_detect():
     try:
         from core.services.vikey_driver import get_hardware_key_provider
         _sa_provider = get_hardware_key_provider()
-        _sa_ok, _sa_reason = _sa_provider.verify_dual_key_atomic(timeout=5.0)
+        _sa_ok, _sa_reason = _sa_provider.verify_dual_key_atomic(timeout=12.0)
         if not _sa_ok:
             return jsonify({
                 'success': False, 'error': 'ARDUINO_SA_ONLY: 需 SA 双密钥同时在线',
@@ -11976,7 +11976,7 @@ def login():
             try:
                 from core.services.vikey_driver import get_hardware_key_provider as _get_sa_hwp
                 _sa_hwp = _get_sa_hwp()
-                _sa_dual_ok_l1, _sa_dual_reason_l1 = _sa_hwp.verify_dual_key_atomic(timeout=5.0)
+                _sa_dual_ok_l1, _sa_dual_reason_l1 = _sa_hwp.verify_dual_key_atomic(timeout=12.0)
                 sa_dual_hw_ok = bool(_sa_dual_ok_l1) and _sa_dual_reason_l1 == 'ok'
             except Exception:
                 sa_dual_hw_ok = False
