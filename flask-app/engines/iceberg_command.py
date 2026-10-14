@@ -36,9 +36,18 @@ import time
 from pathlib import Path
 
 BASE = Path(__file__).resolve().parent.parent  # flask-app/
-DB   = BASE / "database" / "app.db"
+# v2: env-first + PROD 本地优先 (和 db_resolver.py v2 统一)
+_PROD_LOCAL = Path.home() / "MTSCOS_PROD" / "flask-app" / "database" / "app.db"
+_ONEDRIVE_DB = BASE / "database" / "app.db"
+_DB_ENV = os.environ.get('ANDROMEDA_DB') or os.environ.get('APP_DB')
+if _DB_ENV and os.path.exists(_DB_ENV):
+    DB = Path(_DB_ENV)
+elif _PROD_LOCAL.exists() and _PROD_LOCAL.stat().st_size > 1_000_000:
+    DB = _PROD_LOCAL
+else:
+    DB = _ONEDRIVE_DB
 MODEL = "qwen2.5:14b-q5"
-OLLAMA_URL = "http://localhost:11434/api/chat"
+OLLAMA_URL = os.environ.get('OLLAMA_HOST', 'http://localhost:11434') + "/api/chat"
 
 
 def ollama(sys_p: str, user_p: str, timeout: int = 45) -> str | None:
