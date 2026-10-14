@@ -23,6 +23,7 @@ sys_auto_repair_cycle.py — 自我修复循环 daemon
   REPAIR_INTERVAL_SEC=300  # 5min 扫一次
   HEARTBEAT_TIMEOUT_SEC=300  # 5min 无 heartbeat 判死
 """
+from __future__ import annotations
 import os, sys, time, signal, json, sqlite3, subprocess, re, shutil
 from datetime import datetime, timezone
 
