@@ -1807,7 +1807,7 @@ def register_all_blueprints(app):
     # 仙女座仪表盘页面级路由 — /iceberg_center /iceberg_evolution 等 (v22.19.0 新增, 此前未注册)
     ('andromeda_dashboard_routes', 'andromeda_dashboard_bp'),
     # 🆕 v25.0: 角色注册表 — 自动为每个角色构建专属蓝图 (teacher/professor/counselor/mentor/parent/student/admin/super_admin)
-    ('role_registry', '_role_bps'),  # 占位, 下方动态展开
+    # 占位符已删除, 下方动态 build_role_blueprints() 会追加 role_{k}_bp 条目
     # 🆕 v25.0: 仙女座统一审批蓝图 — approvals_engine.py 单权威源
     ('approvals_routes', 'approvals_bp'),
     # 🆕 v25.0: 仙女座灰度发布蓝图 — gray_release_engine.py 状态机+门禁+哈希分流
