@@ -17,10 +17,14 @@ from typing import Dict, List, Any, Optional
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SPLIT_DB_DIR = os.path.join(BASE_DIR, 'split_databases')
+MAIN_DB_DIR = os.path.join(BASE_DIR, 'database')
 
 
 def get_db_path() -> str:
-    """获取题库数据库路径"""
+    """题库数据库路径 — 主库 SSOT (flow_qbank_rebuild_20261014 裁决)"""
+    main = os.path.join(MAIN_DB_DIR, 'app.db')
+    if os.path.isfile(main):
+        return main
     return os.path.join(SPLIT_DB_DIR, 'question.db')
 
 
@@ -128,7 +132,7 @@ class UnifiedQuestionBank:
         """初始化数据库表结构"""
         # 通用题目表
         execute_sql('''
-            CREATE TABLE IF NOT EXISTS unified_questions (
+            CREATE TABLE IF NOT EXISTS question_bank (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 question_uuid TEXT UNIQUE NOT NULL,
                 subject TEXT NOT NULL,
@@ -227,23 +231,25 @@ class UnifiedQuestionBank:
         ''')
 
     def add_question(self, question_data: Dict) -> Dict:
-        """添加题目"""
+        """添加题目 — 同步写入 question_id=question_uuid, answer=correct_answer"""
         question_uuid = question_data.get('question_uuid', f'q_{uuid.uuid4().hex[:12]}')
+        correct_answer = question_data.get('correct_answer', question_data.get('answer', ''))
 
         execute_sql('''
-            INSERT INTO unified_questions (
-                question_uuid, subject, question_type, difficulty, content, options,
-                correct_answer, analysis, explanation, tags, knowledge_points,
-                chapter, section, grade, semester, source, source_type, score
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO question_bank (
+                question_id, question_uuid, subject, question_type, difficulty, content, options,
+                answer, correct_answer, analysis, explanation, tags, knowledge_points,
+                chapter, section, grade, semester, source, source_type, score,
+                status, quality_score, rule_level
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'published', 70.0, 'L2')
         ''', (
-            question_uuid,
+            question_uuid, question_uuid,
             question_data.get('subject', ''),
             question_data.get('question_type', ''),
             question_data.get('difficulty', 'easy'),
             question_data.get('content', ''),
             json.dumps(question_data.get('options', [])),
-            question_data.get('correct_answer', ''),
+            correct_answer, correct_answer,
             question_data.get('analysis', ''),
             question_data.get('explanation', ''),
             json.dumps(question_data.get('tags', [])),
@@ -254,7 +260,7 @@ class UnifiedQuestionBank:
             question_data.get('semester', ''),
             question_data.get('source', 'ai_generated'),
             question_data.get('source_type', 'auto'),
-            question_data.get('score', 5.0)
+            question_data.get('score', 5.0),
         ))
 
         return {'success': True, 'message': '题目添加成功', 'question_uuid': question_uuid}
@@ -262,7 +268,7 @@ class UnifiedQuestionBank:
     def get_questions(self, filters: Dict = None) -> Dict:
         """获取题目列表"""
         filters = filters or {}
-        sql = "SELECT * FROM unified_questions WHERE is_active = 1"
+        sql = "SELECT * FROM question_bank WHERE is_active = 1"
         params = []
 
         if filters.get('subject'):
@@ -290,7 +296,7 @@ class UnifiedQuestionBank:
 
         questions = fetch_all(sql, params)
 
-        count_sql = "SELECT COUNT(*) as total FROM unified_questions WHERE is_active = 1"
+        count_sql = "SELECT COUNT(*) as total FROM question_bank WHERE is_active = 1"
         if filters.get('subject'):
             count_sql += " AND subject = ?"
         if filters.get('question_type'):
@@ -305,7 +311,7 @@ class UnifiedQuestionBank:
 
     def get_question_by_uuid(self, question_uuid: str) -> Dict:
         """根据UUID获取题目"""
-        question = fetch_one("SELECT * FROM unified_questions WHERE question_uuid = ?", (question_uuid,))
+        question = fetch_one("SELECT * FROM question_bank WHERE question_uuid = ?", (question_uuid,))
         if not question:
             return {'success': False, 'error': '题目不存在'}
 
@@ -352,14 +358,14 @@ class UnifiedQuestionBank:
             params.append(updates['score'])
 
         params.append(question_uuid)
-        sql = f"UPDATE unified_questions SET {', '.join(update_fields)} WHERE question_uuid = ?"
+        sql = f"UPDATE question_bank SET {', '.join(update_fields)} WHERE question_uuid = ?"
         execute_sql(sql, params)
 
         return {'success': True, 'message': '题目更新成功'}
 
     def delete_question(self, question_uuid: str) -> Dict:
         """删除题目（软删除）"""
-        execute_sql("UPDATE unified_questions SET is_active = 0 WHERE question_uuid = ?", (question_uuid,))
+        execute_sql("UPDATE question_bank SET is_active = 0 WHERE question_uuid = ?", (question_uuid,))
         return {'success': True, 'message': '题目已禁用'}
 
     def ai_extend_question(self, source_uuid: str, extension_type: str = 'similar', count: int = 5) -> Dict:
@@ -730,30 +736,30 @@ class UnifiedQuestionBank:
 
     def get_statistics(self) -> Dict:
         """获取题库统计"""
-        total = fetch_one("SELECT COUNT(*) as count FROM unified_questions WHERE is_active = 1")['count']
+        total = fetch_one("SELECT COUNT(*) as count FROM question_bank WHERE is_active = 1")['count']
 
         by_subject = fetch_all('''
             SELECT subject, COUNT(*) as count
-            FROM unified_questions
+            FROM question_bank
             WHERE is_active = 1
             GROUP BY subject
         ''')
 
         by_type = fetch_all('''
             SELECT question_type, COUNT(*) as count
-            FROM unified_questions
+            FROM question_bank
             WHERE is_active = 1
             GROUP BY question_type
         ''')
 
         by_difficulty = fetch_all('''
             SELECT difficulty, COUNT(*) as count
-            FROM unified_questions
+            FROM question_bank
             WHERE is_active = 1
             GROUP BY difficulty
         ''')
 
-        ai_extended = fetch_one("SELECT COUNT(*) as count FROM unified_questions WHERE ai_extended = 1")['count']
+        ai_extended = fetch_one("SELECT COUNT(*) as count FROM question_bank WHERE ai_extended = 1")['count']
 
         return {
             'success': True,
