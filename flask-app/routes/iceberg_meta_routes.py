@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 """
-from __future__ import annotations
-
 🧊 仙女座 × 冰山 元域 API — routes/iceberg_meta_routes.py (v25.0 admin)
 =========================================================================
 【只读 API】
@@ -25,6 +23,7 @@ from __future__ import annotations
   POST   /api/iceberg/domain_health   手动覆盖某域健康分
   DELETE /api/iceberg/runs/<id>       删除意识脉冲 run
 """
+from __future__ import annotations
 import sys, json, sqlite3, time
 from pathlib import Path
 from datetime import datetime
