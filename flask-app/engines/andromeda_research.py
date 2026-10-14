@@ -27,7 +27,7 @@ import json
 import os
 import re
 import sqlite3
-import subprocess
+# [unused] import subprocess
 import sys
 import time
 from pathlib import Path
@@ -36,7 +36,7 @@ BASE = Path(__file__).resolve().parent.parent  # flask-app/
 DB   = BASE / "database" / "app.db"
 
 MODEL = "qwen2.5:14b-q5"
-OLLAMA_URL = "http://localhost:11435/api/chat"
+OLLAMA_URL = "http://localhost:11434/api/chat"
 
 
 def ollama(sys_p: str, user_p: str, timeout: int = 60) -> str | None:

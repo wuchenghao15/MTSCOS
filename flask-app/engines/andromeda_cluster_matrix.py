@@ -54,7 +54,7 @@ try:
             req = _ur.Request("http://127.0.0.1:11434/api/tags")
             resp = _ur.urlopen(req, timeout=2)
             return resp.status == 200
-        except:
+        except Exception:
             return False
     OLLAMA_OK = _ollama_available()
 except Exception:

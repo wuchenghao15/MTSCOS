@@ -984,7 +984,7 @@ class HandshakeEngine:
                 "model": "qwen2.5:14b-q5", "prompt": prompt,
                 "stream": False, "options": {"temperature": 0.3}
             }).encode()
-            req = urllib.request.Request("http://localhost:11435/api/generate",
+            req = urllib.request.Request("http://localhost:11434/api/generate",
                 data=body, headers={"Content-Type":"application/json"})
             resp = json.loads(urllib.request.urlopen(req, timeout=20).read())
             return resp.get("response", "")[:500]

@@ -18,7 +18,7 @@
 """
 from __future__ import annotations
 from pathlib import Path
-from typing import Optional
+# [unused] from typing import Optional
 
 # DB 路径 (对齐 approval 包模式: 候选探测)
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -61,9 +61,9 @@ __all__ = [
 # 延迟导入 (避免循环)
 def __getattr__(name: str):
     if name in ('ensure_schema', 'get_conn'):
-        from .db import ensure_schema, get_conn
+        # [unused] from .db import ensure_schema, get_conn
         return locals()[name]
     if name == 'ApprovalService':
-        from .service import ApprovalService
+        # [unused] from .service import ApprovalService
         return locals()[name]
     raise AttributeError(f"copy_studio has no attribute {name!r}")

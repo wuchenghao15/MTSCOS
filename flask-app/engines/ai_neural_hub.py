@@ -1977,7 +1977,7 @@ def learn_system_architecture() -> dict:
             "_mt_security_shield_before_request",
         ],
         "dual_route_engine": {
-            "local": "ai_engines.ai_dual_route_engine → Ollama localhost:11435",
+            "local": "ai_engines.ai_dual_route_engine → Ollama localhost:11434",
             "models": ["qwen2.5:7b (general)", "qwen2.5-coder:14b (code)"],
             "fallback": "volcengine_cloud",
             "token_saving": "zero local inference",

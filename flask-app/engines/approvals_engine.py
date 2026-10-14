@@ -32,7 +32,7 @@ from engines.approval.policy import (
 )
 from engines.approval.chains import build_nodes as _build_nodes
 from engines.approval.service import ApprovalService as _ApprovalService
-from engines.approval.db import DB_PATH as _REAL_DB_PATH, ensure_schema
+# [unused] from engines.approval.db import DB_PATH as _REAL_DB_PATH, ensure_schema
 
 
 # ═══════════════════════════════════════════════════════════

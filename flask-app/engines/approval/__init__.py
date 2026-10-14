@@ -15,10 +15,10 @@
 
 兼容: engines/approvals_engine.py 是本包的薄 shim, 旧调用点零改动。
 """
-from .db import DB_PATH, ensure_schema, get_conn  # noqa: F401
-from .policy import assess_risk, ROLE_CHAIN  # noqa: F401
-from .chains import build_nodes, backfill_chain  # noqa: F401
-from .service import ApprovalService  # noqa: F401
+# [unused] from .db import DB_PATH, ensure_schema, get_conn  # noqa: F401
+# [unused] from .policy import assess_risk, ROLE_CHAIN  # noqa: F401
+# [unused] from .chains import build_nodes, backfill_chain  # noqa: F401
+# [unused] from .service import ApprovalService  # noqa: F401
 
 __all__ = [
     'DB_PATH', 'ensure_schema', 'get_conn',

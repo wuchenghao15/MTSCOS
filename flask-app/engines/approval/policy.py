@@ -241,8 +241,8 @@ LLM_SAFE_CATEGORIES = frozenset({
 })
 
 LLM_MODEL = 'qwen2.5:14b-q5'
-LLM_ENDPOINT = 'http://localhost:11435/api/chat'
-LLM_PROBE_ENDPOINT = 'http://localhost:11435/api/tags'
+LLM_ENDPOINT = 'http://localhost:11434/api/chat'
+LLM_PROBE_ENDPOINT = 'http://localhost:11434/api/tags'
 LLM_TIMEOUT = 45
 LLM_PROBE_TIMEOUT = 3
 

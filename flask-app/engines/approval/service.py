@@ -23,7 +23,7 @@ import uuid
 from datetime import datetime, timedelta
 from typing import Any
 
-from .db import get_conn, db_retry, ensure_schema
+# [unused] from .db import get_conn, db_retry, ensure_schema
 from .policy import (
     assess_risk, sla_for,
     REQ_STATUS_PENDING, NODE_STATUS_PENDING,

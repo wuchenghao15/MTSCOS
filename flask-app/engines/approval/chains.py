@@ -14,7 +14,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from .db import get_conn, db_retry
+# [unused] from .db import get_conn, db_retry
 from .policy import (
     assess_risk as _assess_risk,
     build_chain_nodes,

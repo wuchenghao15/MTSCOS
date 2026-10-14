@@ -9,7 +9,7 @@ from __future__ import annotations
 import json, uuid, time, datetime
 from pathlib import Path
 from typing import Optional, Dict, Any, List
-from .db import get_conn, ensure_schema, db_retry
+# [unused] from .db import get_conn, ensure_schema, db_retry
 from .policy import (GENRE_CONFIG, GENRE_NOVEL, GENRE_SCRIPT, GENRE_AD_COPY,
                      assess_risk, get_sla_hours, is_llm_safe_to_auto_pass)
 from .generator import (ollama_call, generate_outline, write_chapter_text,
@@ -20,7 +20,7 @@ from . import (PROJECT_DRAFT, PROJECT_OUTLINING, PROJECT_WRITING,
                PROJECT_REVIEWING, PROJECT_APPROVED, PROJECT_ARCHIVED,
                CHAPTER_PENDING, CHAPTER_WRITING, CHAPTER_DONE, CHAPTER_POLISHED)
 from .rag import search_chunks, upsert_chunks, format_chunks_for_prompt
-from .semanticaudit import audit_chapters
+# [unused] from .semanticaudit import audit_chapters
 
 NOW_F = lambda: datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 

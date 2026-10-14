@@ -10,7 +10,7 @@
 """
 from __future__ import annotations
 import json, uuid, time, datetime, hashlib, sqlite3
-from pathlib import Path
+# [unused] from pathlib import Path
 from typing import Optional, Dict, Any, List
 
 from . import (ensure_schema, get_conn, db_retry, NOW_F, DB_PATH,
