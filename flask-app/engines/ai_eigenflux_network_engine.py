@@ -37,13 +37,19 @@ from typing import Any, Dict, List, Optional, Tuple
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 _FLASK_APP_DIR = os.path.abspath(os.path.join(_SCRIPT_DIR, ".."))
 _PROJECT_ROOT = os.path.abspath(os.path.join(_FLASK_APP_DIR, ".."))
+# v2: env-first + PROD 本地优先 (和 db_resolver.py v2 统一)
+_PROD_LOCAL_DB = os.path.join(os.path.expanduser('~'), "MTSCOS_PROD", "flask-app", "database", "app.db")
+_ONEDRIVE_DB   = os.path.join(_PROJECT_ROOT, "flask-app", "database", "app.db")
 _DB_CANDIDATES = [
-    # 🔧 v5.4 加 flask-app/database/app.db (Flask 活跃库, 有 eigenflux 数据)
-    os.path.join(_PROJECT_ROOT, "flask-app", "database", "app.db"),
+    os.environ.get('ANDROMEDA_DB', ''),
+    os.environ.get('APP_DB', ''),
+    _PROD_LOCAL_DB,
+    _ONEDRIVE_DB,
     os.path.join(_PROJECT_ROOT, "_runtime", "databases", "Database", "app.db"),
     os.path.join(_FLASK_APP_DIR, "app.db"),
     os.path.join(_PROJECT_ROOT, "app.db"),
 ]
+_DB_CANDIDATES = [p for p in _DB_CANDIDATES if p]  # 去掉空 env
 APP_DB = next((p for p in _DB_CANDIDATES if os.path.exists(p) and os.path.getsize(p) > 1_000_000), _DB_CANDIDATES[0])
 
 _PID_DIR = os.path.join(_PROJECT_ROOT, "_runtime", "pids")

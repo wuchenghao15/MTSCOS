@@ -128,18 +128,22 @@ def _registry_heartbeat(status: str = "alive", note: str = ""):
         _log(f"registry fail: {e}", "WARN")
 
 
-def _eigenflux_new_since(last_id: int, limit: int) -> list[dict]:
-    """短连接 — 拉取 eigenflux 新消息作为知识来源. 用完即关."""
+def _eigenflux_new_since(last_msg_id: int, limit: int) -> list[dict]:
+    """短连接 — 拉 eigenflux daemon 活跃写入的 mt_ai_eigenflux_messages. 用完即关.
+    注意: 不是 eigenflux_comm_messages (283K, 9/20 停更)
+    而是 mt_ai_eigenflux_messages (567K+, 活跃 ticking, 列 msg_id/content/sender_name)
+    """
     try:
         conn = sqlite3.connect(DB_PATH, timeout=10)
         conn.row_factory = sqlite3.Row
         rows = conn.execute(
-            """SELECT id, employee_name, message_content, knowledge_tags_json,
-                      substr(created_at,1,16) AS created_at
-               FROM eigenflux_comm_messages
-               WHERE id > ? AND message_content IS NOT NULL AND message_content != ''
-               ORDER BY id ASC LIMIT ?""",
-            (last_id, limit)).fetchall()
+            """SELECT msg_id, sender_name, receiver_name, topic_cn, content,
+                      knowledge_tags_json, learning_value,
+                      substr(created_at,1,19) AS created_at
+               FROM mt_ai_eigenflux_messages
+               WHERE msg_id > ? AND content IS NOT NULL AND content != ''
+               ORDER BY msg_id ASC LIMIT ?""",
+            (last_msg_id, limit)).fetchall()
         conn.close()
         return [dict(r) for r in rows]
     except Exception as e:
@@ -174,18 +178,23 @@ def _do_hire():
         return False, 0.0
 
 
-def _do_ingest(last_knowledge_id: int):
-    """从 eigenflux 拉新消息 → wf_knowledge_ingest — 短连接."""
-    msgs = _eigenflux_new_since(last_knowledge_id, INGEST_BATCH_SIZE)
+def _do_ingest(last_msg_id: int):
+    """从 mt_ai_eigenflux_messages (活跃表) 拉新 → wf_knowledge_ingest — 短连接."""
+    msgs = _eigenflux_new_since(last_msg_id, INGEST_BATCH_SIZE)
     if not msgs:
-        _log(f"no new eigenflux messages since id={last_knowledge_id}, skip ingest")
-        return True, 0, 0.0
+        _log(f"no new mt_ai_eigenflux_messages since msg_id={last_msg_id}, skip ingest")
+        return True, last_msg_id, 0.0
     sources = []
     for m in msgs:
-        content = m.get('message_content', '')[:2000]
-        title = f"eigenflux::{m.get('employee_name','anon')}#{m.get('id','')}"
+        content = m.get('content', '')[:2000]
+        sender = m.get('sender_name', 'anon')
+        receiver = m.get('receiver_name', '')
+        topic = m.get('topic_cn', '')[:40]
+        title = f"eigenflux::{sender}→{receiver}#{m.get('msg_id','')}"
+        if topic:
+            title += f" [{topic}]"
         sources.append({"content": content, "title": title})
-    _log(f"ingesting {len(sources)} eigenflux messages (last_id={last_knowledge_id} → {msgs[-1]['id']}) ...")
+    _log(f"ingesting {len(sources)} eigenflux messages (last_msg_id={last_msg_id} → {msgs[-1]['msg_id']}) ...")
     try:
         sys.path.insert(0, os.path.join(ROOT, 'engines'))
         import andromeda_workflow_engine as wf
@@ -196,11 +205,11 @@ def _do_ingest(last_knowledge_id: int):
             blocking=True)
         _log(f"ingest done: {r['status']} ingested={r['output'].get('ingested','?')} "
              f"rev=\${r['revenue_usd']}")
-        new_last_id = max(last_knowledge_id, msgs[-1]['id']) if msgs else last_knowledge_id
+        new_last_id = max(last_msg_id, msgs[-1]['msg_id']) if msgs else last_msg_id
         return True, new_last_id, r['revenue_usd']
     except Exception as e:
         _log(f"ingest fail: {e}", "ERROR")
-        return False, last_knowledge_id, 0.0
+        return False, last_msg_id, 0.0
 
 
 # ── signal handler ──
