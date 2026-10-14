@@ -22,6 +22,7 @@ MTSCOS 全域纵深防御引擎 (Omni Defense Engine v1.1.0)
     3. inspect_all模式用于测试穿透率，所有层都执行
     4. 奶酪模型: 每层有独立孔洞，但孔洞不对齐时穿透率趋近0
 """
+from __future__ import annotations
 import os
 import re
 import time

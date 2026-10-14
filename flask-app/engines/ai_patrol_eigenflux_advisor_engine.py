@@ -818,3 +818,10 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+# auto_repair: ensure env-first PROD DB
+try:
+    from engines._common.db_resolver import get_app_db
+    APP_DB = get_app_db()
+except Exception:
+    pass

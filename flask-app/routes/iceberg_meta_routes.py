@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 """
+from __future__ import annotations
+
 🧊 仙女座 × 冰山 元域 API — routes/iceberg_meta_routes.py (v25.0 admin)
 =========================================================================
 【只读 API】

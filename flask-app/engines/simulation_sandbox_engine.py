@@ -1,4 +1,5 @@
 # [unused] import os, sys, sqlite3, json, hashlib, random, re, argparse, datetime, traceback, logging, uuid, fnmatch, pathlib
+from __future__ import annotations
 from typing import Dict, List, Optional, Tuple, Any
 
 _BASE = os.path.dirname(os.path.abspath(__file__))

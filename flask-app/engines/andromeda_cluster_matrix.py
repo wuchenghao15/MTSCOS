@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+from __future__ import annotations
 """
 仙女座大思维发散集群矩阵 v3.0 (asyncio 并发 + local_inference 接入)
 =====================================================================

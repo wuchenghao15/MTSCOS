@@ -10,6 +10,7 @@ Cycle (默认 120s):
 
 注册入口: smart_mount_engine daemon_registry
 """
+from __future__ import annotations
 import json as _json
 import datetime as _dt
 import sqlite3 as _sqlite3

@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 """
+from __future__ import annotations
+
 auto_sniff_engine.py — 仙女座 · 自动嗅探引擎
 ==============================================
 扫描 flask-app/ 下所有路由/引擎/中间件的 Python 源码，

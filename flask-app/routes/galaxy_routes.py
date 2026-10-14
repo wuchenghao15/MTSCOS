@@ -1,4 +1,6 @@
 """
+from __future__ import annotations
+
 仙女座星系子系统 — Flask 路由 (API + 页面)
 
 flow_id: galaxy_routes

@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from __future__ import annotations
+
 """
 仙女座七阶段自演化编排引擎 (sys_andromeda_auto_evolution)
 ========================================================

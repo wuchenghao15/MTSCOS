@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+from __future__ import annotations
 """
 AI教辅教改自动化同步引擎 (Education Content Sync Engine)
 ================================================================

@@ -15,6 +15,7 @@
 #   maintenance_routes 顶层 import server_real_db 会触发 partially initialized 错误。
 #   Python 模块 __getattr__ 只对模块顶层属性访问生效，函数内裸名查找不触发，
 #   所以改用：模块级占位变量 + 首次 handler 调用时显式 _mt_lazy_load()
+from __future__ import annotations
 from flask import Blueprint, jsonify, request
 from datetime import datetime
 

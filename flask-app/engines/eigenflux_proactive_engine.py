@@ -786,3 +786,10 @@ if __name__ == '__main__':
     print(f"\n{'=' * 70}")
     print(f' 引擎状态: {json.dumps(engine.get_status(), ensure_ascii=False, indent=2)}')
     print(f"{'=' * 70}")
+
+# auto_repair: ensure env-first PROD DB
+try:
+    from engines._common.db_resolver import get_app_db
+    APP_DB = get_app_db()
+except Exception:
+    pass

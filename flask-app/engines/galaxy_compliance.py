@@ -1,4 +1,6 @@
 """
+from __future__ import annotations
+
 仙女座星系子系统 — 合规审查引擎 (C1~C7 硬约束代码化)
 
 所有待发布内容必须过此 Pipeline, 返回 overall:

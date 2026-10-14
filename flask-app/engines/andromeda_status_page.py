@@ -19,6 +19,7 @@
 # 访问: http://localhost:8889/andromeda
 # 自动刷新: 2.5s
 # ─────────────────────────────────────────────────────────────
+from __future__ import annotations
 import sqlite3, json, time, os, sys, threading, subprocess, re
 
 # 🆕 2026-09-20: DB 锁争用修复 — patch_sqlite3_connect (WAL + busy_timeout=60s)

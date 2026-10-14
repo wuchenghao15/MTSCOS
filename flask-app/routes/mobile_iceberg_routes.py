@@ -9,6 +9,7 @@
   GET  /api/iceberg/daemon_status  → daemon 在线状态
 """
 
+from __future__ import annotations
 import os, sys, json, sqlite3, urllib.request
 from datetime import datetime
 from flask import Blueprint, render_template, jsonify, request

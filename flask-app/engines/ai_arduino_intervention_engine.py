@@ -378,3 +378,10 @@ if __name__ == '__main__':
         print(t5_db_model_audit())
     else:
         print(json.dumps(run_full_cycle(), ensure_ascii=False, indent=2))
+
+# auto_repair: ensure env-first PROD DB
+try:
+    from engines._common.db_resolver import get_app_db
+    APP_DB = get_app_db()
+except Exception:
+    pass

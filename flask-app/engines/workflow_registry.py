@@ -1,4 +1,6 @@
 """
+from __future__ import annotations
+
 workflow_registry.py — 去中心化工作流注册协议
 ==================================================
 

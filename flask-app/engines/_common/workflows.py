@@ -4,7 +4,7 @@ _common/workflows.py — 引擎级基础工作流注册
 
 把 andromeda_workflow_engine.py 里原有的 6 个工作流注册到去中心化 registry.
 """
-import os, sys, json, sqlite3, time, uuid, importlib
+# [unused] import os, sys, json, sqlite3, time, uuid, importlib
 
 def _get_app_db():
     """env-first + PROD 本地优先 — 和 db_resolver.py 统一."""

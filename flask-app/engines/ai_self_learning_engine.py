@@ -11,6 +11,7 @@ AI自我学习引擎 - 编排层
 5. 脑库壮大功能 - 持续向脑库投喂知识
 """
 
+from __future__ import annotations
 import os
 import sys
 import json

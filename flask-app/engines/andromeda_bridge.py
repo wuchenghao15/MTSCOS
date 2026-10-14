@@ -8,6 +8,7 @@
 #
 # 官方 BSP I2S: ES8311 已初始化, I2S0 STD, 引脚 SCK/WS/SD
 
+from __future__ import annotations
 import time
 import ustruct
 import machine

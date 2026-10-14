@@ -280,7 +280,7 @@ class BrainVectorEngine:
             c.close()
 
     def drain(self, limit: int = 0, chunk: int = BATCH) -> dict:
-        """消化队列 (批量 embed 版): 
+        """消化队列 (批量 embed 版):
         - POST /api/embed 单次 N 条 (比单条快 1.9×, 理论 135 条/s)
         - 失败自动回退单条 embed_text
         - Ollama 宕机保留 PENDING 不烧 attempts
@@ -457,7 +457,7 @@ def enqueue_content_batch(items, db_path: str = DEFAULT_DB) -> int:
         cur = c.executemany(
             f"INSERT INTO {QUEUE_TABLE} (knowledge_id, title, content, enqueued_at) VALUES (?,?,?,?)"
             " ON CONFLICT(knowledge_id) DO UPDATE SET title=excluded.title, content=excluded.content,"
-            " status='PENDING', processed_at=NULL", 
+            " status='PENDING', processed_at=NULL",
             [(str(k), str(t or "")[:200], str(ct or "")[:4000], now()) for (k, t, ct) in items if str(k or "").strip()])
         c.commit()
         return max(cur.rowcount or 0, 0)

@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 """
+from __future__ import annotations
+
 andromeda_core.py — 仙女座自演化主控
 =====================================
 统一编排: RAG · 进化 · 修复 · 巡检 · 规则 · 权限 · 研讨 · 新功能

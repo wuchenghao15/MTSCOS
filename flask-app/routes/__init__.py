@@ -24,6 +24,7 @@ MTSCOS AI 项目 — 路由层 Blueprint 注册中心
   - learning_bp:     25路由 (学习系统API)       ✅ 已实现
   - japanese_bp:     25路由 (日语学习API)       ✅ 已实现
 """
+from __future__ import annotations
 from flask import Blueprint, Response
 from app.middlewares.system_container import system_container
 

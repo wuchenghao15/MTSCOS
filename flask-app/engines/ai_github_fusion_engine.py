@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from __future__ import annotations
+
 """
 ai_github_fusion_engine.py — 仙女座 v6.2 新升级路径：GitHub 开源自动发现+适配融合
 
