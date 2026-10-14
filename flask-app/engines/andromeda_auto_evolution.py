@@ -74,9 +74,11 @@ def reset_evolution_event():
 
 # --- 路径配置 ---
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DB_PATH = os.environ.get(
-    'ANDROMEDA_DB',
-    os.path.join(PROJECT_ROOT, 'database', 'app.db'),
+# DB 候选: env ANDROMEDA_DB > env APP_DB > PROD 本地 > OneDrive
+_PROD_DB = os.path.join(os.path.expanduser('~'), 'MTSCOS_PROD', 'flask-app', 'database', 'app.db')
+_ONEDRIVE_DB = os.path.join(PROJECT_ROOT, 'database', 'app.db')
+DB_PATH = os.environ.get('ANDROMEDA_DB') or os.environ.get('APP_DB') or (
+    _PROD_DB if os.path.exists(_PROD_DB) else _ONEDRIVE_DB
 )
 # 注意: engines/andromeda_auto_evolution.py → PROJECT_ROOT = flask-app/
 # RUNTIME_DIR 应该是 flask-app/ai_engines/_runtime/ (和 fusion_adapter 一致)
