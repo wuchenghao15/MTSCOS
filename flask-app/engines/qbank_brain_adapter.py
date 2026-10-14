@@ -248,15 +248,70 @@ def adapt(limit: int = 0, prefix: str = "", dry_run: bool = False, chunk: int = 
     finally:
         c.close()
 
+# --- 难度自动调分 (source-based + random split, 置信度全0.65不能用) ---
+def rebalance_difficulty(easy_pct: float = 0.40, medium_pct: float = 0.35) -> Dict[str, Any]:
+    """按 source 定档 + structured 随机三切分
+    
+    策略:
+      1. eigenflux_comm / debate_conclusion → hard (讨论需推理)
+      2. literary_troupe_script → easy (趣味性)
+      3. structured (1.2M) → 按 easy_pct/medium_pct/hard_pct 随机切
+      4. 其他 (derived/brain_category_*/web_learner_*) → medium
+      5. ai_generated (原 9,587 行) → 保留已有人工分布不动
+    """
+    c = _open_wr()
+    t0 = datetime.now()
+    total0 = c.execute("SELECT COUNT(*) FROM question_bank").fetchone()[0]
+    
+    # 基线: 除 ai_generated 外全部 medium
+    cur = c.execute("UPDATE question_bank SET difficulty='medium' WHERE source != 'ai_generated'")
+    baseline = cur.rowcount
+    
+    # source 硬编码
+    cur_e = c.execute("UPDATE question_bank SET difficulty='hard' WHERE source IN ('eigenflux_comm','debate_conclusion')").rowcount
+    cur_s = c.execute("UPDATE question_bank SET difficulty='easy' WHERE source='literary_troupe_script'").rowcount
+    
+    # structured 随机切分
+    hard_pct = round(1.0 - easy_pct - medium_pct, 2)
+    cur_struct_e = c.execute(f"UPDATE question_bank SET difficulty='easy' WHERE source='structured' AND random() < {easy_pct}").rowcount
+    cur_struct_h = c.execute(f"UPDATE question_bank SET difficulty='hard' WHERE source='structured' AND random() < {hard_pct}").rowcount
+    
+    c.commit()
+    elapsed = (datetime.now() - t0).total_seconds()
+    
+    # 结果
+    dist = dict(c.execute("SELECT difficulty, COUNT(*) FROM question_bank GROUP BY difficulty").fetchall())
+    out = {
+        "total": total0,
+        "baseline_medium": baseline,
+        "eigenflux_debate_hard": cur_e,
+        "script_easy": cur_s,
+        "structured_easy": cur_struct_e,
+        "structured_hard": cur_struct_h,
+        "difficulty_dist": dist,
+        "elapsed_s": round(elapsed, 1),
+        "strategy": f"source+random easy={easy_pct} medium={medium_pct} hard={hard_pct}"
+    }
+    c.close()
+    log(f"rebalance 完成: {json.dumps(out, ensure_ascii=False)}")
+    return out
+
 # --- CLI ---
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("cmd", choices=["adapt", "status", "verify"])
+    ap.add_argument("cmd", choices=["adapt", "status", "verify", "rebalance"])
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--prefix", default="")
     ap.add_argument("--chunk", type=int, default=BATCH)
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--easy-pct", type=float, default=0.40, help="structured→easy 比例")
+    ap.add_argument("--medium-pct", type=float, default=0.35, help="structured→medium 比例")
     a = ap.parse_args()
+
+    if a.cmd == "rebalance":
+        r = rebalance_difficulty(a.easy_pct, a.medium_pct)
+        print(json.dumps(r, ensure_ascii=False, indent=2))
+        return
 
     if a.cmd == "status":
         import sqlite3 as _s
