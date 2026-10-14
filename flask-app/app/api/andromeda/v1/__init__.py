@@ -2,7 +2,7 @@
 from flask import Blueprint
 from .._auth import api_key_status
 from .._openapi import register_openapi
-from . import core, teams, hire, invite
+from . import core, teams, hire, invite, workflow
 
 v1_bp = Blueprint("andromeda_v1", __name__, url_prefix="/v1")
 
@@ -11,6 +11,7 @@ v1_bp.register_blueprint(core.bp)     # /v1/core/*
 v1_bp.register_blueprint(teams.bp)    # /v1/teams/*
 v1_bp.register_blueprint(hire.bp)      # /v1/hire/*
 v1_bp.register_blueprint(invite.bp)    # /v1/invite/*
+v1_bp.register_blueprint(workflow.bp)  # /v1/workflow/*
 
 # ── 认证状态 + OpenAPI ──
 @v1_bp.route("/auth/status", methods=["GET"], endpoint="andromeda_v1_auth_status")
