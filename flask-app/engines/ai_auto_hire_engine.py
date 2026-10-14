@@ -40,15 +40,17 @@ from typing import Dict, List, Optional
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 AI_ENGINES_DIR = os.path.join(ROOT, "ai_engines")
 
-# DB 路径: 优先用 Flask 真实 DB (database/app.db), 兼容多候选
-_DB_CANDIDATES = [
-    os.path.join(ROOT, "database", "app.db"),                                # 主: flask-app/database/app.db (2.2GB)
+# DB 路径: 优先用 env APP_DB (可覆盖到 MTSCOS_PROD 本地 DB), 再候选列表
+_APP_DB_ENV = os.environ.get("APP_DB", "").strip()
+_DB_CANDIDATES = [_APP_DB_ENV] if _APP_DB_ENV else []
+_DB_CANDIDATES += [
+    os.path.join(ROOT, "database", "app.db"),                                # 主: flask-app/database/app.db
     os.path.join(ROOT, "..", "_runtime", "databases", "Database", "app.db"),  # 旧路径 (可能损坏)
     os.path.join(ROOT, "app.db"),                                            # 根级 fallback
 ]
 APP_DB = next(
-    (p for p in _DB_CANDIDATES if os.path.exists(p) and os.path.getsize(p) > 1_000_000),
-    _DB_CANDIDATES[0],
+    (p for p in _DB_CANDIDATES if p and os.path.exists(p) and os.path.getsize(p) > 1_000_000),
+    _DB_CANDIDATES[-1],
 )
 ENGINE_DIR = os.path.join(ROOT, "engines")
 RUNTIME_DIR = os.path.join(ROOT, "..", "_runtime")
