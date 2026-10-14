@@ -1835,10 +1835,15 @@ def register_all_blueprints(app):
 
     # 🆕 v25.0: 动态注册角色蓝图 (role_registry.build_role_blueprints)
     try:
+        import importlib as _importlib
         from routes.role_registry import build_role_blueprints
         _role_bps_dict = build_role_blueprints()
-        # 挂到 globals 让注册循环能找到
-        globals().update({f"role_{k}_bp": v for k, v in _role_bps_dict.items()})
+        # setattr 到 role_registry 模块 — 注册循环用 importlib.import_module 后 getattr(mod, bp_attr)
+        _rr_mod = _importlib.import_module('routes.role_registry')
+        for _k, _v in _role_bps_dict.items():
+            setattr(_rr_mod, f"role_{_k}_bp", _v)
+            # 也挂到本模块 globals, 兼容其他代码直接从 routes 导入
+            globals()[f"role_{_k}_bp"] = _v
         # 追加到 _modules 让注册循环遍历
         for _rk in _role_bps_dict.keys():
             _modules.append(('role_registry', f"role_{_rk}_bp"))
