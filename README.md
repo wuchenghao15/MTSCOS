@@ -4,7 +4,7 @@
 [![Flask](https://img.shields.io/badge/flask-3.1+-black.svg)](https://flask.palletsprojects.com/)
 [![Android](https://img.shields.io/badge/android-14-3DDC84.svg)](https://developer.android.com/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-v25.5-orange.svg)](#)
+[![Version](https://img.shields.io/badge/version-v25.0.0-iceberg-orange.svg)](#)
 [![SQLite](https://img.shields.io/badge/sqlite-WAL-003B57.svg)](https://www.sqlite.org/)
 
 > **AI 原生** · **全学段** · **自演化** · **本地优先**
@@ -153,7 +153,7 @@ python3 modular_start.py
 http://<电脑局域网IP>:8888/mobile/apk
 
 # 或 adb 安装
-adb install -r MTSCOS-AI-Mobile-v25.5.0-debug.apk
+adb install -r MTSCOS-AI-Mobile-v25.0.0-iceberg-saga-debug.apk
 ```
 
 ### 4. 公网穿透（可选）
@@ -172,7 +172,7 @@ adb shell run-as com.mtscos.mobile \
 
 | 指标 | 数值 |
 |------|------|
-| 系统版本 | **v25.5.0** (2026-10-05 · 十阶段演化引擎 Phase 4 衍生) |
+| 系统版本 | **v25.0.0-iceberg-saga** (2026-10-05 · 十阶段演化引擎 Phase 4 衍生) |
 | 演化 Phase | **Phase 4 衍生** (8 级体系: 混沌→感知→觉醒→衍生→江山→星海→归一→永恒) |
 | 演化状态 | **自举闭环已打通** · Cycle #66 267.8s · embedding 768维 |
 | 数据库表 | **4,819+** 张 |
@@ -207,7 +207,7 @@ adb shell run-as com.mtscos.mobile \
 | [系统架构](docs/ARCHITECTURE.md) | 8 分片数据库 · AI 引擎集群 · 仙女座自演化流程 |
 | [部署指南](docs/DEPLOYMENT.md) | Flask 启动 · serveo 穿透 · APK 安装 · VIKEY 配置 |
 | [API 参考](docs/API.md) | /mobile/* 15 条 · /iceberg/* API · /auth/* 路由 |
-| [更新日志](docs/CHANGELOG.md) | v25.5.0 → v22.0.0 版本迭代 |
+| [更新日志](docs/CHANGELOG.md) | v25.0.0-iceberg-saga → v22.0.0 版本迭代 |
 | [贡献指南](.github/CONTRIBUTING.md) | 开发规范 · §14 IRON_RULE 12 步骤 |
 
 ---

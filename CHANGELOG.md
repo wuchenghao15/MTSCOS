@@ -1,3 +1,85 @@
+## 🚀 v25.0.0-iceberg-saga · 冰山传奇 · 仙女座三端闭环 (2026-10-15)
+
+> **MTSCOS AI 从"自演化"到"自举"的质变里程碑**
+> 
+> 这一天，题库 157 万重复行被清洗到 2.3 万，向量从 157 万去重到 2.3 万，
+> RAG 语义检索从 top1=1.0 的自相矛盾变成 top1=0.996 的真实语义相近，
+> 三端数据库 (PRIMARY / PROD / mini) qbank+vec 完全同步，
+> 仙女座 35 个 daemon 在 smart_mount 管理下全活。
+>
+> **用户痛点 → 解决 → 期望闭环**
+
+---
+
+### 🏗️ 仙女座十阶段自演化引擎 · Phase 4 衍生 (架构核心)
+
+**用户痛处**：传统 AI 项目是"人写代码 + AI 跑推理"的被动模式，AI 知识靠人工投喂、模型升级靠手动、向量索引靠硬编码。知识更新 → 模型迭代 → 知识反哺 之间没有闭环，系统越来越臃肿，最终变成没人敢动的 legacy。
+
+**仙女座设计初衷**：把 AI 从"被动工具"变成"主动系统"。十阶段流水线不是功能堆砌，而是 **AI 自主学习 → 自主推理 → 自主衍生 → 自主广播 → 再被下轮吸收** 的自举循环。每个阶段产出的 AE-* 衍生知识反向推给 EigenFlux 讨论 → 摄入脑库 → 下轮再演化，🌀 自举闭环真正打通。
+
+- **十阶段流水线** eigenflux_ingest → detect → retrieve → associate → derive → reinforce → expand → optimize → **🧠 自研拓展 gap_fill → 🔁 冰山广播 broadcast → ⚡ Phase 自动升级**
+- **Phase 8 级演化体系**：混沌 → 感知 → 觉醒 → **衍生 (当前)** → 江山 → 星海 → 归一 → 永恒
+- 267.8s/cycle · Cycle #66 首次 embedding 出向量 → Cycle #99 去重重入 → RAG 真正可用
+- Ollama 11435 Metal iGPU · qwen2.5:14b + nomic-embed-text 768维 · **零 token 成本**
+
+### 🧊 冰山系统三层架构 · 三端闭环 (数据核心)
+
+**用户痛处**：单机 SQLite 写 9.7GB OneDrive 大库 → disk I/O error；PRIMARY / PROD / mini 三端数据各跑各的 → 脑库差 23 万行、qbank 缺失、向量队列卡 0.04%；RAG 检索 top1=1.0 → 向量索引全是重复嵌入，语义检索形同虚设。
+
+**冰山设计初衷**：三层存储策略解决 OneDrive 云盘写盘瓶颈（PRIMARY 权威只读 / PROD 本地可写 / mini 远端部署）；三端 payload 同步机制避免 OneDrive 大文件反复同步；`content_sha` 唯一索引从源头堵死重复嵌入。
+
+- **v25.0.0 去重重入**：qbank 1,577,330 → **23,205** (98.5% 冗余清洗) · 向量 1,577,330 → **23,209** · DB 9.7GB → 8.2GB
+- **唯一索引护栏**：`uniq_qb_content` · `uniq_vec_sha` — 从数据库层阻止重复
+- **三端 payload 同步**：547MB dedup payload → PRIMARY/PROD/mini 100% qbank+vec 一致
+- **RAG 验证**：去重前 top1=1.0 (自相矛盾) → 去重后 top1=0.996 (真实语义相近) ✅
+
+### 🛡️ §14 IRON_RULE · 四层强制拦截 (安全核心)
+
+**用户痛处**：AI 辅助开发跳过规范步骤直接产出代码 → 逻辑有漏洞但没人审；git commit 夹带未经审批的规则修改；数据库 schema 漂移导致生产事故。
+
+**IRON_RULE 设计初衷**：用机器约束代替人治。Git Hook → Flask before_request → CI Check → pre-push 四层拦截，任何绕过 12 步骤的开发活动被自动拒绝。daemon 全活时连 SA 都不能"我例外"。
+
+- Git pre-commit 校验 `mt_rule_changelog.approved_by_7step=1` · SA bypass 需 VIKEY 在线
+- Flask before_request 拦截 `/api/rules/*` 未授权请求 · 自动落库 `mt_rule_violation_alert`
+- CI 1000 轮测试 (正常 400 + 异常 300 + 黑客 300)
+- 规则治理 3 表 · `rule_integrity_scanner` 自动扫描弱约束词
+
+### 🧠 三层 AI 降级链路 · 永不宕机
+
+```
+本地 Metal iGPU qwen2.5:14b → 本地 CPU qwen2.5:7b → Volcengine ARK 云端 133 模型
+```
+
+macOS Metal iGPU 原生推理 · 零 token 消耗优先 · 三层降级自动切换 · 永不宕机
+
+### 📱 移动端 APK · Material3 · 动态服务器地址
+
+- SharedPreferences 动态服务器地址（换网络不用重打包）
+- 15 条移动端路由 · 21 个模板 · TabBar 四段式导航
+
+---
+
+### 📊 v25.0.0 vs v22.1.0 关键指标
+
+| 指标 | v22.1.0 | v25.0.0 | 变化 |
+|------|---------|---------|------|
+| 题库行数 | 157 万 (98.5% 重复) | **23,205** (去重后) | -98.5% |
+| 向量行数 | 157 万 (98.5% 重复) | **23,209** (去重后) | -98.5% |
+| RAG top1 相似度 | 1.0 (自相矛盾) | **0.996** (真实语义) | ✅ 从死到活 |
+| 三端同步 | 不一致 | **100% qbank+vec 一致** | ✅ |
+| daemon 数 | 17 | **35+** (smart_mount 管理) | +106% |
+| token 消耗 | 混合 | **零 token** (全本地推理) | ✅ |
+| 唯一索引护栏 | 无 | `uniq_qb_content` + `uniq_vec_sha` | ✅ |
+
+---
+
+### 🎯 下一步
+
+- [ ] 仙女座 Phase 5 江山：AI 员工自主创建新项目
+- [ ] RAG 真实业务接入（考试答题 / 学习路径推荐）
+- [ ] 移动端 v26 统一 UI + 深色模式
+- [ ] GitHub Release + 社区标签 (#ai-education #self-evolution #zero-token)
+
 
 ## 🚀 v22.1.0 · 仙女座拉马努金自举循环激活 (2026-09-17)
 
