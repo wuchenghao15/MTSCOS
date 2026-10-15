@@ -82,7 +82,6 @@ db_backup_scripts/
 #   - flask-app/modular_start.py / autosync_andromeda.py 放行
 #   - flask-app/server_real_db.py 保持放行 (历史例外)
 flask-app/*
-!flask-app/engines/
 !flask-app/engines/**/*.py
 !flask-app/ai_engines/
 !flask-app/ai_engines/**/*.py
@@ -263,7 +262,6 @@ app/cross_platform_.env
 
 # ═══ v3.0.0 仙女座演化世代 — 放行核心文件 ═══
 # 之前 flask-app/* / flask-app/templates/* 规则太粗暴，需要例外放行
-!flask-app/engines/
 !flask-app/engines/**/*.py
 !flask-app/blueprints/
 !flask-app/blueprints/**/*.py
