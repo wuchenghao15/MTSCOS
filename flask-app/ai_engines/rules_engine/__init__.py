@@ -24,6 +24,13 @@ from .rule_interceptor import RuleInterceptor, register_interceptor
 from .rule_pre_commit import run_pre_commit_check
 from .rule_integrity_scanner import run_integrity_scan
 from .rule_violation_alert import ViolationAlerter, alert_violation
+from .perm_manager import (
+    PermissionManager,
+    normalize_level as normalize_classification_level,
+    check_sa_hardware,
+    clear_sa_session_residue,
+    SA_UNIQUE_USERNAME,
+)
 from .dev_activity_preflight import (
     preflight_check,
     preflight_for_ai_chat,
@@ -48,6 +55,11 @@ __all__ = [
     "run_integrity_scan",
     "ViolationAlerter",
     "alert_violation",
+    "PermissionManager",
+    "normalize_classification_level",
+    "check_sa_hardware",
+    "clear_sa_session_residue",
+    "SA_UNIQUE_USERNAME",
     "preflight_check",
     "preflight_for_ai_chat",
     "preflight_for_cli",

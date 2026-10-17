@@ -236,12 +236,107 @@ except Exception as e:
     },
     {
         "process_name": "sys_rule_enforcer",
-        "duty": "规则学习+执行 - 每300s扫描弱约束词，执行规则治理",
+        "duty": "规则学习+执行 - 每300s MT_RULE_CLASSIFICATION五项合规扫描(分类覆盖/L0 VIKEY门槛/审计在位/密级注册一致/日志脱敏) 落库 mt_rule_integrity_scan",
         "work_body": """
-import sqlite3, os
+import sqlite3, os, json, time, uuid, importlib.util
 conn = sqlite3.connect(APP_DB); conn.execute('PRAGMA busy_timeout=5000')
-n = conn.execute("SELECT COUNT(*) FROM mt_rule_violation_alert WHERE rule_hit LIKE '%weak%'").fetchone()[0]
-_log(f"[rule_enforcer] violations_today={n}")
+n = conn.execute("SELECT COUNT(*) FROM mt_rule_violation_alert WHERE violation_code LIKE '%weak%'").fetchone()[0]
+# ===== MT_RULE_CLASSIFICATION v1.2.0 §A 五项合规扫描 =====
+_FLASK_APP = os.path.dirname(os.path.dirname(APP_DB))
+gaps, recs, checks = [], [], []
+def _load_mod(name, rel):
+    try:
+        spec = importlib.util.spec_from_file_location(name, os.path.join(_FLASK_APP, rel))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+    except Exception as e:
+        recs.append(f"load {rel} failed: {e}")
+        return None
+# 1. classify_table 分类覆盖: 非日志/缓存表不得落入 L3/L4 (未受保护)
+dbenc = _load_mod('_mt_dbenc', os.path.join('app', 'utils', 'db_encryption.py'))
+if dbenc is not None:
+    try:
+        unprotected = 0
+        for (t,) in conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").fetchall():
+            lv = int(dbenc.classify_table(t))
+            tl = t.lower()
+            if lv >= 3 and not any(k in tl for k in ('log', 'config', 'setting', 'tmp', 'cache', 'backup', 'session_kv')):
+                unprotected += 1
+                if len(gaps) < 20: gaps.append(f"table unprotected: {t} -> L{lv}")
+        checks.append(("classify_table_coverage", unprotected == 0, f"unprotected={unprotected}"))
+    except Exception as e:
+        checks.append(("classify_table_coverage", False, f"err:{e}"))
+else:
+    checks.append(("classify_table_coverage", False, "db_encryption load failed"))
+# 2. L0 VIKEY 门槛: VIKEY 离线时 L0 DEK 必须锁定 (fail-closed 不变量)
+if dbenc is not None and getattr(dbenc, 'HAS_CRYPTOGRAPHY', False):
+    try:
+        k = dbenc.VikeyKeyDerivation()
+        k.bind_vikey('mtscos_rule_enforcer_probe')
+        k.cache_kek_for_offline()
+        l0_locked = k.get_dek(dbenc.EncryptionLevel.L0_TOP_SECRET) is None
+        l1_cached = k.get_dek(dbenc.EncryptionLevel.L1_CONFIDENTIAL) is not None
+        ok = l0_locked and l1_cached
+        checks.append(("l0_vikey_gate", ok, f"l0_locked={l0_locked} l1_cached={l1_cached}"))
+        if not ok: gaps.append("L0 DEK not locked while vikey offline")
+    except Exception as e:
+        checks.append(("l0_vikey_gate", False, f"err:{e}"))
+else:
+    checks.append(("l0_vikey_gate", False, "cryptography unavailable"))
+# 3. L1/L2 访问审计表在位 (mt_classified_access_audit 六必需列)
+try:
+    cols = {r[1] for r in conn.execute('PRAGMA table_info(mt_classified_access_audit)').fetchall()}
+    need = {'trace_id', 'op_type', 'operator', 'resource', 'result', 'created_at'}
+    missing = need - cols
+    checks.append(("classified_audit_table", not missing, f"missing={sorted(missing) if missing else 'none'}"))
+    if missing: gaps.append(f"audit table missing cols: {sorted(missing)}")
+except Exception as e:
+    checks.append(("classified_audit_table", False, f"err:{e}"))
+# 4. 密级注册一致性: mt_classified_data.classification 必须可归一化到受保护等级
+pm = _load_mod('_mt_pm', os.path.join('ai_engines', 'rules_engine', 'perm_manager.py'))
+if pm is not None:
+    try:
+        bad = []
+        for dc, cls in conn.execute("SELECT data_code, classification FROM mt_classified_data").fetchall():
+            if pm.normalize_level(cls) is None:
+                bad.append(f"{dc}:{cls}")
+        checks.append(("registry_level_mapping", not bad, f"bad={bad[:5]}"))
+        if bad: gaps.append(f"unmappable classification: {bad[:5]}")
+    except Exception as e:
+        checks.append(("registry_level_mapping", False, f"err:{e}"))
+else:
+    checks.append(("registry_level_mapping", False, "perm_manager load failed"))
+# 5. 审计/告警日志脱敏: 近200条不得含密码/令牌/私钥/密文标记
+try:
+    import re as _re
+    pat = _re.compile(r'(password\\s*=|token\\s*=|BEGIN (RSA )?PRIVATE KEY|MTENC:)', _re.I)
+    hits = 0
+    for row in conn.execute("SELECT deny_reason_code, resource, op_type FROM mt_classified_access_audit ORDER BY id DESC LIMIT 200").fetchall():
+        if pat.search(' '.join(str(x or '') for x in row)): hits += 1
+    for (p,) in conn.execute("SELECT alert_payload FROM mt_rule_violation_alert ORDER BY created_at DESC LIMIT 200").fetchall():
+        if pat.search(str(p or '')): hits += 1
+    checks.append(("audit_log_masking", hits == 0, f"sensitive_hits={hits}"))
+    if hits: gaps.append(f"audit/alert logs contain sensitive markers: {hits}")
+except Exception as e:
+    checks.append(("audit_log_masking", False, f"err:{e}"))
+# ===== 落库 mt_rule_integrity_scan (scan_type='classification_compliance') =====
+try:
+    total = len(checks); passed = sum(1 for _, ok, _ in checks if ok); failed = total - passed
+    for name, ok, info in checks:
+        _log(f"[rule_enforcer] classification {name}: {'PASS' if ok else 'FAIL'} ({info})")
+    score = round(passed * 100.0 / total) if total else 0
+    if failed > 0:
+        recs.append("classification compliance < 100% -> fail-closed gate engaged (PermissionManager.compliance_gate_open=False)")
+    conn.execute(
+        "INSERT INTO mt_rule_integrity_scan (scan_id, scan_type, rule_id, total_checks, passed, failed, score, gap_items, recommendations, triggered_by, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+        (f"cls_{int(time.time())}_{uuid.uuid4().hex[:6]}", 'classification_compliance', 'MT_RULE_CLASSIFICATION',
+         total, passed, failed, score, json.dumps(gaps, ensure_ascii=False), json.dumps(recs, ensure_ascii=False),
+         'sys_rule_enforcer', time.strftime('%Y-%m-%dT%H:%M:%S')))
+    conn.commit()
+    _log(f"[rule_enforcer] classification_compliance scan: {passed}/{total} score={score} violations_today={n}")
+except Exception as e:
+    _log(f"[rule_enforcer] scan write err: {e}")
 conn.close()
 """,
         "inspect_cycle": 300,

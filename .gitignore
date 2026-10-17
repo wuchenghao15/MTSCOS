@@ -82,6 +82,8 @@ db_backup_scripts/
 #   - flask-app/modular_start.py / autosync_andromeda.py 放行
 #   - flask-app/server_real_db.py 保持放行 (历史例外)
 flask-app/*
+# 先放行目录, 再放行文件 — 父目录被忽略后子文件 ! 规则永远不生效 (git 规则陷阱)
+!flask-app/engines/
 !flask-app/engines/**/*.py
 !flask-app/ai_engines/
 !flask-app/ai_engines/**/*.py
@@ -95,14 +97,11 @@ flask-app/*
 !flask-app/templates/
 !flask-app/routes/
 # 2026-08-18 B1守卫P0修复: 允许 flask-app/app/ 下核心修复文件入库
-# (三段式匹配+category分支响应+运行时category推导, TEST_P0_VERIFY 100%通过)
+# 2026-10-17 v22.24.0 修复: flask-app/app/utils/* 过于严格, 放行全部 utils/*.py
 !flask-app/app/
-flask-app/app/*
-!flask-app/app/__init__.py
+!flask-app/app/**/*.py
 !flask-app/app/utils/
-flask-app/app/utils/*
-!flask-app/app/utils/b1_global_permission_guard.py
-!flask-app/app/utils/ai_emp_badge.py
+!flask-app/app/utils/**/*.py
 # 2026-08-20 v2.9.0 AI治理中心: 5页面+27API+3AI员工+3EigenFlux专家
 # 允许 flask-app/routes/ 下路由文件入库 (v22.2.0 冰山守护补齐)
 !flask-app/routes/
@@ -383,7 +382,12 @@ _runtime/uploads/
 
 # 符号链接
 .uploads
+# docs 目录: 忽略临时产物, 放行正式文档
 docs/
+!docs/**/*.md
+!docs/**/*.json
+!docs/Architecture/
+!docs/Architecture/**/*
 
 # archive logs
 flask-app/core/services/archived_logs/
@@ -397,3 +401,52 @@ MTSCOS_AI/
 flask-app/routes/auto_gen_*
 PROD_SYNC/
 _backup/
+
+# ── 2026-10-17 v22.24.0 根级运行时/临时/备份产物补漏 ──
+# 这些目录是 OneDrive 同步过来的运行副本/备份/脚本, 不属于 git 事实源
+# 注意: 必须加前导 / 限定根级, 否则会误伤 flask-app/ 下同名目录
+# 注意: 以下条目均为 symlink (→ _runtime/...), 不能加尾斜杠否则 git check-ignore 不匹配
+/Database
+/Database_Backups
+/Manifests
+/_git_shadow_backups/
+/_macmini_backup_*/
+/cache
+/certs
+/config
+/keys
+/repo
+/scripts
+/services
+/settings
+/split_databases
+/startup_modules
+/uploads
+/pids
+/checkpoints/
+/cluster/
+.git_sync_state.json
+
+# 根级脚本 (运行时启动/备份脚本, 不是源码)
+start_all.command
+backup_orchestrator.py
+mtscos_dev_sync.sh
+
+# 根级目录快照 (OneDrive 可能同步独立副本)
+# 必须加前导 / 限定根级, 否则会误伤 flask-app/ 下同名目录
+/ai_engines/
+/app/
+/core/
+/entrypoints/
+/frontend/
+/services/
+/static/
+/templates/
+
+# 遗留 HTML 导出
+HTML/
+
+# 冰山 Phase 8 模板 (之前被 gitignore 拦)
+!flask-app/templates/andromeda_*.html
+_test_ignore_dir/
+_test_ignore_dir/

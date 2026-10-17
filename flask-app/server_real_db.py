@@ -920,6 +920,17 @@ try:
     print("[RULES-ENGINE] Flask before_request interceptor registered (Layer-2)")
 except Exception as _mt_ri_err:
     print(f"[RULES-ENGINE] interceptor register skip: {_mt_ri_err}")
+
+# ---------- MT_RULE_CLASSIFICATION v1.2.0 §B: 机密等级 before_request 拦截 ----------
+# /api/admin/* L0双硬件 / /api/auth/vikey 完整性 / /api/user/container L1 / /api/db/export/* L2
+# 唯一判定入口 PermissionManager.can_access_classification, bypass_allowed=False
+try:
+    from ai_engines.rules_engine.classification_guard import register_interceptor as _mt_register_classification_interceptor
+    _mt_classification_interceptor = _mt_register_classification_interceptor(app)
+    print("[RULES-ENGINE] classification_guard registered (MT_RULE_CLASSIFICATION v1.2.0 §B)")
+except Exception as _mt_cg_err:
+    print(f"[RULES-ENGINE] classification_guard register skip: {_mt_cg_err}")
+
 _MT_REMEMBER_COOKIE = '_mts_rm_tk'
 _MT_REMEMBER_MAX_AGE = 86400 * 30  # Remember-me token: 30天
 _MT_REMEMBER_IP_HISTORY = {}  # token_id -> {ip_set, first_seen}
@@ -12661,6 +12672,20 @@ def register():
                 age_val = max(0, min(120, int(age_val)))
         except Exception:
             pass
+    # v22.39 注册优化R4: 年龄与生日双填一致性校验 (防虚报年龄绕过组别年龄管控)
+    if age_val > 0 and birth_date and len(birth_date) >= 10:
+        try:
+            import datetime as _dt4
+            _bd4 = _dt4.datetime.strptime(birth_date[:10], '%Y-%m-%d').date()
+            _today4 = _dt4.date.today()
+            _derived_age4 = _today4.year - _bd4.year - ((_today4.month, _today4.day) < (_bd4.month, _bd4.day))
+            if abs(_derived_age4 - age_val) > 1:
+                return jsonify({
+                    'success': False,
+                    'message': f'年龄({age_val})与出生日期({birth_date[:10]})不一致（按生日推算为{_derived_age4}岁），请核对后重试',
+                }), 400
+        except (TypeError, ValueError):
+            pass
     # 协议勾选（必须4项全部为True）
     agree_terms_raw = data.get('agree_terms') or {}
     if isinstance(agree_terms_raw, dict):
@@ -12700,6 +12725,18 @@ def register():
         return jsonify({'success': False, 'message': '用户名至少 3 个字符'}), 400
     if len(username) > 40:
         return jsonify({'success': False, 'message': '用户名长度不能超过 40 字符'}), 400
+    # v22.39 注册优化R2: 用户名字符集白名单 (中文/英文/数字/下划线/连字符/点号/间隔号)
+    import re as _re_reg
+    if not _re_reg.fullmatch(r'[A-Za-z0-9_\-.·\u4e00-\u9fff\u3040-\u30ff\uac00-\ud7af]+', username):
+        ef = _ef_process_report_anomaly(
+            'username_charset_invalid', 'auth_register_POST', 'LOW',
+            {'username': username},
+            operator_user=username or 'anonymous', client_ip=client_ip, client_ua=_ua())
+        return jsonify({
+            'success': False,
+            'message': '用户名仅支持中文、英文、数字、下划线、连字符、点号，不能含空格或特殊符号',
+            '_eigenflux': _ef_strip(ef),
+        }), 400
     # SA用户名保护（不允许注册 SA 保留名）
     if str(username).lower() in _SA_FORBIDDEN_NAMES_LOWER:
         ef = _ef_process_report_anomaly(
@@ -12808,6 +12845,35 @@ def register():
             '_eigenflux': _ef_strip(ef),
         }), 429
     _MT_REGISTER_LIMIT[client_ip].append(now)
+    # v22.39 注册优化R3: SQLite持久层限流 (内存层随Flask重启清零的兜底)
+    try:
+        with _get_conn(_bizdb_path()) as _rl_c:
+            _rl_c.execute("""CREATE TABLE IF NOT EXISTS mt_register_audit (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                ip TEXT, username TEXT, ts REAL,
+                created_at TEXT DEFAULT (datetime('now','localtime')))""")
+            _rl_c.execute("DELETE FROM mt_register_audit WHERE ts < ?", (now - 86400,))
+            _db_n = _rl_c.execute(
+                "SELECT COUNT(*) FROM mt_register_audit WHERE ip=? AND ts >= ?",
+                (client_ip, now - _MT_REGISTER_WINDOW)).fetchone()[0]
+            if _db_n >= _MT_REGISTER_MAX_PER_IP:
+                ef = _ef_process_report_anomaly(
+                    'abuse_rate_limit', 'auth_register_POST', 'HIGH',
+                    {'ip': client_ip, 'layer': 'sqlite',
+                     'window_sec': _MT_REGISTER_WINDOW,
+                     'attempts_db': _db_n,
+                     'limit': _MT_REGISTER_MAX_PER_IP,
+                     'target_username': username},
+                    operator_user=username or 'anonymous', client_ip=client_ip, client_ua=_ua())
+                return jsonify({
+                    'success': False, 'message': '注册过于频繁，请稍后再试',
+                    '_eigenflux': _ef_strip(ef),
+                }), 429
+            _rl_c.execute("INSERT INTO mt_register_audit (ip, username, ts) VALUES (?,?,?)",
+                          (client_ip, username, now))
+            _rl_c.commit()
+    except Exception:
+        pass
 
     # ---------- 密码强度校验（对齐后端_validate_password_strength） ----------
     pw_eff_min = max(min_pw_len, 8)
@@ -12934,16 +13000,18 @@ def register():
             # INSERT（兼容列缺失逐个 fallback，按新增字段从多→少展开）
             inserted = False
             cols_list = [
-                # 1) 完整列（含所有合规扩展 + 申请单）
+                # 1) 完整列（含所有合规扩展 + 申请单 + 注册资料 R5）
                 ("""username, email, password, role, created_at, updated_at, is_active,
                     super_admin_approved, hardware_admin_approved,
                     grade, education_type, education_stage, signature, score,
+                    phone, avatar,
                     age, birth_date,
                     terms_agree_version, terms_agree_slugs, terms_agree_detail, terms_agreed_at,
                     pending_education_apply, education_apply_status""",
                  (username, email, pw_hash, role, now_iso, now_iso, 1,
                   0, 0,
                   grade or '', education_type, '', signature or '', 0,
+                  phone or '', avatar or '',
                   age_val, birth_date or '',
                   _LEGAL_TERMS_VERSION, ','.join(terms_agree_slugs_sorted),
                   terms_agree_json, now_iso,
@@ -12953,12 +13021,14 @@ def register():
                 ("""username, email, password, role, created_at, updated_at, is_active,
                     super_admin_approved, hardware_admin_approved,
                     grade, education_type, education_stage, signature, score,
+                    phone, avatar,
                     age, birth_date,
                     terms_agree_version, terms_agree_slugs, terms_agree_detail, terms_agreed_at,
                     pending_education_apply""",
                  (username, email, pw_hash, role, now_iso, now_iso, 1,
                   0, 0,
                   grade or '', education_type, '', signature or '', 0,
+                  phone or '', avatar or '',
                   age_val, birth_date or '',
                   _LEGAL_TERMS_VERSION, ','.join(terms_agree_slugs_sorted),
                   terms_agree_json, now_iso,
@@ -13068,6 +13138,21 @@ def register():
                 except Exception:
                     verify_ok = False
                     verify_issues.append('password_hash_verify_exception')
+                # v22.39 注册优化R6: 协议同意记录兜底回填 (法律合规: 注册协议留痕不可缺失)
+                if not vr.get('terms_agreed_at') or not vr.get('terms_agree_version'):
+                    try:
+                        conn.execute(
+                            "UPDATE users SET terms_agree_version=?, terms_agree_slugs=?, "
+                            "terms_agree_detail=?, terms_agreed_at=? WHERE id=?",
+                            (_LEGAL_TERMS_VERSION, ','.join(terms_agree_slugs_sorted),
+                             terms_agree_json, now_iso, uid))
+                        conn.commit()
+                        vr['terms_agree_version'] = _LEGAL_TERMS_VERSION
+                        vr['terms_agreed_at'] = now_iso
+                        verify_issues.append('terms_backfilled')
+                    except Exception:
+                        verify_ok = False
+                        verify_issues.append('terms_backfill_failed')
             if not verify_ok:
                 ef = _ef_process_report_anomaly(
                     'hash_mismatch', 'auth_register_POST', 'CRITICAL',
@@ -13115,8 +13200,8 @@ def register():
             }
             resp = {
                 'success': True,
-                'message': (f'注册成功，ID={uid}（写入 {os.path.basename(write_db)}.users，密码 SHA256→Base64）'
-                            f'{apply_note}'),
+                # v22.39 注册优化R1: 响应不再泄露DB文件名与密码哈希方案
+                'message': f'注册成功，欢迎加入 MTSCOS AI！{apply_note}',
                 'redirect': '/',
                 'user': user_obj,
                 '_eigenflux': ef_payload,
