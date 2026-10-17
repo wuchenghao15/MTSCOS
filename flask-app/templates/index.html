@@ -788,7 +788,7 @@ body {
             <span class="eco-num" data-evo-field="brain_feeds">{{ andromeda_state.brain_feeds | default(0) }}</span>
             <span class="eco-label">脑库投喂</span>
         </span>
-        <span class="eco-item" title="本地推理引擎节省 tokens, 零 API 消耗 (mt_local_ai_inference_log)">
+        <span class="eco-item" title="本地推理引擎节省 tokens (mt_local_ai_inference_log)">
             <i class="eco-icon fas fa-coins"></i>
             <span class="eco-num" data-evo-field="tokens_saved">{{ (andromeda_state.tokens_saved | default(0)) | int }}</span>
             <span class="eco-label">tokens 节省</span>

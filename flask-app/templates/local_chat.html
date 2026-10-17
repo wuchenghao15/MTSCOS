@@ -142,14 +142,14 @@
     <div class="chat-header">
       <div class="chat-title" id="chatTitle">选择或新建一个对话</div>
       <div class="chat-stats">
-        <span>⚡ 本地 Ollama</span>
+        <span id="tokenBadge" title="Token 余额">💰 --</span>
         <span>🧠 仙女座发散</span>
         <span>📊 0拐点</span>
       </div>
     </div>
     
     <div class="messages" id="messages">
-      <div class="empty">👈 点击左侧「新建对话」开始<br>· 本地 LLM 零 token 消耗<br>· 仙女座发散思维引擎<br>· 所有对话永久化 + 脑库投喂</div>
+      <div class="empty">👈 点击左侧「新建对话」开始<br>· 本地大模型推理<br>· 仙女座发散思维引擎<br>· 所有对话永久化 + 脑库投喂</div>
     </div>
     
     <div class="input-area">
@@ -185,6 +185,7 @@ function init(){
   });
   
   loadSessions();
+  initTokenBadge();
   bindEnter();
 }
 
@@ -288,7 +289,18 @@ async function send(){
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({session_id: currentSessionId, message: text})
     });
-    
+
+    // ── Token 余额不足 (402) ──
+    if(resp.status === 402){
+      let msg = 'Token 已用完, 明日自动到账';
+      try{ const e = await resp.json(); if(e.message) msg = e.message; }catch(_){}
+      contentEl.innerHTML = `<span style="color:#fbbf24">⛔ ${msg}</span>`;
+      isStreaming = false;
+      $('sendBtn').disabled = false;
+      $('input').disabled = false;
+      return;
+    }
+
     const reader = resp.body.getReader();
     const decoder = new TextDecoder();
     let fullText = '';
@@ -327,6 +339,24 @@ async function send(){
             tagContainer.innerHTML = detectInflectionTags(text, fullText);
             break;
           }
+          if(payload.startsWith('[billing]')){
+            // 计费事件: 更新余额徽标 (SA 显示豁免)
+            try{
+              const b = JSON.parse(payload.slice(9));
+              if(b.exempt){
+                updateTokenBadge(null, true);
+              }else{
+                updateTokenBadge(b.balance, false);
+                if(b.deducted > 0){
+                  const hint = document.createElement('div');
+                  hint.style.cssText = 'font-size:11px;opacity:.55;margin-top:4px';
+                  hint.textContent = `💰 本轮消耗 ${b.prompt_tokens}+${b.completion_tokens}=${b.deducted} token, 余额 ${b.balance}`;
+                  contentEl.appendChild(hint);
+                }
+              }
+            }catch(_){}
+            continue;
+          }
           
           try{
             const d = JSON.parse(payload);
@@ -349,6 +379,33 @@ async function send(){
     $('input').focus();
     loadSessions();
   }
+}
+
+// ═══ Token 余额徽标 (v25.2.1 SA 豁免) ═══
+function updateTokenBadge(balance, saExempt){
+  const badge = $('tokenBadge');
+  if(!badge) return;
+  if(saExempt){
+    badge.textContent = '🛡️ SA 豁免';
+    badge.title = '超级管理员: 不限用量, 不消耗 token';
+    badge.style.color = '#34d399';
+  }else if(balance === null || balance === undefined){
+    badge.textContent = '💰 --';
+  }else{
+    badge.textContent = `💰 ${Number(balance).toLocaleString()}`;
+    badge.title = '每日自动赠送 10,000 token';
+    badge.style.color = balance <= 0 ? '#fbbf24' : '';
+  }
+}
+
+async function initTokenBadge(){
+  try{
+    const r = await fetch(`${API}/balance`);
+    if(!r.ok) return;
+    const d = await r.json();
+    if(d.sa_exempt) updateTokenBadge(null, true);
+    else updateTokenBadge(d.balance, false);
+  }catch(_){}
 }
 
 // ═══ 拐点标签 (前端可视化) ═══
@@ -389,6 +446,43 @@ function escapeHtml(s){
 }
 
 init();
+</script>
+
+<!-- 🌐 语言切换 FAB (和 base_unified.html 同源) -->
+<link rel="stylesheet" href="{{ url_for('static', filename='css/lang_fab.css') }}">
+<div class="lang-bar" id="langBar">
+{% for lang in available_langs %}
+{% set code, name = lang %}
+<button class="lang-bar__opt" data-lang="{{ code }}">
+  {% if code == 'zh_CN' %}🇨🇳
+  {% elif code == 'zh_TW' %}🇹🇼
+  {% elif code == 'ja_JP' %}🇯🇵
+  {% elif code == 'en_US' %}🇺🇸
+  {% elif code == 'ko_KR' %}🇰🇷
+  {% else %}{{ name }}{% endif %}
+</button>
+{% endfor %}
+</div>
+<script>
+(function(){
+  var bar = document.getElementById('langBar');
+  if (!bar) return;
+  fetch('/api/i18n/current', {credentials:'same-origin'})
+    .then(function(r){return r.json()})
+    .then(function(d){
+      var cur = d.lang || 'zh_CN';
+      bar.querySelectorAll('.lang-bar__opt').forEach(function(b){
+        b.classList.toggle('is-active', b.dataset.lang === cur);
+      });
+    }).catch(function(){});
+  bar.querySelectorAll('.lang-bar__opt').forEach(function(b){
+    b.addEventListener('click', function(){
+      var lang = b.dataset.lang;
+      fetch('/api/i18n/set/'+lang, {method:'POST', credentials:'same-origin'})
+        .then(function(){ location.reload(); });
+    });
+  });
+})();
 </script>
 </body>
 </html>

@@ -334,8 +334,15 @@ def _candidate_user_dbs():
     导致 SELECT * FROM users 抛 DatabaseError 被跳过, 登录落到 auth.db 的 admin
     (其密码非 admin123) → admin/admin123 登录失败。此处显式将已验证健康的
     主库 _runtime/databases/Database/app.db (19.8GB, 含 admin/admin123 hex 哈希) 置于首位。
+
+    P1 修复 (2026-10-15): MTSCOS_DB_PATH 环境变量优先 — Flask 启动时已设 PROD DB 路径,
+    但 OneDrive disk I/O 导致硬编码候选库不可用, 需先读 env。
     """
     candidates = []
+    # P1: 环境变量优先 (Flask 启动时已设 PROD DB)
+    _env_db = os.environ.get('MTSCOS_DB_PATH', '')
+    if _env_db and os.path.exists(_env_db) and os.path.getsize(_env_db) > 0:
+        candidates.append(_env_db)
     # 显式优先: 健康主库 (项目根/_runtime/databases/Database/app.db)
     try:
         # 本文件: <root>/flask-app/routes/auth_routes.py → 上溯三级到项目根

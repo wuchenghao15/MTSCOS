@@ -13,6 +13,18 @@ import sys
 # 在 import 时会创建 threading.Thread 启动后台线程, 永久持 DB 写锁 → Flask worker 被堵
 # 在 import 任何模块前 patch threading.Thread.__init__, 拦截可疑后台线程
 os.environ['MTSCOS_FLASK_MODE'] = '1'
+# P1 修复 (2026-10-15): MTSCOS_DB_PATH fallback — Flask 后台进程有时 env 丢失,
+# 导致 db_path.get_db_path('app.db') 错误解析到 OneDrive 旧库 (disk I/O error),
+# 而 PROD DB (/Users/wuchenghao/MTSCOS_PROD/flask-app/database/app.db) 才是权威源
+if not os.environ.get('MTSCOS_DB_PATH'):
+    _prod_db = os.path.expanduser('~/MTSCOS_PROD/flask-app/database/app.db')
+    if os.path.exists(_prod_db) and os.path.getsize(_prod_db) > 1e9:
+        os.environ['MTSCOS_DB_PATH'] = _prod_db
+    else:
+        # 兜底: 本地 PROD 不存在时用本地 app.db
+        _local_db = os.path.join(os.path.dirname(__file__), 'database', 'app.db')
+        if os.path.exists(_local_db):
+            os.environ['MTSCOS_DB_PATH'] = _local_db
 import threading as _threading_flask
 _ORIGINAL_THREAD_INIT = _threading_flask.Thread.__init__
 _SKIP_KEYWORDS = (

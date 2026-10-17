@@ -119,7 +119,7 @@ except ImportError:
         try:
             conn = _get_conn()
             conn.execute(
-                "INSERT OR IGNORE INTO mt_daemon_registry (daemon_name, status, registered_at, last_heartbeat) VALUES (?,?,?,?)",
+                "INSERT OR IGNORE INTO mt_daemon_registry (process_name, status, registered_at, last_heartbeat) VALUES (?,?,?,?)",
                 (name, status, _now(), _now()))
             conn.commit()
             conn.close()
@@ -131,7 +131,7 @@ except ImportError:
         try:
             conn = _get_conn()
             conn.execute(
-                "UPDATE mt_daemon_registry SET status=?, last_heartbeat=? WHERE daemon_name=?",
+                "UPDATE mt_daemon_registry SET status=?, last_heartbeat=? WHERE process_name=?",
                 (new_state, _now(), name))
             conn.commit()
             conn.close()
@@ -180,10 +180,9 @@ SYSTEM_REQUIRED_DAEMONS = [
         "process_name": "sys_heartbeat_writer",
         "duty": "系统心跳写入 - 每30s向 mt_daemon_registry 写心跳，保持所有daemon存活",
         "work_body": """
-import os, sys, sqlite3, time
-DB = os.environ.get('APP_DB', '/Users/wuchenghao/mtscos/_runtime/databases/Database/app.db')
-conn = sqlite3.connect(DB); conn.execute('PRAGMA busy_timeout=5000')
-conn.execute("UPDATE mt_daemon_registry SET last_heartbeat=datetime('now') WHERE daemon_name=?", ('sys_heartbeat_writer',))
+import sqlite3, os
+conn = sqlite3.connect(APP_DB, timeout=5); conn.execute('PRAGMA busy_timeout=5000')
+conn.execute("UPDATE mt_daemon_registry SET last_heartbeat=datetime('now') WHERE process_name=?", ('sys_heartbeat_writer',))
 conn.commit(); conn.close()
 _log("[heartbeat] written")
 """,
@@ -194,8 +193,7 @@ _log("[heartbeat] written")
         "duty": "daemon状态巡检 - 每60s检查所有挂载进程心跳，超时的标记为TIMEOUT",
         "work_body": """
 import sqlite3, os
-DB = os.environ.get('APP_DB', '/Users/wuchenghao/mtscos/_runtime/databases/Database/app.db')
-conn = sqlite3.connect(DB); conn.execute('PRAGMA busy_timeout=5000')
+conn = sqlite3.connect(APP_DB); conn.execute('PRAGMA busy_timeout=5000')
 now = int(time.time())
 for r in conn.execute("SELECT process_name, pid, heartbeat_at FROM mt_ai_smart_mount_processes WHERE current_state='RUNNING'").fetchall():
     try:
@@ -213,8 +211,7 @@ conn.commit(); conn.close()
         "duty": "FAILED daemon自动修复 - 检查restart_count>0的进程，尝试重新挂载",
         "work_body": """
 import sqlite3, os, time
-DB = os.environ.get('APP_DB', '/Users/wuchenghao/mtscos/_runtime/databases/Database/app.db')
-conn = sqlite3.connect(DB); conn.execute('PRAGMA busy_timeout=5000')
+conn = sqlite3.connect(APP_DB); conn.execute('PRAGMA busy_timeout=5000')
 stale = conn.execute("SELECT process_name FROM mt_ai_smart_mount_processes WHERE current_state='FAILED' AND restart_count<5").fetchall()
 for r in stale:
     _log(f"[auto_repair] FAILED→STOPPED: {r[0]}")
@@ -242,8 +239,7 @@ except Exception as e:
         "duty": "规则学习+执行 - 每300s扫描弱约束词，执行规则治理",
         "work_body": """
 import sqlite3, os
-DB = os.environ.get('APP_DB', '/Users/wuchenghao/mtscos/_runtime/databases/Database/app.db')
-conn = sqlite3.connect(DB); conn.execute('PRAGMA busy_timeout=5000')
+conn = sqlite3.connect(APP_DB); conn.execute('PRAGMA busy_timeout=5000')
 n = conn.execute("SELECT COUNT(*) FROM mt_rule_violation_alert WHERE rule_hit LIKE '%weak%'").fetchone()[0]
 _log(f"[rule_enforcer] violations_today={n}")
 conn.close()
@@ -910,7 +906,7 @@ import os, sys, json, sqlite3, time, logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s [GITHUB-FUSION] %(message)s')
 log = logging.getLogger('github_fusion_daemon')
 
-APP_DB = os.environ.get('APP_DB', '/Users/wuchenghao/mtscos/_runtime/databases/Database/app.db')
+APP_DB = os.environ.get('MTSCOS_DB_PATH', '') or os.environ.get('APP_DB', '') or os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'database', 'app.db')
 PROJECT_ROOT = os.environ.get('PROJECT_ROOT', os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 try:
@@ -922,7 +918,7 @@ try:
 
     # 上报 mt_daemon_registry 状态
     conn = sqlite3.connect(APP_DB, timeout=10)
-    conn.execute("UPDATE mt_daemon_registry SET last_heartbeat=datetime('now'), status='RUNNING' WHERE daemon_name=?", ('sys_github_fusion_scan',))
+    conn.execute("UPDATE mt_daemon_registry SET last_heartbeat=datetime('now'), status='RUNNING' WHERE process_name=?", ('sys_github_fusion_scan',))
     conn.commit(); conn.close()
 except Exception as e:
     log.error(f'cycle failed: {e}')
@@ -960,7 +956,7 @@ try:
         import sqlite3 as _sq3
         c = _sq3.connect(APP_DB, timeout=5)
         cfg = _j.dumps({"mini_online": online, "mini_addr": hit_addr, "mini_latency_ms": latency, "check_ts": datetime.now().isoformat()})
-        c.execute("UPDATE mt_daemon_registry SET config_json=?, last_heartbeat=datetime('now','localtime') WHERE daemon_name='sys_andromeda_autosync'", (cfg,))
+        c.execute("UPDATE mt_daemon_registry SET config_json=?, last_heartbeat=datetime('now','localtime') WHERE process_name='sys_andromeda_autosync'", (cfg,))
         # 同时写 smart_mount_processes heartbeat
         c.execute("UPDATE mt_ai_smart_mount_processes SET heartbeat_at=datetime('now','localtime') WHERE process_name='sys_andromeda_autosync'")
         c.commit(); c.close()
@@ -1048,7 +1044,7 @@ try:
     try:
         conn = sqlite3.connect(DB_PATH, timeout=10)
         conn.row_factory = sqlite3.Row
-        conn.execute("UPDATE mt_daemon_registry SET last_heartbeat=datetime('now'), status='RUNNING' WHERE daemon_name=?", ('sys_andromeda_auto_evolution',))
+        conn.execute("UPDATE mt_daemon_registry SET last_heartbeat=datetime('now'), status='RUNNING' WHERE process_name=?", ('sys_andromeda_auto_evolution',))
         conn.commit(); conn.close()
     except Exception:
         pass
@@ -2552,10 +2548,19 @@ from datetime import datetime
 
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 ENGINE_DIR = os.path.join(_PROJECT_ROOT, "flask-app", "ai_engines")
-# 🔧 2026-09-10 仙女座修复: 统一指向 Database/app.db 主库
-APP_DB = os.path.join(_PROJECT_ROOT, "Database", "app.db")
-if not os.path.exists(APP_DB):
-    APP_DB = os.path.join(ENGINE_DIR, "app.db")
+# 🔧 2026-10-16 修复: DB 解析 env 优先 + 补 PROD 真实路径候选 (旧模板只找 Database/app.db, PROD 树真实库在 flask-app/database/)
+APP_DB = os.environ.get('MTSCOS_DB_PATH', '') or os.environ.get('APP_DB', '')
+if not APP_DB:
+    for _cand in (
+        os.path.join(_PROJECT_ROOT, "Database", "app.db"),
+        os.path.join(_PROJECT_ROOT, "flask-app", "database", "app.db"),
+        os.path.join(_PROJECT_ROOT, "flask-app", "ai_engines", "app.db"),
+    ):
+        if os.path.exists(_cand):
+            APP_DB = _cand
+            break
+    else:
+        APP_DB = os.path.join(_PROJECT_ROOT, "flask-app", "database", "app.db")
 PID_FILE = os.path.join(_PROJECT_ROOT, "_runtime", "pids", "{pid_filename}")
 LOG_FILE = os.path.join(_PROJECT_ROOT, "_runtime", "logs", "{log_filename}")
 
@@ -2654,7 +2659,7 @@ def main_loop():
 
     while _running:
         try:
-            # === daemon工作循环 ===
+            # === daemon (NOTE: use module-level APP_DB, not os.environ.get)工作循环 ===
 {work_body}
             _heartbeat()
             # 🆕 v5.1 参数热生效: 每轮循环刷新 CYCLE — mt_params 改了不用重启 daemon
@@ -2771,7 +2776,7 @@ def mount_process(process_name: str, duty: str, script_path: str,
             conn = _get_conn()
             conn.row_factory = sqlite3.Row
             r = conn.execute(
-                "SELECT daemon_id FROM mt_daemon_registry WHERE daemon_name=?",
+                "SELECT daemon_id FROM mt_daemon_registry WHERE process_name=?",
                 (process_name,)).fetchone()
             conn.close()
             daemon_id = r["daemon_id"] if r else 0
@@ -2832,6 +2837,7 @@ def _start_subprocess(process_name: str, script_path: str) -> Optional[int]:
     # 🔧 v5.2: 显式注入 APP_DB — 子进程不会再走 work_body 里的 default 旧库路径
     _proc_env = os.environ.copy()
     _proc_env['APP_DB'] = APP_DB
+    _proc_env['MTSCOS_DB_PATH'] = APP_DB
 
     try:
         with open(log_file, "a") as lf:
@@ -2852,9 +2858,9 @@ def _start_subprocess(process_name: str, script_path: str) -> Optional[int]:
                 "UPDATE mt_ai_smart_mount_processes SET pid=?, current_state='RUNNING', heartbeat_at=?, updated_at=? WHERE process_name=?",
                 (proc.pid, now_iso, now_iso, process_name))
             # 同步写 mt_daemon_registry 的 pid + last_heartbeat (根因修复: 之前 daemon_registry 永远无 pid)
-            # 🔧 2026-10-13: WHERE process_name → WHERE daemon_name (列名错了!)
+            # 🔧 2026-10-13: WHERE process_name → WHERE process_name (列名错了!)
             c.execute(
-                "UPDATE mt_daemon_registry SET pid=?, last_heartbeat=?, updated_at=? WHERE daemon_name=?",
+                "UPDATE mt_daemon_registry SET pid=?, last_heartbeat=?, updated_at=? WHERE process_name=?",
                 (proc.pid, now_iso, now_iso, process_name))
             conn.commit()
             conn.close()
@@ -2917,7 +2923,7 @@ def heartbeat_check() -> Dict:
             try:
                 with _LOCK:
                     _c2 = _get_conn().cursor()
-                    _c2.execute("UPDATE mt_daemon_registry SET pid=?, last_heartbeat=?, status='RUNNING', updated_at=? WHERE daemon_name=?",
+                    _c2.execute("UPDATE mt_daemon_registry SET pid=?, last_heartbeat=?, status='RUNNING', updated_at=? WHERE process_name=?",
                                 (pid, now_str, now_str, pname))
                     _c2.connection.commit()
                     _c2.connection.close()
@@ -2948,7 +2954,7 @@ def heartbeat_check() -> Dict:
                 _c.connection.close()
             with _LOCK:
                 _c2 = _get_conn().cursor()
-                _c2.execute("UPDATE mt_daemon_registry SET pid=NULL WHERE daemon_name=?",
+                _c2.execute("UPDATE mt_daemon_registry SET pid=NULL WHERE process_name=?",
                             (pname,))
                 _c2.connection.commit()
                 _c2.connection.close()

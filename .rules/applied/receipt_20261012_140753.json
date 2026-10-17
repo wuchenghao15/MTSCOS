@@ -1,0 +1,12 @@
+{
+  "flow_id": "FLOW-COPY-STUDIO-20261012135202",
+  "current_step": "STEP_7_EXECUTE",
+  "git_hash": "ba620eed82dd72733e2fa9f34b3ca63ad3339e3b",
+  "passed_rules": ["MT_IRON_RULE_12STEPS", "MT_RULE_DEV", "MT_RULE_PERM"],
+  "checks": {
+    "dev_flow_session": "VALID (step >= STEP_7, 30min fresh)",
+    "code_integrity": "OK (.py/.html/.css/.js staged)",
+    "version_consistency": "OK (captured)"
+  },
+  "passed_at": "2026-10-12T14:07:53+08:00"
+}

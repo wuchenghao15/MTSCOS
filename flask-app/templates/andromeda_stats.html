@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>仙女座工作全景统计 · {{ flow_id }}</title>
+<style>
+:root{
+  --el-color-primary: var(--el-color-primary, #409EFF);
+  --el-color-success: var(--el-color-success, #67C23A);
+  --el-color-warning: var(--el-color-warning, #E6A23C);
+  --el-color-danger: var(--el-color-danger, #F56C6C);
+  --el-text-color-primary: var(--el-text-color-primary, #303133);
+  --el-text-color-regular: var(--el-text-color-regular, #606266);
+  --el-border-color: var(--el-border-color, #DCDFE6);
+  --el-fill-color-light: var(--el-fill-color-light, #F5F7FA);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Helvetica Neue",Arial,"PingFang SC","Microsoft YaHei",sans-serif;
+  background:var(--el-fill-color-light);color:var(--el-text-color-primary);font-size:14px;padding:20px}
+.card{background:#fff;border:1px solid var(--el-border-color);border-radius:8px;padding:16px;margin-bottom:16px}
+h1{font-size:20px;margin-bottom:4px}
+h2{font-size:16px;margin-bottom:12px;color:var(--el-text-color-primary)}
+.sub{color:var(--el-text-color-regular);font-size:12px;margin-bottom:12px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.kpi{background:var(--el-fill-color-light);border-radius:8px;padding:14px;text-align:center}
+.kpi .n{font-size:26px;font-weight:700;color:var(--el-color-primary)}
+.kpi .l{font-size:12px;color:var(--el-text-color-regular);margin-top:4px}
+.charts{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:900px){.charts{grid-template-columns:1fr}}
+.bar-row{display:flex;align-items:center;margin:8px 0}
+.bar-label{width:70px;font-size:13px;text-align:right;padding-right:10px;color:var(--el-text-color-regular)}
+.bar-track{flex:1;background:var(--el-fill-color-light);border-radius:4px;height:22px;position:relative;overflow:hidden}
+.bar-fill{height:100%;border-radius:4px;background:var(--el-color-primary);min-width:2px;
+  transition:width .4s ease;display:flex;align-items:center;justify-content:flex-end}
+.bar-fill span{font-size:11px;color:#fff;padding-right:6px;font-weight:600}
+.bar-fill.c2{background:var(--el-color-success)}
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;align-items:center}
+.chip{padding:5px 14px;border:1px solid var(--el-border-color);border-radius:16px;background:#fff;
+  cursor:pointer;font-size:13px;color:var(--el-text-color-regular)}
+.chip.active{background:var(--el-color-primary);color:#fff;border-color:var(--el-color-primary)}
+input.q{padding:6px 10px;border:1px solid var(--el-border-color);border-radius:4px;width:220px;outline:none}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--el-border-color);vertical-align:top}
+th{background:var(--el-fill-color-light);position:sticky;top:0;z-index:1;color:var(--el-text-color-regular);font-weight:600}
+tbody tr:hover{background:var(--el-fill-color-light)}
+.tbl-wrap{max-height:420px;overflow:auto;border:1px solid var(--el-border-color);border-radius:6px}
+.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;color:#fff;white-space:nowrap}
+.b-研发{background:var(--el-color-primary)}.b-拉活{background:var(--el-color-warning)}
+.b-维护{background:#909399}.b-修复{background:var(--el-color-danger)}
+.b-升级{background:#9c27b0}.b-学习{background:var(--el-color-success)}.b-巡逻{background:#00bcd4}
+.status-ok{color:var(--el-color-success);font-weight:600}
+.status-bad{color:var(--el-color-danger);font-weight:600}
+button{padding:6px 14px;border:1px solid var(--el-color-primary);background:var(--el-color-primary);
+  color:#fff;border-radius:4px;cursor:pointer;font-size:13px}
+button.ghost{background:#fff;color:var(--el-color-primary)}
+button:hover{opacity:.88}
+button:disabled{opacity:.5;cursor:not-allowed}
+.teams{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
+.pill-list{display:flex;flex-wrap:wrap;gap:6px}
+.pill{background:var(--el-fill-color-light);border:1px solid var(--el-border-color);border-radius:12px;
+  padding:3px 10px;font-size:12px}
+.pill.on{border-color:var(--el-color-success)}
+.empty{color:var(--el-text-color-regular);text-align:center;padding:20px}
+.load-more{margin-top:10px;text-align:center}
+</style>
+</head>
+<body>
+
+<div class="card">
+  <h1>🌠 仙女座工作全景统计</h1>
+  <div class="sub">自激活以来全部智能操作拐点 · flow_id={{ flow_id }} · 生成于 <span id="gen-at">-</span> ·
+    <button class="ghost" onclick="refreshAll()">↻ 刷新</button></div>
+  <div class="kpis" id="kpis"></div>
+</div>
+
+<div class="charts">
+  <div class="card">
+    <h2>事件分类柱状图</h2>
+    <div id="cat-chart"></div>
+  </div>
+  <div class="card">
+    <h2>月度活跃趋势</h2>
+    <div id="month-chart"></div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>事件明细（拐点日志流）</h2>
+  <div class="toolbar" id="cat-chips"></div>
+  <div class="toolbar"><input class="q" id="q" placeholder="搜索标题/详情/行为者…" oninput="onSearch()">
+    <span class="sub" id="evt-count"></span></div>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th style="width:150px">时间</th><th style="width:80px">分类</th>
+        <th style="width:180px">来源表</th><th>事件</th><th style="width:130px">行为者</th></tr></thead>
+      <tbody id="evt-body"><tr><td colspan="5" class="empty">加载中…</td></tr></tbody>
+    </table>
+  </div>
+  <div class="load-more"><button class="ghost" id="more-btn" onclick="loadMore()" style="display:none">加载更多</button></div>
+</div>
+
+<div class="card">
+  <h2>缺口分析（欠缺功能）→ 一键派发研发</h2>
+  <div class="sub">缺口写入 smart_mount 建议池(mt_ai_suggestion_pool)，引擎下轮扫描自动 mount 并产出代码。</div>
+  <div class="tbl-wrap" style="max-height:300px">
+    <table>
+      <thead><tr><th style="width:220px">能力面</th><th style="width:110px">状态</th>
+        <th style="width:240px">数据表</th><th>建议动作</th><th style="width:110px">联动</th></tr></thead>
+      <tbody id="gap-body"></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card">
+  <h2>团队 · AI员工 · 专家天团</h2>
+  <div class="teams">
+    <div>
+      <h2>Daemon 进程 <span class="sub" id="daemon-sum"></span></h2>
+      <div class="pill-list" id="daemon-list"></div>
+    </div>
+    <div>
+      <h2>EigenFlux 专家天团</h2>
+      <div class="pill-list" id="expert-list"></div>
+    </div>
+    <div>
+      <h2>AI 员工分布</h2>
+      <div class="pill-list" id="dept-list"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+let OVERVIEW = null, CUR_CAT = '', CUR_OFFSET = 0, SEARCH_TIMER = null;
+const CAT_COLORS = ['var(--el-color-primary)','var(--el-color-success)','var(--el-color-warning)',
+  'var(--el-color-danger)','#9c27b0','#00bcd4','#909399'];
+
+function esc(s){const d=document.createElement('div');d.textContent=s??'';return d.innerHTML}
+function catBadge(c){return `<span class="badge b-${esc(c.slice(1))}">${esc(c)}</span>`}
+
+function hbar(el, data, colors){
+  if(!data.length){el.innerHTML='<div class="empty">暂无数据</div>';return}
+  const max = Math.max(...data.map(d=>d[1]));
+  el.innerHTML = data.map((d,i)=>`
+    <div class="bar-row" title="${esc(d[0])}: ${d[1]}">
+      <div class="bar-label">${esc(d[0])}</div>
+      <div class="bar-track"><div class="bar-fill${colors&&colors[i]?' '+colors[i]:''}" style="width:${max?Math.max(d[1]/max*100,2):2}%">
+        <span>${d[1]}</span></div></div>
+    </div>`).join('');
+}
+
+async function loadOverview(){
+  const r = await fetch('/api/andromeda/stats/overview');
+  const j = await r.json();
+  if(!j.success){alert('加载失败: '+j.error);return}
+  OVERVIEW = j.data;
+  document.getElementById('gen-at').textContent = OVERVIEW.generated_at;
+  // KPI
+  const t = OVERVIEW.teams;
+  const kpis = [
+    [OVERVIEW.total_events,'拐点事件总数'],
+    [Object.keys(OVERVIEW.categories).length,'事件分类数'],
+    [t.daemons_running+'/'+t.daemons.length,'daemon 在线'],
+    [t.ai_employees_total,'AI 员工'],
+    [t.eigenflux_experts.length,'EigenFlux 专家'],
+    [OVERVIEW.gaps.length,'待补缺口'],
+  ];
+  document.getElementById('kpis').innerHTML = kpis.map(k=>
+    `<div class="kpi"><div class="n">${k[0]}</div><div class="l">${k[1]}</div></div>`).join('');
+  // 分类柱状图
+  hbar(document.getElementById('cat-chart'), Object.entries(OVERVIEW.categories));
+  // 月度趋势(最近12个月)
+  const months = Object.entries(OVERVIEW.by_month).slice(-12);
+  hbar(document.getElementById('month-chart'), months);
+  // 分类 chips
+  const chips = [['',`全部(${OVERVIEW.total_events})`]]
+    .concat(Object.entries(OVERVIEW.categories).map(([c,n])=>[c,`${c}(${n})`]));
+  document.getElementById('cat-chips').innerHTML = chips.map(([c,l])=>
+    `<span class="chip${c===CUR_CAT?' active':''}" onclick="setCat('${esc(c)}')">${esc(l)}</span>`).join('');
+  // 缺口表
+  const gb = document.getElementById('gap-body');
+  gb.innerHTML = OVERVIEW.gaps.length ? OVERVIEW.gaps.map(g=>`
+    <tr><td>${esc(g.capability)}</td>
+      <td class="${g.status==='MISSING'||g.status.startsWith('ABNORMAL')?'status-bad':'status-bad'}">${esc(g.status)}</td>
+      <td>${esc(g.table)}</td><td>${esc(g.action)}</td>
+      <td><button onclick="dispatch('${esc(g.gap_id)}',this)">派发研发</button></td></tr>`).join('')
+    : '<tr><td colspan="5" class="empty">未发现缺口 ✓</td></tr>';
+  // 团队
+  document.getElementById('daemon-sum').textContent = `(${t.daemons_running} running)`;
+  document.getElementById('daemon-list').innerHTML = t.daemons.map(d=>{
+    const ok = ['RUNNING','OK','ACTIVE'].includes(String(d.status).toUpperCase());
+    return `<span class="pill${ok?' on':''}" title="${esc(d.duty||'')} · ${esc(d.status)} · restarts=${d.restart_count} · ${esc(d.last_heartbeat||'')}">${esc(d.name)}·${esc(d.status)}</span>`;
+  }).join('') || '<span class="empty">无</span>';
+  document.getElementById('expert-list').innerHTML = t.eigenflux_experts.map(e=>
+    `<span class="pill${String(e.status).toUpperCase()==='ACTIVE'?' on':''}" title="${esc(e.expertise||'')} · score=${e.score??''}">${esc(e.name)}(${esc(e.expertise||'')})</span>`).join('') || '<span class="empty">无</span>';
+  document.getElementById('dept-list').innerHTML = t.ai_employees_by_dept.map(d=>
+    `<span class="pill">${esc(d.dept)}: ${d.n}人</span>`).join('') || '<span class="empty">无</span>';
+}
+
+async function loadEvents(reset=true){
+  if(reset) CUR_OFFSET = 0;
+  const q = document.getElementById('q').value.trim();
+  const params = new URLSearchParams({limit:200, offset:CUR_OFFSET});
+  if(CUR_CAT) params.set('category', CUR_CAT);
+  if(q) params.set('q', q);
+  const r = await fetch('/api/andromeda/stats/events?'+params);
+  const j = await r.json();
+  const tb = document.getElementById('evt-body');
+  if(!j.success){tb.innerHTML='<tr><td colspan="5" class="empty">加载失败</td></tr>';return}
+  document.getElementById('evt-count').textContent = `共 ${j.total} 条，显示 ${j.events.length} 条`;
+  const rows = j.events.map(e=>`
+    <tr><td>${esc((e.time||'').replace('T',' ').slice(0,19))}</td>
+      <td>${catBadge(e.category)}</td><td>${esc(e.source_table)}</td>
+      <td><b>${esc(e.title)}</b><div class="sub" style="margin:2px 0 0">${esc(e.detail)}</div></td>
+      <td>${esc(e.actor)}</td></tr>`);
+  if(reset) tb.innerHTML = rows.length?rows.join(''):'<tr><td colspan="5" class="empty">无匹配事件</td></tr>';
+  else tb.insertAdjacentHTML('beforeend', rows.join(''));
+  document.getElementById('more-btn').style.display =
+    (CUR_OFFSET + j.events.length < j.total) ? '' : 'none';
+}
+function loadMore(){ CUR_OFFSET += 200; loadEvents(false); }
+function setCat(c){ CUR_CAT = c; loadOverview(); loadEvents(); }
+function onSearch(){ clearTimeout(SEARCH_TIMER); SEARCH_TIMER = setTimeout(()=>loadEvents(), 350); }
+function refreshAll(){ loadOverview(); loadEvents(); }
+
+async function dispatch(gapId, btn){
+  if(!confirm('将该缺口派发至 smart_mount 建议池，由仙女座自动 mount 研发？')) return;
+  btn.disabled = true; btn.textContent = '派发中…';
+  const r = await fetch('/api/andromeda/stats/dispatch', {
+    method:'POST', headers:{'Content-Type':'application/json', 'X-CSRF-Token':'{{ csrf_token or "" }}'},
+    body: JSON.stringify({gap_id: gapId})});
+  const j = await r.json();
+  if(j.success){ btn.textContent='已派发 ✓'; alert('已派发 suggestion_id='+j.suggestion_id+'\n'+j.message); }
+  else { btn.disabled=false; btn.textContent='派发研发'; alert('派发失败: '+j.error); }
+}
+
+loadOverview(); loadEvents();
+</script>
+</body>
+</html>
