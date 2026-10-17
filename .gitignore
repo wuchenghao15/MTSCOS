@@ -319,6 +319,8 @@ app/cross_platform_node_modules/
 
 # 冰山 Phase 8 模板 (之前被 gitignore 拦)
 !flask-app/templates/andromeda_*.html
+# 系统主题与框架排列排版研究中心 (flow_theme_center_20261018)
+!flask-app/templates/theme_layout_center.html
 
 # ── 2026-09-30 v24.1 补漏网项 ──
 _runtime/

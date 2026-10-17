@@ -1776,6 +1776,8 @@ def register_all_blueprints(app):
         ('arduino_session_routes', 'arduino_bp'),
         # 主题调度中心 — 吴美工 AI 14套节日/个性化主题 (v22.0.0 WU IR14)
         ('theme_routes', 'theme_bp'),
+        # 系统主题与框架排列排版研究中心 (flow_theme_center_20261018)
+        ('theme_layout_routes', 'theme_layout_bp'),
         # 安全仪表盘 — 杨安 AI 底层安全专家 4安全表/13开关/审计/CSP (v22.7.0 YANG IR14)
         ('security_routes', 'security_bp'),
         # AI 治理中枢管理面板 (v22.11.0 新增 OneDrive 主库 schema 对齐+8页面)
