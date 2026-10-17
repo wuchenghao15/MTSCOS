@@ -234,7 +234,7 @@
   <div class="wqx-header">
     <div class="wqx-badge">仙女座 · 25 星域 · 文学域</div>
     <div class="wqx-title">文 曲 星</div>
-    <div class="wqx-subtitle">❖ AI 写作生成器 · 本地仙女座算力 · 零 Token 消耗 ❖</div>
+    <div class="wqx-subtitle">❖ AI 写作生成器 · 仙女座本地算力 ❖</div>
     <div class="wqx-ollama-chip {{ 'online' if ollama.online else 'offline' }}">
       <span class="wqx-ollama-dot"></span>
       {% if ollama.online %}
@@ -257,7 +257,7 @@
     </div>
     <div class="wqx-stat-card">
       <div class="wqx-stat-num">{{ wqx_stats.tokens_saved }}</div>
-      <div class="wqx-stat-lbl">Token 节省 (零消耗)</div>
+      <div class="wqx-stat-lbl">Token 节省</div>
     </div>
     <div class="wqx-stat-card">
       <div class="wqx-stat-num">{{ literary_team.wqx_employee_count }}</div>
@@ -360,7 +360,7 @@
           <div class="wqx-empty">
             <div class="wqx-empty-icon">📜</div>
             <div>左侧选模式 + 填主题 → 点"开始生成"</div>
-            <div style="font-size:0.72rem;">本地 Ollama 推理, 零 Token 消耗</div>
+            <div style="font-size:0.72rem;">本地 Ollama 推理</div>
           </div>
         </div>
         <div class="wqx-output-header" style="margin-top:12px;">
@@ -509,7 +509,7 @@
         $('wqx-out-status').textContent = `✅ 完成 · ${r.task_id}`;
         $('wqx-out-words').textContent = `字数: ${r.word_count.toLocaleString()}`;
         $('wqx-out-time').textContent = `耗时: ${elapsed}s`;
-        $('wqx-out-saved').textContent = `零 Token · 节省 ${r.tokens_saved.toLocaleString()}`;
+        $('wqx-out-saved').textContent = `节省 ${r.tokens_saved.toLocaleString()} tokens`;
         $('wqx-output').innerHTML = marked.parse(r.final_text || '');
         lastResult = { ...r, text: r.final_text };
         $('wqx-copy-btn').disabled = false;

@@ -193,9 +193,16 @@ def refresh_mapping():
 
 
 def get_db_path(db_name):
+    # P1 修复 (2026-10-15): MTSCOS_DB_PATH 环境变量优先 — Flask 启动时已设 PROD DB 路径,
+    # 但 OneDrive disk I/O 导致硬编码路径不可用, 需先读 env。
+    base = os.path.basename(db_name) if db_name else 'app.db'
+    _env_db = os.environ.get('MTSCOS_DB_PATH', '')
+    if _env_db and os.path.exists(_env_db) and os.path.getsize(_env_db) > 0:
+        # env 指向的文件 basename 匹配当前请求的 db_name 时才接管
+        if os.path.basename(_env_db) == base:
+            return _env_db
     root = resolve_project_root()
     mapping = _get_mapping()
-    base = os.path.basename(db_name)
     if not base:
         return os.path.join(root, 'Database', 'app.db')
     if os.path.isabs(db_name):

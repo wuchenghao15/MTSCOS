@@ -332,6 +332,7 @@ def _parse_size_mb(size_str):
 def detect_szu100():
     """
     检测SZU100 U盘钥匙（v2 - ioreg BSD映射版）
+    v25.2.1: VIKEY_BACKEND=sim 短路返回 authentic=True (远程辅助服务器无物理U盘时使用)
     返回: {
         'present': bool,           # 是否检测到SZU100设备
         'is_authentic': bool,      # 是否为合法SZU100（非改名U盘）
@@ -340,6 +341,21 @@ def detect_szu100():
         'details': {...}           # 详细信息
     }
     """
+    # v25.2.1 sim 短路: 远程辅助服务器无物理 U 盘
+    if os.environ.get('VIKEY_BACKEND', '').strip().lower() in ('sim', 'mock', 'simulation'):
+        result = {
+            'present': True,
+            'is_authentic': True,
+            'devices': [{'bsd_name': 'sim-disk0', 'mount_point': '/Volumes/SZU100-SIM',
+                        'vid': '0x1987', 'pid': '0x0331', 'serial': 'SIM-SZU100-001',
+                        'label': 'SZU100-SIM', 'manufacturer': 'LiViKey', 'product_name': 'SZU100 PRO (SIM)'}],
+            'auth_status': 'authentic',
+            'details': {'reason': 'VIKEY_BACKEND=sim', 'terminal': 'simulated'}
+        }
+        _detect_cache['data'] = result
+        _detect_cache['ts'] = time.time()
+        return result
+
     now = time.time()
     if _detect_cache['data'] and (now - _detect_cache['ts']) < _CACHE_TTL:
         return _detect_cache['data']

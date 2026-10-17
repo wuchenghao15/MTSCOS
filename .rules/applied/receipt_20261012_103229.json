@@ -1,0 +1,12 @@
+{
+  "flow_id": "FLOW-20261012101614-99156",
+  "current_step": "STEP_7_EXECUTE",
+  "git_hash": "e02ffaf663f662eaf3dc51d8e12ba3533668e044",
+  "passed_rules": ["MT_IRON_RULE_12STEPS", "MT_RULE_DEV", "MT_RULE_PERM"],
+  "checks": {
+    "dev_flow_session": "VALID (step >= STEP_7, 30min fresh)",
+    "code_integrity": "OK (.py/.html/.css/.js staged)",
+    "version_consistency": "OK (captured)"
+  },
+  "passed_at": "2026-10-12T10:32:29+08:00"
+}

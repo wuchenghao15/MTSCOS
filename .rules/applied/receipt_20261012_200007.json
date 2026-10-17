@@ -1,0 +1,12 @@
+{
+  "flow_id": "FLOW-TRANSLATION-STUDIO-20261012150000",
+  "current_step": "STEP_7_EXECUTE",
+  "git_hash": "17879f993ae82d07a3961f9c5740c634363b1029",
+  "passed_rules": ["MT_IRON_RULE_12STEPS", "MT_RULE_DEV", "MT_RULE_PERM"],
+  "checks": {
+    "dev_flow_session": "VALID (step >= STEP_7, 30min fresh)",
+    "code_integrity": "OK (.py/.html/.css/.js staged)",
+    "version_consistency": "OK (captured)"
+  },
+  "passed_at": "2026-10-12T20:00:07+08:00"
+}

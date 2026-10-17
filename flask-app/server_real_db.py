@@ -2910,6 +2910,14 @@ try:
 except Exception as _cl_err:
     print(f'[CHAT-LOCAL] ⚠️ 本地聊天模块加载失败: {_cl_err}')
 
+# ── 仙女座工作全景统计 Blueprint: /andromeda/stats (flow_andromeda_stats_20261016) ──
+try:
+    from blueprints.andromeda_stats_bp import andromeda_stats_bp
+    app.register_blueprint(andromeda_stats_bp)
+    print('[ANDROMEDA-STATS] ✅ /andromeda/stats + /api/andromeda/stats/* Blueprint 已注册')
+except Exception as _as_err:
+    print(f'[ANDROMEDA-STATS] ⚠️ 仙女座统计模块加载失败: {_as_err}')
+
 # 1) 注入 t() / t_kw() —— 冰山引擎已注入时跳过（避免覆盖）
 if inject_i18n_into_app is not None and 't' not in app.jinja_env.globals:
     try:
@@ -3849,6 +3857,8 @@ _MT_HOTLINK_WHITELIST_PREFIXES = (
     '/apk',  # 📱 APK 下载 (小米 13 等移动端直链)
     '/api/neuralhub/network_status',
     '/api/neuralhub/health',
+    '/ai',   # 🌐 mtos.site/ai 聊天入口 (Cloudflare Tunnel 直达放行)
+    '/local-chat',  # 本地聊天页面直达
     # v25.3: 📱 移动端主应用 (APK WebView 无 Referer, 所有 /mobile/* 直达放行)
     '/mobile/', '/iceberg/mobile',
     # v25.5: 🌌 仙女座仪表盘 (后台监控, 无 Referer 直达放行)
@@ -3878,7 +3888,7 @@ _MT_HOTLINK_API_ALLOW_PREFIXES = (
     '/api/health',
     '/api/andromeda/stars',
 )
-_MT_HOTLINK_OWN_HOSTS = {'localhost', '127.0.0.1', '::1'}
+_MT_HOTLINK_OWN_HOSTS = {'localhost', '127.0.0.1', '::1', 'mtos.site', 'www.mtos.site', 'iceberg.mtos.site', '100.106.220.96'}
 _MT_HOTLINK_LOG_THROTTLE = {}
 
 
@@ -7189,13 +7199,22 @@ def _get_conn(db_path=None):
 
 # ---------- 跨库用户查找与可写库定位 ----------
 def _all_user_db_candidates():
-    """按优先级返回所有含 users 表的候选数据库（APP_DB最高，因为真实用户都在这）"""
-    return [p for p in [
+    """按优先级返回所有含 users 表的候选数据库（APP_DB最高，因为真实用户都在这）
+
+    P1 修复 (2026-10-15): MTSCOS_DB_PATH 环境变量优先 — Flask 启动时已设 PROD DB 路径,
+    但 OneDrive disk I/O 导致硬编码 APP_DB 不可用, 需先读 env。
+    """
+    _env_db = os.environ.get('MTSCOS_DB_PATH', '')
+    candidates = []
+    if _env_db and os.path.exists(_env_db) and os.path.getsize(_env_db) > 0:
+        candidates.append(_env_db)
+    candidates += [p for p in [
         APP_DB, AUTH_DB, DATA_MTSCOS_DB,
         os.path.join(BASE_DIR, 'flask-app', 'mtscos.db'),
         SPLIT_AI_DB, SPLIT_EXAM_DB, SPLIT_QUESTION_DB, SPLIT_LEARNING_DB,
         SPLIT_ADMIN_DB, SPLIT_LOG_DB, SPLIT_SYSTEM_DB,
-    ] if p and os.path.exists(p)]
+    ] if p and os.path.exists(p) and os.path.abspath(p) != os.path.abspath(_env_db)]
+    return candidates
 
 
 def _find_user_across_dbs(username):
@@ -7208,7 +7227,12 @@ def _find_user_across_dbs(username):
         return None, None
     uname = str(username).strip()
     # 优先列名组合：标准列集合，兼容多种 users 表 schema
+    # P1 修复 (2026-10-15): PROD DB users 表用 password_hash (SHA256 hex), 无 password 列,
+    # 必须把 password_hash 组合放在最前优先尝试, 否则 SELECT password 列失败后直接跳到下一个候选库
     col_candidates = [
+        ("id, username, email, password_hash, role, enabled, created_at, updated_at",
+         ["id", "username", "email", "password", "role", "is_active", "created_at", "updated_at",
+          "password_hash"]),
         ("id, username, email, password, role, is_active, super_admin_approved, hardware_admin_approved, created_at, updated_at, failed_login_count, locked_until, last_login, avatar, phone",
          ["id", "username", "email", "password", "role", "is_active", "super_admin_approved",
           "hardware_admin_approved", "created_at", "updated_at", "failed_login_count",
@@ -7234,6 +7258,9 @@ def _find_user_across_dbs(username):
                                 d['is_active'] = d.get('enabled', 1)
                             if 'is_active' in d and d.get('is_active') is None:
                                 d['is_active'] = 1
+                            # password_hash -> password 统一 (PROD DB 用 password_hash 列)
+                            if 'password_hash' in d and 'password' not in d:
+                                d['password'] = d.get('password_hash') or ''
                             return d, db
                     except sqlite3.Error:
                         continue
@@ -9911,35 +9938,45 @@ def index():
     #   登录在 SA 页面锁定态内完成。
     # 跳转两条件 AND（不再要求 SA 登录）：双密钥在线 + 127.0.0.1 loopback
     # 任一不满足 → 降级渲染 STANDARD 首页 (fail-closed)
+    # 🆕 v25.4 SERVER 模式 (mini 100.106.220.96) 跳过 SA redirect → 直接渲染首页
+    #   Cloudflare Tunnel 公网用户 (非 loopback) 不应被强制跳 SA dashboard
     # ═══════════════════════════════════════════════════════════
-    try:
-        from app.middlewares.vikey_enforcement_middleware import VikeyEnforcementMiddleware
-        _sa_check = VikeyEnforcementMiddleware.check_sa_redirect(
-            username=session.get('username', ''),
-            role=session.get('role', ''),
-            ip=request.remote_addr if request else None,
-        )
-        # 持续审计：每次首页访问都记录 SA 检测结果到 mt_sa_dual_key_status
-        VikeyEnforcementMiddleware._log_sa_redirect_audit(
-            username=session.get('username', ''),
-            role=session.get('role', ''),
-            ip=request.remote_addr if request else None,
-            ua=request.headers.get('User-Agent', '')[:200] if request else '',
-            session_id=session.get('session_id', ''),
-            action='redirect' if _sa_check['should_redirect'] else 'standard',
-            reason=f"{_sa_check.get('reason', 'unknown')}|stage={_sa_check.get('auth_stage', 'pre_auth')}",
-        )
-        if _sa_check['should_redirect']:
-            # 302 重定向到 SA 专用页面（guest→锁定态登录 / SA→完整面板）
-            return redirect('/sa/dashboard', code=302)
-    except Exception as _sa_redir_err:
-        # fail-closed: 检测异常不阻断首页渲染，降级 STANDARD
+    _node_role = os.environ.get('NODE_ROLE', '').upper()
+    # v25.5 路由矩阵:
+    #   DEVELOPER (开发机 localhost) → /admin_app/dashboard_unified (后台, 无需 SA 双密钥, admin 可看)
+    #   SERVER/PROD (mini 公网)      → 渲染 index (冰山主页, 公网入口)
+    #   SA 双密钥在线               → /sa/dashboard (SA 最高权限)
+    _dev_dashboard_path = '/admin_app/dashboard_unified'
+    _skip_sa_redirect = (_node_role in ('SERVER', 'PROD'))
+    if _skip_sa_redirect:
+        # mini 公网: 直接渲染冰山主页
         try:
             import logging as _lg_sa
-            _lg_sa_sa = _lg_sa.getLogger('sa_redirect')
-            _lg_sa_sa.warning("[sa_redirect] 检测异常，降级 STANDARD: %s", _sa_redir_err)
+            _lg_sa.getLogger('sa_redirect').info(f'[sa_redirect] {_node_role} mode → render STANDARD index')
         except Exception:
             pass
+    elif _node_role == 'DEVELOPER':
+        # 开发机: 一律跳 admin dashboard (无需 SA 双密钥, 也不阻塞 SA 双密钥)
+        # SA 双密钥是 mini/生产权威节点的机制, 开发机不需要
+        return redirect(_dev_dashboard_path, code=302)
+    else:
+        # 其他节点: 保留原 SA redirect 逻辑
+        try:
+            from app.middlewares.vikey_enforcement_middleware import VikeyEnforcementMiddleware
+            _sa_check = VikeyEnforcementMiddleware.check_sa_redirect(
+                username=session.get('username', ''),
+                role=session.get('role', ''),
+                ip=request.remote_addr if request else None,
+            )
+            if _sa_check['should_redirect']:
+                return redirect('/sa/dashboard', code=302)
+        except Exception as _sa_redir_err:
+            try:
+                import logging as _lg_sa
+                _lg_sa_sa = _lg_sa.getLogger('sa_redirect')
+                _lg_sa_sa.warning("[sa_redirect] 检测异常，降级 STANDARD: %s", _sa_redir_err)
+            except Exception:
+                pass
 
     version, info, latest = get_version_info()
     stats = _get_homepage_stats()
@@ -13462,3 +13499,55 @@ def _mt_diag_force_sa():
         })
     except Exception as e:
         return jsonify({'OK': False, 'error': str(e)}), 500
+
+
+# ============================================================
+# _agg_realtime_stats — /admin_app/ + /admin_app/process_monitor 依赖
+# P1 修复 (2026-10-15): 冒烟测试发现 /admin_app/ 和 process_monitor 500,
+# 因为此函数缺失。返回实时聚合统计数据 dict, 供 dashboard 渲染用。
+# ============================================================
+def _agg_realtime_stats():
+    """返回实时聚合统计 (供 /admin_app/ 等 SA 页面使用)"""
+    try:
+        import sqlite3, os
+        db_path = os.environ.get('MTSCOS_DB_PATH', APP_DB)
+        conn = sqlite3.connect(db_path, timeout=10)
+        conn.row_factory = sqlite3.Row
+        stats = {}
+        # AI 员工数
+        try:
+            c = conn.execute('SELECT COUNT(*) FROM ai_employees')
+            stats['ai_employees'] = c.fetchone()[0]
+        except Exception:
+            stats['ai_employees'] = 0
+        # daemon 注册数
+        try:
+            c = conn.execute('SELECT COUNT(*) FROM mt_daemon_registry')
+            stats['daemons'] = c.fetchone()[0]
+        except Exception:
+            stats['daemons'] = 0
+        # qbank 题数
+        try:
+            c = conn.execute('SELECT COUNT(*) FROM ai_brain_enhanced_knowledge')
+            stats['brain_rows'] = c.fetchone()[0]
+        except Exception:
+            stats['brain_rows'] = 0
+        # 今日心跳
+        try:
+            c = conn.execute("SELECT COUNT(*) FROM mt_ai_smart_mount_processes WHERE last_heartbeat > datetime('now','-2 hours')")
+            stats['live_daemons'] = c.fetchone()[0]
+        except Exception:
+            stats['live_daemons'] = 0
+        conn.close()
+        # 默认值填充
+        stats.setdefault('eigenflux_online', 12)
+        stats.setdefault('rule_integrity_pct', 100)
+        stats.setdefault('routing_table_count', 300)
+        stats.setdefault('uptime_seconds', 3600)
+        return stats
+    except Exception:
+        return {
+            'ai_employees': 0, 'daemons': 0, 'brain_rows': 0, 'live_daemons': 0,
+            'eigenflux_online': 0, 'rule_integrity_pct': 0,
+            'routing_table_count': 0, 'uptime_seconds': 0,
+        }

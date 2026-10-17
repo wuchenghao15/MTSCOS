@@ -744,36 +744,76 @@ def api_upgrade_board():
 
 @bp.route('/api/iceberg_layer_stats', methods=['GET'])
 def api_iceberg_layer_stats():
-    """知识脑库按冰山三层聚合 — 前端动态厚度数据源"""
-    conn = _conn()
-    # 三层映射规则: 雪峰 Peak(顶层) = JLPT/新概念/雅思托福/考试类, 承天寺 Spectrum(中层) = 兴趣/科普/人文, 东坡 Basement(底层) = 系统/工程/底层
-    layer_rule = """CASE
-        WHEN domain LIKE 'JLPT%' OR domain LIKE '新概念%' OR domain LIKE '雅思%'
-             OR domain LIKE '托福%' OR domain LIKE '新东方%' OR category='exam'
-             OR difficulty_level IN ('N1','N2','N3','N4','N5')
-            THEN 'peak'
-        WHEN domain LIKE '动漫%' OR domain LIKE '老年%' OR domain LIKE '科普%'
-             OR domain LIKE '人文%' OR domain LIKE '心理学%' OR domain LIKE '哲学%'
-             OR domain LIKE '历史%' OR category='entertainment' OR category='lecture'
-            THEN 'spectrum'
-        ELSE 'basement'
-    END"""
-    rows = conn.execute(f"""
-        SELECT {layer_rule} as layer, domain, COUNT(*) as cnt,
-               COALESCE(SUM(play_count),0) as plays,
-               ROUND(AVG(quality_score),1) as avg_q
-        FROM mt_andromeda_knowledge_base
-        GROUP BY layer, domain
-        ORDER BY layer, cnt DESC
-    """).fetchall()
+    """知识脑库按冰山三层聚合 — 前端动态厚度数据源
+    v25.2: 主数据源切换 ai_brain_enhanced_knowledge (1.5M 行现役表),
+          自动挑库 (engines/app.db 无现役表时回退主库), 附带向量库统计, 全程容错不 500"""
     layers = {'peak': [], 'spectrum': [], 'basement': []}
-    for r in rows:
-        layers[r[0]].append({
-            'domain': r[1], 'count': r[2], 'plays': r[3], 'avg_quality': r[4]
-        })
-    totals = {l: sum(d['count'] for d in layers[l]) for l in layers}
-    conn.close()
-    return jsonify({'code': 0, 'data': {'layers': layers, 'totals': totals}})
+    totals = {'peak': 0, 'spectrum': 0, 'basement': 0}
+    vectors = 0
+    # 自动挑库: engines/app.db → env → PROD → OneDrive, 全部 immutable 只读 (OneDrive WAL 适配)
+    candidates = [ANDROMEDA_DB]
+    for env_key in ('MTSCOS_DB_PATH', 'APP_DB'):
+        v = os.environ.get(env_key, '')
+        if v and os.path.exists(v):
+            candidates.append(v)
+    prod_db = os.path.expanduser('~/MTSCOS_PROD/flask-app/database/app.db')
+    if os.path.exists(prod_db) and prod_db not in candidates:
+        candidates.append(prod_db)
+    main_db = os.path.join(_FLASK_APP, 'database', 'app.db')
+    if main_db not in candidates:
+        candidates.append(main_db)
+    conn = None
+    for db_path in candidates:
+        try:
+            c = sqlite3.connect(f'file:{db_path}?mode=ro&immutable=1', uri=True, timeout=3)
+            has = c.execute(
+                "SELECT COUNT(*) FROM sqlite_master WHERE type='table' "
+                "AND name='ai_brain_enhanced_knowledge'"
+            ).fetchone()[0]
+            if has:
+                conn = c
+                break
+            c.close()
+        except Exception:
+            continue
+    if conn is not None:
+        try:
+            # 三层映射 (v25.2 真实 category 分布):
+            #   雪峰 Peak(顶层) = 考试技巧/成人教育/职业教育 (教育刚需)
+            #   承天寺 Spectrum(中层) = 学科知识/学习方法/地理/历史/化学 (学科人文)
+            #   东坡 Basement(底层) = eigenflux/auto_derive/daemon 等系统引擎层
+            layer_rule = """CASE
+                WHEN category IN ('考试技巧','成人教育','职业教育') THEN 'peak'
+                WHEN category IN ('学习方法','地理','历史','化学','物理','生物','语文','数学','英语','文科','理科')
+                     OR category IS NULL THEN 'spectrum'
+                WHEN category = '学科知识' THEN 'spectrum'
+                ELSE 'basement'
+            END"""
+            rows = conn.execute(f"""
+                SELECT {layer_rule} as layer, COALESCE(category,'通用') as domain,
+                       COUNT(*) as cnt
+                FROM ai_brain_enhanced_knowledge
+                GROUP BY layer, domain
+                ORDER BY layer, cnt DESC
+                LIMIT 500
+            """).fetchall()
+            for r in rows:
+                layers[r[0]].append({
+                    'domain': r[1], 'count': r[2], 'plays': 0, 'avg_quality': None
+                })
+            totals = {l: sum(d['count'] for d in layers[l]) for l in layers}
+            try:
+                vectors = conn.execute("SELECT COUNT(*) FROM mt_ai_brain_vector").fetchone()[0]
+            except Exception:
+                vectors = 0
+        except Exception as e:
+            import traceback; traceback.print_exc()
+        finally:
+            try: conn.close()
+            except Exception: pass
+    return jsonify({'code': 0, 'data': {
+        'layers': layers, 'totals': totals, 'vectors': vectors
+    }})
 
 
 # ═══════════════════════════════════════════════════════════════════

@@ -395,3 +395,5 @@ MTSCOS_AI/
 *.bak_*
 *.auto_repair_backup
 flask-app/routes/auto_gen_*
+PROD_SYNC/
+_backup/

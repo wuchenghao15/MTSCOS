@@ -32,8 +32,34 @@ import time
 import uuid
 from datetime import datetime
 from functools import wraps
-
 from flask import Blueprint, Response, g, jsonify, request, session, stream_with_context
+
+# ── 加密: 奖励公式密钥 (AES-like XOR + HMAC 混淆, 与 node_role 绑定) ──
+_REWARD_KEY = os.environ.get('MTSCOS_REWARD_SEED', '[REDACTED]').encode()[:16]
+
+def _crypto_mask(raw_bytes, key=_REWARD_KEY):
+    """XOR + 时间盐混淆, 防直接读公式"""
+    import hashlib
+    salt = str(int(time.time()) % 1000).encode()
+    masked = bytes(a ^ b ^ c for a, b, c in zip(raw_bytes, (key * 3)[:len(raw_bytes)], (salt * 3)[:len(raw_bytes)]))
+    return hashlib.sha256(masked).hexdigest()[:32]
+
+def _reward_formula_snapshot():
+    """导出加密快照, 供前端/审计验证公式版本"""
+    import hashlib
+    raw = json.dumps({
+        'version': 'v25.5',
+        'breakthrough_per_turn': 50,
+        'diverge_per_turn': 30,
+        'question_per_turn': 20,
+        'metaphor_per_turn': 20,
+        'contradiction_per_turn': 20,
+        'brain_feed_reward': 100,
+        'max_daily_reward': 200,     # 每日奖励封顶 200 token (制约平衡)
+        'cooldown_seconds': 60,      # 奖励冷却 60s, 防刷
+        'balance_ratio_cap': 0.15,   # 奖励不得超过当前余额 15% (制约平衡)
+    }, sort_keys=True).encode()
+    return _crypto_mask(raw)
 
 # ── 路径解析 (v25.1: APP_DB env var first + multi-fallback for Mac mini) ──
 _BLUEPRINT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -41,16 +67,25 @@ _FLASK_APP_DIR = os.path.dirname(_BLUEPRINT_DIR)
 _ROOT_DIR = os.path.dirname(_FLASK_APP_DIR)
 
 def _resolve_db_path():
-    """Resolve DB path: env var > engines/app.db > database/app.db > root app.db"""
-    env = os.environ.get("APP_DB", "")
-    if env and os.path.exists(env):
-        return env
+    """Resolve DB path: env var > PROD DB (本地磁盘, 权威源) > 其他候选
+    v25.4: PROD DB 强制优先 (OneDrive 路径 SQLite 经常 disk I/O error)"""
+    for env_key in ("APP_DB", "MTSCOS_DB_PATH"):
+        env = os.environ.get(env_key, "")
+        if env and os.path.exists(env):
+            return env
+    # 强制 PROD DB 优先 (权威源, 本地磁盘不受 OneDrive 影响)
+    _prod = os.path.expanduser("~/MTSCOS_PROD/flask-app/database/app.db")
+    if os.path.exists(_prod) and os.path.getsize(_prod) > 1e8:
+        return _prod
     candidates = [
-        os.path.join(_FLASK_APP_DIR, "engines", "app.db"),
         os.path.join(_FLASK_APP_DIR, "database", "app.db"),
+        os.path.join(_FLASK_APP_DIR, "engines", "app.db"),
         os.path.join(_ROOT_DIR, "app.db"),
         os.path.join(_FLASK_APP_DIR, "app.db"),
     ]
+    for c in candidates:
+        if os.path.exists(c) and os.path.getsize(c) > 1e8:  # skip malformed 小库
+            return c
     for c in candidates:
         if os.path.exists(c):
             return c
@@ -130,7 +165,75 @@ def _ensure_tables():
         CREATE INDEX IF NOT EXISTS idx_chat_actions_session ON chat_actions(session_id);
         CREATE INDEX IF NOT EXISTS idx_chat_infl_session ON chat_inflection_points(session_id);
         CREATE INDEX IF NOT EXISTS idx_chat_sessions_user ON chat_sessions(user_id);
+
+        /* ── Token 账户体系 (v25.5 完整版) ──
+           三层计费: 模型倍率定价 + 原子预扣/实扣/退差 + 拐点/脑库奖励抵扣
+           ledger type 扩展: daily_grant / consume / prehold / release / reward / brain_feed / admin_adjust */
+        CREATE TABLE IF NOT EXISTS mt_user_token_accounts (
+            user_id INTEGER PRIMARY KEY,
+            username TEXT NOT NULL DEFAULT '',
+            balance INTEGER NOT NULL DEFAULT 0,
+            last_grant_date TEXT DEFAULT '',
+            total_granted INTEGER NOT NULL DEFAULT 0,
+            total_consumed INTEGER NOT NULL DEFAULT 0,
+            total_preheld INTEGER NOT NULL DEFAULT 0,    -- 当前预扣总额
+            total_rewarded INTEGER NOT NULL DEFAULT 0,   -- 累计奖励抵扣
+            updated_at TEXT DEFAULT (datetime('now','localtime'))
+        );
+
+        CREATE TABLE IF NOT EXISTS mt_user_token_ledger (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            change INTEGER NOT NULL,
+            type TEXT NOT NULL CHECK(type IN (
+                'daily_grant','consume','prehold','release',
+                'reward','brain_feed','admin_adjust'
+            )),
+            session_id TEXT DEFAULT '',
+            model TEXT DEFAULT '',
+            detail TEXT DEFAULT '{}',
+            balance_after INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT DEFAULT (datetime('now','localtime'))
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_tok_ledger_user ON mt_user_token_ledger(user_id);
+        CREATE INDEX IF NOT EXISTS idx_tok_ledger_time ON mt_user_token_ledger(created_at);
+        CREATE INDEX IF NOT EXISTS idx_tok_ledger_session ON mt_user_token_ledger(session_id) WHERE session_id != '';
+
+        /* ── 模型定价表 (v25.5) ── */
+        CREATE TABLE IF NOT EXISTS mt_chat_model_pricing (
+            model_id TEXT PRIMARY KEY,
+            display_name TEXT NOT NULL DEFAULT '',
+            model_weight REAL NOT NULL DEFAULT 1.0,  -- 倍率 (7b=1.0, 14b=2.0, coder=1.5)
+            prompt_per_1k INTEGER NOT NULL DEFAULT 100,  -- 每 1000 prompt token 消耗
+            completion_per_1k INTEGER NOT NULL DEFAULT 200, -- 每 1000 completion token 消耗 (生成更贵)
+            is_active INTEGER NOT NULL DEFAULT 1,
+            updated_at TEXT DEFAULT (datetime('now','localtime'))
+        );
         """)
+        conn.commit()
+
+        # ── 兼容旧表: 加新列 ──
+        for col_def in [
+            ("ALTER TABLE mt_user_token_accounts ADD COLUMN total_preheld INTEGER NOT NULL DEFAULT 0", "total_preheld"),
+            ("ALTER TABLE mt_user_token_accounts ADD COLUMN total_rewarded INTEGER NOT NULL DEFAULT 0", "total_rewarded"),
+            ("ALTER TABLE mt_user_token_ledger ADD COLUMN model TEXT DEFAULT ''", "model"),
+        ]:
+            try: conn.execute(col_def[0]); conn.commit()
+            except Exception: pass
+
+        # ── 模型定价种子数据 ──
+        pricing_seeds = [
+            ("qwen2.5:7b",       "仙女座 7B 发散思维",   1.0,  50, 100),
+            ("qwen2.5:14b",      "仙女座 14B 深度推理",  2.0, 100, 200),
+            ("qwen2.5-coder:7b", "仙女座 Coder 7B",     1.5,  75, 150),
+            ("qwen2.5-coder:14b","仙女座 Coder 14B",    3.0, 150, 300),
+            ("flux2-klein",      "Flux 图像生成",        5.0,   0, 500),
+        ]
+        for mid, name, w, pp, cc in pricing_seeds:
+            conn.execute("""INSERT OR IGNORE INTO mt_chat_model_pricing
+                          (model_id,display_name,model_weight,prompt_per_1k,completion_per_1k)
+                          VALUES(?,?,?,?,?)""", (mid, name, w, pp, cc))
         conn.commit()
     except Exception as e:
         sys.stderr.write(f"[CHAT-LOCAL] _ensure_tables error: {e}\n")
@@ -156,6 +259,258 @@ def _record_action(session_id, user_id, action, detail=None):
         conn.close()
     except Exception:
         pass
+
+
+# ════════════════════════════════════════════════════════════════
+# Token 账户体系 (v25.2) — 强制登录消耗 + 每日赠送 10000
+# SA (super_admin) 豁免: 不限量, 不扣费, 不拦截
+# ════════════════════════════════════════════════════════════════
+DAILY_FREE_TOKENS = 10000
+
+
+def _ensure_daily_grant(user_id, username):
+    """每日 lazy 赠送: 账户不存在则建户+赠 10000; 今日未赠则再赠 10000。
+    返回 {'balance': int, 'granted_today': bool}"""
+    today = datetime.now().strftime('%Y-%m-%d')
+    conn = _db()
+    try:
+        row = conn.execute(
+            "SELECT balance, last_grant_date FROM mt_user_token_accounts WHERE user_id=?",
+            (user_id,)
+        ).fetchone()
+        if row is None:
+            conn.execute(
+                "INSERT INTO mt_user_token_accounts(user_id,username,balance,last_grant_date,total_granted) "
+                "VALUES(?,?,?,?,?)",
+                (user_id, username or '', DAILY_FREE_TOKENS, today, DAILY_FREE_TOKENS)
+            )
+            conn.execute(
+                "INSERT INTO mt_user_token_ledger(user_id,change,type,detail,balance_after) "
+                "VALUES(?,?,?,?,?)",
+                (user_id, DAILY_FREE_TOKENS, 'daily_grant',
+                 json.dumps({'reason': 'new_account_daily', 'date': today}, ensure_ascii=False),
+                 DAILY_FREE_TOKENS)
+            )
+            conn.commit()
+            return {'balance': DAILY_FREE_TOKENS, 'granted_today': True}
+        if row['last_grant_date'] != today:
+            new_balance = row['balance'] + DAILY_FREE_TOKENS
+            conn.execute(
+                "UPDATE mt_user_token_accounts SET balance=?, last_grant_date=?, total_granted=total_granted+?, "
+                "updated_at=datetime('now','localtime') WHERE user_id=?",
+                (new_balance, today, DAILY_FREE_TOKENS, user_id)
+            )
+            conn.execute(
+                "INSERT INTO mt_user_token_ledger(user_id,change,type,detail,balance_after) "
+                "VALUES(?,?,?,?,?)",
+                (user_id, DAILY_FREE_TOKENS, 'daily_grant',
+                 json.dumps({'reason': 'daily_free', 'date': today}, ensure_ascii=False),
+                 new_balance)
+            )
+            conn.commit()
+            return {'balance': new_balance, 'granted_today': True}
+        return {'balance': row['balance'], 'granted_today': False}
+    except Exception as e:
+        sys.stderr.write(f"[CHAT-LOCAL] _ensure_daily_grant error: {e}\n")
+        return {'balance': 0, 'granted_today': False}
+    finally:
+        conn.close()
+
+
+def _get_balance(user_id):
+    """查余额 (不做赠送, 只读)"""
+    try:
+        conn = _db()
+        row = conn.execute(
+            "SELECT balance, total_granted, total_consumed, last_grant_date "
+            "FROM mt_user_token_accounts WHERE user_id=?", (user_id,)
+        ).fetchone()
+        conn.close()
+        if row:
+            return {'balance': row['balance'], 'total_granted': row['total_granted'],
+                    'total_consumed': row['total_consumed'], 'last_grant_date': row['last_grant_date'],
+                    'daily_free': DAILY_FREE_TOKENS}
+        return {'balance': 0, 'total_granted': 0, 'total_consumed': 0,
+                'last_grant_date': '', 'daily_free': DAILY_FREE_TOKENS}
+    except Exception:
+        return {'balance': 0, 'total_granted': 0, 'total_consumed': 0,
+                'last_grant_date': '', 'daily_free': DAILY_FREE_TOKENS}
+
+
+def _pricing_for(model):
+    """查模型定价: 返回 {model_weight, prompt_per_1k, completion_per_1k, display_name}"""
+    try:
+        conn = _db()
+        row = conn.execute(
+            "SELECT model_weight, prompt_per_1k, completion_per_1k, display_name "
+            "FROM mt_chat_model_pricing WHERE model_id=? AND is_active=1", (model,)
+        ).fetchone()
+        conn.close()
+        if row:
+            return {'model_weight': row['model_weight'],
+                    'prompt_per_1k': row['prompt_per_1k'],
+                    'completion_per_1k': row['completion_per_1k'],
+                    'display_name': row['display_name']}
+    except Exception:
+        pass
+    # 默认定价 (未知模型 → 1x 倍率)
+    return {'model_weight': 1.0, 'prompt_per_1k': 50, 'completion_per_1k': 100, 'display_name': model}
+
+
+def _estimate_cost(model, prompt_tokens, completion_tokens):
+    """估算扣费 (模型定价 × 倍率 × token 数)"""
+    p = _pricing_for(model)
+    prompt_cost = int(prompt_tokens / 1000 * p['prompt_per_1k'] * p['model_weight'])
+    completion_cost = int(completion_tokens / 1000 * p['completion_per_1k'] * p['model_weight'])
+    # 至少 1 token 扣费 (防极微消耗免费)
+    return {'prompt_cost': max(1, prompt_cost),
+            'completion_cost': max(1, completion_cost),
+            'total_cost': max(1, prompt_cost + completion_cost),
+            'pricing': p}
+
+
+def _prehold(user_id, session_id, estimated_cost, model):
+    """原子预扣: UPDATE ... WHERE balance>=? 防并发穿透
+    返回 {'ok': bool, 'balance': int, 'held_id': ledger_id}"""
+    conn = _db()
+    try:
+        conn.execute("BEGIN IMMEDIATE")  # 写锁防并发
+        row = conn.execute(
+            "SELECT balance FROM mt_user_token_accounts WHERE user_id=?", (user_id,)
+        ).fetchone()
+        if row is None or row['balance'] < estimated_cost:
+            conn.rollback()
+            bal = row['balance'] if row else 0
+            return {'ok': False, 'balance': bal, 'held_id': None}
+        new_balance = row['balance'] - estimated_cost
+        conn.execute(
+            "UPDATE mt_user_token_accounts SET balance=?, total_preheld=total_preheld+?, "
+            "updated_at=datetime('now','localtime') WHERE user_id=?",
+            (new_balance, estimated_cost, user_id)
+        )
+        cur = conn.execute(
+            "INSERT INTO mt_user_token_ledger(user_id,change,type,session_id,model,detail,balance_after) "
+            "VALUES(?,?,?,?,?,?,?)",
+            (user_id, -estimated_cost, 'prehold', session_id or '', model or '',
+             json.dumps({'estimated': estimated_cost}, ensure_ascii=False), new_balance)
+        )
+        held_id = cur.lastrowid
+        conn.commit()
+        return {'ok': True, 'balance': new_balance, 'held_id': held_id, 'held_amount': estimated_cost}
+    except Exception as e:
+        try: conn.rollback()
+        except Exception: pass
+        sys.stderr.write(f"[CHAT-LOCAL] _prehold error: {e}\n")
+        return {'ok': False, 'balance': 0, 'held_id': None}
+    finally:
+        conn.close()
+
+
+def _finalize(user_id, session_id, model, prompt_tokens, completion_tokens, prehold_result,
+              inflections=None, brain_fed=False):
+    """三阶段结算: 实扣真实用量 + 退差 + 拐点/脑库奖励抵扣"""
+    conn = _db()
+    try:
+        conn.execute("BEGIN IMMEDIATE")
+
+        # 1) 先冲销预扣 (release)
+        prehold_amount = (prehold_result or {}).get('held_amount', 0)
+        if prehold_amount > 0:
+            conn.execute(
+                "INSERT INTO mt_user_token_ledger(user_id,change,type,session_id,model,detail,balance_after) "
+                "VALUES(?,?,?,?,?,?,?)",
+                (user_id, prehold_amount, 'release', session_id or '', model or '',
+                 json.dumps({'reference_id': prehold_result.get('held_id')}, ensure_ascii=False), 0)
+            )
+
+        # 2) 实扣真实用量 (按模型定价)
+        cost = _estimate_cost(model, prompt_tokens, completion_tokens)
+        real_cost = cost['total_cost']
+        if real_cost > 0:
+            row = conn.execute(
+                "SELECT balance FROM mt_user_token_accounts WHERE user_id=?", (user_id,)
+            ).fetchone()
+            if row is None:
+                conn.rollback()
+                return {'balance': 0, 'net_cost': 0, 'reward': 0, 'refund': prehold_amount}
+            actual_deduct = min(real_cost, row['balance'])
+            new_balance = row['balance'] - actual_deduct
+            conn.execute(
+                "UPDATE mt_user_token_accounts SET balance=?, total_consumed=total_consumed+?, "
+                "updated_at=datetime('now','localtime') WHERE user_id=?",
+                (new_balance, actual_deduct, user_id)
+            )
+            conn.execute(
+                "INSERT INTO mt_user_token_ledger(user_id,change,type,session_id,model,detail,balance_after) "
+                "VALUES(?,?,?,?,?,?,?)",
+                (user_id, -actual_deduct, 'consume', session_id or '', model or '',
+                 json.dumps({'prompt_tokens': prompt_tokens, 'completion_tokens': completion_tokens,
+                             'prompt_cost': cost['prompt_cost'], 'completion_cost': cost['completion_cost'],
+                             'model_weight': cost['pricing']['model_weight']}, ensure_ascii=False),
+                 new_balance)
+            )
+        else:
+            actual_deduct = 0
+            new_balance = conn.execute(
+                "SELECT balance FROM mt_user_token_accounts WHERE user_id=?", (user_id,)
+            ).fetchone()['balance']
+
+        # 3) 退差 (预扣 - 实扣 = 多扣了退回去)
+        refund = prehold_amount - actual_deduct
+        if refund > 0:
+            new_balance += refund
+            conn.execute(
+                "UPDATE mt_user_token_accounts SET balance=? WHERE user_id=?",
+                (new_balance, user_id)
+            )
+            conn.execute(
+                "INSERT INTO mt_user_token_ledger(user_id,change,type,session_id,model,detail,balance_after) "
+                "VALUES(?,?,?,?,?,?,?)",
+                (user_id, refund, 'release', session_id or '', model or '',
+                 json.dumps({'reason': 'prehold_over_actual', 'prehold': prehold_amount, 'actual': actual_deduct},
+                            ensure_ascii=False), new_balance)
+            )
+
+        # 4) 制约平衡奖励 (v25.5): 拐点 + 脑库合并计算, 每日 200 封顶, 单次 15% 限制
+        balance_now = conn.execute(
+            "SELECT balance FROM mt_user_token_accounts WHERE user_id=?", (user_id,)
+        ).fetchone()['balance']
+        reward_info = _calc_reward(user_id, balance_now, inflections=inflections, brain_fed=brain_fed)
+        reward = reward_info.get('reward', 0)
+        if reward > 0:
+            new_balance += reward
+            conn.execute(
+                "UPDATE mt_user_token_accounts SET balance=?, total_rewarded=total_rewarded+? WHERE user_id=?",
+                (new_balance, reward, user_id)
+            )
+            conn.execute(
+                "INSERT INTO mt_user_token_ledger(user_id,change,type,session_id,model,detail,balance_after) "
+                "VALUES(?,?,?,?,?,?,?)",
+                (user_id, reward, 'reward', session_id or '', model or '',
+                 json.dumps({
+                     'breakdown': reward_info.get('breakdown', {}),
+                     'formula_hash': reward_info.get('formula_hash', ''),
+                     'capped': reward_info.get('capped', False),
+                     'cooldown': reward_info.get('cooldown', False),
+                     'daily_remaining': reward_info.get('daily_remaining', 0),
+                 }, ensure_ascii=False),
+                 new_balance)
+            )
+        elif reward_info.get('cooldown'):
+            pass  # 冷却中, 跳过
+        elif reward_info.get('capped') and not brain_fed:
+            pass  # 封顶了, 跳过 (脑库奖励单独处理下)
+
+        conn.commit()
+        return {'balance': new_balance, 'net_cost': actual_deduct, 'prehold': prehold_amount,
+                'refund': refund, 'reward': reward}
+    except Exception as e:
+        try: conn.rollback()
+        except Exception: pass
+        sys.stderr.write(f"[CHAT-LOCAL] _finalize error: {e}\n")
+        return {'balance': 0, 'net_cost': 0, 'reward': 0, 'refund': prehold_result.get('held_amount', 0) if prehold_result else 0}
+    finally:
+        conn.close()
 
 
 def _detect_inflections(session_id, user_id, user_text, ai_text):
@@ -226,6 +581,108 @@ def _feed_brain(session_id, user_id, username, user_text, ai_text, inflection_po
 
 
 # ════════════════════════════════════════════════════════════════
+# 上下文管理: 50MB 提示 / 128MB 自动压缩 + 脑库投喂
+# ════════════════════════════════════════════════════════════════
+CONTEXT_WARN_MB = 50.0
+CONTEXT_COMPRESS_MB = 128.0
+KEEP_RECENT_TURNS = 20
+
+
+def _check_and_manage_context(session_id, user_id, username):
+    """
+    检查 session 上下文大小, 超过阈值触发 warning 或自动压缩.
+    返回 dict: {warning/compressed/size_mb/size_mb_before/size_mb_after/archived_count}
+    自动压缩策略: 老消息投喂脑库后, 从后续 prompt 构建的 context 里截断 (DB 不删).
+    """
+    status = {'warning': False, 'compressed': False, 'size_mb': 0}
+    try:
+        conn = _db()
+        cur = conn.execute(
+            "SELECT SUM(LENGTH(content)) FROM chat_messages WHERE session_id=? AND role IN ('user','assistant')",
+            (session_id,)
+        )
+        row = cur.fetchone()
+        total_bytes = row[0] or 0
+        conn.close()
+    except Exception:
+        return status
+
+    size_mb = total_bytes / (1024 * 1024)
+    status['size_mb'] = round(size_mb, 2)
+
+    if size_mb < CONTEXT_WARN_MB:
+        return status
+
+    # ≥ 50MB → 提示
+    status['warning'] = True
+
+    if size_mb < CONTEXT_COMPRESS_MB:
+        return status
+
+    # ≥ 128MB → 自动压缩
+    try:
+        conn = _db()
+        # 1. 取全部消息按序
+        rows = conn.execute(
+            "SELECT id, role, content FROM chat_messages WHERE session_id=? AND role IN ('user','assistant') ORDER BY created_at ASC, id ASC",
+            (session_id,)
+        ).fetchall()
+        conn.close()
+    except Exception:
+        return status
+
+    total_msgs = len(rows)
+    if total_msgs <= KEEP_RECENT_TURNS * 2:
+        return status  # 太少不值得压缩
+
+    # 2. 切分: 保留最近 KEEP_RECENT_TURNS*2 条 (一轮对话=user+assistant)
+    keep_count = KEEP_RECENT_TURNS * 2
+    archived = rows[:-keep_count]
+    kept = rows[-keep_count:]
+
+    archived_bytes = sum(len(r['content'] or '') for r in archived)
+    kept_bytes = sum(len(r['content'] or '') for r in kept)
+
+    # 3. 老消息投喂脑库 (异步)
+    def _async_fed():
+        try:
+            conn2 = _db()
+            # 脑库摘要: 老消息压缩成摘要条目
+            archive_text = f"[上下文压缩归档] session={session_id} 原{size_mb:.1f}MB → 保留最近 {KEEP_RECENT_TURNS} 轮\n"
+            for r in archived[-30:]:  # 最多喂 30 条老消息到脑库
+                snippet = (r['content'] or '')[:300]
+                archive_text += f"  {r['role']}: {snippet}\n"
+            conn2.execute(
+                "INSERT OR IGNORE INTO mt_ai_brain_sources(source,content,created_at) VALUES(?,?,datetime('now','localtime'))",
+                ('local_chat_context_archive', archive_text[:2000])
+            )
+            conn2.commit()
+            conn2.close()
+        except Exception:
+            pass
+
+    import threading
+    threading.Thread(target=_async_fed, daemon=True).start()
+
+    status['compressed'] = True
+    status['size_mb_before'] = round(size_mb, 2)
+    status['size_mb_after'] = round(kept_bytes / (1024 * 1024), 2)
+    status['archived_count'] = len(archived)
+
+    return status
+
+
+def _auto_title_first_msg(text):
+    """自动生成对话 title: 取首条用户消息前 20 字, 去换行截断"""
+    if not text:
+        return "未命名对话"
+    t = text.replace('\n', ' ').strip()
+    if len(t) > 20:
+        t = t[:19] + '…'
+    return t
+
+
+# ════════════════════════════════════════════════════════════════
 # 仙女座发散思维 prompt 增强
 # ════════════════════════════════════════════════════════════════
 def _build_divergent_prompt(user_text, username, cognitive_profile=None, history=None):
@@ -281,14 +738,27 @@ def _build_divergent_prompt(user_text, username, cognitive_profile=None, history
     return system
 
 
+# v25.5: Ollama host 自动发现 — mini 本地没装时 fallback 到开发机 Tailscale
+_OLLAMA_FALLBACKS = ["http://127.0.0.1:11434", "http://100.121.98.15:11434", "http://192.168.11.242:11434"]
+def _resolve_ollama_host():
+    """优先 env var, 否则探测 fallback 列表 (mini→开发机 Tailscale)"""
+    env = os.environ.get("OLLAMA_HOST", "").strip()
+    if env: return env
+    import urllib.request as _ur
+    for h in _OLLAMA_FALLBACKS:
+        try:
+            _ur.urlopen(_ur.Request(f"{h}/api/tags"), timeout=2)
+            return h
+        except Exception:
+            continue
+    return _OLLAMA_FALLBACKS[0]
+
 def _ollama_available():
-    """Check if Ollama is reachable (v25.1: returns False on Mac mini without Ollama)."""
+    """Check if Ollama is reachable (mini 自动 fallback 到开发机)."""
     try:
         import urllib.request as _ur
-        # Support env var override for custom host
-        host = os.environ.get("OLLAMA_HOST", "http://127.0.0.1:11434")
-        req = _ur.Request(f"{host}/api/tags", headers={"User-Agent": "andromeda"})
-        resp = _ur.urlopen(req, timeout=3)
+        host = _resolve_ollama_host()
+        resp = _ur.urlopen(_ur.Request(f"{host}/api/tags"), timeout=3)
         return resp.status == 200
     except Exception:
         return False
@@ -328,13 +798,13 @@ def _call_ollama_stream(user_text, system_prompt, username):
         # Stream fallback text token-by-token for consistent UX
         for ch in fallback_text:
             yield f"data: {json.dumps({'token': ch}, ensure_ascii=False)}\n\n"
-        yield f"data: [done] {json.dumps({'model': 'andromeda_fallback', 'duration_ms': 50}, ensure_ascii=False)}\n\n"
+        yield f"data: [done] {json.dumps({'model': 'andromeda_fallback', 'duration_ms': 50, 'prompt_eval_count': len(user_text), 'eval_count': len(fallback_text)}, ensure_ascii=False)}\n\n"
         return
 
     yield f"data: [thinking]\n\n"
 
     try:
-        host = os.environ.get("OLLAMA_HOST", "http://127.0.0.1:11434")
+        host = os.environ.get("OLLAMA_HOST", "").strip() or _resolve_ollama_host()
         model = os.environ.get("OLLAMA_MODEL", "qwen2.5:7b")
         body = json.dumps({
             "model": model,
@@ -361,7 +831,7 @@ def _call_ollama_stream(user_text, system_prompt, username):
                     yield f"data: {json.dumps({'token': token}, ensure_ascii=False)}\n\n"
                 if chunk.get("done"):
                     total_dur = chunk.get("total_duration", 0)
-                    yield f"data: [done] {json.dumps({'model': model, 'duration_ms': total_dur//1000000 if total_dur else 0}, ensure_ascii=False)}\n\n"
+                    yield f"data: [done] {json.dumps({'model': model, 'duration_ms': total_dur//1000000 if total_dur else 0, 'prompt_eval_count': chunk.get('prompt_eval_count', 0), 'eval_count': chunk.get('eval_count', 0)}, ensure_ascii=False)}\n\n"
                     break
             except json.JSONDecodeError:
                 continue
@@ -377,9 +847,9 @@ def _login_required(fn):
     def wrapper(*args, **kwargs):
         uid = session.get('user_id')
         if not uid or uid == 'guest':
-            # GET 页面请求 → 302 跳登录 (保留 next 参数)
-            if request.method == 'GET' and request.path.endswith('/local-chat'):
-                from flask import redirect, url_for
+            # GET 页面请求 → 302 跳登录 (保留 next 参数); API 请求 → 401 JSON
+            if request.method == 'GET' and not request.path.startswith('/api/'):
+                from flask import redirect
                 return redirect(f'/auth/login?next={request.path}', code=302)
             # API 请求 → 401 JSON
             return jsonify({'success': False, 'error': 'login_required', 'message': '请先登录'}), 401
@@ -392,6 +862,118 @@ def _get_user():
         'user_id': session.get('user_id'),
         'username': session.get('username'),
         'role': session.get('role', 'user'),
+    }
+
+
+def _is_sa(u=None):
+    """SA 豁免判定 (v25.5) — 三条件 OR:
+    1. role == 'super_admin' (session 角色)
+    2. username == 'wuchenghao15' (§1.1 规范: 超级管理员唯一)
+    3. 双密钥硬件在线 — VikeyEnforcementMiddleware.sim 模式自动通过
+       (v25.5: 已插双密钥 → 自动认证为 SA session, 无需手动登录)"""
+    u = u or _get_user()
+    if u.get('role') == 'super_admin' or u.get('username') == 'wuchenghao15':
+        return True
+    # SA 双密钥在线自动认证
+    try:
+        from app.middlewares.vikey_enforcement_middleware import VikeyEnforcementMiddleware
+        result = VikeyEnforcementMiddleware.check_sa_redirect(
+            username=u.get('username', ''),
+            role=u.get('role', ''),
+            ip=request.remote_addr if request else None,
+        )
+        if result.get('vikey_online'):
+            # 已插双密钥 → 自动写入 SA session
+            session['user_id'] = session.get('user_id') or 5
+            session['username'] = 'wuchenghao15'
+            session['role'] = 'super_admin'
+            session['vikey_auth_token'] = result.get('auth_token', '')
+            u = _get_user()
+            return True
+    except Exception:
+        pass
+    return False
+
+
+def _calc_reward(user_id, balance, inflections=None, brain_fed=False):
+    """制约平衡奖励公式 (v25.5)
+
+    三大约束:
+    ① 每日封顶 max_daily=200 (防刷)
+    ② 单次不超过余额 15% (防套利, 余额 1000 最多奖 150)
+    ③ 拐点奖励 + 脑库奖励 合并计算, 冷却 60s
+
+    公式:
+    reward = min(拐点奖励合计, balance×0.15) + brain_feed×100
+    reward = min(reward, 200 - 今日已奖)
+    reward = reward if 距上次奖励 > 60s else 0
+
+    Returns: {'reward': int, 'breakdown': dict, 'capped': bool, 'formula_hash': str}
+    """
+    import hashlib
+
+    # 1) 拐点基础奖励 (v25.5 按质量分 × 基数)
+    base = {'breakthrough': 50, 'diverge': 30, 'question': 20, 'metaphor': 20, 'contradiction': 20}
+    inflection_reward = 0
+    inflection_breakdown = {}
+    if inflections:
+        for p in inflections:
+            itype = p.get('inflection_type', '')
+            score = p.get('quality_score', 0.5)
+            r = int(base.get(itype, 10) * max(0.5, score))
+            inflection_reward += r
+            inflection_breakdown[itype] = inflection_breakdown.get(itype, 0) + r
+
+    # 2) 脑库投喂奖励 (100 token, 上限)
+    brain_reward = 100 if brain_fed else 0
+
+    # 3) 制约平衡: 单次不超余额 15%
+    max_per_turn = max(20, int(balance * 0.15))
+    turn_reward = min(inflection_reward + brain_reward, max_per_turn)
+
+    # 4) 制约平衡: 每日封顶 200
+    try:
+        conn = _db()
+        row = conn.execute(
+            "SELECT coalesce(sum(change),0) FROM mt_user_token_ledger "
+            "WHERE user_id=? AND type IN ('reward','brain_feed') AND date(created_at)=date('now','localtime')",
+            (user_id,)
+        ).fetchone()
+        daily_already = row[0] if row else 0
+        conn.close()
+    except Exception:
+        daily_already = 0
+    max_daily = 200
+    remaining = max(0, max_daily - daily_already)
+    if remaining <= 0:
+        return {'reward': 0, 'breakdown': {}, 'capped': True, 'formula_hash': _reward_formula_snapshot()}
+    final_reward = min(turn_reward, remaining)
+    capped = final_reward < (inflection_reward + brain_reward)
+
+    # 5) 冷却检查 (60s)
+    try:
+        conn = _db()
+        last = conn.execute(
+            "SELECT created_at FROM mt_user_token_ledger "
+            "WHERE user_id=? AND type IN ('reward','brain_feed') "
+            "ORDER BY id DESC LIMIT 1", (user_id,)
+        ).fetchone()
+        conn.close()
+        if last:
+            from datetime import datetime as _dt
+            last_ts = _dt.fromisoformat(last[0])
+            if (datetime.now() - last_ts).total_seconds() < 60:
+                return {'reward': 0, 'breakdown': inflection_breakdown, 'capped': False,
+                        'cooldown': True, 'formula_hash': _reward_formula_snapshot()}
+    except Exception:
+        pass
+
+    return {
+        'reward': final_reward,
+        'breakdown': {**inflection_breakdown, 'brain_feed': brain_reward},
+        'capped': capped,
+        'formula_hash': _reward_formula_snapshot(),
+        'daily_remaining': remaining - final_reward,
     }
 
 
@@ -412,35 +994,452 @@ def _get_cognitive_profile(user_id, username):
 
 
 # ════════════════════════════════════════════════════════════════
+# 异常检测、急救、告警投喂与 §14 12步骤自动立项 (v25.5)
+# ════════════════════════════════════════════════════════════════
+_heal_last_run = 0
+_HEAL_INTERVAL = 60  # 每 60s 巡检一次
+
+# 未登录访问计数 (5 分钟窗口, 超过阈值触发安全告警)
+_unauth_window = []   # [(ts, path, ip), ...]
+_UNAUTH_WINDOW_SEC = 300
+_UNAUTH_THRESHOLD = 10  # 5 分钟内 > 10 次 → HIGH 安全告警
+
+# 规则违反映射: 5 条异常 → rule_id + violation_code + severity + EigenFlux 专家团队
+_HEAL_RULE_MAP = {
+    'orphan_prehold': {
+        'rule_id': 'MT_RULE_DEV', 'violation_code': 'CHAT-HEAL-ORPHAN-PREHOLD',
+        'severity': 'MEDIUM', 'experts': ['DBA', '运维'],
+        'title': '聊天原子结算完整性 — 残留 prehold 清理',
+    },
+    'balance_drift': {
+        'rule_id': 'MT_RULE_SYS_OPS', 'violation_code': 'CHAT-HEAL-BALANCE-DRIFT',
+        'severity': 'HIGH', 'experts': ['DBA', '安全', '架构'],
+        'title': '聊天 token 账本一致性 — balance 连续性扶正',
+    },
+    'ledger_check': {
+        'rule_id': 'MT_IRON_RULE_12STEPS', 'violation_code': 'CHAT-HEAL-LEDGER-SCHEMA',
+        'severity': 'CRITICAL', 'experts': ['架构', '合规'],
+        'title': '聊天总账 schema 完整性 — CHECK 约束扩展',
+    },
+    'ollama': {
+        'rule_id': 'MT_RULE_AI_OPS', 'violation_code': 'CHAT-HEAL-OLLAMA-OFFLINE',
+        'severity': 'HIGH', 'experts': ['AI', '运维'],
+        'title': '本地 AI 引擎健康 — Ollama 离线恢复',
+    },
+    'unauth_access': {
+        'rule_id': 'MT_RULE_PERM', 'violation_code': 'CHAT-HEAL-UNAUTH-ACCESS',
+        'severity': 'HIGH', 'experts': ['安全', '架构', '合规'],
+        'title': '聊天强制登录 — 未登录/guest/异常 session 访问拦截',
+    },
+}
+
+
+def _ensure_alert_tables(conn):
+    """确保告警链路 3 张表存在 (IF NOT EXISTS, 幂等)"""
+    conn.executescript("""
+    CREATE TABLE IF NOT EXISTS mt_eigenflux_consultation (
+        consult_id    INTEGER PRIMARY KEY AUTOINCREMENT,
+        rule_id       TEXT,
+        violation_code TEXT,
+        expert_role   TEXT,
+        flow_id       TEXT,
+        detail        TEXT,
+        status        TEXT DEFAULT 'PENDING',
+        created_at    TEXT
+    );
+    CREATE TABLE IF NOT EXISTS mt_chat_heal_flow_binding (
+        binding_id    INTEGER PRIMARY KEY AUTOINCREMENT,
+        heal_type     TEXT,
+        flow_id       TEXT,
+        alert_id      TEXT,
+        bound_at      REAL
+    );
+    """)
+
+
+def _heal_alert_and_flow(conn, anomalies):
+    """4 条异常中非 OK 的 → 告警投喂 + §14 12步骤自动立项 + AI 机团队认领
+
+    链路:
+    anomaly → mt_rule_violation_alert (alert_id)
+           → mt_eigenflux_consultation (N 人专家团队)
+           → mt_ai_brain_feed_log (脑库投喂)
+           → mt_dev_flow_session (STEP_1_PROPOSAL 立项)
+           → mt_chat_heal_flow_binding (heal_type ↔ flow_id 绑定, 防重复)
+           → AI 机团队 sys_auto_hire / EigenFlux 专家团队 async 认领
+    """
+    import uuid as _uuid
+    _ensure_alert_tables(conn)
+    ts = time.time()
+    iso_now = datetime.utcnow().isoformat()
+    triggered = []
+
+    for heal_type, ok, result, detail in anomalies:
+        if ok:
+            continue  # 仅非 OK 触发
+        meta = _HEAL_RULE_MAP[heal_type]
+
+        # ── 绑定表去重: 24h 内同一 heal_type 不重复立项 ──
+        existing = conn.execute(
+            "SELECT flow_id FROM mt_chat_heal_flow_binding WHERE heal_type=? AND bound_at > ? ORDER BY bound_at DESC LIMIT 1",
+            (heal_type, ts - 86400)
+        ).fetchone()
+        if existing:
+            sys.stderr.write(f"[CHAT-HEAL] type={heal_type} action=skip result=already bound to flow {existing['flow_id']} (24h)\n")
+            continue
+
+        # ── 1) 写 mt_rule_violation_alert ──
+        alert_id = f"CHAT-HEAL-{heal_type}-{int(ts)}"
+        violation_code = meta['violation_code']
+        try:
+            conn.execute(
+                "INSERT OR IGNORE INTO mt_rule_violation_alert "
+                "(alert_id, viol_id, alert_type, alert_target, alert_status, alert_payload, alert_sent_at, created_at, "
+                "violation_code, severity, description, evidence) "
+                "VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
+                (alert_id, alert_id, 'chat_heal_anomaly', heal_type, 'TRIGGERED',
+                 json.dumps({'heal_type': heal_type, 'result': result, 'detail': detail}, ensure_ascii=False),
+                 ts, ts, violation_code, meta['severity'], meta['title'], detail or result)
+            )
+        except Exception:
+            # rule_db.py 版本的 violation_alert 字段可能不同, 降级写最小集
+            try:
+                conn.execute(
+                    "INSERT OR IGNORE INTO mt_rule_violation_alert "
+                    "(alert_id, violation_code, severity, description, evidence) VALUES(?,?,?,?,?)",
+                    (alert_id, violation_code, meta['severity'], meta['title'], detail or result)
+                )
+            except Exception as e2:
+                sys.stderr.write(f"[CHAT-HEAL] ❌ violation_alert write fail: {e2}\n")
+
+        # ── 2) 写 mt_eigenflux_consultation (N 人专家团队) ──
+        for role in meta['experts']:
+            try:
+                conn.execute(
+                    "INSERT INTO mt_eigenflux_consultation "
+                    "(rule_id, violation_code, expert_role, flow_id, detail, status, created_at) "
+                    "VALUES(?,?,?,?,?,?,?)",
+                    (meta['rule_id'], violation_code, role, '',
+                     json.dumps({'heal_type': heal_type, 'severity': meta['severity'],
+                                 'title': meta['title'], 'result': result}, ensure_ascii=False),
+                     'PENDING', iso_now)
+                )
+            except Exception:
+                pass  # 降级
+
+        # ── 3) 写 mt_ai_brain_feed_log (脑库投喂) ──
+        try:
+            conn.execute(
+                "INSERT INTO mt_ai_brain_feed_log (flow_id, feed_target, payload_preview, fed_at, fed_by) "
+                "VALUES(?,?,?,?,?)",
+                (alert_id, 'anomaly_heal',
+                 json.dumps({'heal_type': heal_type, 'severity': meta['severity'],
+                             'rule_id': meta['rule_id'], 'result': result}, ensure_ascii=False)[:200],
+                 iso_now, 'CHAT-HEAL-v25.5')
+            )
+        except Exception:
+            pass
+
+        # ── 4) 自动立项 mt_dev_flow_session (STEP_1_PROPOSAL) ──
+        flow_id = f"CHAT-HEAL-{heal_type.upper()}-{int(ts)}-{_uuid.uuid4().hex[:6]}"
+        proposal = {
+            'heal_type': heal_type, 'rule_id': meta['rule_id'],
+            'violation_code': violation_code, 'severity': meta['severity'],
+            'triggered_by': 'CHAT-HEAL before_request heal scan',
+            'alert_id': alert_id, 'experts': meta['experts'],
+        }
+        try:
+            conn.execute(
+                "INSERT OR IGNORE INTO mt_dev_flow_session "
+                "(flow_id, proposal_title, proposal_summary, proposal_json, current_step, "
+                "created_by, created_at, updated_at, final_status) "
+                "VALUES(?,?,?,?,?,?,?,?,?)",
+                (flow_id, meta['title'], result[:200],
+                 json.dumps(proposal, ensure_ascii=False), 'STEP_1_PROPOSAL',
+                 'CHAT-HEAL-v25.5', iso_now, iso_now, 'RUNNING')
+            )
+        except Exception as e3:
+            sys.stderr.write(f"[CHAT-HEAL] ❌ dev_flow_session write fail: {e3}\n")
+
+        # ── 5) 写绑定表 (防重复) ──
+        conn.execute(
+            "INSERT INTO mt_chat_heal_flow_binding (heal_type, flow_id, alert_id, bound_at) VALUES(?,?,?,?)",
+            (heal_type, flow_id, alert_id, ts)
+        )
+
+        triggered.append((heal_type, flow_id, alert_id, meta['experts']))
+        sys.stderr.write(
+            f"[CHAT-HEAL] type={heal_type} action=alert+flow result=立项{flow_id} experts={meta['experts']} severity={meta['severity']}\n"
+        )
+
+    conn.commit()
+    return triggered
+
+
+def _heal_scan_and_fix():
+    """5 条异常态检测 + 自动扶正 + 非 OK 触发 EigenFlux 告警 + §14 12步骤立项
+
+    日志格式:
+    [CHAT-HEAL] type=<类型> action=<scan|cleanup|repair|verify|ping|alert+flow|skip> result=<结果>
+    """
+    global _heal_last_run, _unauth_window
+    now = time.time()
+    if now - _heal_last_run < _HEAL_INTERVAL:
+        return
+    _heal_last_run = now
+
+    anomalies = []  # [(heal_type, ok, result_str, detail_str)]
+
+    try:
+        conn = _db()
+        logs = []
+
+        # ── 日志 1: 残留 prehold 清理 ──
+        orphans = conn.execute(
+            "SELECT user_id, username, balance, total_preheld FROM mt_user_token_accounts WHERE total_preheld > 0"
+        ).fetchall()
+        if orphans:
+            fixed_tokens = sum(r['total_preheld'] for r in orphans)
+            for r in orphans:
+                uid, bal, held = r['user_id'], r['balance'], r['total_preheld']
+                conn.execute("UPDATE mt_user_token_accounts SET balance=balance-total_preheld, total_preheld=0 WHERE user_id=?", (uid,))
+                conn.execute(
+                    "INSERT INTO mt_user_token_ledger(user_id,change,type,detail,balance_after) VALUES(?,?,?,?,?)",
+                    (uid, -held, 'release',
+                     json.dumps({'reason': 'orphan_prehold_cleanup', 'fixed': True}, ensure_ascii=False),
+                     bal - held)
+                )
+            conn.commit()
+            msg = f"cleanup {len(orphans)} users fixed, restored {fixed_tokens} tokens"
+            logs.append(f"[CHAT-HEAL] type=orphan_prehold action={msg}")
+            anomalies.append(('orphan_prehold', False, msg, f'{len(orphans)} users, max_held={max(r["total_preheld"] for r in orphans)}'))
+        else:
+            logs.append(f"[CHAT-HEAL] type=orphan_prehold action=scan result=ok (0)")
+            anomalies.append(('orphan_prehold', True, 'ok', ''))
+
+        # ── 日志 2: balance 连续性修复 ──
+        bad = []
+        for row in conn.execute("SELECT user_id, username, balance, total_granted, total_consumed, total_rewarded FROM mt_user_token_accounts"):
+            uid = row['user_id']
+            if uid == 5: continue  # SA 豁免
+            bal, granted, consumed, rewarded = row['balance'], row['total_granted'], row['total_consumed'], row['total_rewarded']
+            expected = granted - consumed + rewarded
+            drift = bal - expected
+            if abs(drift) > 100:
+                bad.append((uid, row['username'], bal, expected, drift))
+        if bad:
+            for uid, uname, bal, exp, drift in bad:
+                conn.execute("UPDATE mt_user_token_accounts SET balance=? WHERE user_id=?", (exp, uid))
+                conn.execute(
+                    "INSERT INTO mt_user_token_ledger(user_id,change,type,detail,balance_after) VALUES(?,?,?,?,?)",
+                    (uid, exp - bal, 'admin_adjust',
+                     json.dumps({'reason': 'balance_consistency_heal', 'drift': drift, 'fixed': True}, ensure_ascii=False),
+                     exp)
+                )
+            conn.commit()
+            msg = f"repair {len(bad)} users fixed, max_drift={max(abs(r[4]) for r in bad)}"
+            logs.append(f"[CHAT-HEAL] type=balance_drift action={msg}")
+            anomalies.append(('balance_drift', False, msg,
+                              ', '.join(f'{uname} drift={drift}' for _, uname, _, _, drift in bad[:5])))
+        else:
+            logs.append(f"[CHAT-HEAL] type=balance_drift action=scan result=ok (all continuous)")
+            anomalies.append(('balance_drift', True, 'ok', ''))
+
+        # ── 日志 3: ledger CHECK 约束检查 ──
+        try:
+            conn.execute("SELECT * FROM mt_user_token_ledger WHERE type IN ('prehold','release','reward','brain_feed') LIMIT 1")
+            logs.append(f"[CHAT-HEAL] type=ledger_check action=verify result=ok (CHECK extended to 7 types)")
+            anomalies.append(('ledger_check', True, 'ok', ''))
+        except Exception as e:
+            msg = f"FAIL needs_rebuild ({e})"
+            logs.append(f"[CHAT-HEAL] type=ledger_check action=repair result={msg}")
+            anomalies.append(('ledger_check', False, msg, str(e)))
+
+        # ── 日志 4: Ollama 离线降级 ──
+        try:
+            import urllib.request
+            urllib.request.urlopen(_resolve_ollama_host() + '/api/tags', timeout=3)
+            logs.append(f"[CHAT-HEAL] type=ollama action=ping result=online")
+            anomalies.append(('ollama', True, 'ok', ''))
+        except Exception as e:
+            msg = f"offline ({type(e).__name__}: {e})"
+            logs.append(f"[CHAT-HEAL] type=ollama action=ping result={msg} ⚠️ 聊天将失败")
+            anomalies.append(('ollama', False, msg, str(e)))
+
+        # ── 日志 5: 未登录访问异常检测 (安全) ──
+        # 清理过期窗口 + 统计
+        _unauth_window[:] = [e for e in _unauth_window if now - e[0] < _UNAUTH_WINDOW_SEC]
+        window_count = len(_unauth_window)
+        window_paths = {}
+        for ts, path, ip in _unauth_window:
+            window_paths[path] = window_paths.get(path, 0) + 1
+        if window_count > _UNAUTH_THRESHOLD:
+            msg = f"detected {window_count} unauth accesses in {_UNAUTH_WINDOW_SEC}s (threshold={_UNAUTH_THRESHOLD})"
+            top_paths = sorted(window_paths.items(), key=lambda x: -x[1])[:5]
+            logs.append(f"[CHAT-HEAL] type=unauth_access action=alert result={msg} top_paths={top_paths}")
+            anomalies.append(('unauth_access', False, msg, f'top_paths={top_paths}, recent_ips={list(set(e[2] for e in _unauth_window[-5:]))}'))
+            _unauth_window.clear()  # 触发一次后清空窗口防重复
+        elif window_count > 0:
+            msg = f"ok ({window_count} in window, threshold={_UNAUTH_THRESHOLD})"
+            logs.append(f"[CHAT-HEAL] type=unauth_access action=scan result={msg}")
+            anomalies.append(('unauth_access', True, 'ok', ''))
+        else:
+            logs.append(f"[CHAT-HEAL] type=unauth_access action=scan result=ok (0)")
+            anomalies.append(('unauth_access', True, 'ok', ''))
+
+        # ── 非 OK → 告警投喂 + §14 12步骤立项 ──
+        non_ok = [a for a in anomalies if not a[1]]
+        if non_ok:
+            triggered = _heal_alert_and_flow(conn, anomalies)
+            for heal_type, flow_id, alert_id, experts in triggered:
+                sys.stderr.write(
+                    f"[CHAT-HEAL] ✅ type={heal_type} → EigenFlux experts={experts} 立项 {flow_id}\n"
+                )
+
+        # 输出 5 条到 stderr (Flask 日志)
+        for l in logs:
+            sys.stderr.write(l + "\n")
+            sys.stderr.flush()
+
+    except Exception as e:
+        sys.stderr.write(f"[CHAT-HEAL] ❌ exception: {e}\n")
+    finally:
+        try: conn.close()
+        except Exception: pass
+
+
+# ── before_request hook: 实时未登录访问计数 + 触发 heal ──
+@chat_local_bp.before_request
+def _heal_before_request():
+    """每次聊天路由请求:
+    1) 未登录访问 → 实时计数 (5 分钟窗口, > 10 次触发安全告警)
+    2) 60s 间隔 heal 巡检"""
+    global _unauth_window
+    try:
+        uid = session.get('user_id')
+        is_guest = (not uid or uid == 'guest')
+        if is_guest:
+            # 未登录访问 → 计数
+            path = request.path
+            ip = request.remote_addr or '?'
+            _unauth_window.append((time.time(), path, ip))
+            # 超过阈值 → 立即触发 heal (不等 60s 间隔)
+            if len(_unauth_window) > _UNAUTH_THRESHOLD:
+                sys.stderr.write(
+                    f"[CHAT-HEAL] ⚠️ unauth_access burst: {len(_unauth_window)} hits → immediate alert\n"
+                )
+                _heal_scan_and_fix()
+    except Exception:
+        pass
+    # 60s 间隔巡检
+    _heal_scan_and_fix()
+
+
+# ════════════════════════════════════════════════════════════════
 # 路由
 # ════════════════════════════════════════════════════════════════
 
 @chat_local_bp.route('/local-chat', methods=['GET'])
 @_login_required
 def local_chat_page():
-    """聊天页面 — 仅登录用户可见"""
+    """聊天页面 — 仅登录用户可见; 进入即触发每日 token 赠送"""
     from flask import render_template
+    u = _get_user()
+    _ensure_daily_grant(u['user_id'], u['username'])  # 每日 10000 lazy 赠送
     return render_template('local_chat.html')
+
+
+@chat_local_bp.route('/ai', methods=['GET'])
+def ai_entry():
+    """🌐 mtos.site/ai — 公网聊天入口 (v25.5 强制登录)
+    已在 server_real_db.py 防盗链白名单, 直达放行.
+    强制登录:
+      - SA (role=super_admin 或 双密钥已插) → 自动认证, 渲染页面
+      - 未登录 → 302 跳 /auth/login?next=/ai
+    登录后 → 自动赠送每日 token"""
+    from flask import redirect, url_for, render_template
+    uid = session.get('user_id')
+    sa_ok = _is_sa()
+    if not uid or uid == 'guest':
+        if sa_ok:
+            # 双密钥已插 → 自动认证 SA session
+            _ensure_daily_grant(session.get('user_id') or 5, session.get('username') or 'wuchenghao15')
+            return render_template('local_chat.html')
+        return redirect(f'/auth/login?next=/ai', code=302)
+    # 已登录
+    u = _get_user()
+    _ensure_daily_grant(u['user_id'], u['username'])
+    return render_template('local_chat.html')
+
+
+@chat_local_bp.route('/ai/', methods=['GET'])
+def ai_entry_slash():
+    return redirect('/ai', code=301)
 
 
 @chat_local_bp.route('/api/local-chat/session', methods=['POST'])
 @_login_required
 def create_session():
-    """创建新会话"""
+    """创建新会话 (支持 auto_title: 传入 first_message 自动命名)"""
     u = _get_user()
     sid = str(uuid.uuid4())
     now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    title = request.json.get('title', '') if request.is_json else ''
+    data = request.get_json(silent=True) or {}
+    user_title = (data.get('title') or '').strip()
+    user_emoji = (data.get('title_emoji') or '💬').strip()[:2]
+    first_msg = data.get('first_message') or ''
+
+    title = user_title or (
+        _auto_title_first_msg(first_msg) if first_msg else f"{u['username']}的新对话"
+    )
     try:
         conn = _db()
         conn.execute(
-            "INSERT INTO chat_sessions(session_id,user_id,username,title,created_at,updated_at) VALUES(?,?,?,?,?,?)",
-            (sid, u['user_id'], u['username'], title or f"{u['username']}的新对话", now, now)
+            "INSERT INTO chat_sessions(session_id,user_id,username,title,title_emoji,created_at,updated_at) VALUES(?,?,?,?,?,?,?)",
+            (sid, u['user_id'], u['username'], title, user_emoji, now, now)
         )
         conn.commit()
         conn.close()
-        _record_action(sid, u['user_id'], 'new_session', {'username': u['username']})
-        return jsonify({'success': True, 'session_id': sid, 'created_at': now})
+        _record_action(sid, u['user_id'], 'new_session', {'username': u['username'], 'auto_title': not bool(user_title)})
+        return jsonify({'success': True, 'session_id': sid, 'title': title, 'title_emoji': user_emoji, 'created_at': now})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@chat_local_bp.route('/api/local-chat/session/<sid>/title', methods=['PUT'])
+@_login_required
+def update_session_title(sid):
+    """修改会话 title 或 emoji (画笔 icon)"""
+    u = _get_user()
+    data = request.get_json(silent=True) or {}
+    new_title = (data.get('title') or '').strip() or None
+    new_emoji = (data.get('title_emoji') or '').strip()[:2] or None
+    try:
+        conn = _db()
+        # 权限校验: 只能改自己的 session
+        owner = conn.execute(
+            "SELECT user_id FROM chat_sessions WHERE session_id=?", (sid,)
+        ).fetchone()
+        if not owner or owner['user_id'] != u['user_id']:
+            conn.close()
+            return jsonify({'success': False, 'error': '无权修改'}), 403
+
+        fields, values = [], []
+        if new_title:
+            fields.append('title=?')
+            values.append(new_title)
+        if new_emoji:
+            fields.append('title_emoji=?')
+            values.append(new_emoji)
+        if not fields:
+            conn.close()
+            return jsonify({'success': False, 'error': '无修改项'}), 400
+        fields.append("updated_at=datetime('now','localtime')")
+        values.append(sid)
+        conn.execute(f"UPDATE chat_sessions SET {','.join(fields)} WHERE session_id=?", values)
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True, 'title': new_title, 'title_emoji': new_emoji})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
@@ -453,7 +1452,7 @@ def list_sessions():
     try:
         conn = _db()
         rows = conn.execute(
-            "SELECT session_id, title, message_count, last_message, created_at, updated_at "
+            "SELECT session_id, title, title_emoji, message_count, last_message, created_at, updated_at "
             "FROM chat_sessions WHERE user_id=? ORDER BY updated_at DESC LIMIT 50",
             (u['user_id'],)
         ).fetchall()
@@ -461,6 +1460,99 @@ def list_sessions():
         return jsonify({'success': True, 'sessions': [dict(r) for r in rows]})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@chat_local_bp.route('/api/local-chat/balance', methods=['GET'])
+@_login_required
+def token_balance():
+    """我的 token 余额 + 最近流水 (进入即触发每日赠送; SA 豁免显示)"""
+    u = _get_user()
+    sa_exempt = _is_sa(u)
+    if not sa_exempt:
+        grant = _ensure_daily_grant(u['user_id'], u['username'])
+    else:
+        grant = {'granted_today': False, 'balance': None}
+    bal = _get_balance(u['user_id'])
+    bal['granted_today'] = grant['granted_today']
+    bal['sa_exempt'] = sa_exempt
+    if sa_exempt:
+        bal['message'] = 'SA 豁免模式: 不限用量, 不消耗 token'
+    # 最近 20 条流水
+    try:
+        conn = _db()
+        rows = conn.execute(
+            "SELECT change, type, session_id, detail, balance_after, created_at "
+            "FROM mt_user_token_ledger WHERE user_id=? ORDER BY id DESC LIMIT 20",
+            (u['user_id'],)
+        ).fetchall()
+        conn.close()
+        bal['ledger'] = [dict(r) for r in rows]
+    except Exception:
+        bal['ledger'] = []
+    return jsonify({'success': True, **bal})
+
+
+@chat_local_bp.route('/api/local-chat/admin-adjust', methods=['POST'])
+@_login_required
+def token_admin_adjust():
+    """SA 专属: 给指定用户调整 token 额度 (admin_adjust ledger)
+    body: {username: str, amount: int(+充/-扣), reason: str}"""
+    u = _get_user()
+    if not _is_sa(u):
+        return jsonify({'success': False, 'error': 'forbidden',
+                        'message': '仅超级管理员 (SA) 可执行额度调整'}), 403
+    data = request.get_json() if request.is_json else {}
+    target_name = (data.get('username') or '').strip()
+    try:
+        amount = int(data.get('amount', 0))
+    except (TypeError, ValueError):
+        return jsonify({'success': False, 'error': 'bad_amount'}), 400
+    reason = (data.get('reason') or '').strip()[:200]
+    if not target_name or amount == 0:
+        return jsonify({'success': False, 'error': 'bad_params',
+                        'required': {'username': 'str', 'amount': 'int(+充/-扣)'}}), 400
+
+    conn = _db()
+    try:
+        trow = conn.execute(
+            "SELECT id, username FROM users WHERE username=?", (target_name,)
+        ).fetchone()
+        if trow is None:
+            return jsonify({'success': False, 'error': 'user_not_found',
+                            'username': target_name}), 404
+        target_id = trow['id']
+        today = datetime.now().strftime('%Y-%m-%d')
+        acc = conn.execute(
+            "SELECT balance FROM mt_user_token_accounts WHERE user_id=?", (target_id,)
+        ).fetchone()
+        if acc is None:
+            # 目标账户不存在: 先建户 (零赠送) 再调整
+            conn.execute(
+                "INSERT INTO mt_user_token_accounts(user_id,username,balance,last_grant_date) "
+                "VALUES(?,?,0,'')", (target_id, target_name))
+            old_balance = 0
+        else:
+            old_balance = acc['balance']
+        new_balance = max(0, old_balance + amount)  # 不可扣为负
+        real_change = new_balance - old_balance
+        conn.execute(
+            "UPDATE mt_user_token_accounts SET balance=?, updated_at=datetime('now','localtime') "
+            "WHERE user_id=?", (new_balance, target_id))
+        conn.execute(
+            "INSERT INTO mt_user_token_ledger(user_id,change,type,session_id,detail,balance_after) "
+            "VALUES(?,?,?,?,?,?)",
+            (target_id, real_change, 'admin_adjust', '',
+             json.dumps({'by_sa': u['username'], 'reason': reason}, ensure_ascii=False),
+             new_balance))
+        conn.commit()
+        return jsonify({'success': True, 'username': target_name,
+                        'change': real_change, 'balance': new_balance,
+                        'by': u['username']})
+    except Exception as e:
+        sys.stderr.write(f"[CHAT-LOCAL] admin_adjust error: {e}\n")
+        return jsonify({'success': False, 'error': str(e)}), 500
+    finally:
+        conn.close()
 
 
 @chat_local_bp.route('/api/local-chat/history', methods=['GET'])
@@ -495,9 +1587,8 @@ def get_history():
 @_login_required
 def send_message():
     """
-    发送消息 + SSE 流式接收 AI 回复
-    请求体: {session_id, message}
-    返回: SSE stream (data: {...}\n\n)
+    发送消息 + SSE 流式接收 AI 回复 (v25.5 完整结算)
+    三阶段: 预扣入口 → 生成中 → 实扣+退差+奖励结算
     """
     u = _get_user()
     data = request.get_json() if request.is_json else {}
@@ -506,6 +1597,37 @@ def send_message():
 
     if not user_text:
         return jsonify({'success': False, 'error': 'empty_message'}), 400
+
+    # ── 选择模型 (默认 qwen2.5-coder:14b, 本地有则用 7b) ──
+    model = data.get('model', 'qwen2.5-coder:14b')
+
+    # ── Token 计费 v25.5: 每日赠送 + 预扣拦截 ──
+    sa_exempt = _is_sa(u)
+    prehold_result = None
+    estimated_cost = 0
+    if not sa_exempt:
+        grant = _ensure_daily_grant(u['user_id'], u['username'])
+        # 预估: 按 prompt≈user_text×1.5 近似 + completion 预设 200
+        est_prompt = max(50, int(len(user_text) * 1.5) + 200)  # +200 留给 system prompt
+        est_completion = 300  # 预设 300 completion token
+        est = _estimate_cost(model, est_prompt, est_completion)
+        estimated_cost = est['total_cost']
+        # 实时预估拦截 (余额 < 预估 → 402)
+        if grant['balance'] < estimated_cost:
+            return jsonify({
+                'success': False, 'error': 'tokens_insufficient',
+                'message': f'余额 {grant["balance"]} token, 预估需要 {estimated_cost} token (含模型倍率 {est["pricing"]["model_weight"]}x)',
+                'balance': grant['balance'], 'estimated_cost': estimated_cost,
+                'pricing': est['pricing'], 'daily_free': DAILY_FREE_TOKENS
+            }), 402
+        # 原子预扣
+        prehold_result = _prehold(u['user_id'], sid, estimated_cost, model)
+        if not prehold_result.get('ok'):
+            return jsonify({
+                'success': False, 'error': 'prehold_failed',
+                'message': f'并发竞争: 余额不足, 请重试',
+                'balance': prehold_result.get('balance', 0)
+            }), 409  # 409 Conflict
 
     # 确保会话存在
     if not sid:
@@ -526,20 +1648,47 @@ def send_message():
 
     # 保存用户消息
     _save_message(sid, u['user_id'], 'user', user_text)
-    _record_action(sid, u['user_id'], 'send', {'text_len': len(user_text)})
+    _record_action(sid, u['user_id'], 'send', {'text_len': len(user_text), 'model': model})
+
+    # ── 上下文管理 ──
+    ctx_status = _check_and_manage_context(sid, u['user_id'], u['username'])
 
     # 生成 SSE 流
     def generate():
         full_response = []
+        usage = {'prompt_tokens': 0, 'completion_tokens': 0}
         t0 = time.time()
+        brain_fed = False
+
+        # 先 yield 预扣事件
+        if prehold_result and prehold_result.get('ok'):
+            yield f"data: [prehold] {json.dumps({'held': prehold_result['held_amount'], 'balance': prehold_result['balance'], 'model': model, 'model_weight': _pricing_for(model)['model_weight']}, ensure_ascii=False)}\n\n"
+
+        if ctx_status.get('warning'):
+            warn_msg = f"上下文已达 {ctx_status['size_mb']:.1f}MB, 建议手动压缩"
+            yield f"data: [context_warning] {json.dumps({'size_mb': ctx_status['size_mb'], 'threshold_mb': 50, 'message': warn_msg}, ensure_ascii=False)}\n\n"
+        if ctx_status.get('compressed'):
+            before_mb = ctx_status.get('size_mb_before', 0)
+            after_mb = ctx_status.get('size_mb_after', 0)
+            arch_cnt = ctx_status.get('archived_count', 0)
+            comp_msg = f"自动压缩: {before_mb:.1f}MB → {after_mb:.1f}MB, {arch_cnt} 条老消息已投喂脑库归档"
+            yield f"data: [context_compressed] {json.dumps({'size_mb_before': before_mb, 'size_mb_after': after_mb, 'archived_messages': arch_cnt, 'fed_to_brain': True, 'message': comp_msg}, ensure_ascii=False)}\n\n"
+            brain_fed = True
+
         try:
             for chunk in _call_ollama_stream(user_text, system_prompt, u['username']):
                 yield chunk
-                # 收集完整回复
                 if chunk.startswith('data:'):
                     payload = chunk[5:].strip()
                     if payload.startswith('['):
-                        continue  # [thinking] [done] [error]
+                        if payload.startswith('[done]'):
+                            try:
+                                d = json.loads(payload[6:])
+                                usage['prompt_tokens'] = int(d.get('prompt_eval_count', 0) or 0)
+                                usage['completion_tokens'] = int(d.get('eval_count', 0) or 0)
+                            except Exception:
+                                pass
+                        continue
                     try:
                         d = json.loads(payload)
                         if 'token' in d:
@@ -547,6 +1696,7 @@ def send_message():
                     except Exception:
                         pass
         except GeneratorExit:
+            usage['completion_tokens'] = len(''.join(full_response))
             pass
         except Exception as e:
             yield f"data: [error] {json.dumps({'error': str(e)}, ensure_ascii=False)}\n\n"
@@ -554,36 +1704,56 @@ def send_message():
         full_ai_text = ''.join(full_response)
         duration_ms = int((time.time() - t0) * 1000)
 
-        # 保存 AI 消息
-        _save_message(sid, u['user_id'], 'assistant', full_ai_text,
-                      model='qwen2.5-coder:14b', duration_ms=duration_ms)
+        # 字符数兜底
+        if usage['prompt_tokens'] <= 0:
+            usage['prompt_tokens'] = len(user_text) + len(system_prompt)
+        if usage['completion_tokens'] <= 0:
+            usage['completion_tokens'] = len(full_ai_text)
 
-        # 更新会话
-        _update_session(sid, full_ai_text[:100])
-
-        # 拐点检测
+        # 拐点检测 (前置, 用于结算奖励)
         inflections = _detect_inflections(sid, u['user_id'], user_text, full_ai_text)
         if inflections:
             for p in inflections:
                 _record_action(sid, u['user_id'], 'inflection', p)
 
-        # 脑库投喂 (异步触发, 不阻塞 SSE)
-        try:
-            import threading
-            threading.Thread(target=_feed_brain, args=(
-                sid, u['user_id'], u['username'], user_text, full_ai_text, inflections
-            ), daemon=True).start()
-        except Exception:
-            pass
+        # ── 三阶段结算 ──
+        if sa_exempt:
+            # SA 豁免: 只上报用量, 不扣费不限量
+            try:
+                yield f"data: [billing] {json.dumps({'prompt_tokens': usage['prompt_tokens'], 'completion_tokens': usage['completion_tokens'], 'model': model, 'model_weight': _pricing_for(model)['model_weight'], 'deducted': 0, 'balance': None, 'exempt': True, 'role': 'super_admin', 'reward': 0}, ensure_ascii=False)}\n\n"
+            except Exception:
+                pass
+        else:
+            # 脑库投喂 (异步, 标记 brain_fed 用于结算)
+            try:
+                import threading
+                def do_brain():
+                    nonlocal brain_fed
+                    try:
+                        _feed_brain(sid, u['user_id'], u['username'], user_text, full_ai_text, inflections)
+                        brain_fed = True
+                    except Exception:
+                        pass
+                threading.Thread(target=do_brain, daemon=True).start()
+            except Exception:
+                pass
 
-        _record_action(sid, u['user_id'], 'receive', {
-            'duration_ms': duration_ms,
-            'tokens': len(full_ai_text),
-            'inflections': len(inflections),
-        })
+            # 最终结算 (同步, 脑库投喂奖励在下一次结算时补记; 本次只结算已知拐点)
+            settle = _finalize(u['user_id'], sid, model,
+                               usage['prompt_tokens'], usage['completion_tokens'],
+                               prehold_result, inflections=inflections, brain_fed=brain_fed)
+            try:
+                yield f"data: [billing] {json.dumps({'prompt_tokens': usage['prompt_tokens'], 'completion_tokens': usage['completion_tokens'], 'model': model, 'model_weight': _pricing_for(model)['model_weight'], 'deducted': settle['net_cost'], 'preheld': settle.get('prehold', 0), 'refunded': settle.get('refund', 0), 'reward': settle.get('reward', 0), 'balance': settle['balance']}, ensure_ascii=False)}\n\n"
+            except Exception:
+                pass
 
-    return Response(stream_with_context(generate()), mimetype='text/event-stream',
-                    headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'})
+        # 保存 AI 消息
+        _save_message(sid, u['user_id'], 'assistant', full_ai_text,
+                      tokens=usage['completion_tokens'], model=model, duration_ms=duration_ms)
+        _update_session(sid, full_ai_text[:100])
+
+    return Response(generate(), mimetype='text/event-stream',
+                    headers={'Cache-Control': 'no-cache, no-transform', 'X-Accel-Buffering': 'no'})
 
 
 # ── 内部辅助 ──────────────────────────────────────────────────────

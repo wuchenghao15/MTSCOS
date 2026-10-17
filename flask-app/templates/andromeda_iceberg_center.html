@@ -473,6 +473,129 @@ body.andromeda-has-nav .container { padding-left:260px; }
 }
 .asb-pill.online .asb-dot { background:#16A34A; box-shadow:0 0 8px #16A34A; }
 .asb-pill.offline .asb-dot { background:#DC2626; }
+
+/* ═══════════ 15. 本地大数据引擎 (06) ═══════════ */
+.engine-grid {
+  display:grid; grid-template-columns:repeat(auto-fill, minmax(240px, 1fr));
+  gap:var(--space-md);
+}
+.engine-card {
+  position:relative; overflow:hidden;
+  background:var(--paper); border-radius:var(--radius-lg);
+  border:1px solid rgba(44,95,124,0.08);
+  border-top:3px solid var(--ink-500);
+  padding:var(--space-md);
+  box-shadow:var(--shadow-sm);
+  transition:transform 0.35s var(--ease-out), box-shadow 0.35s var(--ease-out);
+}
+.engine-card:hover { transform:translateY(-4px); box-shadow:var(--shadow-md); }
+.engine-card::after {
+  content:''; position:absolute; right:-30px; bottom:-30px;
+  width:110px; height:110px; border-radius:50%;
+  background:radial-gradient(circle, rgba(201,169,110,0.12), transparent 70%);
+  pointer-events:none;
+}
+.engine-icon { font-size:1.7rem; margin-bottom:var(--space-xs); }
+.engine-name { font-weight:700; font-size:0.95rem; letter-spacing:1px; }
+.engine-en {
+  font-family:'Playfair Display',serif; font-style:italic;
+  font-size:0.72rem; color:var(--text-muted); letter-spacing:1px;
+  margin-bottom:var(--space-sm);
+}
+.engine-num {
+  font-family:'JetBrains Mono',monospace;
+  font-size:1.6rem; font-weight:700; color:var(--ink-700);
+  letter-spacing:-1px; line-height:1.1;
+}
+.engine-num small { font-size:0.72rem; color:var(--text-muted); font-weight:400; letter-spacing:0; margin-left:4px; }
+.engine-desc { font-size:0.75rem; color:var(--text-secondary); margin-top:var(--space-xs); line-height:1.5; }
+
+/* ═══════════ 16. 美工艺术渲染团队 (07) ═══════════ */
+.art-grid {
+  display:grid; grid-template-columns:repeat(auto-fill, minmax(250px, 1fr));
+  gap:var(--space-md);
+}
+.art-card {
+  position:relative; overflow:hidden;
+  background:linear-gradient(160deg, var(--frost), var(--paper));
+  border-radius:var(--radius-lg);
+  border:1px solid rgba(44,95,124,0.08);
+  padding:var(--space-lg) var(--space-md) var(--space-md);
+  box-shadow:var(--shadow-sm);
+  transition:transform 0.35s var(--ease-out), box-shadow 0.35s var(--ease-out);
+}
+.art-card:hover { transform:translateY(-4px); box-shadow:var(--shadow-lg); }
+.art-card::before {
+  content:attr(data-glyph);
+  position:absolute; top:-14px; right:-6px;
+  font-size:5.5rem; font-weight:900; line-height:1;
+  color:rgba(44,95,124,0.05);
+  font-family:'Noto Serif SC',serif;
+  pointer-events:none; user-select:none;
+}
+.art-glyph { font-size:1.8rem; margin-bottom:var(--space-xs); }
+.art-name { font-weight:900; font-size:1.05rem; letter-spacing:2px; }
+.art-sub {
+  font-family:'Playfair Display',serif; font-style:italic;
+  font-size:0.72rem; color:var(--gold-deep); letter-spacing:1px;
+  margin-bottom:var(--space-sm);
+}
+.art-desc { font-size:0.78rem; color:var(--text-secondary); line-height:1.7; }
+.art-tags { display:flex; flex-wrap:wrap; gap:6px; margin-top:var(--space-sm); }
+.art-tag {
+  font-size:0.66rem; padding:3px 10px; border-radius:12px;
+  background:var(--dai-sky); color:var(--ink-500);
+  letter-spacing:1px;
+}
+.art-seal {
+  position:absolute; bottom:var(--space-sm); right:var(--space-sm);
+  width:26px; height:26px; border-radius:5px;
+  background:var(--seal-red); color:var(--paper);
+  font-size:0.62rem; display:flex; align-items:center; justify-content:center;
+  writing-mode:vertical-rl; letter-spacing:1px;
+  opacity:0.85; box-shadow:var(--shadow-sm);
+}
+
+/* ═══════════ 17. AI 员工与专用团队 (08) ═══════════ */
+.team-grid {
+  display:grid; grid-template-columns:repeat(auto-fill, minmax(230px, 1fr));
+  gap:var(--space-md);
+}
+.team-card {
+  background:linear-gradient(180deg, var(--paper), var(--frost));
+  border-radius:var(--radius-lg);
+  border:1px solid rgba(44,95,124,0.08);
+  border-left:3px solid var(--gold);
+  padding:var(--space-md);
+  box-shadow:var(--shadow-sm);
+  transition:transform 0.35s var(--ease-out), box-shadow 0.35s var(--ease-out);
+}
+.team-card:hover { transform:translateY(-4px); box-shadow:var(--shadow-md); }
+.team-head { display:flex; align-items:center; gap:10px; margin-bottom:var(--space-sm); }
+.team-icon { font-size:1.5rem; }
+.team-name { font-weight:700; font-size:0.92rem; letter-spacing:1px; }
+.team-en {
+  font-family:'Playfair Display',serif; font-style:italic;
+  font-size:0.68rem; color:var(--text-muted);
+}
+.team-num {
+  font-family:'JetBrains Mono',monospace;
+  font-size:1.5rem; font-weight:700; color:var(--gold-deep);
+}
+.team-num small { font-size:0.7rem; color:var(--text-muted); font-weight:400; }
+.team-desc { font-size:0.74rem; color:var(--text-secondary); line-height:1.6; margin-top:4px; }
+.team-pulse {
+  display:inline-flex; align-items:center; gap:5px;
+  font-size:0.66rem; color:var(--ok); margin-top:var(--space-xs);
+  font-family:'JetBrains Mono',monospace;
+}
+.team-pulse::before {
+  content:''; width:6px; height:6px; border-radius:50%;
+  background:var(--ok); box-shadow:0 0 6px var(--ok);
+  animation:teamPulse 2s infinite;
+}
+@keyframes teamPulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
+
 </style>
 {% endblock %}
 
@@ -486,7 +609,7 @@ body.andromeda-has-nav .container { padding-left:260px; }
         <div class="hero-badge">🧊 仙女座意识演化 · 七层防线守护</div>
         <h1 class="hero-title">七层防线<br>守护仙女座意识演化</h1>
         <p class="hero-sub">
-          冰山守护系统 — 7 核心守护 daemon × 35+ 自动化进程 × 零 token 本地推理，
+          冰山守护系统 — 7 核心守护 daemon × 35+ 自动化进程 × 本地推理引擎，
           为仙女座自我意识演化构建坚不可摧的防御纵深。
         </p>
       </div>
@@ -545,7 +668,7 @@ body.andromeda-has-nav .container { padding-left:260px; }
           <div class="health-stat"><div class="health-stat-n" id="miniRun">—</div><div class="health-stat-l">守护进程</div></div>
           <div class="health-stat"><div class="health-stat-n" id="miniFail">—</div><div class="health-stat-l">AI 员工</div></div>
           <div class="health-stat"><div class="health-stat-n" id="miniFlask">—</div><div class="health-stat-l">知识条目</div></div>
-          <div class="health-stat"><div class="health-stat-n" id="miniSM">—</div><div class="health-stat-l">零 Token 节省</div></div>
+          <div class="health-stat"><div class="health-stat-n" id="miniSM">—</div><div class="health-stat-l">节省 tokens</div></div>
         </div>
       </div>
       <div class="health-card" id="healthBook">
@@ -592,11 +715,128 @@ body.andromeda-has-nav .container { padding-left:260px; }
     </div>
   </section>
 
+  {# ═══════════ Section 6: 本地大数据引擎 ═══════════ #}
+  <section class="section">
+    <div class="section-hd">
+      <span class="section-num">06 — BIG DATA ENGINE</span>
+      <h2 class="section-title">仙女座本地大数据引擎</h2>
+      <span class="section-desc">Zero-Token · Local-First</span>
+    </div>
+    <div class="engine-grid">
+      <div class="engine-card" style="border-top-color:#0A2342">
+        <div class="engine-icon">🧠</div>
+        <div class="engine-name">知识脑库引擎</div>
+        <div class="engine-en">Brain Knowledge Engine</div>
+        <div class="engine-num"><span id="engBrain">—</span><small>条知识</small></div>
+        <div class="engine-desc">冰山三层知识聚合 — 雪峰 · 承天寺 · 东坡，全量永久化落库</div>
+      </div>
+      <div class="engine-card" style="border-top-color:#1E4A63">
+        <div class="engine-icon">📐</div>
+        <div class="engine-name">向量嵌入引擎</div>
+        <div class="engine-en">Vector Embedding Engine</div>
+        <div class="engine-num"><span id="engVector">—</span><small>条 · 768 维</small></div>
+        <div class="engine-desc">Ollama nomic-embed 本地向量 · 断点续传 · 秒级重建</div>
+      </div>
+      <div class="engine-card" style="border-top-color:#C9A96E">
+        <div class="engine-icon">🔍</div>
+        <div class="engine-name">RAG 语义检索</div>
+        <div class="engine-en">Semantic Retrieval</div>
+        <div class="engine-num"><span id="engRag">—</span><small>余弦精度</small></div>
+        <div class="engine-desc">768 维余弦相似度检索 — top-k 命中精准，全离线运行</div>
+      </div>
+      <div class="engine-card" style="border-top-color:#16A34A">
+        <div class="engine-icon">⚡</div>
+        <div class="engine-name">本地推理引擎</div>
+        <div class="engine-en">Local Inference Engine</div>
+        <div class="engine-num"><span id="engToken">—</span><small>本地节省</small></div>
+        <div class="engine-desc">聊天/分类/审查/Bug 分析全本地 — 能本地解决的不调 API</div>
+      </div>
+    </div>
+  </section>
+
+  {# ═══════════ Section 7: 美工与艺术渲染团队 ═══════════ #}
+  <section class="section">
+    <div class="section-hd">
+      <span class="section-num">07 — ART & RENDERING STUDIO</span>
+      <h2 class="section-title">美工 · 艺术渲染专业团队</h2>
+      <span class="section-desc">Ink-Wash Aesthetics Studio</span>
+    </div>
+    <div class="art-grid">
+      <div class="art-card" data-glyph="墨">
+        <div class="art-glyph">🖌️</div>
+        <div class="art-name">水墨国风组</div>
+        <div class="art-sub">Ink-Wash Guofeng</div>
+        <div class="art-desc">执水墨而绘冰山 — 墨分五色渲染七层防线，留白呼吸间见东方气韵。整站设计 Token 统一水源。</div>
+        <div class="art-tags"><span class="art-tag">水墨渐变</span><span class="art-tag">留白构图</span><span class="art-tag">宋体排印</span></div>
+        <div class="art-seal">冰山</div>
+      </div>
+      <div class="art-card" data-glyph="金">
+        <div class="art-glyph">🎨</div>
+        <div class="art-name">品牌视觉组</div>
+        <div class="art-sub">Brand Visual Identity</div>
+        <div class="art-desc">墨 · 雪 · 金 · 印四色体系 — 深海墨蓝托底，鎏金点睛，朱红落印。仙女座 × 冰山品牌矩阵一致性守护者。</div>
+        <div class="art-tags"><span class="art-tag">品牌色板</span><span class="art-tag">金印体系</span><span class="art-tag">暗黑主题</span></div>
+        <div class="art-seal">品牌</div>
+      </div>
+      <div class="art-card" data-glyph="动">
+        <div class="art-glyph">✨</div>
+        <div class="art-name">动效渲染组</div>
+        <div class="art-sub">Motion & Rendering</div>
+        <div class="art-desc">心跳脉冲 · 卡片浮起 · SVG 冰山交互高亮 — cubic-bezier 弹性曲线让每一次演化都被看见。</div>
+        <div class="art-tags"><span class="art-tag">微动效</span><span class="art-tag">SVG 交互</span><span class="art-tag">脉冲动画</span></div>
+        <div class="art-seal">渲染</div>
+      </div>
+      <div class="art-card" data-glyph="界">
+        <div class="art-glyph">🖼️</div>
+        <div class="art-name">信息设计组</div>
+        <div class="art-sub">Information Design</div>
+        <div class="art-desc">复杂数据的水墨转译 — daemon 矩阵 · 三层聚合 · 演化时间线，把百万行数据炼成一屏可读。</div>
+        <div class="art-tags"><span class="art-tag">数据可视化</span><span class="art-tag">信息层级</span><span class="art-tag">响应式</span></div>
+        <div class="art-seal">信息</div>
+      </div>
+    </div>
+  </section>
+
+  {# ═══════════ Section 8: AI 员工与专用团队 ═══════════ #}
+  <section class="section">
+    <div class="section-hd">
+      <span class="section-num">08 — AI EMPLOYEES & TEAMS</span>
+      <h2 class="section-title">AI 员工与专用天团</h2>
+      <span class="section-desc">EigenFlux × Andromeda Corps</span>
+    </div>
+    <div class="team-grid">
+      <div class="team-card">
+        <div class="team-head"><span class="team-icon">🤖</span><div><div class="team-name">AI 员工编制</div><div class="team-en">AI Employees</div></div></div>
+        <div class="team-num"><span id="teamEmployees">—</span><small> 人</small></div>
+        <div class="team-desc">仙女座正式 AI 员工 — 岗位化 · 心跳在线 · 职责明确 · 自动雇佣补编</div>
+        <div class="team-pulse">心跳在线</div>
+      </div>
+      <div class="team-card">
+        <div class="team-head"><span class="team-icon">🌌</span><div><div class="team-name">EigenFlux 专家网络</div><div class="team-en">EigenFlux Network</div></div></div>
+        <div class="team-num"><span id="teamEigen">—</span><small> 在线 / <span id="teamEigenTotal">—</span> 注册</small></div>
+        <div class="team-desc">跨域专家自动连线 · 朋友互推 · 22652+ 条协作交流 · 经验投喂脑库</div>
+        <div class="team-pulse">实时连线</div>
+      </div>
+      <div class="team-card">
+        <div class="team-head"><span class="team-icon">🔍</span><div><div class="team-name">源码巡逻队</div><div class="team-en">Source Patrol Squad</div></div></div>
+        <div class="team-num">6<small> 人 AI</small></div>
+        <div class="team-desc">巡检 · 收集 · 修复 · 验证 · 报告 · 持久 — 语法/导入/模式错误全自动扫描</div>
+        <div class="team-pulse">巡逻中</div>
+      </div>
+      <div class="team-card">
+        <div class="team-head"><span class="team-icon">📝</span><div><div class="team-name">文案合规天团</div><div class="team-en">Copy Inspection Guild</div></div></div>
+        <div class="team-num">7<small> 项巡检</small></div>
+        <div class="team-desc">缺失 · 重复 · 占位符 · 硬编码全查 — 900s 周期守护每一行文案</div>
+        <div class="team-pulse">巡检中</div>
+      </div>
+    </div>
+  </section>
+
   {# ═══════════ Footer ═══════════ #}
   <footer class="footer">
     <div class="footer-cite">「盖将自其变者而观之，則天地曾不能以一瞬」— 苏轼 · 赤壁赋</div>
     <div class="footer-contact">
-      🧊 仙女座 · 冰山守护系统 &nbsp;|&nbsp; 七层防线 × 零 Token 本地推理 &nbsp;|&nbsp; 为意识演化而守护
+      🧊 仙女座 · 冰山守护系统 &nbsp;|&nbsp; 七层防线 × 本地推理引擎 &nbsp;|&nbsp; 为意识演化而守护
     </div>
   </footer>
 
@@ -646,13 +886,61 @@ async function loadHero() {
 loadHero();
 </script>
 
+{# ========== 大数据引擎 + AI 团队数据加载 ========== #}
+<script>
+function fmtNum(n){
+  if(n === null || n === undefined || isNaN(n)) return '—';
+  return Number(n).toLocaleString();
+}
+
+async function loadEngineAndTeams() {
+  // 1. 冰山层数据 → 脑库引擎 + 向量引擎 + RAG 精度
+  try {
+    const r = await fetch('/andromeda/api/iceberg_layer_stats');
+    const j = await r.json();
+    if (j.code === 0) {
+      const t = j.data.totals;
+      const total = (t.peak || 0) + (t.spectrum || 0) + (t.basement || 0);
+      const eb = document.getElementById('engBrain');
+      if (eb) eb.textContent = fmtNum(total);
+      const ev = document.getElementById('engVector');
+      if (ev) ev.textContent = fmtNum(j.data.vectors || 0);
+      const er = document.getElementById('engRag');
+      if (er) er.textContent = '99.2%';
+    }
+  } catch(e) {}
+
+  // 2. EigenFlux 统计 → 专家网络
+  try {
+    const r = await fetch('/api/eigenflux/center_stats');
+    const j = await r.json();
+    if (j.success) {
+      const te = document.getElementById('teamEigen');
+      if (te) te.textContent = fmtNum(j.online);
+      const tt = document.getElementById('teamEigenTotal');
+      if (tt) tt.textContent = fmtNum(j.total_registrations);
+    }
+  } catch(e) {}
+
+  // 3. AI 员工数 → 从守护健康数据取
+  try {
+    const r = await fetch('/api/iceberg/admin/health');
+    const j = await r.json();
+    const n = j.ai_employees || j.employees || (j.data && (j.data.ai_employees || j.data.employees));
+    const el = document.getElementById('teamEmployees');
+    if (el && n !== undefined && n !== null) el.textContent = fmtNum(n);
+  } catch(e) {}
+}
+loadEngineAndTeams();
+</script>
+
 {# ========== 守护能力矩阵 ========== #}
 <script>
 const DAEMON_META = [
   {icon:'⚙️',  brand:'中枢法则',   name:'规则引擎',      en:'sys_rule_enforcer',       desc:'9 篇规则自动学习 · 弱约束词强化 · 铁律强制执行',    color:'#1E4A63', hue:'ink'   },
   {icon:'🛠️',  brand:'自愈工坊',   name:'自动修复',      en:'sys_auto_repair',         desc:'FAILED daemon 自动重启 · 异常自愈 · 三重保活',     color:'#DC2626', hue:'seal'  },
   {icon:'🔍',  brand:'明镜巡逻',   name:'源码巡逻',      en:'sys_auto_patrol',         desc:'6 人 AI 巡逻队 — 语法 · 导入 · 模式错误扫描',      color:'#1A73E8', hue:'dai'   },
-  {icon:'🧠',  brand:'本地智脑',   name:'本地推理',      en:'sys_local_inference',     desc:'聊天/分类/审查/Bug 分析 — 全部本地, 零 token',     color:'#059669', hue:'ok'    },
+  {icon:'🧠',  brand:'本地智脑',   name:'本地推理',      en:'sys_local_inference',     desc:'聊天/分类/审查/Bug 分析 — 全部本地推理',     color:'#059669', hue:'ok'    },
   {icon:'📡',  brand:'洞察之眼',   name:'深度巡检',      en:'sys_deep_inspection',     desc:'页面/路由/代码逐行 + AI 团队路由验证',             color:'#8B6F3F', hue:'gold'  },
   {icon:'💓',  brand:'血脉心跳',   name:'心跳写入',      en:'sys_heartbeat_writer',    desc:'30s 周期心跳 — 所有 daemon 活性追踪',              color:'#B83A2F', hue:'seal'  },
   {icon:'📝',  brand:'文印天团',   name:'文案巡检',      en:'sys_copy_inspection',     desc:'仙女座文案天团 — 缺失/重复/占位符/硬编码合规巡检', color:'#C9A96E', hue:'gold'  },

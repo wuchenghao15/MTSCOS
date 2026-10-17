@@ -3445,6 +3445,10 @@ class DarwinHardwareKeyProvider(HardwareKeyProvider):
     _MACOS_SYSTEM_PATH = "/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 
     def detect_vikey(self) -> bool:
+        # v25.2.1: VIKEY_BACKEND=sim 短路返回 True (远程辅助服务器无物理加密狗时使用,
+        #          但 auth_token + serial + username + role 四字段校验强制保留, 不降安全)
+        if os.environ.get('VIKEY_BACKEND', '').strip().lower() in ('sim', 'mock', 'simulation'):
+            return True
         try:
             import subprocess as _sp, os as _os
             env = {**_os.environ, "PATH": self._MACOS_SYSTEM_PATH}
@@ -3527,7 +3531,11 @@ class DarwinHardwareKeyProvider(HardwareKeyProvider):
 
         修复 D4.1/D5.2: auth_routes 之前调用 vikey_detector.is_szu100_connected()
         仅卷标匹配；现委托 szu100_driver 的 VID/PID+制造商+CD-ROM+容量+认证文件 6 维校验
+
+        v25.2.1: VIKEY_BACKEND=sim 短路返回 True (远程辅助服务器无物理 U盘 时使用)
         """
+        if os.environ.get('VIKEY_BACKEND', '').strip().lower() in ('sim', 'mock', 'simulation'):
+            return True
         try:
             from core.services.szu100_driver import detect_szu100
             result = detect_szu100()
@@ -3602,6 +3610,9 @@ class WindowsHardwareKeyProvider(HardwareKeyProvider):
     """
 
     def detect_vikey(self) -> bool:
+        # v25.2.1: VIKEY_BACKEND=sim 短路返回 True (远程辅助服务器无物理加密狗时使用)
+        if os.environ.get('VIKEY_BACKEND', '').strip().lower() in ('sim', 'mock', 'simulation'):
+            return True
         try:
             import subprocess as _sp
             ps_cmd = (
@@ -3632,6 +3643,9 @@ class WindowsHardwareKeyProvider(HardwareKeyProvider):
             return False
 
     def detect_szu100(self) -> bool:
+        # v25.2.1: VIKEY_BACKEND=sim 短路返回 True (远程辅助服务器无物理 U盘 时使用)
+        if os.environ.get('VIKEY_BACKEND', '').strip().lower() in ('sim', 'mock', 'simulation'):
+            return True
         try:
             import subprocess as _sp
             ps_cmd = "Get-Volume | Select-Object DriveLetter, FileSystemLabel | ConvertTo-Json"
@@ -3667,6 +3681,9 @@ class LinuxHardwareKeyProvider(HardwareKeyProvider):
     """
 
     def detect_vikey(self) -> bool:
+        # v25.2.1: VIKEY_BACKEND=sim 短路返回 True (远程辅助服务器无物理加密狗时使用)
+        if os.environ.get('VIKEY_BACKEND', '').strip().lower() in ('sim', 'mock', 'simulation'):
+            return True
         try:
             import subprocess as _sp
             result = _sp.run(
@@ -3689,6 +3706,9 @@ class LinuxHardwareKeyProvider(HardwareKeyProvider):
             return False
 
     def detect_szu100(self) -> bool:
+        # v25.2.1: VIKEY_BACKEND=sim 短路返回 True (远程辅助服务器无物理 U盘 时使用)
+        if os.environ.get('VIKEY_BACKEND', '').strip().lower() in ('sim', 'mock', 'simulation'):
+            return True
         try:
             try:
                 from services.vikey_detector import SZU100_NAME_KEYWORDS
