@@ -430,7 +430,8 @@ _backup/
 # 根级脚本 (运行时启动/备份脚本, 不是源码)
 start_all.command
 backup_orchestrator.py
-mtscos_dev_sync.sh
+# 2026-10-17 flow_resource_arch_20261017: dev_sync 升级为服务器模式核心运维脚本, 入库
+# mtscos_dev_sync.sh
 
 # 根级目录快照 (OneDrive 可能同步独立副本)
 # 必须加前导 / 限定根级, 否则会误伤 flask-app/ 下同名目录
