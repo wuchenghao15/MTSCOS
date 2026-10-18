@@ -4546,6 +4546,53 @@ def _mt_theme_and_i18n_global_injector(response):
     return response
 
 
+# ---------- 冰山功能整合: 统一侧边导航全站注入 (flow_integration_20261018) ----------
+@app.after_request
+def _mt_andromeda_nav_global_injector(response):
+    """
+    冰山功能整合 — 消灭功能孤岛 (flow_integration_20261018):
+      全站 text/html 响应自动注入 /static/js/andromeda_nav.js (统一侧边导航).
+    幂等:
+      - 非 text/html / 无 </body> / streaming → 跳过
+      - 响应已含 andromeda_nav.js 引用 → 跳过
+      - /static/ 与错误码 204/304 → 跳过
+    效果: 184 页全部挂上同一导航 (入口/冰山/Aurora/知识/EigenFlux/治理/系统),
+          新增中心页 (theme-layout/center, error-center) 不再是孤岛.
+    """
+    try:
+        ctype = (response.content_type or '').lower()
+        if 'text/html' not in ctype:
+            return response
+        if response.status_code in (204, 304):
+            return response
+        try:
+            raw = response.get_data()
+        except Exception:
+            return response
+        if not raw or len(raw) < 64:
+            return response
+        encoding = getattr(response, 'charset', None) or 'utf-8'
+        data = raw.decode(encoding, errors='ignore')
+        if '</body>' not in data:
+            return response
+        if 'andromeda_nav.js' in data:
+            return response
+        nav_tag = (
+            '\n<!-- MTSCOS AI 冰山功能整合: 统一侧边导航 (flow_integration_20261018) auto-injected -->\n'
+            '<script src="/static/js/andromeda_nav.js" defer></script>\n'
+        )
+        data = data.replace('</body>', nav_tag + '</body>', 1)
+        response.set_data(data.encode(encoding, errors='ignore'))
+        try:
+            response.headers['X-MT-Nav-Injected'] = '1'
+        except Exception:
+            pass
+    except Exception as e:
+        import logging as _lg_nav
+        _lg_nav.warning(f"[andromeda-nav-injector] after_request err: {e}")
+    return response
+
+
 # ---------- 统一系统容器装饰器 ----------
 def system_container(page_name: str, require_auth: str = 'auto', allowed_roles=None,
                      inject_user_ctx: bool = True, write_heartbeat: bool = True):
