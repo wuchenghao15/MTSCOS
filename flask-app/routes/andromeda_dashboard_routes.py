@@ -93,13 +93,29 @@ DAEMON_CATEGORIES = OrderedDict([
 
 
 def _conn(read_only: bool = True) -> sqlite3.Connection:
-    """仙女座专属 DB 连接"""
-    if not os.path.exists(ANDROMEDA_DB):
-        raise FileNotFoundError(f'仙女座 DB 不存在: {ANDROMEDA_DB}')
-    uri = f'file:{ANDROMEDA_DB}?mode=ro' if read_only else f'file:{ANDROMEDA_DB}?mode=rwc'
-    c = sqlite3.connect(uri, uri=True, timeout=3)
-    c.row_factory = sqlite3.Row
-    return c
+    """仙女座专属 DB 连接
+
+    v22.19.1 容灾: engines/app.db 不存在/损坏/缺核心表时自动回退主库
+    (修复 iceberg_health/eigenflux 端点 500 — 服务器 engines/app.db 为空壳)
+    """
+    candidates = [ANDROMEDA_DB, os.path.join(_FLASK_APP, 'database', 'app.db')]
+    for db_path in candidates:
+        if not os.path.exists(db_path):
+            continue
+        try:
+            uri = f'file:{db_path}?mode=ro' if read_only else f'file:{db_path}?mode=rwc'
+            c = sqlite3.connect(uri, uri=True, timeout=3)
+            has_core = c.execute(
+                "SELECT COUNT(*) FROM sqlite_master WHERE type='table' "
+                "AND name IN ('mt_daemon_registry','mt_andromeda_knowledge_base')"
+            ).fetchone()[0] > 0
+            if has_core:
+                c.row_factory = sqlite3.Row
+                return c
+            c.close()
+        except Exception:
+            continue
+    raise FileNotFoundError(f'仙女座 DB 与主库均不可用: {ANDROMEDA_DB}')
 
 
 def _query(sql: str, args=()) -> list[dict]:
