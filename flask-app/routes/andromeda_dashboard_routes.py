@@ -118,6 +118,22 @@ def _conn(read_only: bool = True) -> sqlite3.Connection:
     raise FileNotFoundError(f'仙女座 DB 与主库均不可用: {ANDROMEDA_DB}')
 
 
+def _daemon_rows(conn) -> list:
+    """schema 兼容读取 daemon 注册表
+
+    engines 库列: daemon_name/interval_sec/description
+    主库列(v2.8.0): process_name/duty (无 interval_sec)
+    统一输出: daemon_name/status/interval_sec/last_heartbeat/description
+    """
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(mt_daemon_registry)").fetchall()}
+    name_c = 'daemon_name' if 'daemon_name' in cols else 'process_name'
+    desc_c = 'description' if 'description' in cols else ('duty' if 'duty' in cols else name_c)
+    int_sel = 'interval_sec' if 'interval_sec' in cols else '600'
+    sql = (f"SELECT {name_c} AS daemon_name, status, {int_sel} AS interval_sec, "
+           f"last_heartbeat, {desc_c} AS description FROM mt_daemon_registry ORDER BY 1")
+    return [dict(r) for r in conn.execute(sql).fetchall()]
+
+
 def _query(sql: str, args=()) -> list[dict]:
     try:
         with _conn() as c:
@@ -171,6 +187,9 @@ def api_daemon_status():
     alive = 0
     categories = []
 
+    _cols = {r['name'] for r in _query("PRAGMA table_info(mt_daemon_registry)")}
+    _name_c = 'daemon_name' if 'daemon_name' in _cols else 'process_name'
+
     for cat, names in DAEMON_CATEGORIES.items():
         cat_total = len(names)
         cat_alive = sum(1 for n in names if n in live)
@@ -178,9 +197,9 @@ def api_daemon_status():
         alive += cat_alive
         status = []
         for n in names:
-            # 从 mt_daemon_registry 拿最后心跳
+            # 从 mt_daemon_registry 拿最后心跳 (schema 兼容: engines=daemon_name / 主库=process_name)
             hb = _query(
-                "SELECT last_heartbeat, status FROM mt_daemon_registry WHERE daemon_name=?",
+                f"SELECT last_heartbeat, status FROM mt_daemon_registry WHERE {_name_c}=?",
                 (n,))
             status.append({
                 'name': n,
@@ -685,7 +704,7 @@ def api_iceberg_health():
     # 2. daemon 心跳（真实计算 age = 距今多少秒，>= interval×2 标红）
     conn.row_factory = sqlite3.Row
     daemons = []
-    for r in conn.execute("SELECT daemon_name, status, interval_sec, last_heartbeat, description FROM mt_daemon_registry ORDER BY daemon_name").fetchall():
+    for r in _daemon_rows(conn):
         hb = r['last_heartbeat'] or ''
         age_sec = None
         if hb and hb != 'None':
@@ -746,7 +765,7 @@ def api_eigenflux():
     conn = _conn()
     conn.row_factory = sqlite3.Row
     daemons = []
-    for r in conn.execute("SELECT daemon_name, status, interval_sec, description, last_heartbeat FROM mt_daemon_registry ORDER BY interval_sec").fetchall():
+    for r in sorted(_daemon_rows(conn), key=lambda x: x['interval_sec']):
         daemons.append({
             'name': r['daemon_name'],
             'status': r['status'],
@@ -921,13 +940,13 @@ def api_andromeda_daemon_status():
         urllib.request.urlopen(req, timeout=2)
         ollama_online = True
     except: pass
-    # daemon registry
+    # daemon registry (schema 兼容: 主库列 process_name, 无 name)
     conn = _conn()
     try:
-        reg = conn.execute("SELECT name, status FROM mt_daemon_registry WHERE status='RUNNING'").fetchall()
-        running_count = len(reg)
-        total_count = conn.execute("SELECT COUNT(*) FROM mt_daemon_registry").fetchone()[0]
-    except:
+        _rows = _daemon_rows(conn)
+        running_count = sum(1 for r in _rows if str(r.get('status') or '').upper() == 'RUNNING')
+        total_count = len(_rows)
+    except Exception:
         running_count, total_count = 0, 0
     conn.close()
     pid = subprocess.getoutput("pgrep -f 'andromeda_core.py daemon' | head -1").strip() or '—'
