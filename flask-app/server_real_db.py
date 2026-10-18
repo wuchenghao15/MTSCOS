@@ -4575,7 +4575,23 @@ def _mt_andromeda_nav_global_injector(response):
         data = raw.decode(encoding, errors='ignore')
         if '</body>' not in data:
             return response
+
+        # ── 全站 UI 统一: 首页主题 CSS 注入 (flow_redblue_ui_20261018, SA 专属页除外) ──
+        try:
+            from flask import request as _req_nav
+            _path = _req_nav.path or ''
+        except Exception:
+            _path = ''
+        if (_path and not _path.startswith('/sa')
+                and 'mtscos_unified_home_theme.css' not in data and '</head>' in data):
+            css_tag = (
+                '\n<!-- MTSCOS 全站UI统一: 首页框架主题 (flow_redblue_ui_20261018 SA指令) -->\n'
+                '<link rel="stylesheet" href="/static/css/mtscos_unified_home_theme.css">\n'
+            )
+            data = data.replace('</head>', css_tag + '</head>', 1)
+
         if 'andromeda_nav.js' in data:
+            response.set_data(data.encode(encoding, errors='ignore'))
             return response
         nav_tag = (
             '\n<!-- MTSCOS AI 冰山功能整合: 统一侧边导航 (flow_integration_20261018) auto-injected -->\n'

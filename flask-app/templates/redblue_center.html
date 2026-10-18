@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>红蓝攻防研究中心 · MTSCOS AI</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/mtscos_design_tokens.css') }}">
+<style>
+  /* 首页框架原生页 (flow_redblue_ui_20261018): 浅色底/960容器/顶部品牌栏/白卡 */
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background:
+      radial-gradient(ellipse 80% 40% at 50% -10%, rgba(155,89,182,.07) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 30% at 80% 20%, rgba(46,134,222,.06) 0%, transparent 50%),
+      #fafbfd;
+    color: #0b1f3a;
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+  }
+  .rb-wrap { max-width: 960px; margin: 0 auto; padding: 40px 32px 60px; }
+  .rb-top {
+    display: flex; align-items: center; justify-content: space-between;
+    padding-bottom: 28px; border-bottom: 1px solid rgba(11,31,58,.08); margin-bottom: 36px;
+  }
+  .rb-logo { display: flex; align-items: center; gap: 12px; }
+  .rb-logo-main { font-size: 18px; font-weight: 700; color: #0b1f3a; }
+  .rb-logo-sub { font-size: 11px; color: #6b7a8f; }
+  .rb-status { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #6b7a8f; }
+  .rb-status .dot { width: 9px; height: 9px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 0 3px rgba(34,197,94,.15); }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; margin-bottom: 28px; }
+  .kpi { background: #fff; border: 1px solid rgba(11,31,58,.08); border-radius: 12px; padding: 14px 16px; }
+  .kpi b { display: block; font-size: 24px; color: #4338ca; font-variant-numeric: tabular-nums; }
+  .kpi span { font-size: 12px; color: #6b7a8f; }
+  .rb-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 24px; }
+  @media (max-width: 760px) { .rb-grid { grid-template-columns: 1fr; } }
+  .panel { background: #fff; border: 1px solid rgba(11,31,58,.08); border-radius: 12px; padding: 18px; }
+  .panel h2 { font-size: 15px; margin-bottom: 12px; }
+  .panel h2.red { color: #dc2626; } .panel h2.blue { color: #2563eb; }
+  .stat { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px dashed rgba(11,31,58,.08); font-size: 13px; }
+  .stat:last-child { border-bottom: none; }
+  .stat b { font-variant-numeric: tabular-nums; }
+  .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .tag { font-size: 11px; padding: 3px 10px; border-radius: 999px; background: rgba(67,56,202,.08); color: #4338ca; border: 1px solid rgba(67,56,202,.18); }
+  .tag.blue { background: rgba(37,99,235,.07); color: #2563eb; border-color: rgba(37,99,235,.18); }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid rgba(11,31,58,.06); }
+  th { color: #6b7a8f; font-weight: 500; }
+  .empty { color: #6b7a8f; padding: 10px 0; }
+  .foot { color: #9baab8; font-size: 12px; margin-top: 14px; }
+  .foot a { color: #4338ca; text-decoration: none; }
+</style>
+</head>
+<body>
+<main class="rb-wrap">
+  <div class="rb-top">
+    <div class="rb-logo">
+      <svg viewBox="0 0 32 32" width="32" height="32" xmlns="http://www.w3.org/2000/svg">
+        <rect width="32" height="32" rx="7" fill="#0B0A1E"/>
+        <polygon points="16,4 27,18 5,18" fill="#A5B4FC"/>
+        <polygon points="7,18 25,18 21,25 11,25" fill="#4338CA" opacity=".92"/>
+        <polygon points="11,25 21,25 19,30 13,30" fill="#1E1B4B"/>
+      </svg>
+      <div>
+        <div class="rb-logo-main">红蓝攻防研究中心</div>
+        <div class="rb-logo-sub">RED / BLUE TEAM RESEARCH CENTER</div>
+      </div>
+    </div>
+    <div class="rb-status"><span class="dot"></span><span>防御纵深在线</span></div>
+  </div>
+
+  <div class="kpis" id="kpis">
+    <div class="kpi"><b id="k_routes">—</b><span>攻击面路由</span></div>
+    <div class="kpi"><b id="k_api">—</b><span>API 端点</span></div>
+    <div class="kpi"><b id="k_cls">—</b><span>密级注册表</span></div>
+    <div class="kpi"><b id="k_l0">—</b><span>L0 极密库</span></div>
+    <div class="kpi"><b id="k_alerts">—</b><span>7d 违反告警</span></div>
+    <div class="kpi"><b id="k_err">—</b><span>错误中心 OPEN</span></div>
+  </div>
+
+  <div class="rb-grid">
+    <div class="panel">
+      <h2 class="red">🔴 红队 · 攻击面盘点</h2>
+      <div class="stat"><span>路由总数</span><b id="r_total">—</b></div>
+      <div class="stat"><span>GET / POST</span><b id="r_methods">—</b></div>
+      <div class="stat"><span>管理面 (/admin_app)</span><b id="r_admin">—</b></div>
+      <div class="stat"><span>API 面 (/api)</span><b id="r_api">—</b></div>
+      <div class="stat"><span>静态资产</span><b id="r_static">—</b></div>
+      <div class="tags" id="r_entries"></div>
+    </div>
+    <div class="panel">
+      <h2 class="blue">🔵 蓝队 · 防御纵深</h2>
+      <div class="stat"><span>拦截层</span><b id="b_layers">—</b></div>
+      <div class="stat"><span>铁律违反累计</span><b id="b_iron">—</b></div>
+      <div class="stat"><span>7d 规则违反</span><b id="b_7d">—</b></div>
+      <div class="stat"><span>密级 L0 / 总注册</span><b id="b_cls">—</b></div>
+      <div class="tags" id="b_tags"></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2 style="color:#4338ca;">⚔️ 对抗事件流 (最近 10 条规则违反告警)</h2>
+    <table><thead><tr><th>类型</th><th>严重度</th><th>目标</th><th>时间</th></tr></thead>
+    <tbody id="ev_body"><tr><td colspan="4" class="empty">加载中…</td></tr></tbody></table>
+  </div>
+
+  <div class="foot">MTSCOS AI · 红蓝攻防研究中心 · <a href="/error-center">错误异常处理中心</a> · <a href="/andromeda/hub">仙女座总枢纽</a> · <a href="/index">回主页</a></div>
+</main>
+
+<script>
+function esc(s){const d=document.createElement('div');d.textContent=s==null?'':String(s);return d.innerHTML;}
+async function load(){
+  try{
+    const r = await fetch('/api/redblue/overview',{credentials:'same-origin'});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const d = await r.json(), red = d.red, blue = d.blue;
+    document.getElementById('k_routes').textContent = red.routes_total;
+    document.getElementById('k_api').textContent = red.api_surface;
+    document.getElementById('k_cls').textContent = blue.classification_registered;
+    document.getElementById('k_l0').textContent = blue.classification_l0;
+    document.getElementById('k_alerts').textContent = blue.rule_alerts_7d;
+    document.getElementById('k_err').textContent = blue.error_center_open;
+    document.getElementById('r_total').textContent = red.routes_total;
+    document.getElementById('r_methods').textContent = red.routes_get + ' / ' + red.routes_post;
+    document.getElementById('r_admin').textContent = red.admin_surface;
+    document.getElementById('r_api').textContent = red.api_surface;
+    document.getElementById('r_static').textContent = red.static_assets;
+    document.getElementById('r_entries').innerHTML = red.external_entries.map(e=>'<span class="tag">'+esc(e)+'</span>').join('');
+    document.getElementById('b_layers').textContent = blue.intercept_layers.length + ' 层';
+    document.getElementById('b_iron').textContent = blue.iron_rule_violations;
+    document.getElementById('b_7d').textContent = blue.rule_alerts_7d;
+    document.getElementById('b_cls').textContent = blue.classification_l0 + ' / ' + blue.classification_registered;
+    document.getElementById('b_tags').innerHTML = blue.intercept_layers.map(e=>'<span class="tag blue">'+esc(e)+'</span>').join('');
+    document.getElementById('ev_body').innerHTML = blue.events.length ? blue.events.map(ev=>
+      '<tr><td>'+esc(ev.alert_type||'-')+'</td><td>'+esc(ev.severity||'-')+'</td>'+
+      '<td>'+esc((ev.alert_target||'-').slice(0,60))+'</td><td>'+esc((ev.created_at||'').slice(0,19))+'</td></tr>').join('')
+      : '<tr><td colspan="4" class="empty">暂无违反事件 ✓ 防线完整</td></tr>';
+  }catch(e){
+    document.getElementById('ev_body').innerHTML = '<tr><td colspan="4" class="empty">加载失败: '+esc(e.message)+' (需登录)</td></tr>';
+  }
+}
+load();
+</script>
+</body>
+</html>

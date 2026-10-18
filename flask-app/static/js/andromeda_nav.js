@@ -49,6 +49,7 @@
       { id:'brainbank',   label:'脑库浏览器',      href:'/admin_app/brain_bank_explorer',icon:'💾' },
       { id:'neural',      label:'神经网络矩阵',    href:'/admin_app/neural_array_matrix',icon:'🧿' },
       { id:'errors',      label:'错误异常处理中心', href:'/error-center',                icon:'🚑' },
+      { id:'redblue',     label:'红蓝攻防研究中心', href:'/redblue/center',             icon:'⚔️' },
       { id:'theme',       label:'主题排版研究中心', href:'/theme-layout/center',         icon:'🎨' },
     ]},
     { group:'🛡️ 系统', items:[
@@ -65,29 +66,29 @@
     if (curPath.indexOf(it.href) === 0 && it.href.length > bestLen){ active = it; bestLen = it.href.length; }
   });});
 
-  /* ── 内联样式 (自包含) ── */
+  /* ── 内联样式 (自包含 · 首页浅色框架同源 v1.2) ── */
   var css = [
-    '.andromeda-sidebar{position:fixed;left:0;top:0;bottom:0;width:212px;background:rgba(11,16,32,.94);',
-    'border-right:1px solid rgba(99,102,241,.18);backdrop-filter:blur(14px);z-index:9800;',
+    '.andromeda-sidebar{position:fixed;left:0;top:0;bottom:0;width:212px;background:rgba(255,255,255,.94);',
+    'border-right:1px solid rgba(11,31,58,.08);backdrop-filter:blur(14px);z-index:9800;',
     'overflow-y:auto;padding:14px 0 90px;font-size:13px;transition:transform .25s;}',
     '.andromeda-sidebar.collapsed{transform:translateX(-100%);}',
-    '.as-header{padding:6px 16px 12px;border-bottom:1px solid rgba(99,102,241,.15);margin-bottom:8px;}',
+    '.as-header{padding:6px 16px 12px;border-bottom:1px solid rgba(11,31,58,.08);margin-bottom:8px;}',
     '.as-logo{font-size:26px;line-height:1;}',
-    '.as-title{font-weight:700;color:#e8edf7;margin-top:4px;}',
-    '.as-sub{color:#64748b;font-size:11px;}',
-    '.as-group{margin:6px 8px;background:rgba(30,41,59,.45);border:1px solid rgba(99,102,241,.10);border-radius:10px;overflow:hidden;}',
-    '.as-group-title{display:flex;align-items:center;gap:6px;background:linear-gradient(90deg,rgba(99,102,241,.28),rgba(99,102,241,.10));',
-    'color:#c7d2fe;font-size:12px;font-weight:700;padding:7px 12px;letter-spacing:.06em;border-bottom:1px solid rgba(99,102,241,.18);}',
-    '.as-item{display:flex;align-items:center;gap:9px;padding:7px 12px 7px 18px;color:#cbd5e1;text-decoration:none;font-size:13px;}',
-    '.as-item:hover{background:rgba(99,102,241,.14);color:#fff;}',
-    '.as-item.active{background:rgba(99,102,241,.26);color:#fff;box-shadow:inset 3px 0 0 #6366f1;}',
+    '.as-title{font-weight:700;color:#0b1f3a;margin-top:4px;}',
+    '.as-sub{color:#6b7a8f;font-size:11px;}',
+    '.as-group{margin:6px 8px;background:rgba(255,255,255,.85);border:1px solid rgba(11,31,58,.07);border-radius:10px;overflow:hidden;box-shadow:0 1px 2px rgba(11,31,58,.04);}',
+    '.as-group-title{display:flex;align-items:center;gap:6px;background:linear-gradient(90deg,rgba(99,102,241,.16),rgba(99,102,241,.04));',
+    'color:#4338ca;font-size:12px;font-weight:700;padding:7px 12px;letter-spacing:.06em;border-bottom:1px solid rgba(67,56,202,.14);}',
+    '.as-item{display:flex;align-items:center;gap:9px;padding:7px 12px 7px 18px;color:#334155;text-decoration:none;font-size:13px;}',
+    '.as-item:hover{background:rgba(67,56,202,.08);color:#0b1f3a;}',
+    '.as-item.active{background:rgba(67,56,202,.12);color:#4338ca;font-weight:600;box-shadow:inset 3px 0 0 #4338ca;}',
     '.as-icon{width:18px;text-align:center;}',
-    '.as-footer{position:absolute;bottom:14px;left:0;right:0;padding:10px 16px;color:#475569;font-size:11px;}',
+    '.as-footer{position:absolute;bottom:14px;left:0;right:0;padding:10px 16px;color:#9baab8;font-size:11px;}',
     '.as-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#22c55e;margin-right:6px;}',
-    '.as-link{color:#64748b;text-decoration:none;}',
+    '.as-link{color:#6b7a8f;text-decoration:none;}',
     '.andromeda-crumb{position:fixed;top:0;left:0;right:0;height:0;z-index:9790;}',
     '.as-toggle{position:fixed;left:10px;bottom:12px;z-index:9900;width:40px;height:40px;border-radius:50%;',
-    'border:1px solid rgba(99,102,241,.35);background:rgba(11,16,32,.9);color:#a5b4fc;font-size:18px;cursor:pointer;}',
+    'border:1px solid rgba(67,56,202,.30);background:rgba(255,255,255,.95);color:#4338ca;font-size:18px;cursor:pointer;box-shadow:0 2px 8px rgba(11,31,58,.12);}',
     'body.andromeda-has-nav{padding-left:212px;}',
     'body.andromeda-has-nav.nav-collapsed{padding-left:0;}',
     '@media(max-width:900px){body.andromeda-has-nav{padding-left:0;}',
@@ -105,7 +106,7 @@
     side.className = 'andromeda-sidebar';
     side.innerHTML =
       '<div class="as-header"><div class="as-logo">🪐</div><div class="as-title">仙女座</div>' +
-      '<div class="as-sub">冰山功能导航 v1.1</div></div>' +
+      '<div class="as-sub">冰山功能导航 v1.2</div></div>' +
       NAV_ITEMS.map(function(g){
         return '<div class="as-group"><div class="as-group-title">' + g.group + '</div>' +
           g.items.map(function(it){

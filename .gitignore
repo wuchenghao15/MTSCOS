@@ -325,6 +325,8 @@ app/cross_platform_node_modules/
 !flask-app/templates/error_center.html
 # 仙女座总枢纽 (flow_andromeda_p4_20261018)
 !flask-app/templates/andromeda_hub.html
+# 红蓝攻防研究中心 (flow_redblue_ui_20261018)
+!flask-app/templates/redblue_center.html
 
 # ── 2026-09-30 v24.1 补漏网项 ──
 _runtime/
