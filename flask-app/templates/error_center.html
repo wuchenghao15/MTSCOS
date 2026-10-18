@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>错误异常处理中心 · MTSCOS</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/mtscos_design_tokens.css') }}">
+<style>
+  :root {
+    --bg: var(--mtscos-bg-primary, #0b1020);
+    --panel: var(--mtscos-bg-secondary, #121a2e);
+    --line: var(--mtscos-border-color, #24304a);
+    --txt: var(--mtscos-text-primary, #e8edf7);
+    --sub: var(--mtscos-text-secondary, #94a3b8);
+    --acc: var(--mtscos-color-primary, #6366f1);
+    --ok: var(--mtscos-color-success, #22c55e);
+    --warn: var(--mtscos-color-warning, #fbbf24);
+    --bad: #ef4444;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--txt); font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; padding: 24px; }
+  h1 { font-size: 22px; margin-bottom: 4px; }
+  .meta { color: var(--sub); font-size: 12px; margin-bottom: 20px; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .kpi { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
+  .kpi .num { font-size: 26px; font-weight: 700; }
+  .kpi .num.bad { color: var(--bad); }
+  .kpi .num.ok { color: var(--ok); }
+  .kpi .lbl { color: var(--sub); font-size: 12px; margin-top: 4px; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+  .panel h2 { font-size: 15px; margin-bottom: 12px; color: var(--acc); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--sub); font-weight: 500; white-space: nowrap; }
+  .pill { display: inline-block; font-size: 11px; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--line); }
+  .pill.CRITICAL { color: var(--bad); border-color: var(--bad); }
+  .pill.ERROR { color: var(--warn); border-color: var(--warn); }
+  .pill.WARN { color: var(--warn); }
+  .pill.OPEN { color: var(--bad); border-color: var(--bad); }
+  .pill.RESOLVED { color: var(--ok); border-color: var(--ok); }
+  .pill.FAILED { color: var(--bad); border-color: var(--bad); }
+  button.act { background: var(--acc); color: #fff; border: 0; border-radius: 8px; padding: 4px 10px; font-size: 12px; cursor: pointer; }
+  button.act:disabled { opacity: .4; cursor: default; }
+  .msg { max-width: 420px; overflow-wrap: anywhere; color: var(--sub); font-size: 12px; }
+  .empty { color: var(--sub); font-size: 13px; padding: 10px 0; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 960px) { .grid2 { grid-template-columns: 1fr; } }
+  .foot { color: var(--sub); font-size: 12px; margin-top: 16px; }
+</style>
+</head>
+<body>
+<h1>错误异常处理中心</h1>
+<div class="meta">flow_error_center_20261018 · v1.0.0 · 数据源: 中心事件表 + 规则违反 + 铁律违反 + 后台服务状态</div>
+
+<div class="kpis" id="kpis">
+  <div class="kpi"><div class="num" id="k_open">—</div><div class="lbl">待处理事件 (OPEN)</div></div>
+  <div class="kpi"><div class="num" id="k_crit">—</div><div class="lbl">24h 严重 (CRITICAL)</div></div>
+  <div class="kpi"><div class="num" id="k_rule">—</div><div class="lbl">规则违反 (7天)</div></div>
+  <div class="kpi"><div class="num" id="k_iron">—</div><div class="lbl">铁律违反记录</div></div>
+  <div class="kpi"><div class="num" id="k_daemon">—</div><div class="lbl">异常后台服务</div></div>
+</div>
+
+<div class="panel">
+  <h2>中心事件 (上报 → 处理闭环)</h2>
+  <table id="tbl_events"><thead><tr><th>#</th><th>时间</th><th>级别</th><th>来源</th><th>类型</th><th>消息</th><th>状态</th><th>操作</th></tr></thead><tbody></tbody></table>
+</div>
+
+<div class="grid2">
+  <div class="panel">
+    <h2>规则违反 (mt_rule_violation_alert)</h2>
+    <table id="tbl_rule"><thead><tr><th>时间</th><th>代码</th><th>级别</th><th>状态</th></tr></thead><tbody></tbody></table>
+  </div>
+  <div class="panel">
+    <h2>异常后台服务 (mt_daemon_registry)</h2>
+    <table id="tbl_daemon"><thead><tr><th>进程</th><th>状态</th><th>最后心跳</th></tr></thead><tbody></tbody></table>
+  </div>
+</div>
+
+<div class="panel">
+  <h2>铁律违反 (mt_iron_rule_violations · 不可删除)</h2>
+  <table id="tbl_iron"><thead><tr><th>记录</th></tr></thead><tbody></tbody></table>
+</div>
+
+<div class="foot" id="foot">MTSCOS AI · 错误异常处理中心 · 上报 API: POST /api/error-center/report</div>
+
+<script>
+function esc(s){const d=document.createElement('div');d.textContent=s==null?'':String(s);return d.innerHTML;}
+async function jget(u){const r=await fetch(u,{credentials:'same-origin'});if(!r.ok)throw new Error(u+' → '+r.status);return r.json();}
+
+async function loadSummary(){
+  try{
+    const d=await jget('/api/error-center/summary');
+    const k=d.kpis;
+    document.getElementById('k_open').textContent=k.open_events;
+    document.getElementById('k_open').className='num'+(k.open_events>0?' bad':' ok');
+    document.getElementById('k_crit').textContent=k.critical_24h;
+    document.getElementById('k_rule').textContent=k.rule_violations_7d;
+    document.getElementById('k_iron').textContent=k.iron_violations;
+    document.getElementById('k_daemon').textContent=k.failed_daemons+' / '+k.daemon_total;
+
+    const tb=document.querySelector('#tbl_events tbody');
+    tb.innerHTML=d.events.length?d.events.map(e=>
+      '<tr><td>'+e.id+'</td><td style="white-space:nowrap">'+esc((e.created_at||'').slice(0,19))+'</td>'+
+      '<td><span class="pill '+esc(e.severity)+'">'+esc(e.severity)+'</span></td>'+
+      '<td>'+esc(e.source)+'</td><td>'+esc(e.error_type)+'</td>'+
+      '<td class="msg">'+esc(e.message)+'</td>'+
+      '<td><span class="pill '+esc(e.status)+'">'+esc(e.status)+'</span></td>'+
+      '<td>'+(e.status==='OPEN'?'<button class="act" onclick="resolve('+e.id+',this)">标记处理</button>':'—')+'</td></tr>'
+    ).join(''):'<tr><td colspan="8" class="empty">暂无中心事件 — 可经 report API 上报</td></tr>';
+
+    document.querySelector('#tbl_rule tbody').innerHTML=d.rule_violations.length?d.rule_violations.map(v=>
+      '<tr><td style="white-space:nowrap">'+esc((v.created_at||'').slice(0,19))+'</td><td>'+esc(v.violation_code)+'</td>'+
+      '<td><span class="pill '+esc(v.severity||'')+'">'+esc(v.severity||'—')+'</span></td><td>'+esc(v.alert_status||'')+'</td></tr>'
+    ).join(''):'<tr><td colspan="4" class="empty">7天内无规则违反 ✓</td></tr>';
+
+    document.querySelector('#tbl_daemon tbody').innerHTML=d.failed_daemons.length?d.failed_daemons.map(p=>
+      '<tr><td>'+esc(p.process_name)+'</td><td><span class="pill '+esc(p.status)+'">'+esc(p.status)+'</span></td>'+
+      '<td>'+esc((p.last_heartbeat||'').slice(0,19))+'</td></tr>'
+    ).join(''):'<tr><td colspan="3" class="empty">全部后台服务正常 ✓</td></tr>';
+
+    document.querySelector('#tbl_iron tbody').innerHTML=d.iron_violations.length?d.iron_violations.map(v=>
+      '<tr><td class="msg">'+esc(JSON.stringify(v).slice(0,220))+'</td></tr>'
+    ).join(''):'<tr><td class="empty">无铁律违反记录 ✓</td></tr>';
+  }catch(e){document.getElementById('foot').innerHTML='<span style="color:var(--bad)">加载失败: '+esc(e.message)+'</span>';}
+}
+async function resolve(id, btn){
+  btn.disabled=true;
+  const r=await fetch('/api/error-center/resolve',{method:'POST',credentials:'same-origin',
+    headers:{'Content-Type':'application/json'},body:JSON.stringify({id:id})});
+  if(r.ok) loadSummary(); else btn.disabled=false;
+}
+loadSummary();
+</script>
+</body>
+</html>

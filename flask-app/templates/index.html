@@ -623,9 +623,7 @@ body {
     font-family: 'JetBrains Mono', ui-monospace, monospace;
     text-transform: uppercase;
 }
-.mts-login .health-label .hl-status.ok   { color: #10B981; }
-.mts-login .health-label .hl-status.warn { color: #F59E0B; }
-.mts-login .health-label .hl-status.crit { color: #EF4444; }
+/* hl-status 状态色已移除 (flow_homepage_fix_20261018: 状态 span 删除, 仅保留正式名称) */
 
 /* L6 登录卡底部装饰: 渐变分隔 + 品牌字 */
 .mts-login .mts-brand-foot {
@@ -699,7 +697,7 @@ body {
         </div>
         <div class="mts-status">
             <span class="dot" title="仙女座守护进程在线"></span>
-            <span class="cnt">{{ andromeda_state.daemon_running | default(0) }}/{{ andromeda_state.daemon_total | default(0) }} DAEMON</span>
+            <span class="cnt">{{ andromeda_state.daemon_running | default(0) }}/{{ andromeda_state.daemon_total | default(0) }} 后台服务</span>
             <span class="mts-ver" style="margin-left:8px;">
                 v{{ version | default('23.0.0') }}
                 {% if andromeda_version %}·{{ andromeda_version }}{% endif %}
@@ -809,10 +807,7 @@ body {
             {%- set _dt = andromeda_state.daemon_total   | default(1) -%}
             {%- set _dp = ((_dr / _dt * 100) | round | int) if _dt > 0 else 0 -%}
             <div class="health-label" data-andromeda-reveal>
-                <span>DAEMON</span>
-                <span class="hl-status {% if _dp >= 90 %}ok{% elif _dp >= 60 %}warn{% else %}crit{% endif %}">
-                    {{ _dr }}/{{ _dt }} · {{ _dp }}%
-                </span>
+                <span>后台服务</span>
             </div>
             <div class="health-bar"><div class="health-fill {% if _dp >= 90 %}ok{% elif _dp >= 60 %}medium{% else %}low{% endif %}" data-width="{{ _dp }}"></div></div>
 
