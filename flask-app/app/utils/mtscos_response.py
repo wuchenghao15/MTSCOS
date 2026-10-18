@@ -80,7 +80,24 @@ def build_success_response(data=None, msg="操作成功", trace_id=None, extra=N
 
 def build_error_response(exc_code, msg=None, trace_id=None, route_path=None,
                          blueprint=None, extra=None):
-    """统一错误响应构建器(对照异常码字典)"""
+    """统一错误响应构建器(对照异常码字典)
+
+    flow_login_guide_20261018: 浏览器页面请求遇 E_AUTH_401 (未登录) →
+      302 引导到 /auth/login?next=<route_path> (登录/注册引导),
+      不再返回裸 JSON; fetch/XHR (Accept 无 text/html) 仍返回 401 JSON。
+    """
+    # ── 未登录 + 浏览器页面请求 → 登录引导重定向 ──
+    if exc_code == "E_AUTH_401":
+        try:
+            from flask import request, redirect
+            accept = (request.headers.get('Accept') or '')
+            is_xhr = (request.headers.get('X-Requested-With') or '').lower() == 'xmlhttprequest'
+            if not is_xhr and 'text/html' in accept:
+                nxt = route_path or request.path
+                from urllib.parse import quote as _q
+                return redirect(f"/auth/login?next={_q(nxt, safe='')}", code=302)
+        except Exception:
+            pass
     http_status, title_zh, severity, repair_suggestion, design_tokens = _lookup_exception_code(exc_code)
     payload = {
         "code": exc_code,
