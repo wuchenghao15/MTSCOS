@@ -118,6 +118,19 @@
   .hdr-btn{border:1px solid rgba(255,255,255,.12);background:transparent;color:var(--text-dim);border-radius:6px;cursor:pointer;font-size:12px;padding:2px 7px;transition:all .15s}
   .hdr-btn:hover{color:var(--mtscos-primary-base);border-color:var(--mtscos-primary-base)}
   .chat-title{cursor:text}
+
+  /* flow_diverge_v2_20261019: 发散追问 Sparks + 拐点面板 */
+  .spark{border:1px solid var(--line);background:rgba(6,182,212,.08);color:var(--text-dim);border-radius:12px;cursor:pointer;font-size:11px;padding:3px 10px;transition:all .15s}
+  .spark:hover{color:var(--mtscos-primary-base);border-color:var(--mtscos-primary-base);background:rgba(6,182,212,.15)}
+  #inflBadge{cursor:pointer}
+  #inflBadge:hover{color:var(--mtscos-primary-base)}
+  .infl-mask{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:999}
+  .infl-modal{width:min(520px,90vw);max-height:70vh;overflow-y:auto;background:#101223;border:1px solid var(--line);border-radius:var(--radius);padding:18px}
+  .infl-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+  .infl-list{display:flex;flex-direction:column;gap:8px}
+  .infl-item{display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--panel);border:1px solid var(--line);border-radius:10px;font-size:12px}
+  .infl-txt{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-dim)}
+  .infl-at{font-size:10px;color:var(--text-faint);flex-shrink:0}
 </style>
 </head>
 <body>
@@ -155,7 +168,7 @@
       <div class="chat-stats">
         <span id="tokenBadge" title="Token 余额">💰 --</span>
         <span>🧠 仙女座发散</span>
-        <span>📊 0拐点</span>
+        <span id="inflBadge" title="点击查看本会话拐点" onclick="showInflections()">📊 0拐点</span>
         <button class="hdr-btn" id="exportBtn" title="导出为 Markdown" onclick="exportSession()">⬇️</button>
       </div>
     </div>
@@ -238,6 +251,7 @@ async function newSession(){
     currentSessionId = d.session_id;
     $('chatTitle').textContent = '新对话';
     $('messages').innerHTML = '<div class="empty">👋 你好! 开始一段发散思维之旅吧</div>';
+    inflCount = 0; updateInflBadge();
     $('input').disabled = false;
     $('sendBtn').disabled = false;
     loadSessions();
@@ -254,8 +268,10 @@ async function selectSession(sid){
   
   $('messages').innerHTML = '';
   for(const m of d.messages){
-    appendMessage(m.role, m.content, false);
+    const w = appendMessage(m.role, m.content, false);
+    if(m.role !== 'user') appendSparks(w);   // flow_diverge_v2: 历史AI消息也带追问
   }
+  refreshInflCount();
   // 标题从列表取
   document.querySelectorAll('.session-item').forEach(el=>el.classList.remove('active'));
   event?.currentTarget?.classList?.add('active');
@@ -299,6 +315,8 @@ async function send(){
   
   // AI 消息占位
   const aiMsg = appendMessage('assistant', '', true);
+  let fullText = '';   // flow_diverge_v2_20261019: 提升出 try — finally 引用不再 ReferenceError
+  let buffer = '';
   const contentEl = aiMsg.querySelector('.msg-content');
   contentEl.innerHTML = '<div class="thinking"><span></span><span></span><span></span></div>';
   
@@ -323,9 +341,7 @@ async function send(){
 
     const reader = resp.body.getReader();
     const decoder = new TextDecoder();
-    let fullText = '';
-    let buffer = '';
-    
+
     contentEl.innerHTML = '';
     const tagContainer = document.createElement('div');
     tagContainer.style.marginBottom = '8px';
@@ -354,9 +370,19 @@ async function send(){
             }catch(_){}
             break;
           }
+          if(payload.startsWith('[inflections]')){
+            // flow_diverge_v2_20261019: 后端拐点事件 → 计数徽标
+            try{
+              const inf = JSON.parse(payload.slice(13));
+              inflCount += (inf.count || 0);
+              updateInflBadge();
+            }catch(_){}
+            continue;
+          }
           if(payload.startsWith('[done]')){
-            // 拐点检测 (前端也根据关键词给 tag)
+            // 拐点检测 (前端也根据关键词给 tag) + 发散追问 Sparks
             tagContainer.innerHTML = detectInflectionTags(text, fullText);
+            appendSparks(aiMsg);
             break;
           }
           if(payload.startsWith('[billing]')){
@@ -445,6 +471,77 @@ function detectInflectionTags(userText, aiText){
   if(/原来如此|恍然大悟|灵光|豁然开朗|突破/.test(aiText)) tags.push('<span class="diverge-tag breakthrough-tag">💡 灵感爆发</span>');
   if(/为什么|怎么会|难道|究竟/.test(userText)) tags.push('<span class="diverge-tag question-tag">❓ 深度追问</span>');
   return tags.join('');
+}
+
+// ═══ 发散思维 v2 (flow_diverge_v2_20261019): Sparks 追问 + 拐点面板 ═══
+let inflCount = 0;
+function updateInflBadge(){
+  const b = $('inflBadge');
+  if(b) b.textContent = `📊 ${inflCount}拐点`;
+}
+
+async function refreshInflCount(){
+  if(!currentSessionId){ inflCount = 0; updateInflBadge(); return; }
+  try{
+    const r = await fetch(`${API}/session/${currentSessionId}/inflections`);
+    if(r.ok){ const d = await r.json(); inflCount = d.count || 0; }
+  }catch(_){}
+  updateInflBadge();
+}
+
+// AI 回复后一键发散追问
+function appendSparks(msgWrap){
+  if(!msgWrap || msgWrap.querySelector('.spark-bar')) return;
+  const bar = document.createElement('div');
+  bar.className = 'spark-bar';
+  bar.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;margin-top:6px';
+  const sparks = [
+    ['🔄 换个视角再答', '换个全新的视角重新回答我刚才的问题'],
+    ['🪞 反过来会怎样', '如果把我刚才问题的结论反过来, 什么情况下反而成立?'],
+    ['🌈 用一个隐喻解释', '用一个生活中的隐喻或类比重新解释你刚才的回答']
+  ];
+  for(const [label, prompt] of sparks){
+    const btn = document.createElement('button');
+    btn.className = 'spark';
+    btn.textContent = label;
+    btn.title = prompt;
+    btn.onclick = () => {
+      if(isStreaming) return;
+      $('input').value = prompt;
+      send();
+    };
+    bar.appendChild(btn);
+  }
+  msgWrap.appendChild(bar);
+}
+
+const INFL_TYPE_LABEL = {diverge:'🧭 发散', converge:'🎯 收敛', breakthrough:'💡 灵感爆发',
+                         question:'❓ 深度追问', metaphor:'🌈 隐喻', contradiction:'⚡ 矛盾碰撞'};
+
+// header 徽标点击 → 本会话拐点明细弹层
+async function showInflections(){
+  if(!currentSessionId){ alert('请先选择一个对话'); return; }
+  const r = await fetch(`${API}/session/${currentSessionId}/inflections`);
+  if(!r.ok){ alert('拐点数据加载失败'); return; }
+  const d = await r.json();
+  inflCount = d.count || 0;
+  updateInflBadge();
+  let html = `<div class="infl-head"><b>本会话拐点 (${d.count})</b>` +
+             `<button class="hdr-btn" onclick="this.closest('.infl-mask').remove()">✕</button></div>`;
+  if(!d.inflections.length){
+    html += '<div style="opacity:.5;font-size:12px;padding:14px 0">还没有拐点 — 带「如果/想象/为什么」的对话会自动产生拐点</div>';
+  }else{
+    html += '<div class="infl-list">' + d.inflections.map(p =>
+      `<div class="infl-item">` +
+      `<span class="diverge-tag">${INFL_TYPE_LABEL[p.type] || p.type}</span>` +
+      `<span class="infl-txt">${escapeHtml(p.trigger || '(无声点)')}</span>` +
+      `<span class="infl-at">${p.at || ''}</span></div>`).join('') + '</div>';
+  }
+  const mask = document.createElement('div');
+  mask.className = 'infl-mask';
+  mask.innerHTML = `<div class="infl-modal">${html}</div>`;
+  mask.onclick = e => { if(e.target === mask) mask.remove(); };
+  document.body.appendChild(mask);
 }
 
 // ═══ 消息渲染 ═══

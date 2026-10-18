@@ -733,7 +733,9 @@ def _build_divergent_prompt(user_text, username, cognitive_profile=None, history
 
 ⚠️ 发散思维强化模式:
 用户问题含假设/想象类关键词 → 请大胆发散, 给出 3-5 个不同可能性,
-每个可能性标注 "可能性1/2/3", 最后给出你认为最有价值的那个方向。"""
+每个可能性标注 "可能性1/2/3", 最后给出你认为最有价值的那个方向。
+回答末尾必须追加一段「🔮 发散角」: 列出 2-3 个帮用户继续发散的追问,
+每行以 "- 🔭 " 开头, 例如 "- 🔭 如果时间倒流十年, 这个结论还成立吗?" """
 
     return system
 
@@ -1465,6 +1467,31 @@ def delete_session(sid):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+@chat_local_bp.route('/api/local-chat/session/<sid>/inflections', methods=['GET'])
+@_login_required
+def session_inflections(sid):
+    """会话拐点明细 — 发散思维 v2 拐点面板数据源 (flow_diverge_v2_20261019)"""
+    u = _get_user()
+    try:
+        conn = _db()
+        owner = conn.execute(
+            "SELECT user_id FROM chat_sessions WHERE session_id=?", (sid,)
+        ).fetchone()
+        if not owner or (owner['user_id'] != u['user_id'] and not _is_sa(u)):
+            conn.close()
+            return jsonify({'success': False, 'error': '无权查看'}), 403
+        rows = conn.execute(
+            "SELECT inflection_type, trigger_text, quality_score, created_at "
+            "FROM chat_inflection_points WHERE session_id=? ORDER BY id DESC LIMIT 100",
+            (sid,)).fetchall()
+        conn.close()
+        return jsonify({'success': True, 'count': len(rows), 'inflections': [
+            {'type': r['inflection_type'], 'trigger': r['trigger_text'],
+             'quality': r['quality_score'], 'at': r['created_at']} for r in rows]})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @chat_local_bp.route('/api/local-chat/sessions', methods=['GET'])
 @_login_required
 def list_sessions():
@@ -1736,6 +1763,12 @@ def send_message():
         if inflections:
             for p in inflections:
                 _record_action(sid, u['user_id'], 'inflection', p)
+
+        # 发散思维 v2 (flow_diverge_v2_20261019): 拐点事件回传前端 → 计数徽标+面板
+        try:
+            yield f"data: [inflections] {json.dumps({'count': len(inflections), 'items': [{'type': p.get('inflection_type',''), 'trigger': (p.get('trigger_text') or '')[:60]} for p in inflections]}, ensure_ascii=False)}\n\n"
+        except Exception:
+            pass
 
         # ── 三阶段结算 ──
         if sa_exempt:
