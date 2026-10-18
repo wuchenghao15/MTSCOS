@@ -571,6 +571,53 @@ def knowledge_graph_page():
     return render_template('andromeda_knowledge_graph.html')
 
 
+@bp.route('/api/knowledge_graph/data', methods=['GET'])
+def api_knowledge_graph_data():
+    """🕸️ 知识图谱数据 (flow_redblue_ui_20261018: 修复页面 forEach undefined — 端点此前 404)
+
+    数据源: 主库 knowledge_graph_nodes (6337) + knowledge_graph_relations (9784)
+    输出契约 (页面 L130-157): {data: {domain_count, video_count, nodes[], links[]}}
+    性能: 按 importance_score 截断 600 节点 + 其间 1200 边, 防 D3 force 卡顿
+    """
+    import sqlite3 as _sq3
+    main_db = os.path.join(_FLASK_APP, 'database', 'app.db')
+    out = {'data': {'domain_count': 0, 'video_count': 0, 'nodes': [], 'links': []}}
+    try:
+        conn = _sq3.connect(main_db, timeout=10)
+        conn.row_factory = _sq3.Row
+        nodes = [dict(r) for r in conn.execute(
+            "SELECT node_id, node_name, node_type, importance_score FROM knowledge_graph_nodes "
+            "WHERE is_active=1 ORDER BY importance_score DESC LIMIT 600").fetchall()]
+        if nodes:
+            ids = {n['node_id'] for n in nodes}
+            qmarks = ','.join('?' * len(ids))
+            links = [dict(r) for r in conn.execute(
+                f"SELECT source_node_id, target_node_id, relation_type FROM knowledge_graph_relations "
+                f"WHERE is_active=1 AND source_node_id IN ({qmarks}) AND target_node_id IN ({qmarks}) "
+                f"LIMIT 1200", list(ids) + list(ids)).fetchall()]
+        else:
+            links = []
+        conn.close()
+        gnodes, out_nodes, out_links = [], [], []
+        for n in nodes:
+            is_domain = str(n.get('node_type') or '').lower() in ('domain', '领域', 'category', 'subject')
+            group = 'domain' if is_domain else 'video'
+            (gnodes if is_domain else out_nodes).append({
+                'id': n['node_id'], 'label': n.get('node_name') or n['node_id'],
+                'group': group,
+                # importance_score 兼容 0-1 浮点与 0-100 整数两种量纲
+                'size': max(4, int((n.get('importance_score') or 0.2) * 40)) if (n.get('importance_score') or 0) <= 1.0 else max(4, int(n.get('importance_score'))),
+            })
+        for l in links:
+            out_links.append({'source': l['source_node_id'], 'target': l['target_node_id'],
+                              'type': l.get('relation_type') or 'rel'})
+        out['data'] = {'domain_count': len(gnodes), 'video_count': len(out_nodes),
+                       'nodes': gnodes + out_nodes, 'links': out_links}
+    except Exception as _kg_err:
+        out['error'] = str(_kg_err)[:200]
+    return jsonify(out)
+
+
 @bp.route('/api/persona_chat', methods=['POST'])
 def api_persona_chat():
     """💬 AI 人格聊天室 — 调 Ollama qwen2.5:7b"""
@@ -599,30 +646,6 @@ def api_persona_chat():
     except Exception as ex:
         answer = f'[Ollama 未就绪，降级固定回答]\n{persona.get("name","AI")} 说：关于"{question[:30]}..."，这是一个值得深思的问题。让我从{persona.get("domain","这个领域")}的角度来思考...'
     return jsonify({'code': 0, 'data': {'persona': persona.get('name'), 'answer': answer}})
-
-
-@bp.route('/api/knowledge_graph/data', methods=['GET'])
-def api_knowledge_graph_data():
-    """D3.js 知识图谱数据 — 节点=领域+视频, 边=从属"""
-    conn = _conn()
-    try:
-        rows = conn.execute("SELECT domain, title, play_count, difficulty_level, quality_score FROM mt_andromeda_knowledge_base ORDER BY play_count DESC LIMIT 150").fetchall()
-    except Exception: rows = []
-    conn.close()
-    domains = {}
-    nodes = []
-    links = []
-    domain_id = 0
-    for d, title, plays, diff, qscore in rows:
-        if d not in domains:
-            domains[d] = domain_id
-            layer = 'peak' if any(k in d for k in ['JLPT','新概念','雅思','托福','考研','K12']) else ('spectrum' if any(k in d for k in ['动漫','人文','心理','哲学','科普','老年']) else 'basement')
-            nodes.append({'id': f'dom_{domain_id}', 'label': d, 'group':'domain', 'size':30, 'layer':layer})
-            domain_id += 1
-        vid = f'v_{abs(hash(title)) % 100000}'
-        nodes.append({'id': vid, 'label': title[:20], 'group':'video', 'size': max(4, min(18, (plays or 0)/50000)), 'layer': 'domain'})
-        links.append({'source': f'dom_{domains[d]}', 'target': vid, 'value': qscore or 5})
-    return jsonify({'code': 0, 'data': {'nodes': nodes, 'links': links, 'domain_count': len(domains), 'video_count': len(rows)}})
 
 
 @bp.route('/api/iceberg/health', methods=['GET'])
