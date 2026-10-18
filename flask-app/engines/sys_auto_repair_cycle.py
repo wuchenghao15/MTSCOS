@@ -206,8 +206,10 @@ def _patch_hardcoded_db_paths():
                 continue
             if 'environ.get' in content and ('ANDROMEDA_DB' in content or 'APP_DB' in content):
                 continue  # 已经 env-first
-            # 备份
-            backup = fp + '.auto_repair_backup'
+            # 备份 (flow_andromeda_p1_20261018: 备份统一落 _repair_backups/, 不再污染 engines/)
+            _bk_dir = os.path.join(scan_dir, '_repair_backups')
+            os.makedirs(_bk_dir, exist_ok=True)
+            backup = os.path.join(_bk_dir, f + '.auto_repair_backup')
             if not os.path.exists(backup):
                 shutil.copy2(fp, backup)
             # 简单 patch: 加一行 PROD 候选 + env-first

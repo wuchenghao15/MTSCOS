@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>仙女座总枢纽 · MTSCOS</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/mtscos_design_tokens.css') }}">
+<style>
+  :root {
+    --bg: var(--mtscos-bg-primary, #0b1020);
+    --panel: var(--mtscos-bg-secondary, #121a2e);
+    --line: var(--mtscos-border-color, #24304a);
+    --txt: var(--mtscos-text-primary, #e8edf7);
+    --sub: var(--mtscos-text-secondary, #94a3b8);
+    --acc: var(--mtscos-color-primary, #6366f1);
+    --ok: var(--mtscos-color-success, #22c55e);
+    --warn: var(--mtscos-color-warning, #fbbf24);
+    --bad: #ef4444;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--txt); font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; padding: 24px; }
+  h1 { font-size: 22px; margin-bottom: 4px; }
+  .meta { color: var(--sub); font-size: 12px; margin-bottom: 20px; }
+  .layers { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+  .panel h2 { font-size: 15px; margin-bottom: 12px; color: var(--acc); }
+  .stat { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px dashed var(--line); font-size: 13px; }
+  .stat b { font-variant-numeric: tabular-nums; }
+  .good { color: var(--ok); } .bad { color: var(--bad); } .warn { color: var(--warn); }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th, td { text-align: left; padding: 5px 6px; border-bottom: 1px solid var(--line); }
+  th { color: var(--sub); font-weight: 500; }
+  .pill { display: inline-block; font-size: 11px; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--line); }
+  .pill.FAILED { color: var(--bad); border-color: var(--bad); }
+  .empty { color: var(--sub); padding: 8px 0; }
+  .foot { color: var(--sub); font-size: 12px; margin-top: 16px; }
+  .wide { grid-column: 1 / -1; }
+</style>
+</head>
+<body>
+<h1>🪐 仙女座总枢纽</h1>
+<div class="meta">flow_andromeda_p4_20261018 · 四层全景: 引擎 / 数据 / 网络 / 运行 · 数据源 /api/andromeda/hub</div>
+
+<div class="layers">
+  <div class="panel">
+    <h2>L1 引擎层</h2>
+    <div class="stat"><span>引擎总数</span><b id="e_total">—</b></div>
+    <div class="stat"><span>engines/ 主引擎</span><b id="e_main">—</b></div>
+    <div class="stat"><span>ai_engines/ AI 引擎</span><b id="e_ai">—</b></div>
+    <div class="stat"><span>副本残留</span><b id="e_debris">—</b></div>
+  </div>
+  <div class="panel">
+    <h2>L3 网络层 (EigenFlux)</h2>
+    <div class="stat"><span>注册 AI</span><b id="n_reg">—</b></div>
+    <div class="stat"><span>24h 心跳</span><b id="n_hb">—</b></div>
+    <div class="stat"><span>专家</span><b id="n_exp">—</b></div>
+    <div class="stat"><span>交流消息</span><b id="n_msg">—</b></div>
+    <div class="stat"><span>脑库表</span><b id="n_brain">—</b></div>
+  </div>
+  <div class="panel">
+    <h2>L4 运行层</h2>
+    <div class="stat"><span>后台服务</span><b id="r_total">—</b></div>
+    <div class="stat"><span>异常服务</span><b id="r_bad">—</b></div>
+    <div class="stat"><span>错误中心 OPEN</span><b id="r_err">—</b></div>
+    <div class="stat"><span>规则违反 (7d)</span><b id="r_rule">—</b></div>
+  </div>
+  <div class="panel">
+    <h2>L2 数据层 (双胞胎裁决)</h2>
+    <table id="tbl_twins"><thead><tr><th>组</th><th>权威表</th></tr></thead><tbody></tbody></table>
+  </div>
+  <div class="panel wide">
+    <h2>异常后台服务明细</h2>
+    <table id="tbl_daemons"><thead><tr><th>进程</th><th>状态</th><th>最后心跳</th></tr></thead><tbody></tbody></table>
+  </div>
+</div>
+
+<div class="foot" id="foot">MTSCOS AI · 仙女座总枢纽 · <a style="color:var(--acc)" href="/error-center">错误异常处理中心</a> · <a style="color:var(--acc)" href="/theme-layout/center">主题排版研究中心</a></div>
+
+<script>
+function esc(s){const d=document.createElement('div');d.textContent=s==null?'':String(s);return d.innerHTML;}
+async function load(){
+  try{
+    const r=await fetch('/api/andromeda/hub',{credentials:'same-origin'});
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const d=await r.json();
+    const e=d.L1_engines,n=d.L3_network,rt=d.L4_runtime;
+    document.getElementById('e_total').textContent=e.total;
+    document.getElementById('e_main').textContent=e.by_layer['engines']||0;
+    document.getElementById('e_ai').textContent=e.by_layer['ai_engines']||0;
+    const db=document.getElementById('e_debris');db.textContent=e.debris;db.className=e.debris>0?'bad':'good';
+    document.getElementById('n_reg').textContent=n.eigenflux_registered;
+    const hb=document.getElementById('n_hb');hb.textContent=n.heartbeat_24h;
+    hb.className=(n.eigenflux_registered>0&&n.heartbeat_24h===0)?'warn':'good';
+    document.getElementById('n_exp').textContent=n.experts;
+    document.getElementById('n_msg').textContent=n.comm_messages;
+    document.getElementById('n_brain').textContent=n.brain_tables;
+    document.getElementById('r_total').textContent=rt.daemons_total;
+    const rb=document.getElementById('r_bad');rb.textContent=rt.daemons_abnormal.length;
+    rb.className=rt.daemons_abnormal.length>0?'bad':'good';
+    const re=document.getElementById('r_err');re.textContent=rt.error_center_open;
+    re.className=rt.error_center_open>0?'warn':'good';
+    document.getElementById('r_rule').textContent=rt.rule_violations_7d;
+    document.querySelector('#tbl_twins tbody').innerHTML=d.L2_data.twin_groups.map(t=>
+      '<tr><td>'+esc(t.group)+'</td><td><b>'+esc(t.authoritative)+'</b></td></tr>').join('')
+      ||'<tr><td colspan="2" class="empty">无双胞胎表 ✓</td></tr>';
+    document.querySelector('#tbl_daemons tbody').innerHTML=rt.daemons_abnormal.length?rt.daemons_abnormal.map(p=>
+      '<tr><td>'+esc(p.process_name)+'</td><td><span class="pill '+esc(p.status)+'">'+esc(p.status)+'</span></td>'+
+      '<td>'+esc((p.last_heartbeat||'').slice(0,19))+'</td></tr>').join('')
+      :'<tr><td colspan="3" class="good">全部后台服务正常 ✓</td></tr>';
+  }catch(e){document.getElementById('foot').innerHTML='<span class="bad">加载失败: '+esc(e.message)+'</span>';}
+}
+load();
+</script>
+</body>
+</html>
