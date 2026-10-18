@@ -530,6 +530,19 @@ def eigenflux_council_page():
     return render_template('andromeda_eigenflux.html')
 
 
+@bp.route('/gray_center', methods=['GET'])
+def gray_center_page():
+    """灰度发布中心 (flow_secondary_pages_20261018: 主页nav 404 补全)"""
+    from flask import session
+    return render_template('andromeda_gray_center.html', username=session.get('username') or 'wuchenghao15')
+
+
+@bp.route('/iceberg_meta', methods=['GET'])
+def iceberg_meta_page():
+    """冰山元数据看板 (flow_secondary_pages_20261018: 主页nav 404 补全)"""
+    return render_template('andromeda_iceberg_meta.html')
+
+
 @bp.route('/upgrade_board', methods=['GET'])
 def upgrade_board_page():
     """升级报告仪表盘"""
