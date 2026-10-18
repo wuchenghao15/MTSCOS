@@ -189,15 +189,17 @@ def _collect_teams(c):
             pass
     if _table_exists(c, "mt_daemon_registry"):
         try:
-            # schema 自适应: source 列部分库缺失, 缺则不查 (flow_gap_fill_20261018)
+            # schema 自适应: source/stop_reason 列部分库缺失, 缺则不查 (flow_gap_fill_20261018)
             _dcols = _cols(c, "mt_daemon_registry")
             _src_sel = ", source" if "source" in _dcols else ""
+            _reason_sel = ", stop_reason" if "stop_reason" in _dcols else ""
             cur = c.execute("SELECT process_name, duty, status, restart_count, last_heartbeat"
-                            + _src_sel + " FROM mt_daemon_registry ORDER BY process_name")
+                            + _src_sel + _reason_sel + " FROM mt_daemon_registry ORDER BY process_name")
             for r in cur.fetchall():
                 teams["daemons"].append({"name": r[0], "duty": r[1], "status": r[2],
                                          "restart_count": r[3], "last_heartbeat": r[4],
-                                         "source": r[5] if _src_sel else ""})
+                                         "source": r[5] if _src_sel else "",
+                                         "stop_reason": r[6] if _reason_sel else ""})
                 if str(r[2] or "").upper() in ("RUNNING", "OK", "ACTIVE", "ALIVE"):
                     teams["daemons_running"] += 1
         except Exception:
