@@ -1351,24 +1351,24 @@ def local_chat_page():
 
 @chat_local_bp.route('/ai', methods=['GET'])
 def ai_entry():
-    """🌐 mtos.site/ai — 公网聊天入口 (v25.5 强制登录)
-    已在 server_real_db.py 防盗链白名单, 直达放行.
-    强制登录:
-      - SA (role=super_admin 或 双密钥已插) → 自动认证, 渲染页面
-      - 未登录 → 302 跳 /auth/login?next=/ai
-    登录后 → 自动赠送每日 token"""
-    from flask import redirect, url_for, render_template
+    """🌐 mtos.site/ai — 公网聊天入口 (按 MT_RULE_SYS_OPS §14.4.3: /ai 必须 200)
+
+    flow_ai_public_entry_20261018 (SA 裁决: 规则优先, 撤销 v25.5 强制登录):
+      - 未登录 guest → 直接渲染聊天页 (200); 登录门槛后移到 /api/local-chat/*
+        (各 API 已挂 _login_required, guest 发言时由前端引导登录)
+      - SA (双密钥已插) → 自动认证 session
+      - 已登录 → 正常渲染 + 每日 token 赠送"""
+    from flask import render_template
     uid = session.get('user_id')
     sa_ok = _is_sa()
-    if not uid or uid == 'guest':
-        if sa_ok:
-            # 双密钥已插 → 自动认证 SA session
-            _ensure_daily_grant(session.get('user_id') or 5, session.get('username') or 'wuchenghao15')
-            return render_template('local_chat.html')
-        return redirect(f'/auth/login?next=/ai', code=302)
-    # 已登录
-    u = _get_user()
-    _ensure_daily_grant(u['user_id'], u['username'])
+    if (not uid or uid == 'guest') and sa_ok:
+        # 双密钥已插 → 自动认证 SA session
+        _ensure_daily_grant(session.get('user_id') or 5, session.get('username') or 'wuchenghao15')
+        return render_template('local_chat.html')
+    if uid and uid != 'guest':
+        # 已登录
+        u = _get_user()
+        _ensure_daily_grant(u['user_id'], u['username'])
     return render_template('local_chat.html')
 
 
