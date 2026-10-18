@@ -1,0 +1,84 @@
+/*
+ * mtscos_unified_home_theme.css — 全站 UI 统一主题 (flow_redblue_ui_20261018)
+ * ============================================================
+ * SA 指令: 所有页面 (SA 专属页除外) 统一按首页框架布局
+ *   — 浅色底 #fafbfd + 径向光晕 / 墨蓝文字 #0b1f3a / 次级 #6b7a8f
+ *   — 靛蓝主色 #4338ca / 边线 rgba(11,31,58,.08) / 白卡圆角 12px
+ * 注入: server_real_db.py after_request (跳过 /sa/*)
+ * 机制: html:root 提升 token 特异性 (0,1,1) > 页面 :root (0,1,0)
+ *       使用 var(--mtscos-*) 的页面自动翻转为首页配色
+ */
+html:root {
+  --mtscos-bg-primary: #fafbfd;
+  --mtscos-bg-secondary: #ffffff;
+  --mtscos-bg-tertiary: #f1f5f9;
+  --mtscos-text-primary: #0b1f3a;
+  --mtscos-text-secondary: #6b7a8f;
+  --mtscos-text-muted: #9baab8;
+  --mtscos-border-color: rgba(11, 31, 58, .08);
+  --mtscos-border-strong: rgba(11, 31, 58, .14);
+  --mtscos-color-primary: #4338ca;
+  --mtscos-color-primary-hover: #3730a3;
+  --mtscos-color-success: #22c55e;
+  --mtscos-color-warning: #f59e0b;
+  --mtscos-color-danger: #dc2626;
+  --mtscos-radius-card: 12px;
+  --mtscos-shadow-card: 0 1px 3px rgba(11, 31, 58, .06);
+}
+
+/* ── 全局底色/字体 (首页同源) ── */
+body {
+  background:
+    radial-gradient(ellipse 80% 40% at 50% -10%, rgba(155, 89, 182, .07) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 30% at 80% 20%, rgba(46, 134, 222, .06) 0%, transparent 50%),
+    #fafbfd !important;
+  color: var(--mtscos-text-primary) !important;
+  font-family: -apple-system, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif !important;
+}
+
+/* ── 标题/链接/按钮 基元 ── */
+h1, h2, h3, h4 { color: var(--mtscos-text-primary); }
+a { color: var(--mtscos-color-primary); }
+a:hover { color: var(--mtscos-color-primary-hover); }
+
+.btn, button.btn, .btn-primary {
+  background: var(--mtscos-color-primary);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+}
+.btn:hover, button.btn:hover { background: var(--mtscos-color-primary-hover); }
+.btn-secondary, .btn-ghost {
+  background: #fff;
+  color: var(--mtscos-text-primary);
+  border: 1px solid var(--mtscos-border-strong);
+}
+
+/* ── 卡片/面板/表格 基元 ── */
+.panel, .card {
+  background: var(--mtscos-bg-secondary);
+  border: 1px solid var(--mtscos-border-color);
+  border-radius: var(--mtscos-radius-card);
+  box-shadow: var(--mtscos-shadow-card);
+}
+table { color: var(--mtscos-text-primary); }
+th { color: var(--mtscos-text-secondary); }
+td, th { border-color: var(--mtscos-border-color); }
+
+/* ── 表单控件 ── */
+input, select, textarea {
+  background: #fff;
+  color: var(--mtscos-text-primary);
+  border: 1px solid rgba(11, 31, 58, .14);
+  border-radius: 8px;
+}
+input:focus, select:focus, textarea:focus {
+  border-color: var(--mtscos-color-primary);
+  outline: 2px solid rgba(67, 56, 202, .15);
+}
+
+/* ── 滚动条 (首页同款细条) ── */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: rgba(67, 56, 202, .25); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(67, 56, 202, .45); }
+::-webkit-scrollbar-track { background: transparent; }

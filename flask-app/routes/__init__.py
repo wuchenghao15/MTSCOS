@@ -1782,6 +1782,8 @@ def register_all_blueprints(app):
         ('error_center_routes', 'error_center_bp'),
         # 仙女座总枢纽 API+页面 (flow_andromeda_p3/p4_20261018)
         ('andromeda_hub_routes', 'andromeda_hub_bp'),
+        # 红蓝攻防研究中心 (flow_redblue_ui_20261018)
+        ('redblue_routes', 'redblue_bp'),
         # 安全仪表盘 — 杨安 AI 底层安全专家 4安全表/13开关/审计/CSP (v22.7.0 YANG IR14)
         ('security_routes', 'security_bp'),
         # AI 治理中枢管理面板 (v22.11.0 新增 OneDrive 主库 schema 对齐+8页面)
