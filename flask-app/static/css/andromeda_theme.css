@@ -1,0 +1,364 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   仙女座主题 · 全局设计 Token (v1.0.0)
+   规则约束: 所有颜色/间距/圆角/阴影 必须走这里的 CSS 变量, 禁止硬编码
+   兼容: Element Plus Token 命名风格 + 仙女座扩展变量
+   ═══════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* ──────────────────────── 1. 品牌主色 ──────────────────────── */
+  /* 仙女座紫 (主品牌) */
+  --andromeda-purple-50:  #f5f0fa;
+  --andromeda-purple-100: #e8dcf5;
+  --andromeda-purple-200: #d4baec;
+  --andromeda-purple-300: #b78edf;
+  --andromeda-purple-400: #9B59B6;  /* 主色 */
+  --andromeda-purple-500: #8E44AD;
+  --andromeda-purple-600: #7D3C98;
+  --andromeda-purple-700: #6C3483;
+  --andromeda-purple-800: #4A235A;
+  --andromeda-purple-900: #2E1447;
+
+  /* 冰山蓝 (辅助品牌) */
+  --iceberg-blue-50:  #eef5fb;
+  --iceberg-blue-100: #d4e6f7;
+  --iceberg-blue-200: #a8cef0;
+  --iceberg-blue-300: #6FA8DC;
+  --iceberg-blue-400: #2E86DE;  /* 主色 */
+  --iceberg-blue-500: #1B4F72;
+  --iceberg-blue-600: #154360;
+  --iceberg-blue-700: #0E3053;
+  --iceberg-blue-800: #082243;
+  --iceberg-blue-900: #03152F;
+
+  /* 深空底色 (仙女座星系) */
+  --andromeda-deep:  #0B1F3A;
+  --andromeda-mid:   #162844;
+  --andromeda-soft:  rgba(155, 89, 182, 0.12);
+  --iceberg-soft:    rgba(46, 134, 222, 0.10);
+
+  /* ──────────────────────── 2. 语义色 ──────────────────────── */
+  /* 成功 */
+  --mtscos-success-50:  #eafaf1;
+  --mtscos-success-100: #d5f4e3;
+  --mtscos-success-500: #10B981;  /* 主 */
+  --mtscos-success-600: #059669;
+  --mtscos-success-700: #047857;
+
+  /* 警告 */
+  --mtscos-warning-50:  #fef9e7;
+  --mtscos-warning-400: #F59E0B;
+  --mtscos-warning-500: #D68910;  /* 主 */
+
+  /* 危险 */
+  --mtscos-danger-50:  #fdedec;
+  --mtscos-danger-400: #ef4444;
+  --mtscos-danger-500: #C0392B;  /* 主 */
+  --mtscos-danger-600: #922B21;
+
+  /* 信息 */
+  --mtscos-info-400:   #3498DB;
+  --mtscos-info-500:   #2E86DE;  /* 同冰山蓝主 */
+
+  /* ──────────────────────── 3. 中性色 (灰阶) ──────────────────────── */
+  --neutral-50:  #F8FAFC;
+  --neutral-100: #F1F5F9;
+  --neutral-200: #E2E8F0;
+  --neutral-300: #CBD5E1;
+  --neutral-400: #94A3B8;
+  --neutral-500: #64748B;
+  --neutral-600: #475569;
+  --neutral-700: #334155;
+  --neutral-800: #1E293B;
+  --neutral-900: #0F172A;
+
+  /* ──────────────────────── 4. 背景色 ──────────────────────── */
+  --mtscos-bg-page:    var(--neutral-50);       /* 页面底 */
+  --mtscos-bg-card:    #FFFFFF;                 /* 卡片底 */
+  --mtscos-bg-card-alt: var(--neutral-100);     /* 次级卡片 */
+  --mtscos-bg-overlay:  rgba(15, 23, 42, 0.5);  /* 遮罩 */
+
+  /* ──────────────────────── 5. 文字色 ──────────────────────── */
+  --mtscos-text-primary:   var(--neutral-900);
+  --mtscos-text-secondary: var(--neutral-500);
+  --mtscos-text-muted:     var(--neutral-400);
+  --mtscos-text-inverse:   #FFFFFF;
+
+  /* ──────────────────────── 6. 边框色 ──────────────────────── */
+  --mtscos-border:         var(--neutral-200);
+  --mtscos-border-light:   var(--neutral-100);
+  --mtscos-border-focus:   var(--andromeda-purple-400);
+
+  /* ──────────────────────── 7. 字体系统 ──────────────────────── */
+  --mtscos-font-sans:    -apple-system, BlinkMacSystemFont, "PingFang SC",
+                         "Microsoft YaHei", "Segoe UI", Roboto, sans-serif;
+  --mtscos-font-mono:    "JetBrains Mono", "SF Mono", Menlo, Monaco, Consolas, monospace;
+  --mtscos-font-size-xs: 0.75rem;   /* 12px */
+  --mtscos-font-size-sm: 0.875rem;  /* 14px */
+  --mtscos-font-size-base:1rem;     /* 16px */
+  --mtscos-font-size-lg: 1.125rem;  /* 18px */
+  --mtscos-font-size-xl: 1.25rem;   /* 20px */
+  --mtscos-font-size-2xl: 1.5rem;   /* 24px */
+  --mtscos-font-size-3xl: 1.875rem; /* 30px */
+
+  /* ──────────────────────── 8. 间距系统 (4px 栅格) ──────────────────────── */
+  --space-1: 0.25rem;   /* 4px  */
+  --space-2: 0.5rem;    /* 8px  */
+  --space-3: 0.75rem;   /* 12px */
+  --space-4: 1rem;      /* 16px */
+  --space-5: 1.25rem;   /* 20px */
+  --space-6: 1.5rem;    /* 24px */
+  --space-8: 2rem;      /* 32px */
+  --space-10: 2.5rem;   /* 40px */
+  --space-12: 3rem;     /* 48px */
+  --space-16: 4rem;     /* 64px */
+
+  /* ──────────────────────── 9. 圆角等级 ──────────────────────── */
+  --radius-xs: 0.25rem;  /* 4px  */
+  --radius-sm: 0.375rem; /* 6px  */
+  --radius-md: 0.5rem;   /* 8px  */
+  --radius-lg: 0.75rem;  /* 12px */
+  --radius-xl: 1rem;     /* 16px */
+  --radius-2xl: 1.5rem;  /* 24px */
+  --radius-full: 9999px;
+
+  /* ──────────────────────── 10. 阴影层级 ──────────────────────── */
+  --shadow-xs:  0 1px 2px rgba(15,23,42,0.05);
+  --shadow-sm:  0 1px 3px rgba(15,23,42,0.08), 0 1px 2px rgba(15,23,42,0.06);
+  --shadow-md:  0 4px 6px -1px rgba(15,23,42,0.08), 0 2px 4px -1px rgba(15,23,42,0.04);
+  --shadow-lg:  0 10px 15px -3px rgba(15,23,42,0.10), 0 4px 6px -2px rgba(15,23,42,0.03);
+  --shadow-xl:  0 20px 25px -5px rgba(15,23,42,0.12), 0 10px 10px -5px rgba(15,23,42,0.04);
+  --shadow-purple-glow: 0 0 20px rgba(155, 89, 182, 0.25);
+  --shadow-blue-glow:   0 0 16px rgba(46, 134, 222, 0.22);
+
+  /* ──────────────────────── 11. 过渡动画 ──────────────────────── */
+  --ease-out:   cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out:cubic-bezier(0.45, 0, 0.55, 1);
+  --duration-fast: 150ms;
+  --duration-base: 250ms;
+  --duration-slow: 400ms;
+
+  /* ──────────────────────── 12. 组件级派生变量 ──────────────────────── */
+  --mtscos-primary-base:    var(--andromeda-purple-400);
+  --mtscos-primary-soft:    var(--andromeda-soft);
+  --mtscos-secondary-base:  var(--iceberg-blue-400);
+  --mtscos-secondary-soft:  var(--iceberg-soft);
+  --mtscos-success-base:    var(--mtscos-success-500);
+  --mtscos-warning-base:     var(--mtscos-warning-500);
+  --mtscos-danger-base:     var(--mtscos-danger-500);
+}
+
+/* ──────────────────────── 13. 仙女座渐变工具类 ──────────────────────── */
+.andromeda-gradient {
+  background: linear-gradient(135deg,
+    var(--andromeda-purple-400) 0%,
+    var(--iceberg-blue-400) 60%,
+    var(--andromeda-deep) 100%);
+}
+
+.andromeda-gradient-soft {
+  background: linear-gradient(135deg,
+    rgba(155, 89, 182, 0.10) 0%,
+    rgba(46, 134, 222, 0.08) 100%);
+}
+
+.andromeda-glow {
+  box-shadow: var(--shadow-purple-glow);
+}
+
+/* ──────────────────────── 14. 按钮组件样式 ──────────────────────── */
+.btn-andromeda {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-5);
+  border-radius: var(--radius-md);
+  font-size: var(--mtscos-font-size-sm);
+  font-weight: 600;
+  color: var(--mtscos-text-inverse);
+  background: linear-gradient(135deg,
+    var(--andromeda-purple-400),
+    var(--iceberg-blue-400));
+  border: none;
+  cursor: pointer;
+  transition: transform var(--duration-fast) var(--ease-out),
+              box-shadow var(--duration-base) var(--ease-out),
+              filter var(--duration-fast) var(--ease-out);
+  text-decoration: none;
+  letter-spacing: 0.02em;
+}
+.btn-andromeda:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-purple-glow);
+  filter: brightness(1.05);
+}
+.btn-andromeda:active {
+  transform: translateY(0);
+  filter: brightness(0.95);
+}
+.btn-andromeda:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  font-size: var(--mtscos-font-size-sm);
+  font-weight: 500;
+  color: var(--mtscos-text-secondary);
+  background: transparent;
+  border: 1px solid var(--mtscos-border);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+.btn-ghost:hover {
+  color: var(--andromeda-purple-500);
+  border-color: var(--andromeda-purple-300);
+  background: var(--andromeda-soft);
+}
+
+/* ──────────────────────── 15. 卡片组件样式 ──────────────────────── */
+.card-andromeda {
+  background: var(--mtscos-bg-card);
+  border: 1px solid var(--mtscos-border-light);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  transition: box-shadow var(--duration-base) var(--ease-out),
+              border-color var(--duration-base) var(--ease-out),
+              transform var(--duration-base) var(--ease-out);
+}
+.card-andromeda:hover {
+  box-shadow: var(--shadow-md);
+  border-color: var(--andromeda-purple-200);
+}
+
+.card-iceberg {
+  background: var(--mtscos-bg-card);
+  border: 1px solid var(--iceberg-blue-200);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  transition: box-shadow var(--duration-base) var(--ease-out),
+              border-color var(--duration-base) var(--ease-out);
+}
+.card-iceberg:hover {
+  box-shadow: var(--shadow-blue-glow);
+  border-color: var(--iceberg-blue-300);
+}
+
+/* ──────────────────────── 16. Tag / Badge 组件 ──────────────────────── */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 2px var(--space-3);
+  border-radius: var(--radius-full);
+  font-size: var(--mtscos-font-size-xs);
+  font-weight: 600;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+.tag-purple {
+  background: var(--andromeda-soft);
+  color: var(--andromeda-purple-500);
+  border: 1px solid var(--andromeda-purple-200);
+}
+.tag-blue {
+  background: var(--iceberg-soft);
+  color: var(--iceberg-blue-500);
+  border: 1px solid var(--iceberg-blue-200);
+}
+.tag-green {
+  background: var(--mtscos-success-50);
+  color: var(--mtscos-success-700);
+  border: 1px solid var(--mtscos-success-500);
+}
+.tag-amber {
+  background: var(--mtscos-warning-50);
+  color: var(--mtscos-warning-500);
+  border: 1px solid var(--mtscos-warning-400);
+}
+.tag-red {
+  background: var(--mtscos-danger-50);
+  color: var(--mtscos-danger-500);
+  border: 1px solid var(--mtscos-danger-500);
+}
+
+/* ──────────────────────── 17. 输入框组件 ──────────────────────── */
+.input-andromeda {
+  width: 100%;
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--mtscos-font-size-sm);
+  font-family: var(--mtscos-font-sans);
+  color: var(--mtscos-text-primary);
+  background: var(--mtscos-bg-card);
+  border: 1px solid var(--mtscos-border);
+  border-radius: var(--radius-md);
+  transition: border-color var(--duration-fast) var(--ease-out),
+              box-shadow var(--duration-fast) var(--ease-out);
+  outline: none;
+}
+.input-andromeda::placeholder {
+  color: var(--mtscos-text-muted);
+}
+.input-andromeda:focus {
+  border-color: var(--andromeda-purple-400);
+  box-shadow: 0 0 0 3px var(--andromeda-soft);
+}
+
+/* ──────────────────────── 18. 状态圆点 ──────────────────────── */
+.status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  animation: pulse-dot 1.5s var(--ease-in-out) infinite;
+}
+.status-dot.green  { background: var(--mtscos-success-500); box-shadow: 0 0 6px var(--mtscos-success-500); }
+.status-dot.amber  { background: var(--mtscos-warning-400);  box-shadow: 0 0 6px var(--mtscos-warning-400); }
+.status-dot.red    { background: var(--mtscos-danger-500);  box-shadow: 0 0 6px var(--mtscos-danger-500); }
+.status-dot.purple { background: var(--andromeda-purple-400); box-shadow: 0 0 6px var(--andromeda-purple-400); }
+.status-dot.blue   { background: var(--iceberg-blue-400);    box-shadow: 0 0 6px var(--iceberg-blue-400); }
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.7); }
+}
+
+/* ──────────────────────── 19. 仙女座星球 Orb 动画 ──────────────────────── */
+.andromeda-orb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--andromeda-gradient);
+  box-shadow: var(--shadow-purple-glow);
+  animation: orb-pulse 3s var(--ease-in-out) infinite;
+}
+@keyframes orb-pulse {
+  0%, 100% { box-shadow: 0 0 10px rgba(155,89,182,0.4); }
+  50% { box-shadow: 0 0 18px rgba(46,134,222,0.6), 0 0 26px rgba(155,89,182,0.3); }
+}
+
+/* ──────────────────────── 20. 玻璃拟态工具类 ──────────────────────── */
+.glass {
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: saturate(180%) blur(16px);
+  -webkit-backdrop-filter: saturate(180%) blur(16px);
+  border: 1px solid var(--mtscos-border-light);
+}
+.glass-dark {
+  background: rgba(11, 31, 58, 0.6);
+  backdrop-filter: saturate(180%) blur(16px);
+  -webkit-backdrop-filter: saturate(180%) blur(16px);
+  border: 1px solid rgba(155, 89, 182, 0.2);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   版本: v1.0.0
+   生效日期: 2026-10-09
+   规则约束: 所有模板/组件颜色必须从此文件引用, 禁止硬编码 HEX/RGB
+   ═══════════════════════════════════════════════════════════════════════ */

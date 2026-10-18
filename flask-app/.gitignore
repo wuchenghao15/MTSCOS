@@ -48,6 +48,8 @@ __pycache__/
 static/css/*.css
 !static/css/andromeda-ice-theme.css
 !static/css/mtscos_design_tokens.css
+!static/css/andromeda_theme.css
+!static/css/sa_proprietary.css
 static/js/*.js
 !static/js/andromeda-beautify.js
 
