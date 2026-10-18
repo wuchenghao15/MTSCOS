@@ -176,7 +176,7 @@ function fmtAge(sec){
 }
 async function load(){
   try{
-    const r = await fetch('/api/iceberg/health');
+    const r = await fetch('/andromeda/api/iceberg/health');
     const j = await r.json(); const d = j.data;
 
     // KPI
