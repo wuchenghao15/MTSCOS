@@ -1441,6 +1441,30 @@ def update_session_title(sid):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+@chat_local_bp.route('/api/local-chat/session/<sid>', methods=['DELETE'])
+@_login_required
+def delete_session(sid):
+    """删除会话: 级联清 messages/actions/inflection_points, 记录删除动作 (flow_chat_enhance_20261019)"""
+    u = _get_user()
+    try:
+        conn = _db()
+        owner = conn.execute(
+            "SELECT user_id, username FROM chat_sessions WHERE session_id=?", (sid,)
+        ).fetchone()
+        if not owner or (owner['user_id'] != u['user_id'] and not _is_sa(u)):
+            conn.close()
+            return jsonify({'success': False, 'error': '无权删除'}), 403
+        conn.execute("DELETE FROM chat_messages WHERE session_id=?", (sid,))
+        conn.execute("DELETE FROM chat_actions WHERE session_id=?", (sid,))
+        conn.execute("DELETE FROM chat_inflection_points WHERE session_id=?", (sid,))
+        conn.execute("DELETE FROM chat_sessions WHERE session_id=?", (sid,))
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True, 'deleted': sid})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @chat_local_bp.route('/api/local-chat/sessions', methods=['GET'])
 @_login_required
 def list_sessions():
