@@ -53,16 +53,23 @@ if [ "$1" == "--no-restart" ]; then
   exit 0
 fi
 
-# 3) 服务器: git pull → 重启 Flask (NODE_ROLE=SERVER)
+# 3) 服务器: git pull → 重启 Flask
+#    v23.1 (flow_server_flask_keepalive_20261018): Flask 由 launchd 守护
+#    (com.mtscos.flask-server, KeepAlive) — 重启用 kickstart -k, 不再 pkill+nohup
 SERVER_IP=$(ssh -G $SERVER_HOST 2>/dev/null | awk '/^hostname /{print $2}')
 echo "[SYNC] 服务器 $SERVER_HOST($SERVER_IP): pull + 重启 ..." | tee -a $LOG
 ssh -o ConnectTimeout=15 -o BatchMode=yes $SERVER_HOST "
   cd ~/MTSCOS_AI_Project && git pull origin main 2>&1 | tail -2
-  pkill -9 -f modular_start.py 2>/dev/null || true; sleep 1
-  cd $SERVER_APP
-  export NODE_ROLE=SERVER VIKEY_BACKEND=sim
-  nohup /usr/bin/python3 -u modular_start.py >> /tmp/flask_launchd.log 2>&1 &
-  disown
+  if launchctl print gui/\$(id -u)/com.mtscos.flask-server >/dev/null 2>&1; then
+    launchctl kickstart -k gui/\$(id -u)/com.mtscos.flask-server && echo '[launchd] Flask kickstart 重启 (KeepAlive 守护)'
+  else
+    echo '[legacy] 无 launchd 守护, nohup 直启 (建议部署 com.mtscos.flask-server.plist)'
+    pkill -9 -f modular_start.py 2>/dev/null || true; sleep 1
+    cd $SERVER_APP
+    export NODE_ROLE=SERVER VIKEY_BACKEND=sim
+    nohup /usr/bin/python3 -u modular_start.py >> /tmp/flask_launchd.log 2>&1 &
+    disown
+  fi
 " && echo "[SYNC] ✅ 服务器重启指令已下发" | tee -a $LOG
 
 # 4) 双端健康检查 (经 Tailscale 从开发机探测 — 真实跨机链路)
