@@ -1359,15 +1359,11 @@ def ai_entry():
       - 已登录 → 正常渲染 + 每日 token 赠送"""
     from flask import render_template, redirect
     uid = session.get('user_id')
-    sa_ok = _is_sa()
-    if (not uid or uid == 'guest') and sa_ok:
-        # 双密钥已插 → 自动认证 SA session
-        _ensure_daily_grant(session.get('user_id') or 5, session.get('username') or 'wuchenghao15')
-        return render_template('local_chat.html')
     if not uid or uid == 'guest':
-        # 未登录 → 强制引导登录/注册 (登录后 next 回跳)
+        # 未登录 → 强制引导登录/注册 (flow_login_guide_20261018 SA 指令:
+        # sim 后端不得给匿名访客豁免; SA 双密钥自动认证会在 middleware 层写入 uid)
         return redirect('/auth/login?next=%2Fai', code=302)
-    # 已登录
+    # 已登录 (含双密钥自动认证的 SA session)
     u = _get_user()
     _ensure_daily_grant(u['user_id'], u['username'])
     return render_template('local_chat.html')
