@@ -18,6 +18,7 @@
   var NAV_ITEMS = [
     { group:'🏠 入口', items:[
       { id:'home',        label:'冰山主页',        href:'/index',                        icon:'🏔️' },
+      { id:'hub',         label:'仙女座总枢纽',    href:'/andromeda/hub',                icon:'🪐' },
       { id:'ai-chat',     label:'AI 聊天入口',     href:'/ai',                           icon:'💬' },
       { id:'dashboard',   label:'仙女座仪表盘',    href:'/andromeda/dashboard',          icon:'🎛️' },
     ]},
