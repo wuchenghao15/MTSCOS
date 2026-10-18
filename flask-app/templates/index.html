@@ -6,7 +6,6 @@
 <title>冰山 · MTSCOS AI | Iceberg System for Andromeda</title>
 <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='img/favicon-iceberg.svg') }}">
 <link rel="alternate icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/common.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/andromeda_theme.css') }}">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <style>
@@ -243,19 +242,7 @@ body .uni-main { margin-left: 0 !important; width: 100% !important; }
 .mts-eco .eco-item:hover .eco-num {
     filter: brightness(1.1);
 }
-/* 待修复徽章: 有 PENDING 诉求时转红 (含 smart_mount 主管离线单) */
-.mts-eco .eco-repair.is-alert {
-    background: rgba(239,68,68,.10);
-    border-color: rgba(239,68,68,.35);
-}
-.mts-eco .eco-repair.is-alert .eco-icon {
-    background: rgba(239,68,68,.18);
-    color: #DC2626;
-}
-.mts-eco .eco-repair.is-alert .eco-num {
-    background: linear-gradient(135deg,#EF4444,#F87171);
-    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-}
+/* 待修复徽章已移除 (flow_homepage_fix_20261018 SA 指令) */
 
 /* ── 2. Footer 升级: 渐变分隔线 + 品牌字 + 分层 ── */
 .mts-footer {
@@ -803,25 +790,10 @@ body {
             <span class="eco-num" data-evo-field="evo_research_started">{{ andromeda_state.evo_research_started | default(0) }}</span>
             <span class="eco-label">自探研</span>
         </span>
-        <span class="eco-item eco-repair{% if (andromeda_state.evo_repair_pending | default(0)) > 0 %} is-alert{% endif %}" title="待拉起/修复的 daemon 诉求 (建议池 DAEMON_REPAIR PENDING); 含 smart_mount 主管离线单">
-            <i class="eco-icon fas fa-wrench"></i>
-            <span class="eco-num" data-evo-field="evo_repair_pending">{{ andromeda_state.evo_repair_pending | default(0) }}</span>
-            <span class="eco-label">待修复</span>
-        </span>
     </div>
-    <script data-repair-pending="{{ andromeda_state.evo_repair_pending | default(0) }}">
+    <script>
     (function(){
-        var _mtRepairPending = parseInt(document.currentScript.dataset.repairPending || '0', 10);
-        function paint(n){
-            document.querySelectorAll('.mts-eco .eco-repair').forEach(function(el){
-                el.classList.toggle('is-alert', (n || 0) > 0);
-            });
-        }
-        paint(_mtRepairPending);
-        document.addEventListener('andromeda:state', function(e){
-            if (e && e.detail) paint(e.detail.evo_repair_pending || 0);
-        });
-        // health-fill width: data-width → inline style
+        // health-fill width: data-width → inline style (待修复警示逻辑已移除)
         document.addEventListener('DOMContentLoaded', function(){
             var hf = document.querySelector('.health-fill');
             if (hf && hf.dataset.width) hf.style.width = hf.dataset.width + '%';
