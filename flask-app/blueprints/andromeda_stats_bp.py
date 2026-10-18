@@ -78,7 +78,7 @@ GAP_REGISTRY = [
     ("mt_edu_sync_content", "教辅内容库(K12/高等/成人/文科)", "补建表并触发教辅内容同步"),
     ("mt_arduino_sync_log", "Arduino教程同步日志", "补建表并接入 sys_arduino_sync 落库"),
     ("mt_ai_eigenflux_invite_log", "EigenFlux邀请记录", "激活 sys_auto_hire 邀请写入"),
-    ("mt_eigenflux_messages", "EigenFlux专家交流消息", "补建表并接入 sys_eigenflux_network 落库"),
+    ("mt_ai_eigenflux_messages", "EigenFlux专家交流消息", "补建表并接入 sys_eigenflux_network 落库"),
     ("mt_local_ai_token_savings", "本地推理token节省日汇总", "补建表并启用 sys_local_inference 日汇总"),
     ("mt_arduino_detected_devices", "Arduino设备清单", "插入已检测设备快照或触发一次真实扫描"),
 ]
@@ -189,12 +189,16 @@ def _collect_teams(c):
             pass
     if _table_exists(c, "mt_daemon_registry"):
         try:
-            cur = c.execute("SELECT process_name, duty, status, restart_count, last_heartbeat, source "
-                            "FROM mt_daemon_registry ORDER BY process_name")
+            # schema 自适应: source 列部分库缺失, 缺则不查 (flow_gap_fill_20261018)
+            _dcols = _cols(c, "mt_daemon_registry")
+            _src_sel = ", source" if "source" in _dcols else ""
+            cur = c.execute("SELECT process_name, duty, status, restart_count, last_heartbeat"
+                            + _src_sel + " FROM mt_daemon_registry ORDER BY process_name")
             for r in cur.fetchall():
                 teams["daemons"].append({"name": r[0], "duty": r[1], "status": r[2],
-                                         "restart_count": r[3], "last_heartbeat": r[4], "source": r[5]})
-                if str(r[2] or "").upper() in ("RUNNING", "OK", "ACTIVE"):
+                                         "restart_count": r[3], "last_heartbeat": r[4],
+                                         "source": r[5] if _src_sel else ""})
+                if str(r[2] or "").upper() in ("RUNNING", "OK", "ACTIVE", "ALIVE"):
                     teams["daemons_running"] += 1
         except Exception:
             pass
