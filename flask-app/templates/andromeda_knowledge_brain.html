@@ -533,7 +533,7 @@ if(document.body){document.body.insertBefore(side,document.body.firstChild);docu
 let state = { domain: '', difficulty: '', platform: '', page: 1 };
 
 async function loadStats() {
-  const r = await fetch('/api/knowledge_brain/stats');
+  const r = await fetch('/andromeda/api/knowledge_brain/stats');
   const j = await r.json();
   const d = j.data;
   document.getElementById('stat-total').textContent = d.total_knowledge;
@@ -548,7 +548,7 @@ async function search() {
     difficulty: state.difficulty, platform: state.platform,
     page: state.page
   });
-  const r = await fetch('/api/knowledge_brain/search?'+params);
+  const r = await fetch('/andromeda/api/knowledge_brain/search?'+params);
   const j = await r.json();
   const d = j.data;
 
@@ -607,7 +607,7 @@ document.getElementById('kw').addEventListener('keydown', e => {
 let personasMap = {};
 async function loadPersonas() {
   try {
-    const r = await fetch('/api/knowledge_brain/personas');
+    const r = await fetch('/andromeda/api/knowledge_brain/personas');
     const j = await r.json();
     const grid = document.getElementById('personasGrid');
     const avatarMap = { legend:'👑', professor:'🎓', expert:'💡', ai_delegate:'🤖' };
@@ -653,7 +653,7 @@ async function askPersona() {
   btn.disabled = true;
   ans.innerHTML = '<div class="loading">🤔 正在请 AI 人格思考中 (Ollama qwen2.5:7b)...</div>';
   try {
-    const r = await fetch('/api/knowledge_brain/ask', {
+    const r = await fetch('/andromeda/api/knowledge_brain/ask', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ persona_id: parseInt(pid), question: q })

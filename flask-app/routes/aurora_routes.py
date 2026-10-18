@@ -21,9 +21,9 @@ from app.middlewares.system_container import system_container
 
 aurora_bp = Blueprint('aurora', __name__)
 
-# 页面级: guest (登录态可见)
+# 页面级: login (数据 API 均需登录, 页面匿名渲染会 401 坏页 → 统一登录引导)
 @aurora_bp.route('/aurora/center', methods=['GET'])
-@system_container(require_auth='guest')
+@system_container(require_auth='login')
 def aurora_center():
     return render_template('andromeda_aurora_center.html', username=session.get('username','wuchenghao15'))
 
