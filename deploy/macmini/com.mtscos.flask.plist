@@ -69,8 +69,12 @@ exec /usr/bin/python3 -B modular_start.py
         <true/>
     </dict>
     
+    <!-- flow_full_enhance_20261019: 10→60 防 Flask :8888 双实例 bind 竞争
+         Flask 启动约 15s 才完成 bind, ThrottleInterval=10 (比旧 15s 更积极)
+         反而放大了竞态: 上一实例仍在启动中就被再次拉起 → Address already in use。
+         60s 保证 bind 窗口完全过去, 且脚本内已有 kill -9 :8888 清理兜底。 -->
     <key>ThrottleInterval</key>
-    <integer>10</integer>
+    <integer>60</integer>
     
     <key>StandardOutPath</key>
     <string>/tmp/mtscos_flask.log</string>

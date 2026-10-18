@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="andromeda">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>拐点全局统计 | MTSCOS AI</title>
+<style>
+  :root{
+    --mtscos-primary-base:#06b6d4;
+    --mtscos-secondary-base:#a855f7;
+    --bg:#0B0A1E;
+    --panel:rgba(255,255,255,.04);
+    --panel-hover:rgba(255,255,255,.08);
+    --line:rgba(6,182,212,.25);
+    --text:#f8fafc;
+    --text-dim:rgba(248,250,252,.65);
+    --text-faint:rgba(248,250,252,.35);
+    --green:#6ee7b7;
+    --amber:#fbbf24;
+    --red:#f87171;
+    --purple:#a855f7;
+    --radius:16px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{min-height:100vh;font-family:-apple-system,"SF Pro","PingFang SC","Helvetica Neue",sans-serif;background:var(--bg);color:var(--text);padding:28px clamp(16px,4vw,48px)}
+  .wrap{max-width:960px;margin:0 auto}
+
+  .hdr{display:flex;align-items:center;gap:14px;margin-bottom:22px;flex-wrap:wrap}
+  .hdr .logo{width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,var(--mtscos-primary-base),var(--mtscos-secondary-base));display:flex;align-items:center;justify-content:center;font-size:20px}
+  .hdr h1{font-size:18px;font-weight:700;letter-spacing:.5px}
+  .hdr .sub{font-size:11px;color:var(--text-dim);margin-top:2px}
+  .hdr .spacer{flex:1}
+  .hdr-btn{border:1px solid rgba(255,255,255,.12);background:transparent;color:var(--text-dim);border-radius:8px;cursor:pointer;font-size:12px;padding:6px 12px;text-decoration:none;transition:all .15s;display:inline-flex;align-items:center;gap:6px}
+  .hdr-btn:hover{color:var(--mtscos-primary-base);border-color:var(--mtscos-primary-base)}
+  .hdr-btn.on{color:var(--mtscos-primary-base);border-color:var(--mtscos-primary-base);background:rgba(6,182,212,.1)}
+
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:22px}
+  .kpi{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px}
+  .kpi .num{font-size:26px;font-weight:700;background:linear-gradient(135deg,var(--mtscos-primary-base),var(--mtscos-secondary-base));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+  .kpi .lbl{font-size:11px;color:var(--text-dim);margin-top:4px}
+
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px;margin-bottom:18px}
+  .card h2{font-size:13px;font-weight:600;color:var(--text-dim);margin-bottom:14px;letter-spacing:.5px}
+
+  .trow{display:flex;align-items:center;gap:10px;margin-bottom:10px;font-size:12px}
+  .trow .tag{flex-shrink:0;padding:2px 8px;border-radius:10px;font-size:10px;border:1px solid var(--line)}
+  .trow .bar-wrap{flex:1;height:10px;background:rgba(255,255,255,.05);border-radius:5px;overflow:hidden}
+  .trow .bar{height:100%;border-radius:5px;background:linear-gradient(90deg,var(--mtscos-primary-base),var(--mtscos-secondary-base));transition:width .5s ease}
+  .trow .cnt{flex-shrink:0;color:var(--text-dim);min-width:52px;text-align:right}
+
+  .trend{display:flex;align-items:flex-end;gap:6px;height:110px;padding-top:6px}
+  .tcol{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;height:100%;justify-content:flex-end}
+  .tcol .bar{width:100%;max-width:34px;border-radius:4px 4px 0 0;background:linear-gradient(180deg,var(--mtscos-primary-base),rgba(168,85,247,.4));min-height:2px;transition:height .5s ease}
+  .tcol .v{font-size:9px;color:var(--text-faint)}
+  .tcol .d{font-size:9px;color:var(--text-faint);white-space:nowrap}
+  .trend-empty{color:var(--text-faint);font-size:12px;padding:30px 0;text-align:center;width:100%}
+
+  .sitem{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--panel);border:1px solid var(--line);border-radius:12px;margin-bottom:8px;font-size:12px;cursor:pointer;transition:all .15s}
+  .sitem:hover{border-color:var(--mtscos-primary-base);background:var(--panel-hover)}
+  .sitem .emoji{flex-shrink:0;font-size:15px}
+  .sitem .st{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+  .sitem .sc{flex-shrink:0;color:var(--mtscos-primary-base);font-weight:700}
+  .sitem .sa{flex-shrink:0;font-size:10px;color:var(--text-faint)}
+
+  .empty{color:var(--text-faint);font-size:13px;text-align:center;padding:60px 0;line-height:2}
+  .empty a{color:var(--mtscos-primary-base)}
+  @keyframes fadein{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+  .fade{animation:fadein .35s ease}
+</style>
+</head>
+<body>
+<div class="wrap fade">
+  <div class="hdr">
+    <div class="logo">📊</div>
+    <div>
+      <h1>拐点全局统计</h1>
+      <div class="sub">{{ username }} · 发散思维引擎 Divergent Thinking Analytics</div>
+    </div>
+    <div class="spacer"></div>
+    {% if is_sa %}
+    <button class="hdr-btn" id="scopeSelfBtn" onclick="setScope('self')">我的</button>
+    <button class="hdr-btn" id="scopeAllBtn" onclick="setScope('all')">全部用户 (SA)</button>
+    {% endif %}
+    <a class="hdr-btn" href="/local-chat">← 返回聊天</a>
+  </div>
+
+  <div class="kpis" id="kpis"></div>
+
+  <div class="card">
+    <h2>拐点类型分布</h2>
+    <div id="byType"><div class="trend-empty">加载中…</div></div>
+  </div>
+
+  <div class="card">
+    <h2>近 14 天趋势</h2>
+    <div class="trend" id="trend"><div class="trend-empty">加载中…</div></div>
+  </div>
+
+  <div class="card">
+    <h2>拐点最多的会话 TOP 10</h2>
+    <div id="topSessions"><div class="trend-empty">加载中…</div></div>
+  </div>
+</div>
+
+<script>
+const API_BASE = '/api/local-chat';
+const TYPE_LABEL = {diverge:'🧭 发散', converge:'🎯 收敛', breakthrough:'💡 灵感爆发',
+                    question:'❓ 深度追问', metaphor:'🌈 隐喻', contradiction:'⚡ 矛盾碰撞'};
+const TYPE_COLOR = {diverge:'#fbbf24', converge:'#06b6d4', breakthrough:'#6ee7b7',
+                    question:'#f87171', metaphor:'#a855f7', contradiction:'#f472b6'};
+let scope = 'self';
+
+function esc(s){const d=document.createElement('div');d.textContent=s==null?'':String(s);return d.innerHTML;}
+
+async function loadStats(){
+  const qs = scope === 'all' ? '?scope=all' : '';
+  let d = null;
+  try{
+    const r = await fetch(`${API_BASE}/inflection-stats${qs}`);
+    if(r.status === 403){ alert('仅 SA 可查看全部用户数据'); setScope('self'); return; }
+    if(r.ok) d = await r.json();
+  }catch(_){}
+  if(!d || !d.success){ renderEmpty('统计加载失败'); return; }
+  renderKpis(d.totals);
+  renderByType(d.by_type);
+  renderTrend(d.daily);
+  renderTop(d.top_sessions);
+}
+
+function renderEmpty(msg){
+  document.getElementById('kpis').innerHTML = '';
+  ['byType','trend','topSessions'].forEach(id =>
+    document.getElementById(id).innerHTML = `<div class="trend-empty">${esc(msg)}</div>`);
+}
+
+function renderKpis(t){
+  t = t || {};
+  document.getElementById('kpis').innerHTML = `
+    <div class="kpi"><div class="num">${t.total ?? 0}</div><div class="lbl">总拐点</div></div>
+    <div class="kpi"><div class="num">${t.sessions ?? 0}</div><div class="lbl">覆盖会话</div></div>
+    <div class="kpi"><div class="num">${t.avg_quality ?? 0}</div><div class="lbl">质量均值</div></div>
+    <div class="kpi"><div class="num">${Math.round((t.diverge_ratio ?? 0) * 100)}%</div><div class="lbl">发散占比</div></div>
+    <div class="kpi"><div class="num">${t.fed_cnt ?? 0}</div><div class="lbl">已投喂脑库</div></div>`;
+}
+
+function renderByType(rows){
+  const el = document.getElementById('byType');
+  rows = rows || [];
+  if(!rows.length){ el.innerHTML = '<div class="trend-empty">还没有拐点 — 带「如果/想象/为什么」的对话会自动产生拐点</div>'; return; }
+  const max = Math.max(...rows.map(r => r.cnt), 1);
+  el.innerHTML = rows.map(r => {
+    const label = TYPE_LABEL[r.type] || r.type;
+    const color = TYPE_COLOR[r.type] || '#06b6d4';
+    return `<div class="trow">
+      <span class="tag" style="color:${color};border-color:${color}44">${label}</span>
+      <div class="bar-wrap"><div class="bar" style="width:${Math.round(r.cnt / max * 100)}%;background:linear-gradient(90deg,${color},${color}88)"></div></div>
+      <span class="cnt">${r.cnt} 条 · Q${r.avg_q ?? '-'}</span></div>`;
+  }).join('');
+}
+
+function renderTrend(rows){
+  const el = document.getElementById('trend');
+  rows = rows || [];
+  if(!rows.length){ el.innerHTML = '<div class="trend-empty">近 14 天暂无拐点</div>'; return; }
+  const map = {}; rows.forEach(r => map[r.d] = r.cnt);
+  const days = [];
+  for(let i = 13; i >= 0; i--){
+    const dt = new Date(Date.now() - i * 86400000);
+    const key = dt.getFullYear() + '-' + String(dt.getMonth()+1).padStart(2,'0') + '-' + String(dt.getDate()).padStart(2,'0');
+    days.push({d: key, cnt: map[key] || 0});
+  }
+  const max = Math.max(...days.map(x => x.cnt), 1);
+  el.innerHTML = days.map(x => `
+    <div class="tcol" title="${x.d}: ${x.cnt} 条">
+      <span class="v">${x.cnt || ''}</span>
+      <div class="bar" style="height:${Math.round(x.cnt / max * 82)}%"></div>
+      <span class="d">${x.d.slice(5)}</span>
+    </div>`).join('');
+}
+
+function renderTop(rows){
+  const el = document.getElementById('topSessions');
+  rows = rows || [];
+  if(!rows.length){ el.innerHTML = '<div class="trend-empty">暂无会话拐点记录</div>'; return; }
+  el.innerHTML = rows.map(r => `
+    <div class="sitem" onclick="location.href='/local-chat'">
+      <span class="emoji">${esc(r.title_emoji)}</span>
+      <span class="st">${esc(r.title)}</span>
+      <span class="sa">${esc((r.last_at || '').slice(0, 16))}</span>
+      <span class="sc">${r.cnt} 拐点</span>
+    </div>`).join('');
+}
+
+function setScope(s){
+  scope = s;
+  const selfBtn = document.getElementById('scopeSelfBtn');
+  const allBtn = document.getElementById('scopeAllBtn');
+  if(selfBtn && allBtn){
+    selfBtn.classList.toggle('on', s === 'self');
+    allBtn.classList.toggle('on', s === 'all');
+  }
+  loadStats();
+}
+
+{% if is_sa %}setScope('self');{% else %}loadStats();{% endif %}
+</script>
+</body>
+</html>
