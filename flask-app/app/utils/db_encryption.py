@@ -483,7 +483,7 @@ DEFAULT_CLASSIFICATION = {
     "mt_aurora_skills": EncryptionLevel.L2_SECRET,
     "mt_release_sessions": EncryptionLevel.L2_SECRET,
     "mt_release_flags": EncryptionLevel.L2_SECRET,
-    "mt_approval_requests": EncryptionLevel.L2_SECRET,
+    "mt_approval_requests": EncryptionLevel.L1_CONFIDENTIAL,  # SA指令20261018: 授权审批数据流=机密
     # L1 机密 (冰山管理: 阈值/绑定/审计)
     "mt_iceberg_threshold_configs": EncryptionLevel.L1_CONFIDENTIAL,
     "mt_iceberg_binding_override": EncryptionLevel.L1_CONFIDENTIAL,
@@ -501,27 +501,49 @@ def classify_table(table_name: str) -> EncryptionLevel:
     优先查数据库 encryption_classification 表，其次用默认清单
     §4 默认分类: 无法识别的敏感资源默认按更高敏感等级处理, 完成分类前不得降为公开/内部
     (flow_classification_20261017: 未知表 L3 → L2_SECRET 起底; 密钥类命名强制 L0)
+    (flow_class_policy_20261018 SA 指令密级划分:
+       用户token/所有密钥/vikey双钥/SA全部数据含SA日志 → L0 极密;
+       admin数据/授权审批数据流/API端口协议触发与自动机制 → L1 机密;
+       非SA日志 → L2 秘密; 框架结构参数/版本号版权公示文档 → L4 公开)
     """
     if table_name in DEFAULT_CLASSIFICATION:
         return DEFAULT_CLASSIFICATION[table_name]
     tl = table_name.lower()
-    # SA 相关表强制 L0
-    if tl.startswith("sa_") or "vikey" in tl:
+    # ── L4 公开: 框架结构参数 / 版本号 / 版权 / 公示文档 (SA 指令 20261018) ──
+    if any(k in tl for k in ("schema", "framework", "structure", "version", "copyright",
+                             "license", "public_doc", "changelog_pub", "manifest")):
+        return EncryptionLevel.L4_PUBLIC
+    # ── L0 极密: 所有密钥/凭证/token/双钥/SA 全部数据(含 SA 日志) ──
+    if tl.startswith("sa_") or "vikey" in tl or "szu100" in tl:
         return EncryptionLevel.L0_TOP_SECRET
-    # iron_rule 相关强制 L0
     if "iron_rule" in tl:
         return EncryptionLevel.L0_TOP_SECRET
-    # 密钥/凭证类命名强制 L0 (§4 fail-closed)
-    if any(k in tl for k in ("secret", "credential", "private_key", "apikey", "api_key")):
+    if any(k in tl for k in ("secret", "credential", "private_key", "apikey", "api_key",
+                             "token", "password", "passwd", "dek", "kek", "key_",
+                             "_key", "signature", "license_key")):
         return EncryptionLevel.L0_TOP_SECRET
-    # 认证相关 L1
-    if any(k in tl for k in ("user", "auth", "session", "token", "password")):
+    # ── L1 机密: admin 数据 / 授权审批数据流 / API 端口协议触发与自动机制 ──
+    if any(k in tl for k in ("admin", "approval", "authorize", "authorization",
+                             "grant", "permission_", "rbac")):
         return EncryptionLevel.L1_CONFIDENTIAL
-    # AI/考试/题库 L2
+    if any(k in tl for k in ("api_endpoint", "api_port", "api_route", "protocol_",
+                             "trigger_", "webhook", "daemon_registry", "port_registry")):
+        return EncryptionLevel.L1_CONFIDENTIAL
+    # 仙女座内部运作内核/原理 → L1 机密 (SA 指令 20261018: 已脱敏为公开API的除外,
+    # 脱敏公开 API 走 encryption_classification 显式登记 L4)
+    if any(k in tl for k in ("andromeda", "eigenflux", "aurora", "kernel",
+                             "internals", "principle")):
+        return EncryptionLevel.L1_CONFIDENTIAL
+    # 认证相关 L1
+    if any(k in tl for k in ("auth", "session", "login")):
+        return EncryptionLevel.L1_CONFIDENTIAL
+    # ── L2 秘密: 非SA日志 / 业务数据 (AI/考试/题库) ──
     if any(k in tl for k in ("ai_", "exam", "question", "brain")):
         return EncryptionLevel.L2_SECRET
-    # 日志/配置 L3
-    if any(k in tl for k in ("log", "config", "setting")):
+    if "log" in tl:
+        return EncryptionLevel.L2_SECRET
+    # 日志/配置 L3 (非日志配置类)
+    if any(k in tl for k in ("config", "setting")):
         return EncryptionLevel.L3_INTERNAL
     # 无法识别 → 默认 L2 秘密 (受保护, 完成显式分类前不得降级)
     return EncryptionLevel.L2_SECRET
