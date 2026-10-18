@@ -3887,6 +3887,8 @@ _MT_HOTLINK_WHITELIST_PREFIXES = (
     '/neural_array_page', '/neuralhub/',
     '/theme/', '/theme_schemes',
     '/api/security/',
+    # flow_redblue_ui_20261018: 新中心页书签直达放行 (匿名 → 登录引导页, 不弹回主页)
+    '/redblue', '/error-center', '/theme-layout', '/aurora', '/empower', '/admin_app',
 )
 # API 内部白名单 — 这些 /api/ 路径即使无 Referer 或外站 Referer 也允许访问 (状态检查类)
 _MT_HOTLINK_API_ALLOW_PREFIXES = (
