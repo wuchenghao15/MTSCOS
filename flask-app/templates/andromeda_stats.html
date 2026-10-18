@@ -61,6 +61,7 @@ button:disabled{opacity:.5;cursor:not-allowed}
 .pill{background:var(--el-fill-color-light);border:1px solid var(--el-border-color);border-radius:12px;
   padding:3px 10px;font-size:12px}
 .pill.on{border-color:var(--el-color-success)}
+.pill.off-ok{border-color:var(--el-border-color);opacity:.75}
 .empty{color:var(--el-text-color-regular);text-align:center;padding:20px}
 .load-more{margin-top:10px;text-align:center}
 </style>
@@ -189,7 +190,8 @@ async function loadOverview(){
   document.getElementById('daemon-sum').textContent = `(${t.daemons_running} running)`;
   document.getElementById('daemon-list').innerHTML = t.daemons.map(d=>{
     const ok = ['RUNNING','OK','ACTIVE'].includes(String(d.status).toUpperCase());
-    return `<span class="pill${ok?' on':''}" title="${esc(d.duty||'')} · ${esc(d.status)} · restarts=${d.restart_count} · ${esc(d.last_heartbeat||'')}">${esc(d.name)}·${esc(d.status)}</span>`;
+    const tip = [d.duty, d.status, 'restarts='+d.restart_count, d.last_heartbeat, (!ok && d.stop_reason ? '停止原因: '+d.stop_reason : '')].filter(Boolean).join(' · ');
+    return `<span class="pill${ok?' on':(d.stop_reason?' off-ok':'')}" title="${esc(tip)}">${esc(d.name)}·${esc(d.status)}${(!ok && d.stop_reason)?'·✎':''}</span>`;
   }).join('') || '<span class="empty">无</span>';
   document.getElementById('expert-list').innerHTML = t.eigenflux_experts.map(e=>
     `<span class="pill${String(e.status).toUpperCase()==='ACTIVE'?' on':''}" title="${esc(e.expertise||'')} · score=${e.score??''}">${esc(e.name)}(${esc(e.expertise||'')})</span>`).join('') || '<span class="empty">无</span>';
