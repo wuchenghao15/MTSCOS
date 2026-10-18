@@ -128,7 +128,7 @@ const LAYER_COLOR = { peak:'#00f0ff', spectrum:'#a78bfa', basement:'#fbbf24' };
 const DOMAIN_COLORS = ['#00f0ff','#a78bfa','#fbbf24','#22c55e','#f472b6','#fb923c','#34d399','#e879f9','#60a5fa','#f87171'];
 
 async function load(){
-  const r = await fetch('/api/knowledge_graph/data');
+  const r = await fetch('/andromeda/api/knowledge_graph/data');
   const j = await r.json();
   const data = j.data;
   document.getElementById('sub').textContent = `${data.domain_count} 领域 · ${data.video_count} 视频 · Force-Directed Layout (D3 v7)`;
