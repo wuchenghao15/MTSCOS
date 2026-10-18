@@ -462,9 +462,10 @@ DEFAULT_CLASSIFICATION = {
     "vikey_state": EncryptionLevel.L0_TOP_SECRET,
     "sa_permission_snapshot": EncryptionLevel.L0_TOP_SECRET,
     "sa_heartbeat": EncryptionLevel.L0_TOP_SECRET,
+    # L2 秘密 (SA指令④ 20261018: 普通用户数据=秘密)
+    "users": EncryptionLevel.L2_SECRET,
+    "user_container": EncryptionLevel.L2_SECRET,
     # L1 机密
-    "users": EncryptionLevel.L1_CONFIDENTIAL,
-    "user_container": EncryptionLevel.L1_CONFIDENTIAL,
     "sessions": EncryptionLevel.L1_CONFIDENTIAL,
     # L2 秘密
     "exam_papers": EncryptionLevel.L2_SECRET,
@@ -537,8 +538,11 @@ def classify_table(table_name: str) -> EncryptionLevel:
     # 认证相关 L1
     if any(k in tl for k in ("auth", "session", "login")):
         return EncryptionLevel.L1_CONFIDENTIAL
-    # ── L2 秘密: 非SA日志 / 业务数据 (AI/考试/题库) ──
+    # ── L2 秘密: 非SA日志 / 普通用户数据 / 业务数据 (AI/考试/题库) ──
     if any(k in tl for k in ("ai_", "exam", "question", "brain")):
+        return EncryptionLevel.L2_SECRET
+    # 普通用户数据 → L2 秘密 (SA指令④ 20261018: 用户资料/容器/内容)
+    if any(k in tl for k in ("user", "profile", "account", "customer")):
         return EncryptionLevel.L2_SECRET
     if "log" in tl:
         return EncryptionLevel.L2_SECRET
