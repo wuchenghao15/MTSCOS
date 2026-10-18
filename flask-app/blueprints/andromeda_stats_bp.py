@@ -196,10 +196,14 @@ def _collect_teams(c):
             cur = c.execute("SELECT process_name, duty, status, restart_count, last_heartbeat"
                             + _src_sel + _reason_sel + " FROM mt_daemon_registry ORDER BY process_name")
             for r in cur.fetchall():
+                _i = 5
+                _src = r[_i] if _src_sel else ""
+                if _src_sel:
+                    _i += 1
+                _reason = r[_i] if _reason_sel else ""
                 teams["daemons"].append({"name": r[0], "duty": r[1], "status": r[2],
                                          "restart_count": r[3], "last_heartbeat": r[4],
-                                         "source": r[5] if _src_sel else "",
-                                         "stop_reason": r[6] if _reason_sel else ""})
+                                         "source": _src, "stop_reason": _reason})
                 if str(r[2] or "").upper() in ("RUNNING", "OK", "ACTIVE", "ALIVE"):
                     teams["daemons_running"] += 1
         except Exception:
