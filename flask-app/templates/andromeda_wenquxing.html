@@ -485,7 +485,7 @@
 
     const start = Date.now();
     try{
-      const resp = await fetch('/api/wqx/generate', {
+      const resp = await fetch('/andromeda/api/wqx/generate', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
@@ -547,7 +547,7 @@
   // ===== History =====
   async function loadHistory(){
     try{
-      const r = await fetch('/api/wqx/list?limit=15');
+      const r = await fetch('/andromeda/api/wqx/list?limit=15');
       const d = await r.json();
       if(d.code !== 0) return;
       const list = d.data || [];
@@ -569,7 +569,7 @@
       el.querySelectorAll('.wqx-hist-item').forEach(it=>{
         it.addEventListener('click', async ()=>{
           const tid = it.dataset.id;
-          const resp = await fetch(`/api/wqx/task/${tid}`);
+          const resp = await fetch(`/andromeda/api/wqx/task/${tid}`);
           const td = await resp.json();
           if(td.code === 0 && td.data){
             const r = td.data;

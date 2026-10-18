@@ -27,6 +27,7 @@
 
 from __future__ import annotations
 # [unused] import json, os, sqlite3, subprocess, sys, time, hashlib, uuid, re, threading
+import sqlite3
 from datetime import datetime
 from pathlib import Path
 # [unused] from enum import Enum, auto

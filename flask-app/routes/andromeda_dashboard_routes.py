@@ -50,6 +50,7 @@ import subprocess
 from collections import OrderedDict
 
 from flask import jsonify, render_template, request
+from app.middlewares.system_container import system_container
 
 from . import andromeda_dashboard_bp as bp
 
@@ -560,6 +561,7 @@ def collapse_theorem_page():
 
 
 @bp.route('/eigenflux_council', methods=['GET'])
+@system_container(require_auth='login')
 def eigenflux_council_page():
     """EigenFlux 专家团 + 天团矩阵 + AI 员工"""
     return render_template('andromeda_eigenflux.html')
@@ -573,6 +575,7 @@ def gray_center_page():
 
 
 @bp.route('/iceberg_meta', methods=['GET'])
+@system_container(require_auth='login')
 def iceberg_meta_page():
     """冰山元数据看板 (flow_secondary_pages_20261018: 主页nav 404 补全)"""
     return render_template('andromeda_iceberg_meta.html')
