@@ -169,6 +169,7 @@
         <span id="tokenBadge" title="Token 余额">💰 --</span>
         <span>🧠 仙女座发散</span>
         <span id="inflBadge" title="点击查看本会话拐点" onclick="showInflections()">📊 0拐点</span>
+        <a class="hdr-btn" id="statsBtn" title="拐点全局统计" href="/inflection-stats" style="text-decoration:none;display:inline-flex;align-items:center">📈</a>
         <button class="hdr-btn" id="exportBtn" title="导出为 Markdown" onclick="exportSession()">⬇️</button>
       </div>
     </div>
@@ -489,25 +490,42 @@ async function refreshInflCount(){
   updateInflBadge();
 }
 
-// AI 回复后一键发散追问
-function appendSparks(msgWrap){
+// AI 回复后一键发散追问 (flow_full_enhance_20261019: 认知画像个性化, 失败回退固定3条)
+const DEFAULT_SPARKS = [
+  {label: '🔄 换个视角再答', prompt: '换个全新的视角重新回答我刚才的问题'},
+  {label: '🪞 反过来会怎样', prompt: '如果把我刚才问题的结论反过来, 什么情况下反而成立?'},
+  {label: '🌈 用一个隐喻解释', prompt: '用一个生活中的隐喻或类比重新解释你刚才的回答'}
+];
+let sparksCache = null;
+
+async function loadSparks(){
+  if(sparksCache) return sparksCache;
+  try{
+    const r = await fetch(`${API}/sparks`);
+    if(r.ok){
+      const d = await r.json();
+      if(d.success && d.sparks && d.sparks.length){ sparksCache = d.sparks; return sparksCache; }
+    }
+  }catch(_){}
+  sparksCache = DEFAULT_SPARKS;
+  return sparksCache;
+}
+
+async function appendSparks(msgWrap){
   if(!msgWrap || msgWrap.querySelector('.spark-bar')) return;
+  const sparks = await loadSparks();
+  if(!msgWrap.isConnected || msgWrap.querySelector('.spark-bar')) return;  // 加载期间消息可能已被清空
   const bar = document.createElement('div');
   bar.className = 'spark-bar';
   bar.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;margin-top:6px';
-  const sparks = [
-    ['🔄 换个视角再答', '换个全新的视角重新回答我刚才的问题'],
-    ['🪞 反过来会怎样', '如果把我刚才问题的结论反过来, 什么情况下反而成立?'],
-    ['🌈 用一个隐喻解释', '用一个生活中的隐喻或类比重新解释你刚才的回答']
-  ];
-  for(const [label, prompt] of sparks){
+  for(const s of sparks){
     const btn = document.createElement('button');
     btn.className = 'spark';
-    btn.textContent = label;
-    btn.title = prompt;
+    btn.textContent = s.label;
+    btn.title = s.prompt;
     btn.onclick = () => {
       if(isStreaming) return;
-      $('input').value = prompt;
+      $('input').value = s.prompt;
       send();
     };
     bar.appendChild(btn);

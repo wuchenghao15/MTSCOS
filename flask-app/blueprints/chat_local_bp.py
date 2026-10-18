@@ -1492,6 +1492,132 @@ def session_inflections(sid):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+# ════════════════════════════════════════════════════════════════
+# 拐点全局统计 + Sparks 认知画像个性化 (flow_full_enhance_20261019)
+# ════════════════════════════════════════════════════════════════
+
+@chat_local_bp.route('/inflection-stats', methods=['GET'])
+@_login_required
+def inflection_stats_page():
+    """拐点全局统计页 — 跨会话趋势 + 发散度聚合 (登录即可用, SA 可切全部)"""
+    from flask import render_template
+    u = _get_user()
+    return render_template('inflection_stats.html', is_sa=_is_sa(u), username=u['username'])
+
+
+@chat_local_bp.route('/api/local-chat/inflection-stats', methods=['GET'])
+@_login_required
+def inflection_stats_api():
+    """跨会话拐点全局统计 — 按类型/日趋势/Top会话/质量聚合
+
+    权限: 默认仅本人数据; ?scope=all 且 SA → 全部用户数据, 其他用户 403"""
+    u = _get_user()
+    scope_all = (request.args.get('scope') == 'all')
+    if scope_all and not _is_sa(u):
+        return jsonify({'success': False, 'error': 'perm_denied', 'message': '仅 SA 可查看全部'}), 403
+    where = '1=1' if scope_all else 'user_id=?'
+    params = [] if scope_all else [u['user_id']]
+    try:
+        conn = _db()
+        totals = conn.execute(
+            f"SELECT COUNT(*) total, "
+            f"COUNT(DISTINCT session_id) sessions, "
+            f"ROUND(AVG(quality_score),2) avg_quality, "
+            f"SUM(CASE WHEN inflection_type='diverge' THEN 1 ELSE 0 END) diverge_cnt, "
+            f"SUM(CASE WHEN fed_to_brain=1 THEN 1 ELSE 0 END) fed_cnt "
+            f"FROM chat_inflection_points WHERE {where}", params).fetchone()
+        by_type = conn.execute(
+            f"SELECT inflection_type, COUNT(*) cnt, ROUND(AVG(quality_score),2) avg_q "
+            f"FROM chat_inflection_points WHERE {where} "
+            f"GROUP BY inflection_type ORDER BY cnt DESC", params).fetchall()
+        daily = conn.execute(
+            f"SELECT date(created_at) d, COUNT(*) cnt FROM chat_inflection_points "
+            f"WHERE {where} AND created_at >= datetime('now','localtime','-13 days') "
+            f"GROUP BY date(created_at) ORDER BY d", params).fetchall()
+        top_sessions = conn.execute(
+            f"SELECT i.session_id, s.title, s.title_emoji, COUNT(*) cnt, MAX(i.created_at) last_at "
+            f"FROM chat_inflection_points i LEFT JOIN chat_sessions s ON s.session_id=i.session_id "
+            f"WHERE {where.replace('user_id', 'i.user_id')} "
+            f"GROUP BY i.session_id ORDER BY cnt DESC LIMIT 10", params).fetchall()
+        conn.close()
+        total = totals['total'] or 0
+        diverge_cnt = totals['diverge_cnt'] or 0
+        return jsonify({
+            'success': True,
+            'scope': 'all' if scope_all else 'self',
+            'is_sa': _is_sa(u),
+            'totals': {
+                'total': total,
+                'sessions': totals['sessions'] or 0,
+                'avg_quality': totals['avg_quality'] or 0,
+                'diverge_ratio': round(diverge_cnt / total, 3) if total else 0,
+                'fed_cnt': totals['fed_cnt'] or 0,
+            },
+            'by_type': [{'type': r['inflection_type'], 'cnt': r['cnt'], 'avg_q': r['avg_q']} for r in by_type],
+            'daily': [{'d': r['d'], 'cnt': r['cnt']} for r in daily],
+            'top_sessions': [{'session_id': r['session_id'], 'title': r['title'] or '(已删除会话)',
+                              'title_emoji': r['title_emoji'] or '💬', 'cnt': r['cnt'],
+                              'last_at': r['last_at']} for r in top_sessions],
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# Sparks 个性化映射 — 学习风格 → 第1条; 认知水平 → 第2条; 学科 → 第3条隐喻
+_SPARK_STYLE_MAP = [
+    ('视觉|visual', '🖼️ 画一张图解释', '用一张文字示意图或流程图的形式重新解释你刚才的回答'),
+    ('听觉|口语|auditory', '🗣️ 换个说法讲给我听', '用更口语化的方式把刚才的回答重新讲一遍'),
+    ('动手|实践|操作|kinesthetic', '🛠️ 给我一个动手练习', '针对刚才的内容给我设计一个可以马上动手做的小练习'),
+    ('阅读|reading', '📖 再深入展开讲讲', '把刚才回答里最关键的一点展开成更详细的分析'),
+]
+_SPARK_LEVEL_MAP = [
+    ('入门|初学|零基础|beginner', '🧒 用最简单的话再讲一遍', '假设我是完全的初学者, 用最通俗的语言重新解释刚才的回答'),
+    ('高级|专家|深度|advanced', '🎓 边界与反例', '这个结论的适用边界是什么? 有没有反例或容易被误用的场景?'),
+]
+_SPARK_DEFAULTS = [
+    {'label': '🔄 换个视角再答', 'prompt': '换个全新的视角重新回答我刚才的问题'},
+    {'label': '🪞 反过来会怎样', 'prompt': '如果把我刚才问题的结论反过来, 什么情况下反而成立?'},
+    {'label': '🌈 用一个隐喻解释', 'prompt': '用一个生活中的隐喻或类比重新解释你刚才的回答'},
+]
+
+
+@chat_local_bp.route('/api/local-chat/sparks', methods=['GET'])
+@_login_required
+def personalized_sparks():
+    """认知画像个性化发散追问 — 读 mt_user_cognitive_profile 按 style/level/学科动态生成
+
+    无画像/查询失败 → 返回与前端固定版一致的 3 条默认追问 (前端亦有同款回退)"""
+    u = _get_user()
+    sparks = list(_SPARK_DEFAULTS)
+    profile_used = False
+    try:
+        profile = _get_cognitive_profile(u['user_id'], u['username'])
+        if profile:
+            profile_used = True
+            style = (profile.get('learning_style') or '').strip()
+            level = (profile.get('cognitive_level') or '').strip()
+            subject = (profile.get('focus_subjects') or '').strip()
+            if style:
+                for pat, label, prompt in _SPARK_STYLE_MAP:
+                    if re.search(pat, style, re.I):
+                        sparks[0] = {'label': label, 'prompt': prompt}
+                        break
+            if level:
+                for pat, label, prompt in _SPARK_LEVEL_MAP:
+                    if re.search(pat, level, re.I):
+                        sparks[1] = {'label': label, 'prompt': prompt}
+                        break
+                else:
+                    if re.search('中级|进阶|intermediate', level, re.I):
+                        pass  # 中级保持默认
+            if subject and len(subject) <= 12:
+                sparks[2] = {'label': f'🌈 用{subject}的隐喻解释',
+                             'prompt': f'用一个{subject}领域里的隐喻或类比重新解释你刚才的回答'}
+    except Exception:
+        profile_used = False
+    return jsonify({'success': True, 'profile_used': profile_used, 'sparks': sparks})
+
+
 @chat_local_bp.route('/api/local-chat/sessions', methods=['GET'])
 @_login_required
 def list_sessions():
