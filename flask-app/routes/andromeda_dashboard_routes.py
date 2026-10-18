@@ -399,7 +399,7 @@ def api_twin_machine():
 @bp.route('/api/iceberg_structure')
 def api_iceberg_structure():
     """冰山三层架构快照"""
-    conn = sqlite3.connect(ANDROMEDA_DB)
+    conn = _conn(read_only=False)
     conn.row_factory = sqlite3.Row
     # 三层各自的最新阶段
     layers = {'赤壁 Peak (顶层)': None, '承天寺 Spectrum (中层)': None, '东坡 Basement (底层)': None}
@@ -431,7 +431,7 @@ def api_iceberg_structure():
 @bp.route('/api/evolution_timeline')
 def api_evolution_timeline():
     """11 阶段冰山演化时间线 + 112 条全版本"""
-    conn = sqlite3.connect(ANDROMEDA_DB)
+    conn = _conn(read_only=False)
     conn.row_factory = sqlite3.Row
     timeline = []
     try:
@@ -452,7 +452,7 @@ def api_evolution_timeline():
 @bp.route('/api/upgrade_reports')
 def api_upgrade_reports():
     """最近 20 份 4h 升级报告"""
-    conn = sqlite3.connect(ANDROMEDA_DB)
+    conn = _conn(read_only=False)
     conn.row_factory = sqlite3.Row
     reports = []
     try:
@@ -472,7 +472,7 @@ def api_upgrade_reports():
 @bp.route('/api/upgrade_overviews')
 def api_upgrade_overviews():
     """全部 7d 升级总览"""
-    conn = sqlite3.connect(ANDROMEDA_DB)
+    conn = _conn(read_only=False)
     conn.row_factory = sqlite3.Row
     overviews = []
     try:
@@ -493,7 +493,7 @@ def api_upgrade_overviews():
 def api_copy_archive():
     """文案永久存档 (分页, 每页 20)"""
     import json as _json
-    conn = sqlite3.connect(ANDROMEDA_DB)
+    conn = _conn(read_only=False)
     conn.row_factory = sqlite3.Row
     limit = int(request.args.get('limit', 20))
     offset = int(request.args.get('offset', 0))
