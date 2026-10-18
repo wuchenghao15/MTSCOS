@@ -107,6 +107,17 @@
   
   /* 空状态 */
   .empty{flex:1;display:flex;align-items:center;justify-content:center;color:var(--text-dim);font-size:14px}
+
+  /* flow_chat_enhance_20261019: 删除/复制/导出/重命名 */
+  .sess-del{margin-left:auto;border:none;background:transparent;color:var(--text-dim);cursor:pointer;font-size:12px;opacity:0;transition:opacity .15s,color .15s;padding:0 2px}
+  .session-item:hover .sess-del{opacity:.75}
+  .sess-del:hover{color:#f87171;opacity:1}
+  .msg-copy{border:none;background:transparent;color:var(--text-dim);cursor:pointer;font-size:11px;opacity:0;transition:opacity .15s;padding:0 2px}
+  .msg:hover .msg-copy{opacity:.7}
+  .msg-copy:hover{opacity:1;color:var(--mtscos-primary-base)}
+  .hdr-btn{border:1px solid rgba(255,255,255,.12);background:transparent;color:var(--text-dim);border-radius:6px;cursor:pointer;font-size:12px;padding:2px 7px;transition:all .15s}
+  .hdr-btn:hover{color:var(--mtscos-primary-base);border-color:var(--mtscos-primary-base)}
+  .chat-title{cursor:text}
 </style>
 </head>
 <body>
@@ -140,11 +151,12 @@
   <!-- ══════ 聊天主区 ══════ -->
   <main class="chat-main">
     <div class="chat-header">
-      <div class="chat-title" id="chatTitle">选择或新建一个对话</div>
+      <div class="chat-title" id="chatTitle" title="双击重命名">选择或新建一个对话</div>
       <div class="chat-stats">
         <span id="tokenBadge" title="Token 余额">💰 --</span>
         <span>🧠 仙女座发散</span>
         <span>📊 0拐点</span>
+        <button class="hdr-btn" id="exportBtn" title="导出为 Markdown" onclick="exportSession()">⬇️</button>
       </div>
     </div>
     
@@ -168,6 +180,7 @@
 <script>
 let currentSessionId = null;
 let isStreaming = false;
+let currentAbort = null;   // flow_chat_enhance_20261019: 停止生成
 
 const $ = id => document.getElementById(id);
 const API = '/api/local-chat';
@@ -187,6 +200,7 @@ function init(){
   loadSessions();
   initTokenBadge();
   bindEnter();
+  $('chatTitle').addEventListener('dblclick', renameSession);   // flow_chat_enhance_20261019
 }
 
 // ═══ 会话列表 ═══
@@ -207,9 +221,10 @@ async function loadSessions(){
       el.innerHTML = `
         <div class="session-title">${escapeHtml(s.title || '未命名')}</div>
         <div class="session-last">${escapeHtml(s.last_message || '（空对话）')}</div>
-        <div class="session-meta"><span>💬 ${s.message_count}</span><span>${s.updated_at || ''}</span></div>
+        <div class="session-meta"><span>💬 ${s.message_count}</span><span>${s.updated_at || ''}</span><button class="sess-del" title="删除会话">🗑</button></div>
       `;
       el.onclick = () => selectSession(s.session_id);
+      el.querySelector('.sess-del').onclick = (e) => { e.stopPropagation(); deleteSession(s.session_id, s.title); };
       list.appendChild(el);
     }
   }catch(e){}
@@ -271,7 +286,11 @@ async function send(){
   }
   
   isStreaming = true;
-  $('sendBtn').disabled = true;
+  currentAbort = new AbortController();
+  $('sendBtn').disabled = false;      // 流式期间 sendBtn = 停止按钮
+  $('sendBtn').textContent = '⏹';
+  $('sendBtn').title = '停止生成';
+  $('sendBtn').onclick = () => { if(currentAbort) currentAbort.abort(); };
   $('input').disabled = true;
   
   appendMessage('user', text, true);
@@ -287,7 +306,8 @@ async function send(){
     const resp = await fetch(`${API}/send`, {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({session_id: currentSessionId, message: text})
+      body: JSON.stringify({session_id: currentSessionId, message: text}),
+      signal: currentAbort.signal
     });
 
     // ── Token 余额不足 (402) ──
@@ -371,9 +391,18 @@ async function send(){
       }
     }
   }catch(err){
-    contentEl.innerHTML = `<span style="color:#fca5a5">❌ 连接断开: ${err.message}</span>`;
+    if(err.name === 'AbortError'){
+      contentEl.innerHTML += '<div style="font-size:11px;opacity:.55;margin-top:4px">⏹ 已停止生成</div>';
+    }else{
+      contentEl.innerHTML = `<span style="color:#fca5a5">❌ 连接断开: ${err.message}</span>`;
+    }
   }finally{
+    syncCopyRaw(aiMsg, fullText);
     isStreaming = false;
+    currentAbort = null;
+    $('sendBtn').textContent = '↑';
+    $('sendBtn').title = '发送';
+    $('sendBtn').onclick = send;
     $('sendBtn').disabled = false;
     $('input').disabled = false;
     $('input').focus();
@@ -429,11 +458,74 @@ function appendMessage(role, content, isNew){
     <div class="msg-meta">
       <span>${role === 'user' ? '👤 我' : '🧠 仙女座 AI'}</span>
       <span>${new Date().toLocaleTimeString()}</span>
+      <button class="msg-copy" title="复制" data-raw="${escapeHtml(content)}">⧉</button>
     </div>
   `;
+  wrap.querySelector('.msg-copy').onclick = () => copyText(wrap.querySelector('.msg-copy').dataset.raw);
   $('messages').appendChild(wrap);
   scrollBottom();
   return wrap;
+}
+
+// flow_chat_enhance_20261019: 消息复制 (流式结束后同步 data-raw)
+function copyText(t){
+  navigator.clipboard.writeText(t||'').then(()=>{}).catch(()=>{
+    const ta = document.createElement('textarea'); ta.value = t||'';
+    document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
+  });
+}
+function syncCopyRaw(aiMsg, raw){
+  const btn = aiMsg.querySelector('.msg-copy');
+  if(btn) btn.dataset.raw = raw;
+}
+
+// ═══ 会话删除 / 导出 / 重命名 (flow_chat_enhance_20261019) ═══
+async function deleteSession(sid, title){
+  if(isStreaming) return;
+  if(!confirm(`确定删除对话「${title || '未命名'}」?\n消息记录与拐点数据将一并清除, 不可恢复。`)) return;
+  const r = await fetch(`${API}/session/${sid}`, {method:'DELETE'});
+  const d = await r.json();
+  if(!d.success){ alert('删除失败: ' + (d.error || '未知错误')); return; }
+  if(currentSessionId === sid){
+    currentSessionId = null;
+    $('chatTitle').textContent = '选择或新建一个对话';
+    $('messages').innerHTML = '<div class="empty">对话已删除, 新建或选择左侧对话继续</div>';
+  }
+  loadSessions();
+}
+
+async function exportSession(){
+  if(!currentSessionId){ alert('请先选择一个对话'); return; }
+  const r = await fetch(`${API}/history?session_id=${currentSessionId}`);
+  const d = await r.json();
+  if(!d.success || !d.messages.length){ alert('当前对话为空'); return; }
+  const title = $('chatTitle').textContent || '仙女座对话';
+  const lines = [`# ${title}`, '', `> 导出自 MTSCOS 仙女座聊天 · ${new Date().toLocaleString()}`, ''];
+  for(const m of d.messages){
+    lines.push(m.role === 'user' ? '## 👤 我' : '## 🧠 仙女座 AI', '', m.content || '', '');
+  }
+  const blob = new Blob([lines.join('\n')], {type:'text/markdown;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${title.replace(/[\\/:*?"<>|]/g,'_')}.md`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+async function renameSession(){
+  if(!currentSessionId || isStreaming) return;
+  const cur = $('chatTitle').textContent;
+  const nt = prompt('重命名对话:', cur === '选择或新建一个对话' ? '' : cur);
+  if(nt === null) return;
+  const t = nt.trim();
+  if(!t) return;
+  const r = await fetch(`${API}/session/${currentSessionId}/title`, {
+    method:'PUT', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({title: t})
+  });
+  const d = await r.json();
+  if(d.success){ $('chatTitle').textContent = d.title || t; loadSessions(); }
+  else alert('重命名失败: ' + (d.error || '未知错误'));
 }
 
 function scrollBottom(){
