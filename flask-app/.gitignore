@@ -52,6 +52,7 @@ static/css/*.css
 !static/css/sa_proprietary.css
 static/js/*.js
 !static/js/andromeda-beautify.js
+!static/js/andromeda_nav.js
 
 # Test files
 pytest_cache/
