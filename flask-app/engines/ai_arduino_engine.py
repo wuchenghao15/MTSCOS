@@ -38,6 +38,14 @@ from datetime import datetime
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 AI_ENGINES_DIR = os.path.join(ROOT, "ai_engines")
 APP_DB = os.path.join(AI_ENGINES_DIR, "app.db")
+# v25.4 SSOT 统一: get_app_db() 优先(PROD本地>主库), 直跑CLI时补 sys.path; 失败回退默认 (flow_gap_fill_20261018)
+try:
+    import sys as _sys
+    _sys.path.insert(0, ROOT)
+    from engines._common.db_resolver import get_app_db as _get_app_db
+    APP_DB = _get_app_db()
+except Exception:
+    pass
 RUNTIME_DIR = os.path.join(ROOT, "..", "_runtime")
 LOG_DIR = os.path.join(RUNTIME_DIR, "logs")
 PID_DIR = os.path.join(RUNTIME_DIR, "pids")
