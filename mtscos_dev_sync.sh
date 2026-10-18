@@ -61,7 +61,12 @@ echo "[SYNC] 服务器 $SERVER_HOST($SERVER_IP): pull + 重启 ..." | tee -a $LO
 ssh -o ConnectTimeout=15 -o BatchMode=yes $SERVER_HOST "
   cd ~/MTSCOS_AI_Project
   git remote add gitee https://gitee.com/mtcsos/mtscos.git 2>/dev/null
-  git pull gitee main 2>&1 | tail -2 || git pull origin main 2>&1 | tail -2
+  git remote set-url gitee https://gitee.com/mtcsos/mtscos.git 2>/dev/null
+  if ! git pull gitee main >/tmp/mt_pull.log 2>&1; then
+    echo '[pull] gitee 失败, 回退 origin(github)' >> /tmp/mt_pull.log
+    git pull origin main >> /tmp/mt_pull.log 2>&1
+  fi
+  tail -2 /tmp/mt_pull.log
   if launchctl print gui/\$(id -u)/com.mtscos.flask-server >/dev/null 2>&1; then
     launchctl kickstart -k gui/\$(id -u)/com.mtscos.flask-server && echo '[launchd] Flask kickstart 重启 (KeepAlive 守护)'
   else
