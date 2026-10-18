@@ -430,23 +430,44 @@ def api_iceberg_structure():
 
 @bp.route('/api/evolution_timeline')
 def api_evolution_timeline():
-    """11 阶段冰山演化时间线 + 112 条全版本"""
+    """11 阶段冰山演化时间线 + 全版本
+
+    schema 兼容: engines 库(stage_seq/stage_date/core_theorem/...)
+              vs 主库(stage_order/end_date/key_breakthrough/stage_description/...)
+    统一输出页面契约: stage_seq/stage_name/stage_date/version_tag/architect_phase/
+                      iceberg_layer/key_people/core_theorem/key_concepts/archive_summary
+    """
     conn = _conn(read_only=False)
-    conn.row_factory = sqlite3.Row
     timeline = []
     try:
-        for row in conn.execute("""
-            SELECT stage_seq, stage_name, stage_date, version_tag, architect_phase,
-                   iceberg_layer, key_people, core_theorem, key_concepts, archive_summary
-            FROM mt_iceberg_evolution_archive ORDER BY stage_seq
+        cols = {r[1] for r in conn.execute("PRAGMA table_info(mt_iceberg_evolution_archive)").fetchall()}
+        seq_c = 'stage_seq' if 'stage_seq' in cols else 'stage_order'
+        date_c = 'stage_date' if 'stage_date' in cols else 'end_date'
+        theorem_c = 'core_theorem' if 'core_theorem' in cols else 'key_breakthrough'
+        concepts_c = 'key_concepts' if 'key_concepts' in cols else 'key_breakthrough'
+        summary_c = 'archive_summary' if 'archive_summary' in cols else 'stage_description'
+        ver_c = 'version_tag' if 'version_tag' in cols else "''"
+        phase_c = 'architect_phase' if 'architect_phase' in cols else "''"
+        people_c = 'key_people' if 'key_people' in cols else "''"
+        for row in conn.execute(f"""
+            SELECT {seq_c} AS stage_seq, stage_name, {date_c} AS stage_date,
+                   {ver_c} AS version_tag, {phase_c} AS architect_phase,
+                   iceberg_layer, {people_c} AS key_people,
+                   {theorem_c} AS core_theorem, {concepts_c} AS key_concepts,
+                   {summary_c} AS archive_summary
+            FROM mt_iceberg_evolution_archive ORDER BY 1
         """).fetchall():
             timeline.append(dict(row))
+        # 版本数量
+        ver_count = conn.execute("SELECT COUNT(*) FROM mt_system_version_archive").fetchone()[0]
+        conn.close()
+        return jsonify({'code': 0, 'data': {'timeline': timeline, 'total_versions': ver_count}})
     except Exception as e:
-        return jsonify({'code': -1, 'error': str(e)})
-    # 版本数量
-    ver_count = conn.execute("SELECT COUNT(*) FROM mt_system_version_archive").fetchone()[0]
-    conn.close()
-    return jsonify({'code': 0, 'data': {'timeline': timeline, 'total_versions': ver_count}})
+        try:
+            conn.close()
+        except Exception:
+            pass
+        return jsonify({'code': -1, 'error': str(e)[:200]})
 
 
 @bp.route('/api/upgrade_reports')
