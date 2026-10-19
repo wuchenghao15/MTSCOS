@@ -274,6 +274,9 @@ function init(){
   });
 
   loadSessions();
+  // flow_chat_preload_20261019: widget 预填 sid → 打开面板直达最近(置顶优先)会话
+  const urlSid = new URLSearchParams(location.search).get('sid');
+  if(urlSid){ selectSession(urlSid); }
   initTokenBadge();
   bindEnter();
   initQuickCmds();      // F3 快捷指令面板
