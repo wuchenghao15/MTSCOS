@@ -2691,7 +2691,7 @@ def _heartbeat():
         conn = _db()
         c = conn.cursor()
         c.execute(
-            "UPDATE mt_ai_smart_mount_processes SET heartbeat_at=?, updated_at=? WHERE process_name=?",
+            "UPDATE mt_ai_smart_mount_processes SET heartbeat_at=?, updated_at=?, current_state='RUNNING' WHERE process_name=?",
             (datetime.now().isoformat(), datetime.now().isoformat(), "{process_name}"))
         conn.commit()
         conn.close()
@@ -3029,7 +3029,9 @@ def heartbeat_check() -> Dict:
             except Exception:
                 pass
             # IDLE但存活的进程 → 不重启，标记为 RUNNING 便于进入正常心跳循环
-            if r["current_state"] == "IDLE":
+            # flow_daemon_dbfix_20261019: STOPPED/FAILED 但进程存活+心跳新鲜 → 同样修复为 RUNNING
+            # (事故: 引擎重启窗口期误标 STOPPED 后, daemon 继续心跳但状态永远卡死, 统计页缺口虚高)
+            if r["current_state"] in ("IDLE", "STOPPED", "FAILED"):
                 _update_process_state(pname, "RUNNING")
                 try:
                     daemon_transition(pname, "RUNNING")
