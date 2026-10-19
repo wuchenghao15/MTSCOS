@@ -1344,11 +1344,15 @@ def _heal_before_request():
 @chat_local_bp.route('/local-chat', methods=['GET'])
 @_login_required
 def local_chat_page():
-    """聊天页面 — 仅登录用户可见; 进入即触发每日 token 赠送"""
+    """聊天页面 — 仅登录用户可见; 进入即触发每日 token 赠送
+
+    flow_chat_embed_20261019: 支持 ?embed=1 紧凑模式
+    (全局助手 widget 内嵌 iframe 专用: 隐藏侧边栏, 适配抽屉面板)"""
     from flask import render_template
     u = _get_user()
     _ensure_daily_grant(u['user_id'], u['username'])  # 每日 10000 lazy 赠送
-    return render_template('local_chat.html')
+    embed = request.args.get('embed') == '1'
+    return render_template('local_chat.html', embed=embed)
 
 
 @chat_local_bp.route('/ai', methods=['GET'])
@@ -1368,12 +1372,91 @@ def ai_entry():
     # 已登录 (含双密钥自动认证的 SA session)
     u = _get_user()
     _ensure_daily_grant(u['user_id'], u['username'])
-    return render_template('local_chat.html')
+    embed = request.args.get('embed') == '1'
+    return render_template('local_chat.html', embed=embed)
 
 
 @chat_local_bp.route('/ai/', methods=['GET'])
 def ai_entry_slash():
     return redirect('/ai', code=301)
+
+
+# ════════════════════════════════════════════════════════════════
+# flow_chat_embed_20261019: 冰山全局聊天助手注入
+# ════════════════════════════════════════════════════════════════
+# 单点全局注入 (after_app_request) — 覆盖冰山系统所有 text/html 页面,
+# 包括独立模板 (不继承 base.html 的页面), 无需逐个修改 base 模板。
+# 悬浮球 → 抽屉面板 → iframe 懒加载 /local-chat?embed=1 紧凑模式。
+_MTCA_EXCLUDE_PREFIXES = ('/local-chat', '/ai', '/auth/login', '/api/')
+
+_MTCA_WIDGET_SNIPPET = """
+<!-- flow_chat_embed_20261019: 冰山全局聊天助手 (悬浮球+抽屉面板) -->
+<div id="mtca-root">
+  <button id="mtca-ball" aria-label="打开仙女座聊天助手" title="仙女座聊天助手">🧠</button>
+  <div id="mtca-panel" hidden>
+    <div class="mtca-bar">
+      <span class="mtca-dot"></span>
+      <span class="mtca-title">仙女座聊天助手</span>
+      <a class="mtca-act" href="/local-chat" target="_blank" title="全屏打开">⤢</a>
+      <button class="mtca-act" id="mtca-close" title="收起 (Esc)">✕</button>
+    </div>
+    <iframe id="mtca-frame" title="仙女座聊天助手面板" data-src="/local-chat?embed=1"></iframe>
+  </div>
+</div>
+<style id="mtca-style">
+  #mtca-root{position:fixed;right:22px;bottom:22px;z-index:2147483000;font-family:-apple-system,"SF Pro","PingFang SC","Helvetica Neue",sans-serif}
+  #mtca-ball{width:56px;height:56px;border-radius:50%;border:none;cursor:pointer;font-size:26px;line-height:1;background:linear-gradient(135deg,#06b6d4,#a855f7);color:#fff;box-shadow:0 6px 24px rgba(6,182,212,.45),0 2px 8px rgba(0,0,0,.3);transition:transform .18s ease,box-shadow .18s ease}
+  #mtca-ball:hover{transform:scale(1.08);box-shadow:0 8px 30px rgba(168,85,247,.55)}
+  #mtca-ball:active{transform:scale(.96)}
+  #mtca-panel{position:fixed;right:12px;bottom:90px;width:min(430px,calc(100vw - 24px));height:min(640px,calc(100vh - 110px));display:flex;flex-direction:column;background:#0B0A1E;border:1px solid rgba(6,182,212,.35);border-radius:16px;overflow:hidden;box-shadow:0 18px 60px rgba(0,0,0,.55),0 0 0 1px rgba(168,85,247,.12)}
+  #mtca-panel[hidden]{display:none}
+  .mtca-bar{flex-shrink:0;display:flex;align-items:center;gap:8px;padding:10px 12px;background:rgba(6,182,212,.08);border-bottom:1px solid rgba(6,182,212,.25)}
+  .mtca-dot{width:8px;height:8px;border-radius:50%;background:#6ee7b7;box-shadow:0 0 6px #6ee7b7}
+  .mtca-title{flex:1;min-width:0;font-size:13px;font-weight:600;color:#f8fafc;letter-spacing:.5px}
+  .mtca-act{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:26px;border-radius:8px;cursor:pointer;border:1px solid rgba(255,255,255,.14);background:transparent;color:rgba(248,250,252,.7);font-size:12px;text-decoration:none;transition:all .15s}
+  .mtca-act:hover{color:#06b6d4;border-color:#06b6d4}
+  #mtca-frame{flex:1;min-height:0;width:100%;border:none;background:#0B0A1E}
+  @media (max-width:520px){
+    #mtca-root{right:14px;bottom:14px}
+    #mtca-panel{right:8px;bottom:84px;width:calc(100vw - 16px);height:calc(100vh - 100px)}
+  }
+</style>
+<script id="mtca-script">
+(function(){
+  var ball=document.getElementById('mtca-ball'),panel=document.getElementById('mtca-panel'),frame=document.getElementById('mtca-frame');
+  function open(){panel.hidden=false;frame.src=frame.getAttribute('data-src');ball.style.display='none';}
+  function close(){panel.hidden=true;ball.style.display='';}
+  ball.addEventListener('click',open);
+  document.getElementById('mtca-close').addEventListener('click',close);
+  document.addEventListener('keydown',function(e){if(e.key==='Escape'&&!panel.hidden)close();});
+})();
+</script>
+"""
+
+
+@chat_local_bp.after_app_request
+def _inject_chat_assistant(response):
+    """冰山全局聊天助手 — 所有 text/html 200 页面 </body> 前注入悬浮球.
+
+    跳过: 非200/非HTML / 聊天页自身(/local-chat,/ai) / 登录页 / API/SSE / 未登录。
+    注入失败静默降级, 不影响原响应 (fail-open 仅装饰性内容)。"""
+    try:
+        if response.status_code != 200 or response.mimetype != 'text/html':
+            return response
+        path = request.path or ''
+        if path.startswith(_MTCA_EXCLUDE_PREFIXES):
+            return response
+        uid = session.get('user_id')
+        if not uid or uid == 'guest':
+            return response
+        body = response.get_data(as_text=True)
+        if '</body>' not in body:
+            return response
+        head, _, tail = body.rpartition('</body>')
+        response.set_data(head + _MTCA_WIDGET_SNIPPET + '</body>' + tail)
+    except Exception:
+        pass
+    return response
 
 
 @chat_local_bp.route('/api/local-chat/session', methods=['POST'])

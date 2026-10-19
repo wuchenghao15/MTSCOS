@@ -131,9 +131,17 @@
   .infl-item{display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--panel);border:1px solid var(--line);border-radius:10px;font-size:12px}
   .infl-txt{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-dim)}
   .infl-at{font-size:10px;color:var(--text-faint);flex-shrink:0}
+
+  /* flow_chat_embed_20261019: ?embed=1 紧凑模式 (全局助手 iframe 内嵌) */
+  body.embed-mode .sidebar{display:none}
+  body.embed-mode .chat-header{padding:10px 14px}
+  body.embed-mode .chat-title{font-size:13px}
+  body.embed-mode .messages{padding:14px}
+  body.embed-mode .input-area{padding:10px 14px}
+  body.embed-mode .input-hint{display:none}
 </style>
 </head>
-<body>
+<body{% if embed %} class="embed-mode"{% endif %}>
 
 <div class="layout">
   <!-- ══════ 侧边栏 ══════ -->
@@ -169,7 +177,7 @@
         <span id="tokenBadge" title="Token 余额">💰 --</span>
         <span>🧠 仙女座发散</span>
         <span id="inflBadge" title="点击查看本会话拐点" onclick="showInflections()">📊 0拐点</span>
-        <a class="hdr-btn" id="statsBtn" title="拐点全局统计" href="/inflection-stats" style="text-decoration:none;display:inline-flex;align-items:center">📈</a>
+        <a class="hdr-btn" id="statsBtn" title="拐点全局统计" href="/inflection-stats" {% if embed %}target="_blank"{% endif %} style="text-decoration:none;display:inline-flex;align-items:center">📈</a>
         <button class="hdr-btn" id="exportBtn" title="导出为 Markdown" onclick="exportSession()">⬇️</button>
       </div>
     </div>
