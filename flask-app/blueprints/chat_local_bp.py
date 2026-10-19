@@ -1449,12 +1449,14 @@ _MTCA_EXCLUDE_PREFIXES = ('/local-chat', '/ai', '/auth/login', '/api/')
 
 _MTCA_WIDGET_SNIPPET = """
 <!-- flow_chat_embed_20261019: 冰山全局聊天助手 (悬浮球+抽屉面板) -->
+<!-- flow_chat_preload_20261019: 预加载登录状态容器 (徽标+hover预热+sid直达) -->
 <div id="mtca-root">
-  <button id="mtca-ball" aria-label="打开仙女座聊天助手" title="仙女座聊天助手">🧠</button>
+  <button id="mtca-ball" aria-label="打开仙女座聊天助手" title="仙女座聊天助手">🧠<span id="mtca-badge"></span></button>
   <div id="mtca-panel" hidden>
     <div class="mtca-bar">
       <span class="mtca-dot"></span>
       <span class="mtca-title">仙女座聊天助手</span>
+      <span class="mtca-user" id="mtca-username"></span>
       <a class="mtca-act" href="/local-chat" target="_blank" title="全屏打开">⤢</a>
       <button class="mtca-act" id="mtca-close" title="收起 (Esc)">✕</button>
     </div>
@@ -1463,14 +1465,18 @@ _MTCA_WIDGET_SNIPPET = """
 </div>
 <style id="mtca-style">
   #mtca-root{position:fixed;right:22px;bottom:22px;z-index:2147483000;font-family:-apple-system,"SF Pro","PingFang SC","Helvetica Neue",sans-serif}
-  #mtca-ball{width:56px;height:56px;border-radius:50%;border:none;cursor:pointer;font-size:26px;line-height:1;background:linear-gradient(135deg,#06b6d4,#a855f7);color:#fff;box-shadow:0 6px 24px rgba(6,182,212,.45),0 2px 8px rgba(0,0,0,.3);transition:transform .18s ease,box-shadow .18s ease}
+  #mtca-ball{position:relative;width:56px;height:56px;border-radius:50%;border:none;cursor:pointer;font-size:26px;line-height:1;background:linear-gradient(135deg,#06b6d4,#a855f7);color:#fff;box-shadow:0 6px 24px rgba(6,182,212,.45),0 2px 8px rgba(0,0,0,.3);transition:transform .18s ease,box-shadow .18s ease}
   #mtca-ball:hover{transform:scale(1.08);box-shadow:0 8px 30px rgba(168,85,247,.55)}
   #mtca-ball:active{transform:scale(.96)}
+  #mtca-badge{position:absolute;top:-3px;right:-3px;width:20px;height:20px;border-radius:50%;font-size:11px;font-weight:700;line-height:16px;display:none;align-items:center;justify-content:center;border:2px solid rgba(11,10,30,.9)}
+  #mtca-badge.in{display:flex;background:linear-gradient(135deg,#6ee7b7,#06b6d4);color:#04283a}
+  #mtca-badge.out{display:flex;background:#f87171;color:#fff}
   #mtca-panel{position:fixed;right:12px;bottom:90px;width:min(430px,calc(100vw - 24px));height:min(640px,calc(100vh - 110px));display:flex;flex-direction:column;background:#0B0A1E;border:1px solid rgba(6,182,212,.35);border-radius:16px;overflow:hidden;box-shadow:0 18px 60px rgba(0,0,0,.55),0 0 0 1px rgba(168,85,247,.12)}
   #mtca-panel[hidden]{display:none}
   .mtca-bar{flex-shrink:0;display:flex;align-items:center;gap:8px;padding:10px 12px;background:rgba(6,182,212,.08);border-bottom:1px solid rgba(6,182,212,.25)}
   .mtca-dot{width:8px;height:8px;border-radius:50%;background:#6ee7b7;box-shadow:0 0 6px #6ee7b7}
   .mtca-title{flex:1;min-width:0;font-size:13px;font-weight:600;color:#f8fafc;letter-spacing:.5px}
+  .mtca-user{font-size:11px;color:#6ee7b7;flex-shrink:0;max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .mtca-act{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:26px;border-radius:8px;cursor:pointer;border:1px solid rgba(255,255,255,.14);background:transparent;color:rgba(248,250,252,.7);font-size:12px;text-decoration:none;transition:all .15s}
   .mtca-act:hover{color:#06b6d4;border-color:#06b6d4}
   #mtca-frame{flex:1;min-height:0;width:100%;border:none;background:#0B0A1E}
@@ -1482,6 +1488,33 @@ _MTCA_WIDGET_SNIPPET = """
 <script id="mtca-script">
 (function(){
   var ball=document.getElementById('mtca-ball'),panel=document.getElementById('mtca-panel'),frame=document.getElementById('mtca-frame');
+  var badge=document.getElementById('mtca-badge'),uname=document.getElementById('mtca-username');
+  var st=null,warmed=false;
+  /* flow_chat_preload_20261019: 页面加载即预取登录状态容器 */
+  function preload(){
+    try{
+      fetch('/api/local-chat/widget-state',{credentials:'same-origin'}).then(function(r){return r.json();}).then(function(d){
+        if(!d||!d.success)return; st=d;
+        if(d.logged_in){
+          badge.textContent=(d.username||'?').charAt(0).toUpperCase();
+          badge.className='in';
+          uname.textContent=d.is_sa?(d.username+'·SA'):d.username;
+          ball.title='仙女座聊天助手 · '+d.username+' (余额 '+d.token_balance+')';
+          if(d.latest_session_id){
+            frame.setAttribute('data-src','/local-chat?embed=1&sid='+encodeURIComponent(d.latest_session_id));
+          }
+          ball.addEventListener('mouseenter',warm); /* hover 预热 */
+        }else{
+          badge.textContent='🔒'; badge.className='out';
+          ball.title='仙女座聊天助手 · 未登录';
+        }
+      }).catch(function(){});
+    }catch(e){}
+  }
+  function warm(){
+    if(warmed||!st||!st.logged_in)return;
+    warmed=true; frame.src=frame.getAttribute('data-src'); /* 静默预热 */
+  }
   function postCtx(){
     /* flow_chat_all7_20261019 F4: 把当前页面上下文推给聊天助手 */
     try{
@@ -1499,6 +1532,7 @@ _MTCA_WIDGET_SNIPPET = """
   document.getElementById('mtca-close').addEventListener('click',close);
   frame.addEventListener('load',postCtx);
   document.addEventListener('keydown',function(e){if(e.key==='Escape'&&!panel.hidden)close();});
+  preload();
 })();
 </script>
 """
@@ -1599,6 +1633,38 @@ def update_session_title(sid):
 # ════════════════════════════════════════════════════════════════
 # 置顶/标签 + 群聊房间 + 日程助手 (flow_chat_all7_20261019)
 # ════════════════════════════════════════════════════════════════
+@chat_local_bp.route('/api/local-chat/widget-state', methods=['GET'])
+def widget_state():
+    """悬浮球预加载登录状态容器 (flow_chat_preload_20261019)
+
+    页面加载即调用: 一次请求返回登录态/用户名/token余额/最近会话/视觉模型就绪。
+    widget 据此渲染用户徽标、hover 预热 iframe、data-src 携带 sid 直达最近会话。
+    未登录返回 logged_in=False (匿名可调, 不作门禁)。"""
+    try:
+        u = _get_user()
+        uid = (u or {}).get('user_id')
+        if not uid or uid == 'guest':
+            return jsonify({'success': True, 'logged_in': False})
+        conn = _db()
+        bal = conn.execute(
+            "SELECT balance FROM mt_user_token_accounts WHERE user_id=?", (uid,)).fetchone()
+        latest = conn.execute(
+            "SELECT session_id, title FROM chat_sessions WHERE user_id=? "
+            "ORDER BY COALESCE(pinned,0) DESC, updated_at DESC LIMIT 1", (uid,)).fetchone()
+        conn.close()
+        return jsonify({
+            'success': True, 'logged_in': True,
+            'username': (u or {}).get('username') or '用户',
+            'is_sa': _is_sa(u),
+            'token_balance': bal['balance'] if bal else 0,
+            'latest_session_id': latest['session_id'] if latest else None,
+            'latest_session_title': latest['title'] if latest else None,
+            'vision_ready': _detect_vision_model() is not None,
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'logged_in': False, 'error': str(e)})
+
+
 @chat_local_bp.route('/api/local-chat/session/<sid>/pin', methods=['PUT'])
 @_login_required
 def toggle_session_pin(sid):
