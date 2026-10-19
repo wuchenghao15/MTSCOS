@@ -210,6 +210,32 @@ def _ensure_tables():
             is_active INTEGER NOT NULL DEFAULT 1,
             updated_at TEXT DEFAULT (datetime('now','localtime'))
         );
+
+        /* ── 群聊房间成员 (flow_chat_all7_20261019) ── */
+        CREATE TABLE IF NOT EXISTS mt_chat_room_members (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id TEXT NOT NULL,
+            user_id INTEGER NOT NULL,
+            username TEXT NOT NULL DEFAULT '',
+            joined_at TEXT DEFAULT (datetime('now','localtime')),
+            UNIQUE(session_id, user_id)
+        );
+
+        /* ── 日程助手 (flow_chat_all7_20261019): /日程 命令落库 ── */
+        CREATE TABLE IF NOT EXISTS mt_chat_schedule (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            username TEXT NOT NULL DEFAULT '',
+            title TEXT NOT NULL,
+            due_at TEXT DEFAULT '',
+            session_id TEXT DEFAULT '',
+            status TEXT DEFAULT 'open' CHECK(status IN ('open','done','cancelled')),
+            created_at TEXT DEFAULT (datetime('now','localtime')),
+            done_at TEXT DEFAULT ''
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_chat_sched_user ON mt_chat_schedule(user_id);
+        CREATE INDEX IF NOT EXISTS idx_chat_room_member ON mt_chat_room_members(user_id);
         """)
         conn.commit()
 
@@ -218,6 +244,11 @@ def _ensure_tables():
             ("ALTER TABLE mt_user_token_accounts ADD COLUMN total_preheld INTEGER NOT NULL DEFAULT 0", "total_preheld"),
             ("ALTER TABLE mt_user_token_accounts ADD COLUMN total_rewarded INTEGER NOT NULL DEFAULT 0", "total_rewarded"),
             ("ALTER TABLE mt_user_token_ledger ADD COLUMN model TEXT DEFAULT ''", "model"),
+            # flow_chat_all7_20261019: 置顶/标签/群聊房间
+            ("ALTER TABLE chat_sessions ADD COLUMN pinned INTEGER DEFAULT 0", "pinned"),
+            ("ALTER TABLE chat_sessions ADD COLUMN tags TEXT DEFAULT ''", "tags"),
+            ("ALTER TABLE chat_sessions ADD COLUMN is_room INTEGER DEFAULT 0", "is_room"),
+            ("ALTER TABLE chat_sessions ADD COLUMN room_code TEXT DEFAULT ''", "room_code"),
         ]:
             try: conn.execute(col_def[0]); conn.commit()
             except Exception: pass
@@ -685,7 +716,7 @@ def _auto_title_first_msg(text):
 # ════════════════════════════════════════════════════════════════
 # 仙女座发散思维 prompt 增强
 # ════════════════════════════════════════════════════════════════
-def _build_divergent_prompt(user_text, username, cognitive_profile=None, history=None):
+def _build_divergent_prompt(user_text, username, cognitive_profile=None, history=None, page_context=None):
     """
     仙女座发散思维 prompt 增强层
     基于: 冰山矩阵 + 认知画像 + 对话历史 → 增强 system prompt
@@ -725,6 +756,10 @@ def _build_divergent_prompt(user_text, username, cognitive_profile=None, history
 
     extra = f"\n\n当前用户 {username} ({role}):\n  学习风格={style} → {STYLE_HINTS.get(style, '')}\n  认知水平={level} → {LEVEL_HINTS.get(level, '')}"
     system += extra
+
+    # 2.5 页面上下文携带 (flow_chat_all7_20261019): 助手感知用户当前所在冰山页面
+    if page_context:
+        system += f"\n\n📍 用户当前所在页面上下文: {page_context}\n(用户从该页面发起对话, 回答时可结合此上下文; 若与问题无关则忽略)"
 
     # 3. 发散触发 — 如果用户问题含"假设/如果/想象/万一", 强化发散模式
     DIVERGE_KEYWORDS = ['如果', '假设', '想象', '倘若', '万一', '不妨', '试想', 'what if', '假如']
@@ -766,6 +801,24 @@ def _ollama_available():
         return False
 
 
+# flow_chat_all7_20261019: 视觉模型探测 (多模态图片理解)
+_VISION_MODEL_PATTERNS = ('llava', 'qwen2.5vl', 'qwen2-vl', 'qwen3-vl', 'minicpm-v', 'moondream', 'bakllava')
+
+def _detect_vision_model():
+    """从 Ollama /api/tags 探测已安装的视觉模型, 无则返回 None (优雅降级)"""
+    try:
+        import urllib.request as _ur
+        host = os.environ.get("OLLAMA_HOST", "").strip() or _resolve_ollama_host()
+        resp = _ur.urlopen(_ur.Request(f"{host}/api/tags"), timeout=3)
+        names = [m.get('name', '') for m in json.loads(resp.read().decode()).get('models', [])]
+        for n in names:
+            if any(p in n.lower() for p in _VISION_MODEL_PATTERNS):
+                return n
+    except Exception:
+        pass
+    return None
+
+
 def _fallback_local_reply(user_text, username):
     """
     v25.1: Fallback reply when Ollama not available (Mac mini scenario).
@@ -787,10 +840,12 @@ def _fallback_local_reply(user_text, username):
     return reply
 
 
-def _call_ollama_stream(user_text, system_prompt, username):
+def _call_ollama_stream(user_text, system_prompt, username, images=None, model_override=None):
     """
     v25.1: Stream from Ollama /api/chat. Auto-detect available.
     Falls back to _fallback_local_reply when Ollama unreachable.
+    flow_chat_all7_20261019: images (base64 list) → 多模态视觉理解;
+    model_override → 视觉模型名 (仅带图消息传入)
     """
     import urllib.request as _ur
 
@@ -807,12 +862,15 @@ def _call_ollama_stream(user_text, system_prompt, username):
 
     try:
         host = os.environ.get("OLLAMA_HOST", "").strip() or _resolve_ollama_host()
-        model = os.environ.get("OLLAMA_MODEL", "qwen2.5:7b")
+        model = model_override or os.environ.get("OLLAMA_MODEL", "qwen2.5:7b")
+        user_msg = {"role": "user", "content": user_text}
+        if images:
+            user_msg["images"] = images  # base64 列表, 视觉模型多模态输入
         body = json.dumps({
             "model": model,
             "messages": [
                 {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_text},
+                user_msg,
             ],
             "stream": True,
             "options": {"temperature": 0.85, "top_p": 0.92, "num_predict": 1024}
@@ -1424,10 +1482,22 @@ _MTCA_WIDGET_SNIPPET = """
 <script id="mtca-script">
 (function(){
   var ball=document.getElementById('mtca-ball'),panel=document.getElementById('mtca-panel'),frame=document.getElementById('mtca-frame');
-  function open(){panel.hidden=false;frame.src=frame.getAttribute('data-src');ball.style.display='none';}
+  function postCtx(){
+    /* flow_chat_all7_20261019 F4: 把当前页面上下文推给聊天助手 */
+    try{
+      frame.contentWindow.postMessage({type:'mtscos-page-ctx',path:location.pathname,title:document.title},'*');
+    }catch(e){}
+  }
+  function open(){
+    panel.hidden=false;
+    if(!frame.src)frame.src=frame.getAttribute('data-src'); /* 首次加载后会话跨页保持 */
+    ball.style.display='none';
+    postCtx();
+  }
   function close(){panel.hidden=true;ball.style.display='';}
   ball.addEventListener('click',open);
   document.getElementById('mtca-close').addEventListener('click',close);
+  frame.addEventListener('load',postCtx);
   document.addEventListener('keydown',function(e){if(e.key==='Escape'&&!panel.hidden)close();});
 })();
 </script>
@@ -1522,6 +1592,223 @@ def update_session_title(sid):
         conn.commit()
         conn.close()
         return jsonify({'success': True, 'title': new_title, 'title_emoji': new_emoji})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ════════════════════════════════════════════════════════════════
+# 置顶/标签 + 群聊房间 + 日程助手 (flow_chat_all7_20261019)
+# ════════════════════════════════════════════════════════════════
+@chat_local_bp.route('/api/local-chat/session/<sid>/pin', methods=['PUT'])
+@_login_required
+def toggle_session_pin(sid):
+    """会话置顶切换 (仅本人/SA)"""
+    u = _get_user()
+    try:
+        conn = _db()
+        row = conn.execute("SELECT user_id, COALESCE(pinned,0) AS pinned FROM chat_sessions WHERE session_id=?", (sid,)).fetchone()
+        if not row or (row['user_id'] != u['user_id'] and not _is_sa(u)):
+            conn.close()
+            return jsonify({'success': False, 'error': '无权操作'}), 403
+        new_val = 0 if row['pinned'] else 1
+        conn.execute("UPDATE chat_sessions SET pinned=?, updated_at=datetime('now','localtime') WHERE session_id=?", (new_val, sid))
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True, 'pinned': new_val})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@chat_local_bp.route('/api/local-chat/session/<sid>/tags', methods=['PUT'])
+@_login_required
+def set_session_tags(sid):
+    """会话标签 (逗号分隔字符串, 仅本人/SA)"""
+    u = _get_user()
+    data = request.get_json(silent=True) or {}
+    tags = (data.get('tags') or '').strip()[:120]
+    try:
+        conn = _db()
+        row = conn.execute("SELECT user_id FROM chat_sessions WHERE session_id=?", (sid,)).fetchone()
+        if not row or (row['user_id'] != u['user_id'] and not _is_sa(u)):
+            conn.close()
+            return jsonify({'success': False, 'error': '无权操作'}), 403
+        conn.execute("UPDATE chat_sessions SET tags=?, updated_at=datetime('now','localtime') WHERE session_id=?", (tags, sid))
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True, 'tags': tags})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@chat_local_bp.route('/api/local-chat/room', methods=['POST'])
+@_login_required
+def create_room():
+    """创建群聊房间: is_room=1 + 6位加入码, 创建者即房主"""
+    u = _get_user()
+    data = request.get_json(silent=True) or {}
+    title = (data.get('title') or '').strip() or f"{u['username']}的房间"
+    import random
+    sid = str(uuid.uuid4())
+    code = ''.join(random.choices('23456789ABCDEFGHJKMNPQRSTUVWXYZ', k=6))
+    now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    try:
+        conn = _db()
+        conn.execute(
+            "INSERT INTO chat_sessions(session_id,user_id,username,title,title_emoji,is_room,room_code,created_at,updated_at) "
+            "VALUES(?,?,?,?,?,?,?,?,?)",
+            (sid, u['user_id'], u['username'], title, '🏠', 1, code, now, now)
+        )
+        conn.commit()
+        conn.close()
+        _record_action(sid, u['user_id'], 'new_session', {'kind': 'room', 'code': code})
+        return jsonify({'success': True, 'session_id': sid, 'room_code': code, 'title': title})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@chat_local_bp.route('/api/local-chat/room/join', methods=['POST'])
+@_login_required
+def join_room():
+    """凭 6 位加入码加入群聊房间"""
+    u = _get_user()
+    data = request.get_json(silent=True) or {}
+    code = (data.get('code') or '').strip().upper()
+    if not code:
+        return jsonify({'success': False, 'error': 'missing_code'}), 400
+    try:
+        conn = _db()
+        row = conn.execute(
+            "SELECT session_id, title FROM chat_sessions WHERE room_code=? AND COALESCE(is_room,0)=1",
+            (code,)).fetchone()
+        if not row:
+            conn.close()
+            return jsonify({'success': False, 'error': 'room_not_found', 'message': '加入码无效'}), 404
+        conn.execute("INSERT OR IGNORE INTO mt_chat_room_members(session_id,user_id,username) VALUES(?,?,?)",
+                     (row['session_id'], u['user_id'], u['username']))
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True, 'session_id': row['session_id'], 'title': row['title']})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@chat_local_bp.route('/api/local-chat/room/<sid>/members', methods=['GET'])
+@_login_required
+def room_members(sid):
+    """房间成员列表 (房主👑 + 成员)"""
+    u = _get_user()
+    try:
+        conn = _db()
+        room = conn.execute("SELECT user_id, username, title FROM chat_sessions WHERE session_id=? AND COALESCE(is_room,0)=1", (sid,)).fetchone()
+        if not room:
+            conn.close()
+            return jsonify({'success': False, 'error': 'not_a_room'}), 404
+        is_member = bool(conn.execute("SELECT 1 FROM mt_chat_room_members WHERE session_id=? AND user_id=?", (sid, u['user_id'])).fetchone())
+        if not (room['user_id'] == u['user_id'] or is_member or _is_sa(u)):
+            conn.close()
+            return jsonify({'success': False, 'error': 'forbidden'}), 403
+        rows = conn.execute("SELECT username, joined_at FROM mt_chat_room_members WHERE session_id=? ORDER BY id", (sid,)).fetchall()
+        conn.close()
+        members = [{'username': room['username'], 'owner': True, 'joined_at': ''}]
+        members += [{'username': r['username'], 'owner': False, 'joined_at': r['joined_at']} for r in rows]
+        return jsonify({'success': True, 'count': len(members), 'members': members})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+def _parse_schedule_text(raw):
+    """解析 '/日程 [今天|明天|后天] [HH:MM或X点X分] 事项' → (title, due_at)
+    日期缺省=今天; 时间缺省=仅日期。返回 title=None 表示无法解析。"""
+    body = re.sub(r'^/日程\s*', '', (raw or '').strip())
+    if not body:
+        return None, ''
+    day_map = {'今天': 0, '明天': 1, '后天': 2}
+    due_day = None
+    m = re.match(r'^(今天|明天|后天)\s*', body)
+    if m:
+        due_day = day_map[m.group(1)]
+        body = body[m.end():]
+    hm = None
+    m2 = re.match(r'^(\d{1,2})[:：](\d{1,2})\s*', body) or re.match(r'^(\d{1,2})点(?:(\d{1,2})分?)?\s*', body)
+    if m2:
+        h, mi = int(m2.group(1)), int(m2.group(2) or 0)
+        if 0 <= h <= 23 and 0 <= mi <= 59:
+            hm = f"{h:02d}:{mi:02d}"
+            body = body[m2.end():]
+    title = body.strip()
+    if not title:
+        return None, ''
+    due_at = ''
+    if due_day is not None or hm:
+        from datetime import timedelta
+        base = datetime.now() + timedelta(days=due_day or 0)
+        due_at = base.strftime('%Y-%m-%d') + (f' {hm}' if hm else '')
+    return title, due_at
+
+
+@chat_local_bp.route('/api/local-chat/schedule', methods=['POST'])
+@_login_required
+def schedule_create():
+    """日程助手: /日程 命令入口 — 解析自然时间并落库, 可选同步进会话消息流"""
+    u = _get_user()
+    data = request.get_json(silent=True) or {}
+    raw = (data.get('text') or '').strip()
+    sid = (data.get('session_id') or '').strip()
+    title, due_at = _parse_schedule_text(raw)
+    if not title:
+        return jsonify({'success': False, 'error': 'bad_format',
+                        'message': '格式: /日程 [今天|明天|后天] [14:30] 事项\n例: /日程 明天14:30 与导师开会'}), 400
+    try:
+        conn = _db()
+        cur = conn.execute(
+            "INSERT INTO mt_chat_schedule(user_id,username,title,due_at,session_id) VALUES(?,?,?,?,?)",
+            (u['user_id'], u['username'], title, due_at, sid))
+        sched_id = cur.lastrowid
+        reply = ''
+        if sid:
+            reply = (f"📅 日程已创建 #{sched_id}\n\n📌 {title}\n🕐 {due_at or '未定时间 (待办)'}\n\n"
+                     f"用 /日程 查看, 或点 header 📅 管理全部日程。")
+            _save_message(sid, u['user_id'], 'user', raw)
+            _save_message(sid, u['user_id'], 'assistant', reply)
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True, 'id': sched_id, 'title': title, 'due_at': due_at, 'reply': reply if sid else ''})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@chat_local_bp.route('/api/local-chat/schedule', methods=['GET'])
+@_login_required
+def schedule_list():
+    """我的日程列表 (未完成在前, 按到期排序)"""
+    u = _get_user()
+    try:
+        conn = _db()
+        rows = conn.execute(
+            "SELECT id, title, due_at, status, created_at FROM mt_chat_schedule "
+            "WHERE user_id=? ORDER BY status='done', CASE WHEN due_at='' THEN 1 ELSE 0 END, due_at, id DESC LIMIT 100",
+            (u['user_id'],)).fetchall()
+        conn.close()
+        return jsonify({'success': True, 'count': len(rows), 'schedules': [dict(r) for r in rows]})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@chat_local_bp.route('/api/local-chat/schedule/<int:sched_id>/done', methods=['PUT'])
+@_login_required
+def schedule_done(sched_id):
+    """标记日程完成"""
+    u = _get_user()
+    try:
+        conn = _db()
+        row = conn.execute("SELECT user_id FROM mt_chat_schedule WHERE id=?", (sched_id,)).fetchone()
+        if not row or (row['user_id'] != u['user_id'] and not _is_sa(u)):
+            conn.close()
+            return jsonify({'success': False, 'error': 'forbidden'}), 403
+        conn.execute("UPDATE mt_chat_schedule SET status='done', done_at=datetime('now','localtime') WHERE id=?", (sched_id,))
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True, 'id': sched_id, 'status': 'done'})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
@@ -1704,14 +1991,18 @@ def personalized_sparks():
 @chat_local_bp.route('/api/local-chat/sessions', methods=['GET'])
 @_login_required
 def list_sessions():
-    """我的会话列表"""
+    """我的会话列表 (flow_chat_all7_20261019: 含群聊房间, 置顶优先)"""
     u = _get_user()
     try:
         conn = _db()
         rows = conn.execute(
-            "SELECT session_id, title, title_emoji, message_count, last_message, created_at, updated_at "
-            "FROM chat_sessions WHERE user_id=? ORDER BY updated_at DESC LIMIT 50",
-            (u['user_id'],)
+            "SELECT s.session_id, s.title, s.title_emoji, s.message_count, s.last_message, s.created_at, s.updated_at, "
+            "COALESCE(s.pinned,0) AS pinned, COALESCE(s.tags,'') AS tags, "
+            "COALESCE(s.is_room,0) AS is_room, COALESCE(s.room_code,'') AS room_code "
+            "FROM chat_sessions s "
+            "WHERE s.user_id=? OR s.session_id IN (SELECT session_id FROM mt_chat_room_members WHERE user_id=?) "
+            "ORDER BY pinned DESC, s.updated_at DESC LIMIT 50",
+            (u['user_id'], u['user_id'])
         ).fetchall()
         conn.close()
         return jsonify({'success': True, 'sessions': [dict(r) for r in rows]})
@@ -1822,11 +2113,19 @@ def get_history():
         return jsonify({'success': False, 'error': 'missing session_id'}), 400
     try:
         conn = _db()
-        # 权限检查: 只能看自己的会话
+        # 权限检查: 本人 / SA / 群聊房间成员 (flow_chat_all7_20261019)
         row = conn.execute(
-            "SELECT user_id FROM chat_sessions WHERE session_id=?", (sid,)
+            "SELECT user_id, COALESCE(is_room,0) AS is_room FROM chat_sessions WHERE session_id=?", (sid,)
         ).fetchone()
-        if not row or row['user_id'] != u['user_id']:
+        if not row:
+            conn.close()
+            return jsonify({'success': False, 'error': 'forbidden'}), 403
+        is_member = False
+        if row['is_room']:
+            is_member = bool(conn.execute(
+                "SELECT 1 FROM mt_chat_room_members WHERE session_id=? AND user_id=?",
+                (sid, u['user_id'])).fetchone())
+        if not (row['user_id'] == u['user_id'] or _is_sa(u) or is_member):
             conn.close()
             return jsonify({'success': False, 'error': 'forbidden'}), 403
         msgs = conn.execute(
@@ -1857,6 +2156,22 @@ def send_message():
 
     # ── 选择模型 (默认 qwen2.5-coder:14b, 本地有则用 7b) ──
     model = data.get('model', 'qwen2.5-coder:14b')
+
+    # ── flow_chat_all7_20261019: 多模态图片 + 页面上下文携带 ──
+    image_data_url = (data.get('image') or '').strip()
+    page_context = (data.get('page_context') or '').strip()[:600]
+    image_b64 = None
+    if image_data_url:
+        if not image_data_url.startswith('data:image/') or ';base64,' not in image_data_url:
+            return jsonify({'success': False, 'error': 'bad_image', 'message': '仅支持 data:image/*;base64 格式'}), 400
+        image_b64 = image_data_url.split(';base64,', 1)[1]
+        if len(image_b64) > 6_000_000:  # ≈4.5MB 原图
+            return jsonify({'success': False, 'error': 'image_too_large', 'message': '图片过大 (上限约 4.5MB)'}), 413
+        vision_model = _detect_vision_model()
+        if not vision_model:
+            return jsonify({'success': False, 'error': 'no_vision_model',
+                            'message': '服务器暂无视觉模型 (llava/qwen2.5vl/moondream 均可), 请联系 SA 执行: ollama pull qwen2.5vl:3b'}), 503
+        model = vision_model
 
     # ── Token 计费 v25.5: 每日赠送 + 预扣拦截 ──
     sa_exempt = _is_sa(u)
@@ -1901,10 +2216,10 @@ def send_message():
 
     # 认知画像
     cp = _get_cognitive_profile(u['user_id'], u['username'])
-    system_prompt = _build_divergent_prompt(user_text, u['username'], cp)
+    system_prompt = _build_divergent_prompt(user_text, u['username'], cp, page_context=page_context)
 
-    # 保存用户消息
-    _save_message(sid, u['user_id'], 'user', user_text)
+    # 保存用户消息 (flow_chat_all7: 带图消息落附件标记)
+    _save_message(sid, u['user_id'], 'user', user_text + ('\n\n📎 [图片]' if image_b64 else ''))
     _record_action(sid, u['user_id'], 'send', {'text_len': len(user_text), 'model': model})
 
     # ── 上下文管理 ──
@@ -1933,7 +2248,9 @@ def send_message():
             brain_fed = True
 
         try:
-            for chunk in _call_ollama_stream(user_text, system_prompt, u['username']):
+            for chunk in _call_ollama_stream(user_text, system_prompt, u['username'],
+                                             images=[image_b64] if image_b64 else None,
+                                             model_override=model if image_b64 else None):
                 yield chunk
                 if chunk.startswith('data:'):
                     payload = chunk[5:].strip()

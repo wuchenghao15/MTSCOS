@@ -139,6 +139,38 @@
   body.embed-mode .messages{padding:14px}
   body.embed-mode .input-area{padding:10px 14px}
   body.embed-mode .input-hint{display:none}
+
+  /* ══ flow_chat_all7_20261019: 置顶/标签/快捷指令/语音/房间/日程/多模态 ══ */
+  .sess-pin{margin-left:auto;border:none;background:transparent;cursor:pointer;font-size:12px;opacity:0;padding:0 2px;transition:opacity .15s}
+  .session-item:hover .sess-pin{opacity:.75}
+  .sess-pin:hover{opacity:1}
+  .sess-pin.on{opacity:1}
+  .sess-tag{margin-left:auto;border:1px solid rgba(255,255,255,.12);background:transparent;color:var(--text-dim);cursor:pointer;font-size:11px;border-radius:8px;padding:1px 5px;opacity:0;transition:all .15s}
+  .session-item:hover .sess-tag{opacity:.8}
+  .sess-tag:hover{color:var(--mtscos-primary-base);border-color:var(--mtscos-primary-base);opacity:1}
+  .tag-chip{display:inline-block;padding:1px 6px;border-radius:8px;font-size:9px;background:rgba(168,85,247,.15);color:#c4b5fd;border:1px solid rgba(168,85,247,.3);margin-right:4px}
+  .session-item.is-pinned{border-color:rgba(251,191,36,.35);background:rgba(251,191,36,.05)}
+  .room-badge{color:#6ee7b7;font-size:10px;margin-right:4px}
+  .side-row{flex-shrink:0;display:flex;gap:8px;margin:0 12px 10px}
+  .side-btn{flex:1;padding:8px 4px;background:var(--panel);border:1px solid var(--line);border-radius:12px;color:var(--text-dim);cursor:pointer;font-size:12px;transition:all .15s}
+  .side-btn:hover{color:var(--mtscos-primary-base);border-color:var(--mtscos-primary-base);background:rgba(6,182,212,.08)}
+
+  .quick-cmds{flex-shrink:0;display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+  .qcmd{border:1px solid var(--line);background:rgba(6,182,212,.06);color:var(--text-dim);border-radius:20px;cursor:pointer;font-size:11px;padding:3px 11px;transition:all .15s}
+  .qcmd:hover{color:var(--mtscos-primary-base);border-color:var(--mtscos-primary-base);background:rgba(6,182,212,.14)}
+
+  .mic-btn,.attach-btn{width:36px;height:36px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:transparent;color:var(--text-dim);cursor:pointer;font-size:15px;flex-shrink:0;transition:all .15s}
+  .mic-btn:hover,.attach-btn:hover{color:var(--mtscos-primary-base);border-color:var(--mtscos-primary-base)}
+  .mic-btn.rec{color:#f87171;border-color:#f87171;animation:pulse 1.1s infinite}
+  @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(248,113,113,.4)}50%{box-shadow:0 0 0 6px rgba(248,113,113,0)}}
+  .tts-btn{border:none;background:transparent;color:var(--text-faint);cursor:pointer;font-size:11px;opacity:0;padding:0 2px;transition:opacity .15s,color .15s}
+  .msg:hover .tts-btn{opacity:.8}
+  .tts-btn:hover{color:var(--mtscos-primary-base);opacity:1}
+  .tts-btn.speaking{color:var(--green);opacity:1}
+  .ctx-pill{display:inline-flex;align-items:center;gap:4px;font-size:10px;color:#6ee7b7;background:rgba(110,231,183,.1);border:1px solid rgba(110,231,183,.25);border-radius:10px;padding:1px 8px;margin-right:6px}
+  .img-preview{max-width:180px;max-height:120px;border-radius:10px;border:1px solid var(--line);display:block;margin-bottom:4px}
+  .attach-bar{display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:11px;color:var(--text-dim)}
+  .attach-bar .rm{cursor:pointer;color:#f87171;border:none;background:transparent;font-size:12px}
 </style>
 </head>
 <body{% if embed %} class="embed-mode"{% endif %}>
@@ -155,6 +187,10 @@
     </div>
     
     <button class="new-session" onclick="newSession()">✨ 新建对话</button>
+    <div class="side-row">
+      <button class="side-btn" onclick="createRoom()" title="创建群聊房间, 生成 6 位加入码">🏠 建房</button>
+      <button class="side-btn" onclick="joinRoom()" title="凭加入码加入房间">🔗 加入</button>
+    </div>
     
     <div class="session-list" id="sessionList">
       <div class="empty" id="noSessions">加载会话中...</div>
@@ -178,6 +214,7 @@
         <span>🧠 仙女座发散</span>
         <span id="inflBadge" title="点击查看本会话拐点" onclick="showInflections()">📊 0拐点</span>
         <a class="hdr-btn" id="statsBtn" title="拐点全局统计" href="/inflection-stats" {% if embed %}target="_blank"{% endif %} style="text-decoration:none;display:inline-flex;align-items:center">📈</a>
+        <button class="hdr-btn" id="schedBtn" title="我的日程 (/日程 创建)" onclick="showSchedules()">📅</button>
         <button class="hdr-btn" id="exportBtn" title="导出为 Markdown" onclick="exportSession()">⬇️</button>
       </div>
     </div>
@@ -187,11 +224,21 @@
     </div>
     
     <div class="input-area">
+      <div class="quick-cmds" id="quickCmds"></div>
+      <div class="attach-bar" id="attachBar" style="display:none">
+        <img class="img-preview" id="attachThumb" alt="待发送图片">
+        <span id="attachName">图片已就绪</span>
+        <button class="rm" onclick="clearAttachment()" title="移除图片">✕</button>
+      </div>
       <div class="input-wrapper">
-        <textarea class="chat-input" id="input" placeholder="输入消息... (Enter 发送, Shift+Enter 换行)" rows="1"></textarea>
+        <button class="attach-btn" id="attachBtn" title="发送图片 (视觉模型)" onclick="$('imgFile').click()">📎</button>
+        <input type="file" id="imgFile" accept="image/*" style="display:none" onchange="pickImage(this)">
+        <textarea class="chat-input" id="input" placeholder="输入消息... (Enter 发送, /日程 创建日程)" rows="1"></textarea>
+        <button class="mic-btn" id="micBtn" title="语音输入" onclick="toggleMic()">🎤</button>
         <button class="send-btn" id="sendBtn" onclick="send()" disabled>↑</button>
       </div>
       <div class="input-hint">
+        <span id="ctxHint"></span>
         <span>💡 试试: 如果明天太阳不发光, 人类会怎样?</span>
         <span>🧠 仙女座发散思维引擎</span>
       </div>
@@ -203,6 +250,13 @@
 let currentSessionId = null;
 let isStreaming = false;
 let currentAbort = null;   // flow_chat_enhance_20261019: 停止生成
+
+// flow_chat_all7_20261019: 全量增强状态
+let pageCtx = '';            // F4 页面上下文 (widget postMessage 注入)
+let pendingImage = null;     // F5 待发送图片 (dataURL)
+let currentIsRoom = false;   // F6 当前会话是否群聊房间
+let roomTimer = null;        // F6 房间轮询 timer
+let lastMsgCount = 0;        // F6 轮询去重
 
 const $ = id => document.getElementById(id);
 const API = '/api/local-chat';
@@ -218,10 +272,13 @@ function init(){
   }).catch(()=>{
     $('userName').textContent = '用户';
   });
-  
+
   loadSessions();
   initTokenBadge();
   bindEnter();
+  initQuickCmds();      // F3 快捷指令面板
+  initVoice();          // F1 语音输入能力探测
+  listenPageCtx();      // F4 页面上下文接收 (embed 模式)
   $('chatTitle').addEventListener('dblclick', renameSession);   // flow_chat_enhance_20261019
 }
 
@@ -231,6 +288,7 @@ async function loadSessions(){
     const r = await fetch(`${API}/sessions`);
     const d = await r.json();
     if(!d.success) return;
+    window.__sessionsCache = d.sessions;   // F6: selectSession 判断 is_room 用
     const list = $('sessionList');
     list.innerHTML = '';
     if(!d.sessions.length){
@@ -239,13 +297,17 @@ async function loadSessions(){
     }
     for(const s of d.sessions){
       const el = document.createElement('div');
-      el.className = 'session-item' + (s.session_id === currentSessionId ? ' active' : '');
+      el.className = 'session-item' + (s.session_id === currentSessionId ? ' active' : '') + (s.pinned ? ' is-pinned' : '');
+      const tagChips = (s.tags || '').split(',').filter(t=>t.trim()).map(t=>`<span class="tag-chip">${escapeHtml(t.trim())}</span>`).join('');
+      const roomMark = s.is_room ? '<span class="room-badge">🏠</span>' : '';
       el.innerHTML = `
-        <div class="session-title">${escapeHtml(s.title || '未命名')}</div>
+        <div class="session-title">${s.pinned ? '📌 ' : ''}${roomMark}${escapeHtml(s.title || '未命名')}</div>
         <div class="session-last">${escapeHtml(s.last_message || '（空对话）')}</div>
-        <div class="session-meta"><span>💬 ${s.message_count}</span><span>${s.updated_at || ''}</span><button class="sess-del" title="删除会话">🗑</button></div>
+        <div class="session-meta"><span>💬 ${s.message_count}</span><span>${s.updated_at || ''}</span>${tagChips}<button class="sess-pin ${s.pinned?'on':''}" title="置顶/取消置顶">📌</button><button class="sess-tag" title="编辑标签">🏷</button><button class="sess-del" title="删除会话">🗑</button></div>
       `;
       el.onclick = () => selectSession(s.session_id);
+      el.querySelector('.sess-pin').onclick = (e) => { e.stopPropagation(); togglePin(s.session_id); };
+      el.querySelector('.sess-tag').onclick = (e) => { e.stopPropagation(); editTags(s.session_id, s.tags || ''); };
       el.querySelector('.sess-del').onclick = (e) => { e.stopPropagation(); deleteSession(s.session_id, s.title); };
       list.appendChild(el);
     }
@@ -254,6 +316,7 @@ async function loadSessions(){
 
 async function newSession(){
   if(isStreaming) return;
+  stopRoomPoll();   // 新对话非房间
   const r = await fetch(`${API}/session`, {method:'POST', headers:{'Content-Type':'application/json'}});
   const d = await r.json();
   if(d.success){
@@ -271,19 +334,48 @@ async function newSession(){
 async function selectSession(sid){
   if(isStreaming) return;
   currentSessionId = sid;
+  stopRoomPoll();
   const r = await fetch(`${API}/history?session_id=${sid}`);
   const d = await r.json();
   if(!d.success) return;
-  
+
   $('messages').innerHTML = '';
+  lastMsgCount = d.messages.length;
   for(const m of d.messages){
     const w = appendMessage(m.role, m.content, false);
     if(m.role !== 'user') appendSparks(w);   // flow_diverge_v2: 历史AI消息也带追问
   }
   refreshInflCount();
+  // 群聊房间: 标记 + 启动轮询同步 (flow_chat_all7_20261019)
+  currentIsRoom = !!(window.__sessionsCache || []).find(s => s.session_id === sid && s.is_room);
+  if(currentIsRoom) startRoomPoll();
   // 标题从列表取
   document.querySelectorAll('.session-item').forEach(el=>el.classList.remove('active'));
   event?.currentTarget?.classList?.add('active');
+}
+
+// ═══ F6 群聊房间: 轮询同步成员新消息 (非流式期间每 4s) ═══
+function startRoomPoll(){
+  stopRoomPoll();
+  roomTimer = setInterval(async ()=>{
+    if(isStreaming || !currentSessionId || !currentIsRoom) return;
+    try{
+      const r = await fetch(`${API}/history?session_id=${currentSessionId}`);
+      const d = await r.json();
+      if(!d.success) return;
+      if(d.messages.length === lastMsgCount) return;
+      lastMsgCount = d.messages.length;
+      $('messages').innerHTML = '';
+      for(const m of d.messages){
+        const w = appendMessage(m.role, m.content, false);
+        if(m.role !== 'user') appendSparks(w);
+      }
+    }catch(_){}
+  }, 4000);
+}
+function stopRoomPoll(){
+  if(roomTimer){ clearInterval(roomTimer); roomTimer = null; }
+  currentIsRoom = false;
 }
 
 // ═══ 发送消息 (SSE 流式) ═══
@@ -305,7 +397,14 @@ async function send(){
   const input = $('input');
   const text = input.value.trim();
   if(!text || isStreaming) return;
-  
+
+  // F7 日程助手: /日程 命令不进 AI 流, 直达日程 API
+  if(text.startsWith('/日程')){
+    if(!currentSessionId){ await newSession(); }
+    await sendScheduleCommand(text);
+    return;
+  }
+
   if(!currentSessionId){
     await newSession();
   }
@@ -319,6 +418,15 @@ async function send(){
   $('input').disabled = true;
   
   appendMessage('user', text, true);
+  // F5 多模态: 用户消息内联图片预览
+  if(pendingImage){
+    const lastUser = [...document.querySelectorAll('.msg.user .msg-bubble')].pop();
+    if(lastUser){
+      const img = document.createElement('img');
+      img.className = 'img-preview'; img.src = pendingImage;
+      lastUser.insertBefore(img, lastUser.firstChild);
+    }
+  }
   input.value = '';
   input.style.height = 'auto';
   
@@ -333,7 +441,12 @@ async function send(){
     const resp = await fetch(`${API}/send`, {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({session_id: currentSessionId, message: text}),
+      body: JSON.stringify({
+        session_id: currentSessionId,
+        message: text,
+        image: pendingImage || undefined,       // F5 多模态
+        page_context: pageCtx || undefined      // F4 页面上下文
+      }),
       signal: currentAbort.signal
     });
 
@@ -345,6 +458,16 @@ async function send(){
       isStreaming = false;
       $('sendBtn').disabled = false;
       $('input').disabled = false;
+      return;
+    }
+    // ── F5 无视觉模型 (503) / 图片错误 (400/413) ──
+    if(resp.status === 503 || resp.status === 413 || resp.status === 400){
+      let msg = '请求被拒绝';
+      try{ const e = await resp.json(); if(e.message) msg = e.message; }catch(_){}
+      contentEl.innerHTML = `<span style="color:#fbbf24">📎 ${msg}</span>`;
+      isStreaming = false; currentAbort = null;
+      $('sendBtn').textContent = '↑'; $('sendBtn').title = '发送'; $('sendBtn').onclick = send;
+      $('sendBtn').disabled = false; $('input').disabled = false;
       return;
     }
 
@@ -433,6 +556,7 @@ async function send(){
     }
   }finally{
     syncCopyRaw(aiMsg, fullText);
+    clearAttachment();   // F5: 发送完成清理待发图片
     isStreaming = false;
     currentAbort = null;
     $('sendBtn').textContent = '↑';
@@ -574,6 +698,7 @@ async function showInflections(){
 function appendMessage(role, content, isNew){
   const wrap = document.createElement('div');
   wrap.className = 'msg ' + (role === 'user' ? 'user' : 'ai');
+  const ttsBtn = role === 'user' ? '' : '<button class="tts-btn" title="朗读本条回复" data-raw="">🔊</button>';
   wrap.innerHTML = `
     <div class="msg-bubble">
       <div class="msg-content">${content ? escapeHtml(content).replace(/\n/g,'<br>') : ''}</div>
@@ -581,13 +706,39 @@ function appendMessage(role, content, isNew){
     <div class="msg-meta">
       <span>${role === 'user' ? '👤 我' : '🧠 仙女座 AI'}</span>
       <span>${new Date().toLocaleTimeString()}</span>
+      ${ttsBtn}
       <button class="msg-copy" title="复制" data-raw="${escapeHtml(content)}">⧉</button>
     </div>
   `;
   wrap.querySelector('.msg-copy').onclick = () => copyText(wrap.querySelector('.msg-copy').dataset.raw);
+  const tts = wrap.querySelector('.tts-btn');
+  if(tts){
+    tts.dataset.raw = content || '';
+    tts.onclick = () => speakText(tts);
+  }
   $('messages').appendChild(wrap);
   scrollBottom();
   return wrap;
+}
+
+// ═══ F1 朗读 (Web Speech Synthesis, 纯本地零 token) ═══
+function speakText(btn){
+  if(!('speechSynthesis' in window)) return;
+  const synth = window.speechSynthesis;
+  // 再次点击同一按钮 → 停止朗读
+  if(synth.speaking){
+    synth.cancel();
+    document.querySelectorAll('.tts-btn.speaking').forEach(b=>b.classList.remove('speaking'));
+    if(btn._speaking){ btn._speaking = false; return; }
+  }
+  synth.cancel();
+  document.querySelectorAll('.tts-btn.speaking').forEach(b=>{ b.classList.remove('speaking'); b._speaking = false; });
+  const u = new SpeechSynthesisUtterance((btn.dataset.raw || '').replace(/\s+/g,' ').slice(0, 1200));
+  u.lang = 'zh-CN';
+  u.rate = 1.05;
+  btn.classList.add('speaking'); btn._speaking = true;
+  u.onend = u.onerror = () => { btn.classList.remove('speaking'); btn._speaking = false; };
+  synth.speak(u);
 }
 
 // flow_chat_enhance_20261019: 消息复制 (流式结束后同步 data-raw)
@@ -600,6 +751,8 @@ function copyText(t){
 function syncCopyRaw(aiMsg, raw){
   const btn = aiMsg.querySelector('.msg-copy');
   if(btn) btn.dataset.raw = raw;
+  const tts = aiMsg.querySelector('.tts-btn');
+  if(tts) tts.dataset.raw = raw;
 }
 
 // ═══ 会话删除 / 导出 / 重命名 (flow_chat_enhance_20261019) ═══
@@ -658,6 +811,212 @@ function scrollBottom(){
 
 function escapeHtml(s){
   return (s||'').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+}
+
+// ═══════════════════════════════════════════════════════════════
+// flow_chat_all7_20261019: 7 方向全量增强 (快捷指令/语音/上下文/多模态/房间/日程/置顶标签)
+// ═══════════════════════════════════════════════════════════════
+
+// ── F3 快捷指令面板 ──
+const QUICK_CMDS = [
+  {label: '📝 总结本对话', prompt: '请用结构化方式总结我们这段对话的核心要点与结论'},
+  {label: '🎯 帮我出题', prompt: '基于我们刚才讨论的内容, 出 3 道考察理解力的题目并附答案'},
+  {label: '💡 发散一下', prompt: '对我们刚才的话题做一次发散思维: 给出 3 个意想不到的关联方向'},
+  {label: '🌰 举个例子', prompt: '用一个贴近生活的具体例子解释你刚才说的概念'},
+  {label: '🔍 深入解释', prompt: '请把你上一个回答中最关键的一点展开, 深入底层原理讲解'}
+];
+function initQuickCmds(){
+  const bar = $('quickCmds');
+  if(!bar) return;
+  for(const c of QUICK_CMDS){
+    const b = document.createElement('button');
+    b.className = 'qcmd';
+    b.textContent = c.label;
+    b.title = c.prompt;
+    b.onclick = () => {
+      if(isStreaming) return;
+      $('input').value = c.prompt;
+      send();
+    };
+    bar.appendChild(b);
+  }
+}
+
+// ── F1 语音输入 (Web Speech Recognition, Chrome/Edge/Safari) ──
+let recognition = null;
+let micOn = false;
+function initVoice(){
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if(!SR){
+    const mb = $('micBtn');
+    if(mb){ mb.disabled = true; mb.title = '当前浏览器不支持语音识别'; mb.style.opacity = .35; }
+    return;
+  }
+  recognition = new SR();
+  recognition.lang = 'zh-CN';
+  recognition.interimResults = true;
+  recognition.continuous = false;
+  recognition.onresult = (e) => {
+    let txt = '';
+    for(const r of e.results) txt += r[0].transcript;
+    $('input').value = txt;
+    $('input').dispatchEvent(new Event('input'));
+  };
+  recognition.onend = () => { micOn = false; $('micBtn')?.classList.remove('rec'); };
+  recognition.onerror = () => { micOn = false; $('micBtn')?.classList.remove('rec'); };
+}
+function toggleMic(){
+  if(!recognition) return;
+  if(micOn){ recognition.stop(); return; }
+  micOn = true;
+  $('micBtn').classList.add('rec');
+  try{ recognition.start(); }catch(_){ micOn = false; $('micBtn').classList.remove('rec'); }
+}
+
+// ── F4 页面上下文携带 (widget postMessage 注入) ──
+function listenPageCtx(){
+  window.addEventListener('message', (e) => {
+    if(e.data && e.data.type === 'mtscos-page-ctx'){
+      pageCtx = `[页面 ${e.data.path || ''}] ${e.data.title || ''}`.trim();
+      const hint = $('ctxHint');
+      if(hint) hint.innerHTML = `<span class="ctx-pill" title="${escapeHtml(pageCtx)}">📍 已感知当前页面</span>`;
+    }
+  });
+}
+
+// ── F5 多模态图片 ──
+function pickImage(inp){
+  const f = inp.files && inp.files[0];
+  if(!f) return;
+  if(f.size > 4.5 * 1024 * 1024){ alert('图片过大 (上限 4.5MB)'); inp.value = ''; return; }
+  const reader = new FileReader();
+  reader.onload = () => {
+    pendingImage = reader.result;
+    $('attachThumb').src = pendingImage;
+    $('attachName').textContent = `${f.name || '图片'} (${(f.size/1024).toFixed(0)}KB)`;
+    $('attachBar').style.display = 'flex';
+  };
+  reader.readAsDataURL(f);
+  inp.value = '';
+}
+function clearAttachment(){
+  pendingImage = null;
+  const bar = $('attachBar');
+  if(bar) bar.style.display = 'none';
+}
+
+// ── F2 置顶 + 标签 ──
+async function togglePin(sid){
+  const r = await fetch(`${API}/session/${sid}/pin`, {method:'PUT'});
+  const d = await r.json();
+  if(!d.success){ alert('置顶失败: ' + (d.error || '')); return; }
+  loadSessions();
+}
+function editTags(sid, cur){
+  const t = prompt('输入标签 (逗号分隔, 留空清除):', cur);
+  if(t === null) return;
+  fetch(`${API}/session/${sid}/tags`, {
+    method:'PUT', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({tags: t.trim()})
+  }).then(r=>r.json()).then(d=>{
+    if(d.success) loadSessions();
+    else alert('标签保存失败: ' + (d.error || ''));
+  }).catch(()=>{});
+}
+
+// ── F6 群聊房间 ──
+async function createRoom(){
+  if(isStreaming) return;
+  const t = prompt('房间名称:', '');
+  if(t === null) return;
+  const r = await fetch(`${API}/room`, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({title: t.trim()})
+  });
+  const d = await r.json();
+  if(!d.success){ alert('建房失败: ' + (d.error || '')); return; }
+  alert(`🏠 房间已创建!\n\n加入码: ${d.room_code}\n\n把加入码告诉其他用户, 对方点「🔗 加入」即可进入群聊。`);
+  currentSessionId = d.session_id;
+  $('chatTitle').textContent = `🏠 ${d.title}`;
+  $('messages').innerHTML = '<div class="empty">🏠 群聊房间已就绪 — 成员加入后消息实时同步 (4s 轮询)</div>';
+  $('input').disabled = false; $('sendBtn').disabled = false;
+  loadSessions();
+  currentIsRoom = true;
+  startRoomPoll();
+  $('input').focus();
+}
+async function joinRoom(){
+  if(isStreaming) return;
+  const code = prompt('输入 6 位房间加入码:', '');
+  if(!code) return;
+  const r = await fetch(`${API}/room/join`, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({code: code.trim()})
+  });
+  const d = await r.json();
+  if(!d.success){ alert(d.message || '加入失败: ' + (d.error || '')); return; }
+  loadSessions();
+  selectSession(d.session_id);
+}
+
+// ── F7 日程助手 ──
+async function sendScheduleCommand(text){
+  isStreaming = true;
+  appendMessage('user', text, true);
+  const aiMsg = appendMessage('assistant', '', true);
+  const contentEl = aiMsg.querySelector('.msg-content');
+  contentEl.innerHTML = '<div class="thinking"><span></span><span></span><span></span></div>';
+  try{
+    const r = await fetch(`${API}/schedule`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({text, session_id: currentSessionId})
+    });
+    const d = await r.json();
+    let reply;
+    if(d.success){
+      reply = d.reply || `📅 日程已创建 #${d.id}: ${d.title} @ ${d.due_at || '待定'}`;
+    }else{
+      reply = `⚠️ ${d.message || d.error || '创建失败'}\n\n格式: /日程 [今天|明天|后天] [14:30] 事项`;
+    }
+    contentEl.innerHTML = '';
+    appendMessage('assistant', reply, true);
+    aiMsg.remove();
+  }catch(e){
+    contentEl.innerHTML = `<span style="color:#fca5a5">❌ 日程服务不可用: ${e.message}</span>`;
+  }finally{
+    isStreaming = false;
+    $('input').disabled = false;
+    $('input').focus();
+  }
+}
+async function showSchedules(){
+  const r = await fetch(`${API}/schedule`);
+  if(!r.ok){ alert('日程加载失败'); return; }
+  const d = await r.json();
+  let html = `<div class="infl-head"><b>📅 我的日程 (${d.count || 0})</b>` +
+             `<button class="hdr-btn" onclick="this.closest('.infl-mask').remove()">✕</button></div>` +
+             `<div style="font-size:11px;color:var(--text-faint);margin-bottom:10px">创建: 输入框输入 /日程 明天14:30 开会</div>`;
+  if(!d.schedules || !d.schedules.length){
+    html += '<div style="opacity:.5;font-size:12px;padding:14px 0">暂无日程 — 试试 /日程 明天9:00 复习高数</div>';
+  }else{
+    html += '<div class="infl-list">' + d.schedules.map(s =>
+      `<div class="infl-item">` +
+      `<span>${s.status === 'done' ? '✅' : '⏳'}</span>` +
+      `<span class="infl-txt" style="white-space:normal">${escapeHtml(s.title)}</span>` +
+      `<span class="infl-at">${s.due_at || '待定'}</span>` +
+      (s.status === 'open' ? `<button class="hdr-btn" onclick="markScheduleDone(${s.id})">完成</button>` : '') +
+      `</div>`).join('') + '</div>';
+  }
+  const mask = document.createElement('div');
+  mask.className = 'infl-mask';
+  mask.innerHTML = `<div class="infl-modal">${html}</div>`;
+  mask.onclick = e => { if(e.target === mask) mask.remove(); };
+  document.body.appendChild(mask);
+}
+async function markScheduleDone(id){
+  await fetch(`${API}/schedule/${id}/done`, {method:'PUT'});
+  document.querySelectorAll('.infl-mask').forEach(m=>m.remove());
+  showSchedules();
 }
 
 init();
