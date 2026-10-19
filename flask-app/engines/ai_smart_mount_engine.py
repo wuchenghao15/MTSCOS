@@ -58,14 +58,18 @@ PROJECT_ROOT = os.path.dirname(ROOT)  # 项目根
 # 清理前的旧副本 488KB 不包含 15 daemon 注册表、AI 员工 33,525 人、25 恒星域
 AI_ENGINES_DIR = os.path.join(ROOT, "ai_engines")
 # 🔧 仙女座 v5.2 路径修复 (2026-10-06):
-# MacBook Pro 真实主库在 flask-app/database/app.db (1.6GB, 有 mt_daemon_registry 60条)
+# MacBook Pro 真实主库在 flask-app/database/app.db (有 mt_daemon_registry 60条)
 # Mac mini 旧库在 _runtime/databases/Database/app.db (7GB, 无 mt_daemon_registry — 不可用!)
-# 统一: 取 flask-app/database/app.db 优先 (Flask 正在用的活跃库)
+# 🔧 flow_daemon_dbfix_20261019: database/app.db 提为首选!
+#   事故复盘: Mac mini 上 engines/app.db 被重建为 7.6MB 残缺库 (仅5表, 缺
+#   mt_daemon_registry/mt_ai_suggestion_pool 等), 排在首位导致引擎每周期
+#   "no such table" 11287+ 次, remount_system_required 失效, 5个核心daemon
+#   无人拉起, GAP_REGISTRY 缺口无法自动回填。活跃真库恒为 database/app.db。
 _DB_CANDIDATES = [
-    os.path.join(ROOT, "engines", "app.db"),                                     # ✅ Mac mini 完整版 (763MB, 有全部表)
-    os.path.join(ROOT, "database", "app.db"),                                    # ✅ 活跃主库 (MacBook Pro 1.6GB)
-    os.path.join(PROJECT_ROOT, "flask-app", "engines", "app.db"),                # 兜底 engines 版
+    os.path.join(ROOT, "database", "app.db"),                                    # ✅ 活跃主库 (Flask 正在用, 全表) — 首选
+    os.path.join(ROOT, "engines", "app.db"),                                     # 引擎附属库 (残缺, 仅兜底)
     os.path.join(PROJECT_ROOT, "flask-app", "database", "app.db"),               # 兜底 database 版
+    os.path.join(PROJECT_ROOT, "flask-app", "engines", "app.db"),                # 兜底 engines 版
     os.path.join(PROJECT_ROOT, "Database", "app.db"),                            # 旧兼容
     os.path.join(AI_ENGINES_DIR, "app.db"),                                      # 最后兜底
 ]
