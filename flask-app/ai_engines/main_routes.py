@@ -190,6 +190,22 @@ class RouteManager:
                     from flask import session as _s
                     user = _s.get(r'user') or {}
                     uid = _s.get(r'user_id') or (user.get(r'id') if isinstance(user, dict) else None) or 1
+                    # flow_敏感_用户手机号加密存储_1790217583: 手机号不得明文进 prefs_json
+                    _phone_in = payload.pop(r'phone', None)
+                    if _phone_in is not None and r'*' in str(_phone_in):
+                        # 前端回填的是脱敏串(138****5678), 未改动 → 不覆盖金库
+                        _phone_in = None
+                    if _phone_in is not None:
+                        try:
+                            import os as _os
+                            from core.services.phone_vault import store_phone, mask as _mask_phone
+                            _vault_db = _os.path.join(_os.path.dirname(_os.path.dirname(
+                                _os.path.abspath(__file__))), r'database', r'app.db')
+                            store_phone(_vault_db, uid, str(_phone_in))
+                            payload[r'phone_masked'] = _mask_phone(str(_phone_in))
+                        except Exception:
+                            logger.exception(r'phone_vault store error')
+                            payload[r'phone_masked'] = r''
                     # 落库 SSOT：优先使用核心层 db_manager；失败则写本地 SQLite failover
                     saved = _ssot_write_prefs(uid, section, payload)
                     if saved:
