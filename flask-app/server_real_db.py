@@ -2406,6 +2406,13 @@ _CSRF_EXEMPT_PATHS = [
     # flow_hall_20261020: 任务大厅纯后端 (自动归集+自动分配, 登录门禁 + 全落库审计)
     '/api/daemon-lab/hall/board',
     '/api/daemon-lab/hall/submit',
+    # flow_hall_claim_opt_20261020: 接任务生命周期 (抢单/开工/进度/交付/验收/回收, 登录门禁 + 原子状态迁移 + 全落库审计)
+    '/api/daemon-lab/hall/claim',
+    '/api/daemon-lab/hall/start',
+    '/api/daemon-lab/hall/progress',
+    '/api/daemon-lab/hall/deliver',
+    '/api/daemon-lab/hall/accept',
+    '/api/daemon-lab/hall/recycle',
     # flow_edu_20261020: AI教育中心+考试院 (一键培养流水线, 登录门禁 + 全落库审计)
     '/api/ai-edu/run',
     # flow_wecom_20261020: 企业微信中枢 (推送/开会/配置, 登录门禁 + 全落库审计)
