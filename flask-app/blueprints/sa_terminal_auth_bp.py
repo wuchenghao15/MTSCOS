@@ -515,9 +515,16 @@ def sa_session_keepalive():
         return jsonify({'ok': False, 'error': 'SA_ONLY'}), 403
     dual_ok = _dual_ok()
     if not dual_ok:
-        # fail-closed: 双钥离线不续期, 会话自然过期
-        _audit('SESSION_KEEPALIVE_REJECT', {'ip': request.remote_addr})
-        return jsonify({'ok': False, 'dual_ok': False, 'error': '双钥不在位, 会话不续期'}), 403
+        # fail-closed: 双钥离线 → 立即清 SA 会话标记 + 返回 kick 指令 (flow_sa_kick_20261020)
+        session['remote_dual_verified'] = False
+        session.pop('remote_dual_verified_at', None)
+        session.pop('plug_login', None)
+        session.modified = True
+        _audit('SESSION_KEEPALIVE_KICK', {'ip': request.remote_addr,
+                                          'ua': request.headers.get('User-Agent', '')[:80]})
+        return jsonify({'ok': False, 'dual_ok': False, 'kick': True,
+                        'redirect': '/index?from=sa_key_lost',
+                        'error': '双钥离线, 已踢出 SA 专注系统'}), 403
     session.permanent = True
     session.modified = True
     lifetime_h = int((current_app.config.get('PERMANENT_SESSION_LIFETIME', 86400 * 7)) / 3600)
