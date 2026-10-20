@@ -141,6 +141,17 @@ def _ensure_claim_tables():
         cols = [r[1] for r in conn.execute("PRAGMA table_info(mt_lab_assignments)").fetchall()]
         if "hall_task_id" not in cols:
             conn.execute("ALTER TABLE mt_lab_assignments ADD COLUMN hall_task_id INTEGER")
+        # ══ AI 人力资源中心 (flow_hall_20261020, 与任务大厅联动) ══
+        conn.execute("""CREATE TABLE IF NOT EXISTS mt_lab_hr_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            employee_name TEXT NOT NULL,
+            employee_code TEXT,
+            role TEXT DEFAULT 'employee',    -- employee/professor
+            hall_task_id INTEGER,
+            action TEXT DEFAULT 'DISPATCH',  -- DISPATCH / COMPLETE / REVIEW
+            verdict TEXT,
+            created_at TEXT DEFAULT (datetime('now','localtime'))
+        )""")
         conn.commit()
     finally:
         conn.close()
@@ -204,6 +215,14 @@ def _hall_dispatch_one(task):
                      (status, center["id"], aid, verdict, task["id"]))
         if status == "DISPATCHED" and task["source"] == "derivation" and task["source_id"]:
             conn.execute("UPDATE mt_lab_suggestions SET status='CLAIMED' WHERE id=? AND status='PROPOSED'", (task["source_id"],))
+        # AI 人力资源中心: 分配成功自动登记人力账
+        if status == "DISPATCHED":
+            for e in emps:
+                conn.execute("INSERT INTO mt_lab_hr_log (employee_name, employee_code, role, hall_task_id, action, verdict) VALUES (?,?,?,?,?,?)",
+                             (e["name"], e.get("code"), "employee", task["id"], "DISPATCH", verdict))
+            for p in profs:
+                conn.execute("INSERT INTO mt_lab_hr_log (employee_name, employee_code, role, hall_task_id, action, verdict) VALUES (?,?,?,?,?,?)",
+                             (p["name"], p.get("code"), "professor", task["id"], "REVIEW", verdict))
         conn.commit()
     finally:
         conn.close()
@@ -224,6 +243,36 @@ def run_hall_auto():
         conn.close()
     results = [_hall_dispatch_one(t) for t in queued]
     return {"ingested": ingested, "dispatched": len(results), "results": results}
+
+
+@daemon_skill_lab_bp.route("/api/daemon-lab/hr/roster")
+@_login_required
+def hr_roster():
+    """AI 人力资源中心: 名册 + 任务负载 + 人力账 (与任务大厅联动)"""
+    _ensure_claim_tables()
+    conn = _db()
+    try:
+        total_active = conn.execute("SELECT count(*) FROM ai_employees WHERE status='active'").fetchone()[0]
+        prof_total = conn.execute(
+            "SELECT count(*) FROM ai_employees WHERE status='active' AND (" +
+            " OR ".join(["name LIKE ?"] * len(_PROFESSOR_HINTS)) + ")",
+            [f"%{h}%" for h in _PROFESSOR_HINTS]).fetchone()[0]
+        # 大厅负载 TOP (人力账聚合)
+        workload = [dict(r) for r in conn.execute(
+            "SELECT employee_name, role, count(*) AS tasks FROM mt_lab_hr_log "
+            "GROUP BY employee_name, role ORDER BY tasks DESC LIMIT 15")]
+        # 最近人力账
+        recent_log = [dict(r) for r in conn.execute(
+            "SELECT l.employee_name, l.role, l.action, l.verdict, l.created_at, h.title AS task_title "
+            "FROM mt_lab_hr_log l LEFT JOIN mt_lab_task_hall h ON h.id=l.hall_task_id "
+            "ORDER BY l.id DESC LIMIT 20")]
+        in_pool = conn.execute("SELECT count(DISTINCT employee_name) FROM mt_lab_hr_log").fetchone()[0]
+        return jsonify({"ok": True, "hr": {
+            "pool_total": total_active, "prof_total": prof_total,
+            "engaged": in_pool, "workload": workload, "recent_log": recent_log,
+        }})
+    finally:
+        conn.close()
 
 
 @daemon_skill_lab_bp.route("/api/daemon-lab/hall/board", methods=["GET", "POST"])
