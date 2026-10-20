@@ -2421,6 +2421,9 @@ _CSRF_EXEMPT_PATHS = [
     '/api/daemon-lab/hall/center-delegate',
     # flow_sa_session_20261020: SA 会话免密维持心跳 (SA登录态+双钥在位才续期, fail-closed, 全落库审计)
     '/api/sa/session/keepalive',
+    # flow_sa_system_20261020: SA 专属系统中枢吊销操作 (SA_ONLY 门禁 + 审计落库)
+    '/api/sa/system/device/revoke',
+    '/api/sa/system/credential/revoke',
     # flow_edu_20261020: AI教育中心+考试院 (一键培养流水线, 登录门禁 + 全落库审计)
     '/api/ai-edu/run',
     # flow_wecom_20261020: 企业微信中枢 (推送/开会/配置, 登录门禁 + 全落库审计)
