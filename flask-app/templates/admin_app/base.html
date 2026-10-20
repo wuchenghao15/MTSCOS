@@ -295,27 +295,7 @@
     }
   })();
   </script>
-  <script>
-  /* flow_sa_autoredir_20261020: SA 双钥即插即用 — 心跳检测双钥在位自动跳 SA 专注系统 */
-  (function(){
-    if (location.pathname.indexOf('/sa/') === 0) return;  /* 已在 SA 区不轮询 */
-    var _stopped = false;
-    function _saPoll(){
-      if (_stopped) return;
-      fetch('/api/hardware/dual-status?hardware_only=1', {credentials:'same-origin'})
-        .then(function(r){ if (r.status === 403) { _stopped = true; return null; } return r.json(); })
-        .then(function(j){
-          if (!j) return;
-          if ((j.both_present || j.both_authenticated) === true) {
-            location.replace('/sa/dashboard');
-            return;
-          }
-          setTimeout(_saPoll, 5000);
-        })
-        .catch(function(){ setTimeout(_saPoll, 8000); });
-    }
-    setTimeout(_saPoll, 2000);
-  })();
-  </script>
+  <!-- flow_sa_rejoin_20261020: 双钥自动回归公共心跳 (index/admin 共用, 在位→跳/sa/dashboard) -->
+  <script src="/static/js/sa_auto_redirect.js?v=26.0.1"></script>
 </body>
 </html>
