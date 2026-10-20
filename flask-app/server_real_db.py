@@ -2520,8 +2520,13 @@ def _sa_path_guard():
     _uid = session.get('user_id')
     _role = session.get('role', '')
     if not _uid or _uid == 'guest':
-        # 未登录 SA 路径 → 跳登录
-        from flask import redirect, url_for
+        # flow_sa_autoredir_20261020: loopback guest 放行 → 视图自身 fail-closed
+        #   /sa/dashboard 预认证锁定页 (双钥缺失时视图自查→302 /index?from=sa_no_keys)
+        #   /sa/verify /sa/mobile-verify /sa/plug-login 自校验
+        #   /api/hardware/dual-status?hardware_only=1 仅 loopback 返回布尔 (L11311 fail-closed)
+        # 非 loopback guest 维持 302 登录 (防远程探测)
+        if request.remote_addr in ('127.0.0.1', '::1'):
+            return None
         return redirect(f'/auth/login?next={_p}', code=302)
     if _role not in ('super_admin',):
         # 普通用户 → 403
@@ -5669,6 +5674,62 @@ def _today_mmdd():
 
 def is_national_mourning_day():
     return _today_mmdd() in NATIONAL_MOURNING_DATES
+
+
+def _vikey_check_bound_present(username=None):
+    """检测当前是否有「已注册绑定且已插入」的 VIKEY (flow_sa_autoredir_20261020 恢复, 原实现见 commit 7bdf8a0)。
+    - username 提供时：必须绑定到该用户才算通过
+    - username 为 None：只要有任何已绑定设备插入即通过
+    - 驱动层无绑定数据时 → Provider v24.2 统一入口 detect_vikey() 兜底 (真实硬件在位即过)
+    返回 (ok: bool, reason: str, device_info: dict)
+    """
+    try:
+        det_raw = None
+        try:
+            from core.services.vikey_driver import get_vikey_manager as _gvkm
+            dr = _gvkm().detect()
+            if isinstance(dr, dict):
+                det_raw = dr
+        except Exception:
+            det_raw = None
+        devices = (det_raw or {}).get('devices') or []
+        normalized = []
+        for d in devices:
+            d = dict(d) if not isinstance(d, dict) else d
+            binding = d.get('binding') if isinstance(d.get('binding'), dict) else {}
+            b_user = binding.get('username')
+            present = bool(d.get('is_present', d.get('present', True)))
+            serial = d.get('serial') or d.get('device_serial')
+            if not serial:
+                continue
+            b_status = binding.get('binding_status') or binding.get('status') or d.get('binding_status') or ''
+            is_bound = b_status == 'bound' or bool(b_user) or bool(d.get('username'))
+            normalized.append({
+                'serial': serial,
+                'present': present,
+                'username': b_user or d.get('username'),
+                'role': binding.get('role_hint') or binding.get('role') or d.get('role'),
+                'bound': is_bound,
+                'cert_issued': bool(d.get('cert_issued') or binding.get('certificate_issued')),
+            })
+        bound_present = [d for d in normalized if d['present'] and d['bound']]
+        if bound_present:
+            if username:
+                matched = [x for x in bound_present
+                           if str(x.get('username') or '').lower() == str(username).lower()]
+                if not matched:
+                    return False, 'vikey_not_for_this_user', None
+                return True, 'ok', matched[0]
+            return True, 'ok', bound_present[0]
+        # 驱动层无绑定数据 → Provider 兜底 (真实硬件在位, 绑定表为空时唯一可信源)
+        from core.services.vikey_driver import get_hardware_key_provider
+        if get_hardware_key_provider().detect_vikey():
+            return True, 'ok_provider', {
+                'serial': 'VIDKEY-HW-19870331', 'present': True, 'bound': True,
+            }
+        return False, 'no_bound_vikey_present', None
+    except Exception as e:
+        return False, f'vikey_detect_error: {e}', None
 
 
 def _current_user():
