@@ -785,5 +785,31 @@
     setInterval(loadAll, 60000);  // 每 60s 刷新
 })();
 </script>
+<script>
+/* flow_sa_session_20261020: SA 会话免密维持 — 每5min心跳续期(双钥在位才续), 掉钥被动提示 */
+(function(){
+    var _ba = document.createElement('div');
+    _ba.style.cssText = 'position:fixed;bottom:10px;right:12px;z-index:9999;font:11px/1.4 -apple-system,sans-serif;color:#0f8;padding:3px 10px;border-radius:10px;background:rgba(0,0,0,.55);backdrop-filter:blur(4px);transition:.3s;display:none;';
+    document.body.appendChild(_ba);
+    function _beat(){
+        fetch('/api/sa/session/keepalive', {method:'POST', credentials:'same-origin'})
+            .then(function(r){ return r.json().then(function(j){ return {s:r.status, j:j}; }); })
+            .then(function(r){
+                if (r.s === 200 && r.j.ok) {
+                    _ba.style.display = 'block';
+                    _ba.style.color = '#0f8';
+                    _ba.textContent = '🔐 双钥在位 · 会话续期 ' + (r.j.lifetime_hours || 168) + 'h';
+                } else {
+                    _ba.style.display = 'block';
+                    _ba.style.color = '#f66';
+                    _ba.textContent = '⚠️ 双钥离线 · 会话不续期';
+                }
+            })
+            .catch(function(){ /* 网络抖动静默 */ });
+    }
+    _beat();
+    setInterval(_beat, 5 * 60 * 1000);
+})();
+</script>
 </body>
 </html>

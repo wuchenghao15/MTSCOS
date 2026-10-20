@@ -17,7 +17,7 @@ import sqlite3
 import secrets
 from datetime import datetime, timedelta
 
-from flask import Blueprint, request, session, jsonify, redirect, render_template
+from flask import Blueprint, request, session, jsonify, redirect, render_template, current_app
 
 from core.services.vikey_driver import get_hardware_key_provider
 
@@ -500,6 +500,41 @@ def sa_mobile_complete():
     session['remote_dual_verified_at'] = datetime.now().isoformat()
     _audit('MOBILE_3FA_OK', {'ip': request.remote_addr, 'ua': request.headers.get('User-Agent', '')[:80]})
     return jsonify({'ok': True, 'redirect': '/sa/dashboard'})
+
+
+# ══ SA 会话免密维持 (flow_sa_session_20261020) ══
+@sa_terminal_auth_bp.route('/api/sa/session/keepalive', methods=['POST'])
+def sa_session_keepalive():
+    """SA 在位心跳: 双钥在线 → session.permanent 续期免密维持; 双钥离线 → fail-closed 不续期.
+
+    - 仅已登录 SA (wuchenghao15) 有效, 其他用户 403
+    - 双钥校验走聚合缓存 (不强刷), 2s TTL, 开销可忽略
+    - 续期 = session.permanent=True + modified 标记, Flask 下次响应重发 cookie
+    """
+    if not (session.get('logged_in') and str(session.get('username') or '').lower() == 'wuchenghao15'):
+        return jsonify({'ok': False, 'error': 'SA_ONLY'}), 403
+    dual_ok = _dual_ok()
+    if not dual_ok:
+        # fail-closed: 双钥离线不续期, 会话自然过期
+        _audit('SESSION_KEEPALIVE_REJECT', {'ip': request.remote_addr})
+        return jsonify({'ok': False, 'dual_ok': False, 'error': '双钥不在位, 会话不续期'}), 403
+    session.permanent = True
+    session.modified = True
+    lifetime_h = int((current_app.config.get('PERMANENT_SESSION_LIFETIME', 86400 * 7)) / 3600)
+    return jsonify({'ok': True, 'dual_ok': True, 'session_permanent': True,
+                    'lifetime_hours': lifetime_h, 'ts': datetime.now().isoformat(timespec='seconds')})
+
+
+@sa_terminal_auth_bp.route('/api/sa/session/status')
+def sa_session_status():
+    """SA 会话状态: 登录态/permanent/双钥 (供前端心跳首探)"""
+    return jsonify({
+        'ok': True,
+        'logged_in': bool(session.get('logged_in')),
+        'is_sa': str(session.get('username') or '').lower() == 'wuchenghao15',
+        'session_permanent': bool(session.get('permanent')),
+        'dual_ok': _dual_ok(),
+    })
 
 
 @sa_terminal_auth_bp.route('/api/sa/terminal/status')
