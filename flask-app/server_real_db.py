@@ -2408,6 +2408,10 @@ _CSRF_EXEMPT_PATHS = [
     '/api/daemon-lab/hall/submit',
     # flow_edu_20261020: AI教育中心+考试院 (一键培养流水线, 登录门禁 + 全落库审计)
     '/api/ai-edu/run',
+    # flow_wecom_20261020: 企业微信中枢 (推送/开会/配置, 登录门禁 + 全落库审计)
+    '/api/wecom/config',
+    '/api/wecom/test',
+    '/api/wecom/meeting',
     # v22.10.13: 仙女座 MCP Bridge — 运维 daemon 重启/握手/健康检查 (无 CSRF token, 内部调用)
     '/api/server/daemon-action',
     '/api/server/vikey-status',
@@ -2943,6 +2947,14 @@ try:
     print('[AI-EDU-ACADEMY] ✅ /api/ai-edu/* 教育中心+考试院已注册')
 except Exception as _edu_err:
     print(f'[AI-EDU-ACADEMY] ⚠️ 教育中心模块加载失败: {_edu_err}')
+
+# ── 企业微信中枢 Blueprint: /api/wecom/* (flow_wecom_20261020) ──
+try:
+    from blueprints.wecom_hub_bp import wecom_hub_bp
+    app.register_blueprint(wecom_hub_bp)
+    print('[WECOM-HUB] ✅ /api/wecom/* 企业微信中枢已注册')
+except Exception as _wecom_err:
+    print(f'[WECOM-HUB] ⚠️ 企业微信中枢模块加载失败: {_wecom_err}')
 
 # ── 仙女座工作全景统计 Blueprint: /andromeda/stats (flow_andromeda_stats_20261016) ──
 try:

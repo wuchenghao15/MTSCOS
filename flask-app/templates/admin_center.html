@@ -188,13 +188,14 @@
     </div>
 
     {# ══ 中心体系 (flow_admin_reorg_20261020 分区) ══ #}
-    <div class="section-title">🏛 中心体系 <span class="cnt">研发 · 大厅 · 人力 · 教育 · 审计</span></div>
+    <div class="section-title">🏛 中心体系 <span class="cnt">研发 · 大厅 · 人力 · 教育 · 企微 · 审计</span></div>
     <div class="center-strip">
         <a href="/daemon-skill-lab">🔬 Daemon & Skill 研发中心</a>
         <a href="/api/daemon-lab/overview" target="_blank">⚙ 研发总览 API</a>
         <a href="/api/daemon-lab/hall/board" target="_blank">📋 大厅看板 API</a>
         <a href="/api/daemon-lab/hr/roster" target="_blank">👥 HR 名册 API</a>
         <a href="/api/ai-edu/overview" target="_blank">🎓 教育中心 API</a>
+        <a href="/api/wecom/status" target="_blank">💼 企微中枢 API</a>
     </div>
 
     {# ══ 任务大厅数显 (flow_hall_20261020, 内嵌管理后台, 不专开一页) ══ #}
@@ -337,6 +338,69 @@
     }
     document.getElementById('audit-q').addEventListener('keydown',e=>{ if(e.key==='Enter') loadAudit(); });
     loadAudit();
+    </script>
+
+    {# ══ 企业微信中枢 (flow_wecom_20261020, AI资源统一管理推送+自动开会, 内嵌后台) ══ #}
+    <div id="wecom-section" class="admin-card" style="margin-top:16px;width:100%">
+        <h3 style="display:flex;align-items:center;gap:10px">💼 企业微信中枢
+            <span id="wecom-chips" style="font-size:11px;font-weight:400;color:#64748b"></span>
+            <button onclick="loadWecom()" style="margin-left:auto;border:1px solid #d1d5db;background:transparent;color:#64748b;border-radius:8px;font-size:11px;padding:5px 12px;cursor:pointer">↻</button>
+        </h3>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
+            <input id="wecom-url" placeholder="粘贴企微群机器人 Webhook 地址 (qyapi.weixin.qq.com)" style="flex:1;min-width:280px;border:1px solid #d1d5db;border-radius:8px;font-size:11px;padding:6px 10px">
+            <button onclick="wecomSave(this)" style="border:1px solid #06b6d4;background:rgba(6,182,212,.1);color:#06b6d4;border-radius:8px;font-size:11px;padding:6px 14px;cursor:pointer">💾 保存配置</button>
+            <button onclick="wecomTest(this)" style="border:1px solid #d97706;background:rgba(217,119,6,.08);color:#d97706;border-radius:8px;font-size:11px;padding:6px 14px;cursor:pointer">📡 测试推送</button>
+            <button onclick="wecomMeet(this)" style="border:1px solid #7c3aed;background:rgba(124,58,237,.08);color:#7c3aed;border-radius:8px;font-size:11px;padding:6px 14px;cursor:pointer">🔔 自动开会</button>
+        </div>
+        <div id="wecom-board" style="font-size:12px;color:#64748b">加载中…</div>
+    </div>
+    <script>
+    function loadWecom(){
+        fetch('/api/wecom/status').then(r=>r.json()).then(d=>{
+            if(!d.ok) throw 0;
+            document.getElementById('wecom-chips').textContent =
+                (d.configured?'✅ 已配置':'⚠️ 未配置') + (d.enabled?' · 启用中':' · 已停用') +
+                ` · 发送 ${Object.values(d.send_stats).reduce((a,b)=>a+b,0)||0} 条 · 开会 ${(d.meetings||[]).length} 场`;
+            if(d.webhook_masked) document.getElementById('wecom-url').placeholder = '当前: '+d.webhook_masked+' (输入新地址可更换)';
+            const sends = (d.recent_sends||[]).map(s=>
+                `<div style="display:flex;gap:8px;padding:3px 0;border-bottom:1px dashed rgba(0,0,0,.05)">
+                    <span style="font-size:10px;color:${s.status==='SENT'?'#059669':s.status==='FAILED'?'#dc2626':'#d97706'}">${s.status}</span>
+                    <span style="font-size:10px;color:#7c3aed">${s.center}</span>
+                    <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.title}</span>
+                    <span style="font-size:10px;color:#9ca3af">${s.created_at||''}</span></div>`).join('');
+            const meets = (d.meetings||[]).map(m=>
+                `<div style="display:flex;gap:8px;padding:3px 0;border-bottom:1px dashed rgba(0,0,0,.05)">
+                    <span style="font-size:10px;color:#7c3aed">会议#${m.id}</span>
+                    <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m.topic}</span>
+                    <span style="font-size:10px;color:${m.push_status==='SENT'?'#059669':'#d97706'}">${m.push_status}</span>
+                    <span style="font-size:10px;color:#9ca3af">${m.convener} ${m.created_at||''}</span></div>`).join('');
+            document.getElementById('wecom-board').innerHTML =
+                `<div style="margin-bottom:8px"><b style="color:#374151">最近推送:</b><br>${sends||'暂无 — 分配/考试/告警等事件将自动推送'}</div>`+
+                `<div><b style="color:#374151">自动会议:</b><br>${meets||'暂无 — 点「🔔 自动开会」生成全域纪要'}</div>`;
+        }).catch(()=>{ document.getElementById('wecom-board').textContent='⚠️ 企微中枢加载失败'; });
+    }
+    function wecomSave(btn){
+        const url=document.getElementById('wecom-url').value.trim();
+        btn.disabled=true;
+        fetch('/api/wecom/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({webhook_url:url,enabled:true})})
+        .then(r=>r.json()).then(d=>{ btn.disabled=false; alert(d.ok?'✅ '+d.message:'❌ '+d.error); loadWecom(); })
+        .catch(()=>{ btn.disabled=false; alert('请求失败'); });
+    }
+    function wecomTest(btn){
+        btn.disabled=true;
+        fetch('/api/wecom/test',{method:'POST'}).then(r=>r.json()).then(d=>{ btn.disabled=false; alert((d.ok?'✅ ':'⚠️ ')+d.message); loadWecom(); })
+        .catch(()=>{ btn.disabled=false; alert('请求失败'); });
+    }
+    function wecomMeet(btn){
+        btn.disabled=true;
+        fetch('/api/wecom/meeting',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({topic:'AI 体系例行会议'})})
+        .then(r=>r.json()).then(d=>{ btn.disabled=false;
+            if(d.ok){ const m=d.meeting; alert(`会议#${m.meeting_id} 完成\n推送: ${m.push_status}\n\n${m.minutes.slice(0,400)}`); }
+            else alert('失败: '+(d.error||''));
+            loadWecom(); })
+        .catch(()=>{ btn.disabled=false; alert('请求失败'); });
+    }
+    loadWecom();
     </script>
 
     <a href="/" class="back-link">{{ t('auto.admin_center.__x_bfa6f584', default='← 返回首页') }}</a>
