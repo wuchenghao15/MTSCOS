@@ -515,6 +515,26 @@ except Exception as _e:
         "inspect_cycle": 600,
     },
     {
+        # flow_backup_20261021 P0备份体系: 8.2GB 主库单点零备份, OneDrive 同步≠备份。
+        #   每小时调一次 ai_backup_engine backup (内部幂等: 当日快照已存在秒回) →
+        #   VACUUM INTO 冷快照至 OneDrive 之外 /Users/wuchenghao/MTSCOS_BACKUPS,
+        #   integrity_check 校验 + 保留3份轮转 + mt_backup_log 落库
+        "process_name": "sys_daily_backup",
+        "duty": "P0每日冷备份 - 每3600s调 ai_backup_engine backup(幂等), VACUUM INTO 至 /Users/wuchenghao/MTSCOS_BACKUPS, 保留3份轮转, integrity_check 校验",
+        "work_body": """
+_fa_dir = os.path.join(_PROJECT_ROOT, 'flask-app')
+_engine = os.path.join(_fa_dir, 'engines', 'ai_backup_engine.py')
+try:
+    _r = subprocess.run([sys.executable, _engine, 'backup'],
+                        capture_output=True, text=True, timeout=580)
+    _tail = (_r.stdout or _r.stderr or '').strip().splitlines()
+    _log(f"[daily_backup] rc={_r.returncode} tail={_tail[-1] if _tail else '(empty)'}")
+except Exception as _e:
+    _log(f"[daily_backup] err: {_e}")
+""",
+        "inspect_cycle": 3600,
+    },
+    {
         # flow_andromeda_gapfix_20261021 缺口1: edu_sync 曾因旧注册体系废弃而 STOPPED(obsolete_old_register),
         #   现以 SYSTEM_REQ 常驻恢复 — 每600s 跑一轮教辅同步 (K12/高等/成人/文科/理化实验)
         "process_name": "sys_edu_sync",
