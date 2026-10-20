@@ -203,9 +203,12 @@
     <div id="hall-section" class="admin-card" style="margin-top:20px;width:100%">
         <h3 style="display:flex;align-items:center;gap:10px">📋 任务大厅
             <span id="hall-chips" style="font-size:11px;font-weight:400;color:#64748b"></span>
-            <button onclick="hallRunAuto(this)" style="margin-left:auto;border:1px solid #06b6d4;background:transparent;color:#06b6d4;border-radius:8px;font-size:11px;padding:5px 12px;cursor:pointer">⚡ 自动归集+分配</button>
+            <button onclick="hallAutoWork(this)" style="margin-left:auto;border:1px solid #059669;background:transparent;color:#059669;border-radius:8px;font-size:11px;padding:5px 12px;cursor:pointer">🤖 AI 自动接单</button>
+            <button onclick="hallResidentsRun(this)" style="border:1px solid #7c3aed;background:transparent;color:#7c3aed;border-radius:8px;font-size:11px;padding:5px 12px;cursor:pointer">🏛 五主体入驻巡检</button>
+            <button onclick="hallRunAuto(this)" style="border:1px solid #06b6d4;background:transparent;color:#06b6d4;border-radius:8px;font-size:11px;padding:5px 12px;cursor:pointer">⚡ 自动归集+分配</button>
             <button onclick="loadHall()" style="border:1px solid #d1d5db;background:transparent;color:#64748b;border-radius:8px;font-size:11px;padding:5px 12px;cursor:pointer">↻</button>
         </h3>
+        <div id="hall-residents" style="font-size:11px;color:#7c3aed;margin-bottom:8px">入驻状态加载中…</div>
         <div id="hall-board" style="font-size:12px;color:#64748b">加载中…</div>
     </div>
     <script>
@@ -215,7 +218,7 @@
             const S=d.stats||{};
             document.getElementById('hall-chips').textContent =
                 `排队 ${S.QUEUED||0} · 已分配 ${S.DISPATCHED||0} · 完成 ${S.DONE||0}`;
-            const SRC={derivation:'衍生',manual:'人工',daemon_repair:'修复'};
+            const SRC={derivation:'衍生',manual:'人工',daemon_repair:'修复','resident:rules_gov':'规则','resident:legal':'法务','resident:hr_center':'人事','resident:expert_team':'专家','resident:skill_dev':'Skill'};
             document.getElementById('hall-board').innerHTML = d.tasks.length ? d.tasks.map(t=>
                 `<div style="display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px dashed rgba(0,0,0,.06)">
                     <span style="font-size:10px;color:#7c3aed">${SRC[t.source]||t.source}</span>
@@ -234,7 +237,36 @@
             loadHall();
         }).catch(()=>{ btn.disabled=false; btn.textContent='⚡ 自动归集+分配'; });
     }
+    function hallResidentsLoad(){
+        fetch('/api/daemon-lab/hall/residents').then(r=>r.json()).then(d=>{
+            if(!d.ok) throw 0;
+            const chip=c=>`<span style="display:inline-block;margin:2px 8px 2px 0;padding:3px 10px;border:1px solid rgba(124,58,237,.35);border-radius:999px;font-size:11px;color:#7c3aed">🏛 ${c.name} <b>${c.open_tasks}</b> 在办 / ${c.done_tasks} 完成</span>`;
+            const s=d.sources||{};
+            document.getElementById('hall-residents').innerHTML =
+                d.residents.map(chip).join('') +
+                `<span style="font-size:10px;color:#94a3b8">源: 规则告警 ${s.rules_open_alerts??'-'} · Skill候选 ${s.skill_proposed??'-'} · 人事逾期 ${s.hr_overdue??'-'} · 专家失联 ${s.expert_stale??'-'}</span>`;
+        }).catch(()=>{ document.getElementById('hall-residents').textContent='⚠️ 入驻状态加载失败'; });
+    }
+    function hallResidentsRun(btn){
+        btn.disabled=true; btn.textContent='⏳ 入驻巡检中…';
+        fetch('/api/daemon-lab/hall/residents',{method:'POST'}).then(r=>r.json()).then(d=>{
+            btn.disabled=false; btn.textContent='🏛 五主体入驻巡检';
+            if(d.ok) alert(`入驻巡检: 新入厅 ${d.created_count} 项\n`+(d.created||[]).map(t=>`· [${t.resident}] ${t.title}`).join('\n'));
+            else alert('失败: '+(d.error||''));
+            hallResidentsLoad(); loadHall();
+        }).catch(()=>{ btn.disabled=false; btn.textContent='🏛 五主体入驻巡检'; });
+    }
+    function hallAutoWork(btn){
+        btn.disabled=true; btn.textContent='⏳ AI 接单中…';
+        fetch('/api/daemon-lab/hall/auto-work',{method:'POST',headers:{'Content-Type':'application/json'},body:'{"max_tasks":2}'}).then(r=>r.json()).then(d=>{
+            btn.disabled=false; btn.textContent='🤖 AI 自动接单';
+            if(d.ok) alert(`AI 自动接单 ${d.worked_count}/${d.candidates} 单\n`+(d.worked||[]).map(w=>`· #${w.task_id} ${w.title} → 团队:${w.team.join('/')} · 专家:${(w.experts||['-']).join('/')} · ${w.status}`).join('\n'));
+            else alert('失败: '+(d.error||''));
+            loadHall();
+        }).catch(()=>{ btn.disabled=false; btn.textContent='🤖 AI 自动接单'; });
+    }
     loadHall();
+    hallResidentsLoad();
     </script>
 
     {# ══ AI 人力资源中心数显 (flow_hall_20261020, 与任务大厅联动, 内嵌后台) ══ #}
