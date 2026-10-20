@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SA 专属系统 · 管理中枢</title>
+<style>
+  :root{
+    --bg:#0b1020; --panel:#121a30; --panel2:#182342; --line:#24304f;
+    --txt:#e8eefc; --sub:#8ea3c8; --ok:#22c55e; --warn:#f59e0b; --err:#ef4444;
+    --brand:#4f7cff; --brand2:#7aa2ff;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);color:var(--txt);font:14px/1.6 -apple-system,"PingFang SC",sans-serif;min-height:100vh;padding:22px}
+  .wrap{max-width:1180px;margin:0 auto}
+  header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px}
+  h1{font-size:20px;font-weight:700;letter-spacing:.5px}
+  h1 .tag{font-size:11px;font-weight:600;color:var(--brand2);border:1px solid var(--brand);border-radius:20px;padding:2px 10px;margin-left:10px;vertical-align:2px}
+  .topbar{display:flex;gap:10px;flex-wrap:wrap}
+  .btn{cursor:pointer;border:1px solid var(--line);background:var(--panel2);color:var(--txt);border-radius:8px;padding:7px 14px;font-size:13px;transition:.2s}
+  .btn:hover{border-color:var(--brand);color:var(--brand2)}
+  .btn.primary{background:var(--brand);border-color:var(--brand);color:#fff}
+  .btn.danger{border-color:var(--err);color:var(--err);background:transparent}
+  .btn.danger:hover{background:rgba(239,68,68,.12)}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-bottom:16px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+  .card .k{font-size:12px;color:var(--sub)}
+  .card .v{font-size:22px;font-weight:700;margin-top:4px}
+  .card .v.ok{color:var(--ok)} .card .v.err{color:var(--err)} .card .v.warn{color:var(--warn)}
+  .card .s{font-size:11px;color:var(--sub);margin-top:2px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media(max-width:900px){.grid{grid-template-columns:1fr}}
+  section{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:12px}
+  section h2{font-size:14px;font-weight:600;color:var(--brand2);margin-bottom:10px;display:flex;justify-content:space-between;align-items:center}
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  th{color:var(--sub);text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);font-weight:500;white-space:nowrap}
+  td{padding:6px 8px;border-bottom:1px solid rgba(36,48,79,.5);word-break:break-all}
+  tr:hover td{background:rgba(79,124,255,.05)}
+  .pill{display:inline-block;padding:1px 8px;border-radius:10px;font-size:11px;font-weight:600}
+  .pill.ok{background:rgba(34,197,94,.15);color:var(--ok)}
+  .pill.err{background:rgba(239,68,68,.15);color:var(--err)}
+  .pill.warn{background:rgba(245,158,11,.15);color:var(--warn)}
+  .empty{color:var(--sub);text-align:center;padding:18px 0;font-size:12px}
+  .audit td{font-family:ui-monospace,Menlo,monospace;font-size:11px}
+  .toast{position:fixed;top:18px;left:50%;transform:translateX(-50%);background:var(--panel2);border:1px solid var(--brand);color:var(--txt);padding:8px 18px;border-radius:10px;font-size:13px;display:none;z-index:99}
+  footer{color:var(--sub);font-size:11px;text-align:center;margin-top:14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>🛡 SA 专属系统<span class="tag">管理中枢</span></h1>
+    <div class="topbar">
+      <a class="btn" href="/sa/dashboard">← 专注系统面板</a>
+      <a class="btn" href="/index">冰山主页</a>
+      <button class="btn primary" onclick="loadAll()">⟳ 刷新</button>
+    </div>
+  </header>
+
+  <div class="cards">
+    <div class="card"><div class="k">双钥硬件 (实时原子校验)</div><div class="v" id="c-dual">…</div><div class="s" id="c-dual-s">VIKEY + SZU100 AND</div></div>
+    <div class="card"><div class="k">SA 会话状态</div><div class="v" id="c-sess">…</div><div class="s" id="c-sess-s">permanent / plug_login / remote_verified</div></div>
+    <div class="card"><div class="k">PC 信任设备</div><div class="v" id="c-dev">…</div><div class="s">30天免密信任令牌</div></div>
+    <div class="card"><div class="k">移动端凭据</div><div class="v" id="c-cred">…</div><div class="s">WebAuthn 面部/指纹 + 蓝牙护照</div></div>
+  </div>
+
+  <div class="grid">
+    <section>
+      <h2>💻 PC 信任设备 <span style="font-weight:400;color:var(--sub);font-size:11px">吊销后该设备即插即用立即失效</span></h2>
+      <table><thead><tr><th>ID</th><th>标签</th><th>签发</th><th>到期</th><th>最近使用</th><th>次数</th><th></th></tr></thead>
+      <tbody id="tb-dev"></tbody></table>
+      <div class="empty" id="em-dev" style="display:none">暂无信任设备</div>
+    </section>
+    <section>
+      <h2>📱 移动端凭据</h2>
+      <table><thead><tr><th>ID</th><th>类型</th><th>凭据指纹</th><th>注册</th><th>最近使用</th><th></th></tr></thead>
+      <tbody id="tb-cred"></tbody></table>
+      <div class="empty" id="em-cred" style="display:none">暂无移动凭据</div>
+      <h2 style="margin-top:14px">📶 蓝牙 Trae AI Passport</h2>
+      <table><thead><tr><th>ID</th><th>序列号</th><th>名称</th><th>状态</th><th>验证次数</th><th></th></tr></thead>
+      <tbody id="tb-bt"></tbody></table>
+      <div class="empty" id="em-bt" style="display:none">暂无蓝牙护照</div>
+    </section>
+  </div>
+
+  <section>
+    <h2>🧾 SA 审计日志流 <span style="font-weight:400;color:var(--sub);font-size:11px">最近 30 条双钥校验/踢出/吊销事件</span></h2>
+    <table class="audit"><thead><tr><th>时间</th><th>VIKEY</th><th>验证</th><th>双钥</th><th>布局</th><th>触发</th><th>备注</th></tr></thead>
+    <tbody id="tb-audit"></tbody></table>
+    <div class="empty" id="em-audit" style="display:none">暂无审计记录</div>
+  </section>
+
+  <footer>flow_sa_system_20261020 · SA 专属系统 · fail-closed · 全量审计落库</footer>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+var $ = function(id){ return document.getElementById(id); };
+function toast(msg){
+  var t = $('toast'); t.textContent = msg; t.style.display = 'block';
+  setTimeout(function(){ t.style.display = 'none'; }, 2200);
+}
+function pill(ok, okTxt, errTxt){
+  return '<span class="pill ' + (ok ? 'ok' : 'err') + '">' + (ok ? (okTxt||'✓') : (errTxt||'✗')) + '</span>';
+}
+function loadAll(){
+  fetch('/api/sa/system/overview', {credentials:'same-origin'})
+    .then(function(r){ return r.json(); })
+    .then(function(j){
+      if (!j.ok) { toast('加载失败: ' + (j.error || '')); return; }
+      // 卡片
+      $('c-dual').className = 'v ' + (j.dual_key_now ? 'ok' : 'err');
+      $('c-dual').textContent = j.dual_key_now ? '在位 ✓' : '离线 ✗';
+      var s = j.session || {};
+      var sessOk = s.permanent || s.plug_login || s.remote_verified;
+      $('c-sess').className = 'v ' + (sessOk ? 'ok' : 'warn');
+      $('c-sess').textContent = sessOk ? '免密维持中' : '标准会话';
+      $('c-sess-s').textContent = 'P:' + (s.permanent?1:0) + ' / PL:' + (s.plug_login?1:0) + ' / R:' + (s.remote_verified?1:0);
+      var devs = j.trust_devices || [];
+      $('c-dev').textContent = devs.length;
+      var creds = j.webauthn_credentials || [], bts = j.bt_passports || [];
+      $('c-cred').textContent = creds.length + ' + ' + bts.length;
+      // 设备表
+      $('em-dev').style.display = devs.length ? 'none' : 'block';
+      $('tb-dev').innerHTML = devs.map(function(d){
+        return '<tr><td>' + d.id + '</td><td>' + (d.label || '-') + '</td><td>' + (d.issued_at || '-') +
+          '</td><td>' + (d.expires_at || '-') + '</td><td>' + (d.last_used_at || '-') + '</td><td>' + (d.use_count || 0) +
+          '</td><td><button class="btn danger" onclick="revokeDevice(' + d.id + ')">吊销</button></td></tr>';
+      }).join('');
+      // 凭据表
+      $('em-cred').style.display = creds.length ? 'none' : 'block';
+      $('tb-cred').innerHTML = creds.map(function(c){
+        var t = c.cred_type === 'face' ? '😷 面部' : '🫆 指纹';
+        return '<tr><td>' + c.id + '</td><td>' + t + '</td><td>' + (c.credential_id || '-') +
+          '</td><td>' + (c.registered_at || '-') + '</td><td>' + (c.last_used_at || '-') +
+          '</td><td><button class="btn danger" onclick="revokeCred(\'webauthn\',' + c.id + ')">吊销</button></td></tr>';
+      }).join('');
+      // 蓝牙表
+      $('em-bt').style.display = bts.length ? 'none' : 'block';
+      $('tb-bt').innerHTML = bts.map(function(b){
+        return '<tr><td>' + b.id + '</td><td>' + (b.serial || '-') + '</td><td>' + (b.name || '-') +
+          '</td><td>' + pill(b.status === 'ACTIVE', 'ACTIVE', b.status) + '</td><td>' + (b.verify_count || 0) +
+          '</td><td><button class="btn danger" onclick="revokeCred(\'bt\',' + b.id + ')">吊销</button></td></tr>';
+      }).join('');
+      // 审计
+      var au = j.audit || [];
+      $('em-audit').style.display = au.length ? 'none' : 'block';
+      $('tb-audit').innerHTML = au.map(function(a){
+        return '<tr><td>' + (a.check_time || '-') + '</td><td>' + pill(a.vikey_present, '在位', '缺') +
+          '</td><td>' + pill(a.vikey_verified, '✓', '✗') + '</td><td>' + pill(a.dual_authenticated, '双钥✓', '✗') +
+          '</td><td>' + (a.sa_layout || '-') + '</td><td>' + (a.trigger_reason || '-') + '</td><td>' + (a.note || '') + '</td></tr>';
+      }).join('');
+    })
+    .catch(function(){ toast('网络错误'); });
+}
+function revokeDevice(id){
+  if (!confirm('确定吊销信任设备 #' + id + '? 该设备免密登录立即失效')) return;
+  fetch('/api/sa/system/device/revoke', {method:'POST', credentials:'same-origin',
+      headers:{'Content-Type':'application/json'}, body: JSON.stringify({id:id})})
+    .then(function(r){ return r.json(); })
+    .then(function(j){ toast(j.ok ? '已吊销 #' + id : '失败: ' + (j.error || '')); loadAll(); });
+}
+function revokeCred(kind, id){
+  if (!confirm('确定吊销 ' + kind + ' 凭据 #' + id + '?')) return;
+  fetch('/api/sa/system/credential/revoke', {method:'POST', credentials:'same-origin',
+      headers:{'Content-Type':'application/json'}, body: JSON.stringify({kind:kind, id:id})})
+    .then(function(r){ return r.json(); })
+    .then(function(j){ toast(j.ok ? '已吊销 ' + kind + ' #' + id : '失败: ' + (j.error || '')); loadAll(); });
+}
+loadAll();
+setInterval(loadAll, 30000);
+</script>
+</body>
+</html>

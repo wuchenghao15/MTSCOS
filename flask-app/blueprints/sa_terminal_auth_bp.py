@@ -564,3 +564,110 @@ def sa_terminal_status():
                         'ua_mobile': _is_mobile_ua()})
     finally:
         conn.close()
+
+
+# ══ SA 专属系统管理中枢 (flow_sa_system_20261020) ══
+def _sa_only_guard():
+    """SA 专属门禁: 非 wuchenghao15 登录态 → None(放行由视图层再验), 否则 (resp, code)"""
+    if session.get('logged_in') and str(session.get('username') or '').lower() == 'wuchenghao15':
+        return None
+    return jsonify({'ok': False, 'error': 'SA_ONLY'}), 403
+
+
+@sa_terminal_auth_bp.route('/sa/system')
+def sa_system_page():
+    """SA 专属系统主页 — 统一管控中枢 (双钥/会话/设备/凭证/审计)"""
+    g = _sa_only_guard()
+    if g:
+        # 未登录 SA → 登录页; 已登录非SA → 403 (页面跳转版)
+        from flask import abort
+        if not session.get('logged_in'):
+            return redirect('/auth/login?next=/sa/system')
+        abort(403)
+    dual = _dual_ok()
+    if not dual:
+        return redirect('/index?from=sa_no_keys')
+    return render_template('sa_system.html')
+
+
+@sa_terminal_auth_bp.route('/api/sa/system/overview')
+def sa_system_overview():
+    """中枢总览: 双钥实时 + 会话 + 信任设备明细 + 移动凭证明细 + 蓝牙护照 + 审计流"""
+    g = _sa_only_guard()
+    if g:
+        return g
+    _ensure_tables()
+    conn = _db()
+    try:
+        devices = [dict(r) for r in conn.execute(
+            "SELECT id, label, issued_at, expires_at, last_used_at, use_count FROM mt_sa_trust_devices ORDER BY id DESC LIMIT 20")]
+        creds = [dict(r) for r in conn.execute(
+            "SELECT id, cred_type, substr(credential_id,1,24) credential_id, registered_at, last_used_at "
+            "FROM mt_sa_mobile_credentials ORDER BY id DESC LIMIT 20")]
+        bts = [dict(r) for r in conn.execute(
+            "SELECT id, serial, name, status, registered_at, last_verified_at, verify_count "
+            "FROM mt_sa_bt_passports ORDER BY id DESC LIMIT 20")]
+        audit = [dict(r) for r in conn.execute(
+            "SELECT id, check_time, vikey_present, vikey_verified, dual_authenticated, sa_layout, trigger_reason, substr(note,1,80) note "
+            "FROM mt_sa_dual_key_status ORDER BY id DESC LIMIT 30")]
+        now_iso = datetime.now().isoformat(timespec='seconds')
+        return jsonify({
+            'ok': True,
+            'dual_key_now': _dual_ok(),
+            'session': {'permanent': bool(session.get('permanent')),
+                        'plug_login': bool(session.get('plug_login')),
+                        'remote_verified': bool(session.get('remote_dual_verified'))},
+            'trust_devices': devices,
+            'webauthn_credentials': creds,
+            'bt_passports': bts,
+            'audit': audit,
+            'ts': now_iso,
+        })
+    finally:
+        conn.close()
+
+
+@sa_terminal_auth_bp.route('/api/sa/system/device/revoke', methods=['POST'])
+def sa_system_device_revoke():
+    """吊销 PC 信任设备 (token_hash 即刻失效, 免密登录链断)"""
+    g = _sa_only_guard()
+    if g:
+        return g
+    data = request.get_json(silent=True) or {}
+    did = data.get('id')
+    if not did:
+        return jsonify({'ok': False, 'error': 'id 必填'}), 400
+    _ensure_tables()
+    conn = _db()
+    try:
+        cur = conn.execute("DELETE FROM mt_sa_trust_devices WHERE id=?", (did,))
+        conn.commit()
+        _audit('SYSTEM_DEVICE_REVOKE', {'id': did, 'deleted': cur.rowcount, 'ip': request.remote_addr})
+        return jsonify({'ok': True, 'deleted': cur.rowcount})
+    finally:
+        conn.close()
+
+
+@sa_terminal_auth_bp.route('/api/sa/system/credential/revoke', methods=['POST'])
+def sa_system_credential_revoke():
+    """吊销移动端凭据 (WebAuthn face/fingerprint 或蓝牙护照)"""
+    g = _sa_only_guard()
+    if g:
+        return g
+    data = request.get_json(silent=True) or {}
+    kind = data.get('kind')   # webauthn | bt
+    did = data.get('id')
+    if kind not in ('webauthn', 'bt') or not did:
+        return jsonify({'ok': False, 'error': 'kind(id=webauthn|bt) 与 id 必填'}), 400
+    _ensure_tables()
+    conn = _db()
+    try:
+        if kind == 'webauthn':
+            cur = conn.execute("DELETE FROM mt_sa_mobile_credentials WHERE id=?", (did,))
+        else:
+            cur = conn.execute("UPDATE mt_sa_bt_passports SET status='REVOKED' WHERE id=?", (did,))
+        conn.commit()
+        _audit('SYSTEM_CRED_REVOKE', {'kind': kind, 'id': did, 'affected': cur.rowcount, 'ip': request.remote_addr})
+        return jsonify({'ok': True, 'affected': cur.rowcount})
+    finally:
+        conn.close()
