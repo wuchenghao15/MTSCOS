@@ -2401,6 +2401,8 @@ _CSRF_EXEMPT_PATHS = [
     '/api/neuralhub/rollback',              # POST SA 回滚
     # v22.10.12: 仙女座自动诊断与自愈 (daemon 重启/握手重连, 运维级 API, 绕过 CSRF 用 launchctl 操作)
     '/api/server/auto-diagnose',
+    # flow_lab_claim_20261020: 研发中心自动认领引擎 (登录门禁 + 操作全落库审计)
+    '/api/daemon-lab/auto-claim',
     # v22.10.13: 仙女座 MCP Bridge — 运维 daemon 重启/握手/健康检查 (无 CSRF token, 内部调用)
     '/api/server/daemon-action',
     '/api/server/vikey-status',

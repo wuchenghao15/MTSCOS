@@ -40,10 +40,241 @@ CREATE TABLE IF NOT EXISTS mt_lab_suggestions (
     kind TEXT NOT NULL,              -- daemon_to_skill / skill_to_daemon
     subject TEXT NOT NULL,           -- 候选主体 (如 sys_rule_enforcer)
     reason TEXT,                     -- 推荐理由
-    status TEXT DEFAULT 'PROPOSED',  -- PROPOSED / ACCEPTED / DISMISSED
+    status TEXT DEFAULT 'PROPOSED',  -- PROPOSED / CLAIMED / ACCEPTED / DISMISSED
     created_at TEXT DEFAULT (datetime('now','localtime'))
 )
 """
+
+# ══ 研究中心自动认领 + AI人力分配 + EigenFlux磋商 (flow_lab_claim_20261020) ══
+_LAB_CLAIM_SQL = [
+    """CREATE TABLE IF NOT EXISTS mt_lab_centers (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    center_code TEXT UNIQUE NOT NULL,
+    name TEXT NOT NULL,
+    domain TEXT NOT NULL,
+    keywords TEXT NOT NULL,          -- 逗号分隔领域关键词
+    status TEXT DEFAULT 'ACTIVE',
+    created_at TEXT DEFAULT (datetime('now','localtime'))
+)""",
+    """CREATE TABLE IF NOT EXISTS mt_lab_assignments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    suggestion_id INTEGER NOT NULL,
+    center_id INTEGER NOT NULL,
+    employee_names TEXT,             -- 认领时分配的 AI员工 (json)
+    professor_names TEXT,            -- 教授数字分身 (json)
+    expert_verdict TEXT,             -- EigenFlux 磋商结论
+    status TEXT DEFAULT 'CLAIMED',   -- CLAIMED / ACCEPTED / REJECTED
+    created_at TEXT DEFAULT (datetime('now','localtime'))
+)""",
+    """CREATE TABLE IF NOT EXISTS mt_lab_deliberations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    assignment_id INTEGER NOT NULL,
+    round_no INTEGER DEFAULT 1,
+    speaker TEXT NOT NULL,
+    role TEXT NOT NULL,              -- expert/employee/professor/chair
+    viewpoint TEXT,
+    vote TEXT,                       -- APPROVE / REJECT / ABSTAIN
+    created_at TEXT DEFAULT (datetime('now','localtime'))
+)""",
+    """CREATE TABLE IF NOT EXISTS mt_lab_workflows (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    domain TEXT DEFAULT '工作流',
+    direction TEXT NOT NULL,         -- 研究方向
+    description TEXT,
+    status TEXT DEFAULT 'ACTIVE',
+    created_at TEXT DEFAULT (datetime('now','localtime'))
+)""",
+]
+
+# 研究中心种子 (专业领域 → 自动认领关键词; 含工作流新研究方向)
+_SEED_CENTERS = [
+    ("daemon_ops", "部署运维中心", "部署运维", "daemon,挂载,keepalive,巡检,修复,ops,部署"),
+    ("security_audit", "安全审计中心", "安全审计", "安全,审计,漏洞,加密,风险,红线"),
+    ("dev_flow", "开发流程中心", "开发流程", "dev,git,flask,commit,代码,规则,flow"),
+    ("ai_engine", "AI 引擎中心", "AI引擎", "ai,推理,脑库,ollama,向量,eigenflux,embedding"),
+    ("workflow", "工作流研究中心", "工作流", "工作流,workflow,流水线,调度,协同,编排,任务链"),
+    ("data_research", "数据研究中心", "数据研究", "数据,分析,报告,统计,研究,画像"),
+    ("frontend_design", "前端设计中心", "前端设计", "前端,设计,ui,页面,视觉,交互"),
+]
+
+# 工作流研究方向种子 (新增研究方向)
+_SEED_WORKFLOWS = [
+    ("认领-磋商-研发流水线", "认领引擎产出的候选如何流入磋商→研发→验收的闭环工作流", "研究候选任务从 PROPOSED 到 ACCEPTED 的全链路编排与 SLA 度量"),
+    ("daemon-skill 双向衍生工作流", "daemon 无 Skill 自动补 Skill / Skill 研发成果反哺 daemon 参数", "研究双向衍生触发条件与循环熔断策略"),
+    ("教授分身导师工作流", "教授数字分身在研发任务中的评审/导师节点接入", "研究分身专家在代码评审与方向把关中的触发时机与权重"),
+    ("零 token 磋商协议", "EigenFlux 多角色磋商的本地规则化表决协议", "研究纯本地磋商的议事规则、平票裁决与升级到 SA 的阈值"),
+    ("跨中心任务交换协议", "多中心对同一候选的认领冲突与任务交换", "研究认领冲突仲裁与跨中心协作的握手协议"),
+]
+
+# 教授数字分身候选池 (按姓名优先匹配 ai_employees)
+_PROFESSOR_HINTS = ["霍金", "拉马努金", "爱因斯坦", "钱学森", "齐白石", "吴道子", "唐伯虎", "韩愈", "图灵", "冯诺依曼", "达芬奇"]
+
+
+def _ensure_claim_tables():
+    conn = _db()
+    try:
+        for sql in _LAB_CLAIM_SQL:
+            conn.execute(sql)
+        for code, name, domain, kws in _SEED_CENTERS:
+            conn.execute("INSERT OR IGNORE INTO mt_lab_centers (center_code,name,domain,keywords) VALUES (?,?,?,?)",
+                         (code, name, domain, kws))
+        if conn.execute("SELECT count(*) FROM mt_lab_workflows").fetchone()[0] == 0:
+            for nm, desc, direction in _SEED_WORKFLOWS:
+                conn.execute("INSERT INTO mt_lab_workflows (name,direction,description) VALUES (?,?,?)",
+                             (nm, direction, desc))
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def _match_center(text):
+    """领域匹配: 返回 (center_row, matched_kw)"""
+    conn = _db()
+    try:
+        centers = conn.execute("SELECT * FROM mt_lab_centers WHERE status='ACTIVE'").fetchall()
+    finally:
+        conn.close()
+    t = text.lower()
+    best, best_hit = None, 0
+    for c in centers:
+        hit = sum(1 for k in c["keywords"].split(",") if k.strip().lower() in t)
+        if hit > best_hit:
+            best, best_hit = c, hit
+    return best, best_hit
+
+
+def _pick_staff(domain, keywords):
+    """从 ai_employees 按专业领域分配 AI员工 + 教授数字分身 (纯本地 LIKE 匹配)"""
+    conn = _db()
+    like_terms = [k.strip() for k in keywords.split(",") if k.strip()][:6]
+    conds = " OR ".join(["specialties LIKE ?"] * len(like_terms) + ["description LIKE ?"] * len(like_terms) + ["capabilities LIKE ?"] * len(like_terms))
+    args = [f"%{t}%" for t in like_terms] * 3
+    try:
+        rows = conn.execute(
+            f"SELECT name, employee_code, specialties, accuracy FROM ai_employees "
+            f"WHERE status='active' AND ({conds}) ORDER BY accuracy DESC LIMIT 24", args).fetchall()
+    except sqlite3.Error:
+        rows = []
+    profs, emps = [], []
+    for r in rows:
+        nm = r["name"] or ""
+        item = {"name": nm, "code": r["employee_code"], "spec": (r["specialties"] or "")[:60]}
+        if any(h in nm for h in _PROFESSOR_HINTS) or (r["employee_code"] or "").startswith("PROF"):
+            profs.append(item)
+        else:
+            emps.append(item)
+    conn.close()
+    return emps[:4], profs[:2]
+
+
+def _deliberate(assignment_id, subject, center_name, emps, profs):
+    """EigenFlux 磋商: 本地规则化 5 席表决 (2专家+2员工+1教授+主席裁决)"""
+    votes = []
+    conn = _db()
+    try:
+        def speak(speaker, role, viewpoint, vote):
+            conn.execute("INSERT INTO mt_lab_deliberations (assignment_id,round_no,speaker,role,viewpoint,vote) VALUES (?,?,?,?,?,?)",
+                         (assignment_id, 1, speaker, role, viewpoint, vote))
+            votes.append(vote)
+        speak("EigenFlux-架构专家", "expert", f"{subject} 与现有 daemon 体系存在职责重叠风险, 建议以管理 Skill 形态落地而非新进程", "APPROVE")
+        speak("EigenFlux-安全专家", "expert", f"新增 {center_name} 认领任务需遵守最小权限与审计落库, 方案可行", "APPROVE")
+        for e in emps[:2]:
+            speak(e["name"], "employee", f"本岗位可承接 {subject} 的巡检/维护自动化, 专业匹配: {e['spec']}", "APPROVE")
+        if profs:
+            speak(profs[0]["name"], "professor", f"方向符合长期研究价值, 注意沉淀方法论反哺脑库", "APPROVE")
+        else:
+            speak("轮值教授席", "professor", "教授分身池暂无精确匹配, 由轮值席代行评审", "ABSTAIN")
+        approve = votes.count("APPROVE")
+        verdict = "通过 — 进入研发队列" if approve >= 4 else ("附条件通过 — 需补员后复议" if approve >= 3 else "驳回 — 重新论证")
+        speak(f"{center_name}·主席团", "chair", f"表决结果 APPROVE={approve}/5, 裁决: {verdict}", verdict[:2])
+        conn.execute("UPDATE mt_lab_assignments SET expert_verdict=?, status=? WHERE id=?",
+                     (verdict, "ACCEPTED" if approve >= 4 else "CLAIMED", assignment_id))
+        if approve >= 4:
+            conn.execute("UPDATE mt_lab_suggestions SET status='ACCEPTED' WHERE id=?",
+                         (conn.execute("SELECT suggestion_id FROM mt_lab_assignments WHERE id=?", (assignment_id,)).fetchone()[0],))
+        conn.commit()
+    finally:
+        conn.close()
+    return verdict
+
+
+def run_auto_claim():
+    """自动认领主引擎: PROPOSED 候选 → 中心认领 → 人力分配 → 磋商裁决"""
+    _ensure_claim_tables()
+    conn = _db()
+    try:
+        pending = conn.execute("SELECT id, subject, reason FROM mt_lab_suggestions WHERE status='PROPOSED' ORDER BY id").fetchall()
+    finally:
+        conn.close()
+    results = []
+    for s in pending:
+        text = f"{s['subject']} {s['reason'] or ''}"
+        center, hit = _match_center(text)
+        if not center or hit == 0:
+            center = next((c for c in _SEED_CENTERS if c[0] == "dev_flow"), None)
+            conn2 = _db()
+            try:
+                center = conn2.execute("SELECT * FROM mt_lab_centers WHERE center_code='dev_flow'").fetchone()
+            finally:
+                conn2.close()
+        emps, profs = _pick_staff(center["domain"], center["keywords"])
+        conn2 = _db()
+        try:
+            cur = conn2.execute("INSERT INTO mt_lab_assignments (suggestion_id,center_id,employee_names,professor_names) VALUES (?,?,?,?)",
+                                (s["id"], center["id"],
+                                 __import__("json").dumps(emps, ensure_ascii=False),
+                                 __import__("json").dumps(profs, ensure_ascii=False)))
+            conn2.execute("UPDATE mt_lab_suggestions SET status='CLAIMED' WHERE id=?", (s["id"],))
+            conn2.commit()
+            aid = cur.lastrowid
+        finally:
+            conn2.close()
+        verdict = _deliberate(aid, s["subject"], center["name"], emps, profs)
+        results.append({"subject": s["subject"], "center": center["name"], "employees": [e["name"] for e in emps],
+                        "professors": [p["name"] for p in profs], "verdict": verdict})
+    return results
+
+
+@daemon_skill_lab_bp.route("/api/daemon-lab/auto-claim", methods=["POST"])
+@_login_required
+def lab_auto_claim():
+    try:
+        results = run_auto_claim()
+        return jsonify({"ok": True, "claimed": len(results), "results": results})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@daemon_skill_lab_bp.route("/api/daemon-lab/workspaces")
+@_login_required
+def lab_workspaces():
+    _ensure_claim_tables()
+    conn = _db()
+    try:
+        centers = conn.execute("SELECT * FROM mt_lab_centers WHERE status='ACTIVE' ORDER BY id").fetchall()
+        out = []
+        for c in centers:
+            asg = conn.execute(
+                "SELECT a.id, a.status, a.expert_verdict, a.employee_names, a.professor_names, s.subject "
+                "FROM mt_lab_assignments a JOIN mt_lab_suggestions s ON s.id=a.suggestion_id "
+                "WHERE a.center_id=? ORDER BY a.id DESC LIMIT 10", (c["id"],)).fetchall()
+            deli = conn.execute(
+                "SELECT d.speaker, d.role, d.viewpoint, d.vote FROM mt_lab_deliberations d "
+                "JOIN mt_lab_assignments a ON a.id=d.assignment_id WHERE a.center_id=? "
+                "ORDER BY d.id DESC LIMIT 8", (c["id"],)).fetchall()
+            out.append({
+                "center": dict(c), "assignments": [dict(a) for a in asg],
+                "deliberations": [dict(r) for r in deli],
+            })
+        workflows = [dict(r) for r in conn.execute(
+            "SELECT * FROM mt_lab_workflows WHERE status='ACTIVE' ORDER BY id").fetchall()]
+        stats = {"total": conn.execute("SELECT count(*) FROM mt_lab_assignments").fetchone()[0],
+                 "accepted": conn.execute("SELECT count(*) FROM mt_lab_assignments WHERE status='ACCEPTED'").fetchone()[0],
+                 "claimed": conn.execute("SELECT count(*) FROM mt_lab_assignments WHERE status='CLAIMED'").fetchone()[0]}
+        return jsonify({"ok": True, "centers": out, "workflows": workflows, "stats": stats})
+    finally:
+        conn.close()
 
 
 def _db():

@@ -101,8 +101,22 @@
     </div>
 
     <div class="card full">
-      <h2>🔬 衍生候选 — daemon → skill 研发建议</h2>
+      <h2>🔬 衍生候选 — daemon → skill 研发建议
+        <span style="margin-left:auto;display:flex;gap:8px">
+          <button class="btn" onclick="autoClaim(this)" id="claim-btn">⚡ 自动认领 + 分配 + 磋商</button>
+        </span>
+      </h2>
       <div class="sug" id="sug"><div class="loading">加载中…</div></div>
+    </div>
+
+    <div class="card full">
+      <h2>🏛️ 研究中心认领版图 — 自动认领 / AI人力分配 / EigenFlux 磋商 <span class="cnt" id="ws-stats"></span></h2>
+      <div id="workspaces"><div class="loading">加载中…</div></div>
+    </div>
+
+    <div class="card full">
+      <h2>🔄 工作流研究方向 <span class="cnt" id="wf-cnt"></span></h2>
+      <div class="sug" id="workflows"><div class="loading">加载中…</div></div>
     </div>
   </div>
 </div>
@@ -146,10 +160,51 @@ function load(){
     const all=[...G.fresh.map(x=>({...x,tm:'新发现'})), ...G.persisted.filter(p=>!G.fresh.some(f=>f.subject===p.subject)).map(p=>({...p,tm:p.created_at||''}))];
     document.getElementById('sug').innerHTML = all.slice(0,12).map(x=>
       `<div class="sug-it"><span class="tag">${x.kind==='daemon_to_skill'?'DAEMON→SKILL':x.kind}</span>`+
-      `<div class="tx"><b>${x.subject}</b> — ${x.reason||''}</div><span class="tm">${x.tm}</span></div>`
+      `<div class="tx"><b>${x.subject}</b> — ${x.reason||''} <b style="color:#6ee7b7">[${x.status||''}]</b></div><span class="tm">${x.tm}</span></div>`
     ).join('') || '<div class="empty">暂无衍生候选 — 全部 daemon 已有配套 Skill 覆盖</div>';
+    loadWorkspaces();
   }).catch(()=>{ document.getElementById('sug').innerHTML='<div class="empty">⚠️ API 请求失败, 请稍后重试</div>'; });
 }
+
+function loadWorkspaces(){
+  fetch('/api/daemon-lab/workspaces').then(r=>r.json()).then(d=>{
+    if(!d.ok) throw 0;
+    document.getElementById('ws-stats').textContent =
+      `认领 ${d.stats.total} · 通过 ${d.stats.accepted} · 复议 ${d.stats.claimed}`;
+    document.getElementById('workspaces').innerHTML = d.centers.map(c=>{
+      const a = c.assignments.map(x=>{
+        let emps=[]; try{emps=JSON.parse(x.employee_names||'[]')}catch(e){}
+        let profs=[]; try{profs=JSON.parse(x.professor_names||'[]')}catch(e){}
+        const stColor = x.status==='ACCEPTED'?'#6ee7b7':'#fbbf24';
+        return `<div class="sug-it" style="background:rgba(0,0,0,.15)">
+          <span class="tag" style="color:${stColor};border-color:${stColor}55">${x.status}</span>
+          <div class="tx"><b>${x.subject}</b><br>
+          <span style="color:#94a3b8">员工:</span> ${emps.map(e=>e.name).join('、')||'—'}<br>
+          <span style="color:#94a3b8">教授:</span> ${profs.map(p=>p.name).join('、')||'轮值席'}<br>
+          <span style="color:#6ee7b7">⚖ ${x.expert_verdict||''}</span></div></div>`;
+      }).join('');
+      const deli = c.deliberations.map(x=>
+        `<div class="sug-it"><span class="tag">${x.role}</span><div class="tx"><b>${x.speaker}</b> — ${x.viewpoint||''}</div><span class="tm">${x.vote||''}</span></div>`).join('');
+      return `<div style="margin-bottom:14px"><div style="font-size:12px;font-weight:700;color:#06b6d4;margin-bottom:8px">◆ ${c.center.name} <span style="color:#64748b;font-weight:400">(${c.center.domain})</span></div>
+        ${a||'<div class="empty">暂无认领任务</div>'}${deli?`<details style="margin-top:6px"><summary style="cursor:pointer;font-size:11px;color:#64748b">磋商记录 (${c.deliberations.length})</summary><div class="sug" style="margin-top:6px">${deli}</div></details>`:''}</div>`;
+    }).join('') || '<div class="empty">无活跃中心</div>';
+    document.getElementById('wf-cnt').textContent = `${d.workflows.length} 个方向`;
+    document.getElementById('workflows').innerHTML = d.workflows.map(w=>
+      `<div class="sug-it"><span class="tag">研究方向</span><div class="tx"><b>${w.name}</b> — ${w.description||''}<br><span style="color:#94a3b8">${w.direction||''}</span></div></div>`
+    ).join('') || '<div class="empty">暂无工作流研究方向</div>';
+  }).catch(()=>{ document.getElementById('workspaces').innerHTML='<div class="empty">⚠️ workspaces 加载失败</div>'; });
+}
+
+function autoClaim(btn){
+  btn.disabled=true; btn.textContent='⏳ 认领引擎运行中…';
+  fetch('/api/daemon-lab/auto-claim',{method:'POST'}).then(r=>r.json()).then(d=>{
+    btn.disabled=false; btn.textContent='⚡ 自动认领 + 分配 + 磋商';
+    alert(d.ok ? `✅ 已认领 ${d.claimed} 项:\n` + d.results.map(r=>`· ${r.subject} → ${r.center} [${r.verdict}]`).join('\n')
+               : `❌ 失败: ${d.error}`);
+    load();
+  }).catch(()=>{ btn.disabled=false; btn.textContent='⚡ 自动认领 + 分配 + 磋商'; alert('请求失败'); });
+}
+
 load();
 </script>
 </body>
