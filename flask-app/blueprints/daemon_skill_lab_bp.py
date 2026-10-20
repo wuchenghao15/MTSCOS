@@ -14,7 +14,7 @@ API:   GET /api/daemon-lab/overview  — 研究总览 JSON (daemon 注册表 + s
 import os
 import re
 import sqlite3
-from flask import Blueprint, render_template, jsonify
+from flask import Blueprint, render_template, jsonify, request
 
 from blueprints.chat_local_bp import _login_required, _get_user
 
@@ -123,9 +123,152 @@ def _ensure_claim_tables():
             for nm, desc, direction in _SEED_WORKFLOWS:
                 conn.execute("INSERT INTO mt_lab_workflows (name,direction,description) VALUES (?,?,?)",
                              (nm, direction, desc))
+        # ══ 任务大厅 (flow_hall_20261020) ══
+        conn.execute("""CREATE TABLE IF NOT EXISTS mt_lab_task_hall (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            description TEXT,
+            source TEXT DEFAULT 'manual',    -- derivation/manual/daemon_repair
+            source_id INTEGER,               -- 建议/daemon id
+            priority TEXT DEFAULT 'NORMAL',  -- HIGH/NORMAL/LOW
+            status TEXT DEFAULT 'QUEUED',    -- QUEUED/DISPATCHED/DONE/FAILED
+            center_id INTEGER,
+            assignment_id INTEGER,
+            verdict TEXT,
+            created_at TEXT DEFAULT (datetime('now','localtime')),
+            dispatched_at TEXT
+        )""")
+        cols = [r[1] for r in conn.execute("PRAGMA table_info(mt_lab_assignments)").fetchall()]
+        if "hall_task_id" not in cols:
+            conn.execute("ALTER TABLE mt_lab_assignments ADD COLUMN hall_task_id INTEGER")
         conn.commit()
     finally:
         conn.close()
+
+
+# ══ 任务大厅 (flow_hall_20261020): 任务自动汇聚 → 自动分配 ══
+def _hall_ingest():
+    """任务归集: ①衍生候选(PROPOSED) ②daemon异常(FAILED/STOPPED) 自动入厅"""
+    conn = _db()
+    added = 0
+    try:
+        for r in conn.execute("SELECT id, subject, reason FROM mt_lab_suggestions WHERE status='PROPOSED'").fetchall():
+            if not conn.execute("SELECT 1 FROM mt_lab_task_hall WHERE source='derivation' AND source_id=?", (r["id"],)).fetchone():
+                conn.execute("INSERT INTO mt_lab_task_hall (title,description,source,source_id,priority) VALUES (?,?,?,?,?)",
+                             (r["subject"], r["reason"], "derivation", r["id"], "NORMAL"))
+                added += 1
+        try:
+            bad = conn.execute("SELECT id, process_name, current_state FROM mt_daemon_registry "
+                               "WHERE current_state IN ('FAILED','STOPPED')").fetchall()
+        except sqlite3.Error:
+            bad = []
+        for r in bad:
+            if not conn.execute("SELECT 1 FROM mt_lab_task_hall WHERE source='daemon_repair' AND source_id=? AND status!='FAILED'", (r["id"],)).fetchone():
+                conn.execute("INSERT INTO mt_lab_task_hall (title,description,source,source_id,priority) VALUES (?,?,?,?,?)",
+                             (f"修复 daemon: {r['process_name']}",
+                              f"daemon {r['process_name']} 状态 {r['current_state']}, 需巡检修复",
+                              "daemon_repair", r["id"], "HIGH"))
+                added += 1
+        conn.commit()
+    finally:
+        conn.close()
+    return added
+
+
+def _hall_dispatch_one(task):
+    """单任务自动分配: 匹配中心 → 分配人力 → 磋商 → 状态回写"""
+    text = f"{task['title']} {task['description'] or ''}"
+    center, hit = _match_center(text)
+    if not center or hit == 0:
+        conn = _db()
+        try:
+            center = conn.execute("SELECT * FROM mt_lab_centers WHERE center_code='dev_flow'").fetchone()
+        finally:
+            conn.close()
+    emps, profs = _pick_staff(center["domain"], center["keywords"])
+    import json as _json
+    conn = _db()
+    try:
+        cur = conn.execute("INSERT INTO mt_lab_assignments (suggestion_id,center_id,employee_names,professor_names,hall_task_id) VALUES (?,?,?,?,?)",
+                           (task["source_id"] or 0, center["id"],
+                            _json.dumps(emps, ensure_ascii=False), _json.dumps(profs, ensure_ascii=False), task["id"]))
+        aid = cur.lastrowid
+        conn.commit()
+    finally:
+        conn.close()
+    verdict = _deliberate(aid, task["title"], center["name"], emps, profs)
+    status = "DISPATCHED" if "通过" in verdict else "QUEUED"
+    conn = _db()
+    try:
+        conn.execute("UPDATE mt_lab_task_hall SET status=?, center_id=?, assignment_id=?, verdict=?, dispatched_at=datetime('now','localtime') WHERE id=?",
+                     (status, center["id"], aid, verdict, task["id"]))
+        if status == "DISPATCHED" and task["source"] == "derivation" and task["source_id"]:
+            conn.execute("UPDATE mt_lab_suggestions SET status='CLAIMED' WHERE id=? AND status='PROPOSED'", (task["source_id"],))
+        conn.commit()
+    finally:
+        conn.close()
+    return {"task": task["title"], "center": center["name"],
+            "employees": [e["name"] for e in emps], "professors": [p["name"] for p in profs],
+            "verdict": verdict, "status": status}
+
+
+def run_hall_auto():
+    """任务大厅自动引擎: 归集 → 逐任务分配"""
+    _ensure_claim_tables()
+    ingested = _hall_ingest()
+    conn = _db()
+    try:
+        queued = conn.execute("SELECT * FROM mt_lab_task_hall WHERE status='QUEUED' ORDER BY "
+                              "CASE priority WHEN 'HIGH' THEN 0 ELSE 1 END, id").fetchall()
+    finally:
+        conn.close()
+    results = [_hall_dispatch_one(t) for t in queued]
+    return {"ingested": ingested, "dispatched": len(results), "results": results}
+
+
+@daemon_skill_lab_bp.route("/api/daemon-lab/hall/board", methods=["GET", "POST"])
+@_login_required
+def hall_board():
+    """大厅看板: GET=纯看板; POST=自动归集+自动分配后看板"""
+    _ensure_claim_tables()
+    auto = None
+    if request.method == "POST":
+        try:
+            auto = run_hall_auto()
+        except Exception as e:
+            return jsonify({"ok": False, "error": str(e)}), 500
+    conn = _db()
+    try:
+        stats = {}
+        for r in conn.execute("SELECT status, count(*) n FROM mt_lab_task_hall GROUP BY status"):
+            stats[r["status"]] = r["n"]
+        tasks = [dict(r) for r in conn.execute(
+            "SELECT h.*, c.name AS center_name FROM mt_lab_task_hall h "
+            "LEFT JOIN mt_lab_centers c ON c.id=h.center_id "
+            "ORDER BY CASE h.status WHEN 'QUEUED' THEN 0 WHEN 'DISPATCHED' THEN 1 ELSE 2 END, "
+            "CASE h.priority WHEN 'HIGH' THEN 0 ELSE 1 END, h.id DESC LIMIT 40")]
+        return jsonify({"ok": True, "stats": stats, "tasks": tasks, "auto": auto})
+    finally:
+        conn.close()
+
+
+@daemon_skill_lab_bp.route("/api/daemon-lab/hall/submit", methods=["POST"])
+@_login_required
+def hall_submit():
+    data = request.get_json(silent=True) or {}
+    title = (data.get("title") or "").strip()
+    if not title:
+        return jsonify({"ok": False, "error": "任务标题不能为空"}), 400
+    _ensure_claim_tables()
+    conn = _db()
+    try:
+        conn.execute("INSERT INTO mt_lab_task_hall (title,description,source,source_id,priority) VALUES (?,?,?,?,?)",
+                     (title[:120], (data.get("description") or "").strip()[:500],
+                      "manual", None, data.get("priority") or "NORMAL"))
+        conn.commit()
+    finally:
+        conn.close()
+    return jsonify({"ok": True, "message": f"任务已入厅: {title[:40]}"})
 
 
 def _match_center(text):

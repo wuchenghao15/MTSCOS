@@ -2403,6 +2403,9 @@ _CSRF_EXEMPT_PATHS = [
     '/api/server/auto-diagnose',
     # flow_lab_claim_20261020: 研发中心自动认领引擎 (登录门禁 + 操作全落库审计)
     '/api/daemon-lab/auto-claim',
+    # flow_hall_20261020: 任务大厅纯后端 (自动归集+自动分配, 登录门禁 + 全落库审计)
+    '/api/daemon-lab/hall/board',
+    '/api/daemon-lab/hall/submit',
     # v22.10.13: 仙女座 MCP Bridge — 运维 daemon 重启/握手/健康检查 (无 CSRF token, 内部调用)
     '/api/server/daemon-action',
     '/api/server/vikey-status',
