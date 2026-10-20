@@ -461,6 +461,22 @@ _log(f"[file_organizer] scan: found {len(stale)} stale tmp files")
         "inspect_cycle": 600,
     },
     {
+        # flow_research_sched_20261021: 自主研究院接入调度 (旧版 09-24 WAL 锁竞争 FAILED,
+        #   新版进程内建 flow 已修复但从未被调度 → 注册为常驻 daemon)
+        "process_name": "sys_andromeda_research",
+        "duty": "自主研究院 - 每600s Q5头脑风暴新功能 → 敏感度分类 → EigenFlux投票 → routine自动立项§14 flow",
+        "work_body": """
+try:
+    import andromeda_research as _ar
+    _r = _ar.run_research_cycle(max_proposals=1)
+    _log(f"[research] brainstormed={_r['brainstormed']} voted={_r['voted']} "
+         f"started={_r['started']} skipped={_r['skipped']}")
+except Exception as _e:
+    _log(f"[research] err: {_e}")
+""",
+        "inspect_cycle": 600,
+    },
+    {
         "process_name": "sys_copy_inspection",
         "duty": "文案合规巡检 - 每900s扫描模板硬编码中文",
         "work_body": """
@@ -1084,7 +1100,9 @@ _log("[autosync] mini online check...")
 try:
     import subprocess as _sp, json as _j
     # 多地址 fallback (Tailscale MagicDNS 优先)
-    addrs = ["hulk-macmini", "192.168.31.9", "100.123.45.67"]
+    # flow_gapfix_20261021: 补 100.106.220.96 (hulk-macmini 当前真实 Tailscale IP,
+    #   旧表 100.123.45.67 已失效; Mini 上线后 120s 内自动命中并触发演化广播)
+    addrs = ["hulk-macmini", "100.106.220.96", "192.168.31.9", "100.123.45.67"]
     online = False; hit_addr = None; latency = None
     for addr in addrs:
         try:

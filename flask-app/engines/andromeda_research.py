@@ -74,6 +74,19 @@ def _ensure_tables(db: sqlite3.Connection):
     CREATE INDEX IF NOT EXISTS idx_research_status ON mt_research_proposals(status);
     CREATE INDEX IF NOT EXISTS idx_research_cat ON mt_research_proposals(category);
     """)
+    # flow_research_sched_20261021: 实施记录表 (docstring 承诺但旧版遗漏)
+    db.executescript("""
+    CREATE TABLE IF NOT EXISTS mt_research_implementations (
+        impl_id     INTEGER PRIMARY KEY AUTOINCREMENT,
+        prop_id     TEXT,
+        flow_id     TEXT,
+        status      TEXT DEFAULT 'PENDING',  -- PENDING|IN_PROGRESS|DONE|FAILED
+        result_json TEXT,
+        created_at  TEXT DEFAULT (datetime('now')),
+        updated_at  TEXT DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_impl_prop ON mt_research_implementations(prop_id);
+    """)
 
 
 # ═════════════════════════════════════════════════════════════════════════
@@ -273,6 +286,13 @@ def run_research_cycle(max_proposals: int = 2) -> dict:
                      "OPEN", "STEP_1_PROPOSAL", now, now, "andromeda_research"))
                 db.execute("UPDATE mt_research_proposals SET dev_gate_flow_id=?, status=? WHERE prop_id=?",
                            (flow_id, "STARTED", prop_id))
+                # flow_research_sched_20261021: 实施记录闭环 (PENDING → Agent/dev_gate 接手推进)
+                db.execute("""INSERT OR IGNORE INTO mt_research_implementations
+                    (prop_id, flow_id, status, result_json)
+                    VALUES (?,?,?,?)""",
+                    (prop_id, flow_id, "PENDING",
+                     json.dumps({"source": "andromeda_research", "sensitivity": sens["level"],
+                                 "note": "flow 已建, 待 Step7 EXECUTE"}, ensure_ascii=False)))
                 db.commit()  # 立即提交, 缩短写事务持锁时间
                 result["started"] += 1
                 log(f"     ✅ §14 flow 已建 (进程内) → {flow_id[:48]}")
