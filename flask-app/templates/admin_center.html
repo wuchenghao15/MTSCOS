@@ -203,7 +203,8 @@
     <div id="hall-section" class="admin-card" style="margin-top:20px;width:100%">
         <h3 style="display:flex;align-items:center;gap:10px">📋 任务大厅
             <span id="hall-chips" style="font-size:11px;font-weight:400;color:#64748b"></span>
-            <button onclick="hallAutoWork(this)" style="margin-left:auto;border:1px solid #059669;background:transparent;color:#059669;border-radius:8px;font-size:11px;padding:5px 12px;cursor:pointer">🤖 AI 自动接单</button>
+            <button onclick="hallCenterDelegate(this)" style="margin-left:auto;border:1px solid #d97706;background:transparent;color:#d97706;border-radius:8px;font-size:11px;padding:5px 12px;cursor:pointer">🎯 中心自动委派</button>
+            <button onclick="hallAutoWork(this)" style="border:1px solid #059669;background:transparent;color:#059669;border-radius:8px;font-size:11px;padding:5px 12px;cursor:pointer">🤖 AI 自动接单</button>
             <button onclick="hallResidentsRun(this)" style="border:1px solid #7c3aed;background:transparent;color:#7c3aed;border-radius:8px;font-size:11px;padding:5px 12px;cursor:pointer">🏛 五主体入驻巡检</button>
             <button onclick="hallRunAuto(this)" style="border:1px solid #06b6d4;background:transparent;color:#06b6d4;border-radius:8px;font-size:11px;padding:5px 12px;cursor:pointer">⚡ 自动归集+分配</button>
             <button onclick="loadHall()" style="border:1px solid #d1d5db;background:transparent;color:#64748b;border-radius:8px;font-size:11px;padding:5px 12px;cursor:pointer">↻</button>
@@ -264,6 +265,15 @@
             else alert('失败: '+(d.error||''));
             loadHall();
         }).catch(()=>{ btn.disabled=false; btn.textContent='🤖 AI 自动接单'; });
+    }
+    function hallCenterDelegate(btn){
+        btn.disabled=true; btn.textContent='⏳ 中心自查中…';
+        fetch('/api/daemon-lab/hall/center-delegate',{method:'POST'}).then(r=>r.json()).then(d=>{
+            btn.disabled=false; btn.textContent='🎯 中心自动委派';
+            if(d.ok) alert(`中心自动委派: 新入厅 ${d.created_count} 项 (冷却 ${d.cooldown.length} / 能力在线 ${d.idle.length})\n`+(d.created||[]).map(t=>`· [${t.priority}] ${t.title}`).join('\n'));
+            else alert('失败: '+(d.error||''));
+            loadHall();
+        }).catch(()=>{ btn.disabled=false; btn.textContent='🎯 中心自动委派'; });
     }
     loadHall();
     hallResidentsLoad();
