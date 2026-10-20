@@ -785,9 +785,14 @@
     setInterval(loadAll, 60000);  // 每 60s 刷新
 })();
 </script>
+{% if auth_stage == 'full_auth' %}
 <script>
 /* flow_sa_session_20261020 + flow_sa_kick_20261020: SA 会话心跳 — 5s高频(服务端2s缓存兜底),
-   双钥在位→续期; 离线→立即 location.replace 踢出 SA; 页面回前台即时检测 */
+   双钥在位→续期; 离线→立即 location.replace 踢出 SA; 页面回前台即时检测
+   flow_sa_hw_state_20261020 FIX: 仅在 full_auth 完整态运行 —
+   预认证锁定页(guest)无 SA 会话, keepalive 必返 403 SA_ONLY,
+   原逻辑把任意 403 当"会话失效"→ 立刻踢出 /index?from=sa_key_lost →
+   与 sa_auto_redirect.js 形成"进SA→踢出→再进SA"死循环。 */
 (function(){
     var _ba = document.createElement('div');
     _ba.style.cssText = 'position:fixed;bottom:10px;right:12px;z-index:9999;font:11px/1.4 -apple-system,sans-serif;color:#0f8;padding:3px 10px;border-radius:10px;background:rgba(0,0,0,.55);backdrop-filter:blur(4px);transition:.3s;display:none;';
@@ -827,7 +832,8 @@
     });
 })();
 </script>
+{% endif %}
 <!-- flow_sa_hw_state_20261020: 全页面硬件状态机 (双钥+Arduino 强制跳 Arduino 编辑页) -->
-<script src="/static/js/sa_auto_redirect.js?v=26.1.0"></script>
+<script src="/static/js/sa_auto_redirect.js?v=26.1.1"></script>
 </body>
 </html>

@@ -14,8 +14,12 @@
 (function () {
   if (window.__MT_HW_SM__) return;                    /* 防重复注入 */
   if (location.pathname.indexOf('/admin_app/arduino_ide') === 0) return;  /* 目标页防回环 */
-  /* flow_sa_jsstop_20261020 沿袭: 权限拒绝落点不轮询 (该身份进不了 SA/Arduino 页) */
-  if (location.search.indexOf('from=sa_denied') !== -1) return;
+  /* flow_sa_hw_state_20261020 FIX: 权限拒绝落点改 30s 冷却 (原永久停会死锁 —
+   * 会话重新登录为 SA 后本应恢复自动跳转) */
+  var K_DENIED = 'mt_sa_last_denied';
+  if (location.search.indexOf('from=sa_denied') !== -1) {
+    try { sessionStorage.setItem(K_DENIED, String(Date.now())); } catch (e) {}
+  }
   window.__MT_HW_SM__ = true;
 
   var K_REJOIN = 'mt_sa_last_rejoin', K_KICK = 'mt_sa_last_kick', K_PREV = 'mt_hw_state_prev';
@@ -29,7 +33,7 @@
     return null;                                        /* HALF/NONE: 无效, 无动作 */
   }
 
-  function _apply(state) {
+  function _apply(state, saEntry) {
     var prev = sessionStorage.getItem(K_PREV) || '';
     /* 实时状态变化广播 (所有页面可监听: window.addEventListener('mt-hw-state-change', e => e.detail.state)) */
     if (state !== prev) {
@@ -43,11 +47,18 @@
     var tgt = _target(state);
     if (!tgt) return;                                   /* HALF 单钥无效 / NONE 无动作 */
 
+    /* flow_sa_hw_state_20261020 FIX: sa_entry 门禁 — 服务端明确该会话不可进 SA(非SA用户)
+     * 时不跳, 防 非SA→SA守卫弹回→再推 的乒乓 */
+    if (saEntry === false) return;
+
     /* 重入冷却 (12s): 刚跳过/刚被踢出不跳, 防乒乓 (flow_sa_loop_20261020) */
     var now = Date.now();
     var lastRe = parseInt(sessionStorage.getItem(K_REJOIN) || '0', 10);
     var lastKick = parseInt(sessionStorage.getItem(K_KICK) || '0', 10);
     if (now - lastRe < 12000 || now - lastKick < 12000) return;
+    /* 权限拒绝 30s 冷却 (非永久停, 允许重新登录后恢复) */
+    var lastDenied = parseInt(sessionStorage.getItem(K_DENIED) || '0', 10);
+    if (now - lastDenied < 30000) return;
     /* 已在目标页不跳 */
     if (location.pathname === tgt) return;
     sessionStorage.setItem(K_REJOIN, String(now));
@@ -72,7 +83,7 @@
           var ard = j.arduino_present === true;
           state = (vp && sp) ? (ard ? 'DUAL_ARDUINO' : 'DUAL') : (vp || sp ? 'HALF' : 'NONE');
         }
-        _apply(state);
+        _apply(state, j.sa_entry);
         setTimeout(_poll, 4000);
       })
       .catch(function () { setTimeout(_poll, 8000); });

@@ -2519,12 +2519,27 @@ def _sa_path_guard():
     # flow_sa_pc_mobile_20261020: 即插即用免密入口放行 (自身校验信任令牌+双钥, fail-closed)
     if _p.rstrip('/') == '/sa/plug-login':
         return None
+    # flow_sa_hw_state_20261020 FIX: hardware_only=1 + loopback 放行 —
+    # 硬件在位布尔不涉密; 端点对非SA返回 sa_entry=False(fail-closed)。
+    # 否则已登录非SA会话被 L2551 拦成 SA_ONLY 403 → 前端拿不到 JSON → 硬件状态机死锁。
+    if (_p.rstrip('/').endswith('/api/hardware/dual-status')
+            and request.args.get('hardware_only') == '1'
+            and request.remote_addr in ('127.0.0.1', '::1')):
+        return None
     if not any(_p.startswith(p) for p in _SA_ONLY_PATH_PREFIXES):
         return None  # 非 SA 路径, 放行
 
     _uid = session.get('user_id')
+    _uid_s = str(_uid or '').strip()
     _role = session.get('role', '')
-    if not _uid or _uid == 'guest':
+    _uname = str(session.get('username') or '').strip()
+    _uname_l = _uname.lower()
+    # flow_sa_hw_state_20261020 FIX: 真实 guest 会话 user_id 形如 'guest-<n>'
+    #   (见 _mt_get_user_ctx→'guest-% int(time.time()%100000)')，username 为空串。
+    #   原判定 `_uid == 'guest'` 仅匹配占位值 → 真实 guest 被误判「已登录非SA」→
+    #   双钥已插(sa_entry=true)也进不了 SA: 守卫 302 /index?from=sa_denied 循环弹回。
+    if ((not _uid_s) or _uid_s == 'guest' or _uid_s.startswith('guest-')
+            or _uname_l in ('', 'guest')):
         # flow_sa_autoredir_20261020: loopback guest 放行 → 视图自身 fail-closed
         #   /sa/dashboard 预认证锁定页 (双钥缺失时视图自查→302 /index?from=sa_no_keys)
         #   /sa/verify /sa/mobile-verify /sa/plug-login 自校验
@@ -2533,8 +2548,7 @@ def _sa_path_guard():
         if request.remote_addr in ('127.0.0.1', '::1'):
             return None
         return redirect(f'/auth/login?next={_p}', code=302)
-    _uname = str(session.get('username') or '').lower()
-    if _uname == 'wuchenghao15' or _role == 'super_admin':
+    if _uname_l == 'wuchenghao15' or _role == 'super_admin':
         # flow_sa_loop_20261020: 真 SA 自愈 — kick 清标记后 role 可能残留/缺失,
         # 以 username 为准放行 (后续 SA 页面内部的双密钥检测自己做, fail-closed 不变)
         return None
@@ -11400,39 +11414,53 @@ def api_hardware_dual_status():
 
         _ard = _ard_present(force_refresh=request.args.get('hardware_only') == '1')
         username = session.get('username', '') or ''
+        # flow_sa_hw_state_20261020 FIX: hardware_only=1 分支前置 — 对 ALL loopback 请求
+        # (guest / 已登录 SA / 已登录非SA) 一律返回硬件在位布尔 + hw_state(不涉密)。
+        # 修复前该分支仅在 not username 时生效, 已登录非SA 会话拿不到 JSON → 前端停轮 → 死锁。
+        if (request.args.get('hardware_only') == '1'
+                and request.remote_addr in ('127.0.0.1', '::1')):
+            _role_now = (session.get('role') or session.get('role_name') or '')
+            _is_sa_now = username.lower() == 'wuchenghao15' or str(_role_now).lower() == 'super_admin'
+            try:
+                # v24.3.4: hardware_only 加 force_refresh=True 绕过 2s 缓存 —
+                # 心跳 2s 间隔需要实时感知插拔，缓存反而拖慢 1-2s
+                _hw = _mt_dual.get_dual_hardware_status(
+                    username='wuchenghao15', role='super_admin',
+                    ip=request.remote_addr,
+                    ua=request.headers.get('User-Agent', '')[:300],
+                    force_refresh=True)
+                _vp = bool(_hw.get('vikey', {}).get('present'))
+                _sp = bool(_hw.get('szu100', {}).get('present'))
+                _payload = {
+                    'success': True,
+                    'hardware_only': True,
+                    'vikey_present': _vp,
+                    'szu100_present': _sp,
+                    'both_present': _vp and _sp,
+                    'arduino_present': _ard,
+                    'hw_state': _hw_state(_vp, _sp, _ard),
+                    'layout_mode': 'SA_PROPRIETARY',
+                    # sa_entry: 该会话是否允许被状态机推进 SA 区 (guest 走登录/预认证, SA 放行,
+                    # 非SA 一律 False — 防 非SA→SA守卫弹回→再推 的无限乒乓)
+                    'sa_entry': (not username) or _is_sa_now,
+                }
+                # flow_usb_hub_20261020: ?diag=1 附 USB Hub 拓扑归因 —
+                # 设备落在哪个 Hub/端口、是否直插、缺失设备的诊断提示 (仅 loopback 可见)
+                if request.args.get('diag') == '1':
+                    try:
+                        from core.services.vikey_official import hub_diagnose as _hub_diag
+                        _payload['usb_hub'] = _hub_diag()
+                    except Exception as _de:
+                        _payload['usb_hub'] = {'error': str(_de)}
+                return jsonify(_payload)
+            except Exception:
+                return jsonify({
+                    'success': False, 'hardware_only': True,
+                    'vikey_present': False, 'szu100_present': False,
+                    'both_present': False, 'arduino_present': False,
+                    'hw_state': 'NONE', 'layout_mode': 'STANDARD', 'sa_entry': False,
+                })
         if not username:
-            # v24.3.2: guest + loopback + hardware_only=1 → 仅返回硬件在位布尔
-            # （供 /sa/dashboard 锁定页/登录页前端心跳判断"密钥是否拔出/就绪"，
-            #   不含序列号/卷名等敏感字段；非 loopback 一律 401 fail-closed）
-            if (request.args.get('hardware_only') == '1'
-                    and request.remote_addr in ('127.0.0.1', '::1')):
-                try:
-                    # v24.3.4: hardware_only 加 force_refresh=True 绕过 2s 缓存 —
-                    # 心跳 2s 间隔需要实时感知插拔，缓存反而拖慢 1-2s
-                    _hw = _mt_dual.get_dual_hardware_status(
-                        username='wuchenghao15', role='super_admin',
-                        ip=request.remote_addr,
-                        ua=request.headers.get('User-Agent', '')[:300],
-                        force_refresh=True)
-                    _vp = bool(_hw.get('vikey', {}).get('present'))
-                    _sp = bool(_hw.get('szu100', {}).get('present'))
-                    return jsonify({
-                        'success': True,
-                        'hardware_only': True,
-                        'vikey_present': _vp,
-                        'szu100_present': _sp,
-                        'both_present': _vp and _sp,
-                        'arduino_present': _ard,
-                        'hw_state': _hw_state(_vp, _sp, _ard),
-                        'layout_mode': 'SA_PROPRIETARY',
-                    })
-                except Exception:
-                    return jsonify({
-                        'success': False, 'hardware_only': True,
-                        'vikey_present': False, 'szu100_present': False,
-                        'both_present': False, 'arduino_present': False,
-                        'hw_state': 'NONE', 'layout_mode': 'STANDARD',
-                    })
             # 会话缺省无用户名 → 视为未登录。401 不重定向(防盗链保持原状)
             return jsonify({
                 'success': False,
@@ -11471,6 +11499,7 @@ def api_hardware_dual_status():
         dual['arduino_present'] = _ard
         dual['hw_state'] = _hw_state(bool(dual.get('vikey', {}).get('present')),
                                      bool(dual.get('szu100', {}).get('present')), _ard)
+        dual['sa_entry'] = bool(is_sa)   # 非SA 禁跳, 防乒乓
         return jsonify(dual)
     except Exception as e:
         return jsonify({
