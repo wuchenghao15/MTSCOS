@@ -15,6 +15,7 @@ import json
 import os
 import re
 import sqlite3
+from datetime import datetime
 from flask import Blueprint, render_template, jsonify, request
 
 from blueprints.chat_local_bp import _login_required, _get_user
@@ -169,6 +170,26 @@ def _ensure_claim_tables():
         )""")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_lab_audit_created ON mt_lab_audit_log(created_at DESC)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_lab_audit_operator ON mt_lab_audit_log(operator)")
+        # ══ 接任务生命周期 (flow_hall_claim_opt_20261020) ══
+        # 状态机: QUEUED --分配--> DISPATCHED --抢单--> CLAIMED --开工--> IN_PROGRESS
+        #        --交付--> DELIVERED --验收--> DONE / REWORK(返工回 IN_PROGRESS) / 超时--> QUEUED(回收)
+        for alter in ("claim_owner", "claim_owner_role", "claim_type", "claimed_at",
+                      "started_at", "progress", "progress_note", "delivered_at",
+                      "deliverable", "acceptor", "accepted_at", "deadline_at", "reject_reason",
+                      "updated_at"):
+            cols = [r[1] for r in conn.execute("PRAGMA table_info(mt_lab_task_hall)").fetchall()]
+            if alter not in cols:
+                conn.execute(f"ALTER TABLE mt_lab_task_hall ADD COLUMN {alter} TEXT")
+        conn.execute("""CREATE TABLE IF NOT EXISTS mt_lab_task_events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            hall_task_id INTEGER NOT NULL,
+            event TEXT NOT NULL,             -- CLAIM/START/PROGRESS/DELIVER/ACCEPT/REWORK/RECLAIM/RECYCLE/EXPIRE
+            actor TEXT DEFAULT 'system',
+            actor_role TEXT,
+            note TEXT,
+            created_at TEXT DEFAULT (datetime('now','localtime'))
+        )""")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_lab_task_events_task ON mt_lab_task_events(hall_task_id)")
         conn.commit()
     finally:
         conn.close()
@@ -405,6 +426,326 @@ def hall_submit():
     _audit("hall", "HALL_SUBMIT", title[:80],
            {"description": (data.get("description") or "")[:200], "priority": data.get("priority") or "NORMAL"})
     return jsonify({"ok": True, "message": f"任务已入厅: {title[:40]}"})
+
+
+# ════════════════ 接任务生命周期 (flow_hall_claim_opt_20261020) ════════════════
+# 状态机: DISPATCHED→CLAIMED(抢单)→IN_PROGRESS(开工)→DELIVERED(交付)→DONE(验收)
+#         REWORK(返工)→IN_PROGRESS; CLAIMED/IN_PROGRESS 超时→QUEUED(回收回池)
+
+_HALL_CLAIM_TIMEOUT_HOURS = 24      # 抢单未开工时限
+_HALL_PROGRESS_TIMEOUT_HOURS = 72   # 开工未交付时限
+_VALID_TRANSITIONS = {
+    "CLAIM":  {"DISPATCHED": "CLAIMED"},
+    "START":  {"CLAIMED": "IN_PROGRESS"},
+    "PROGRESS": {"IN_PROGRESS": "IN_PROGRESS"},
+    "DELIVER": {"IN_PROGRESS": "DELIVERED"},
+    "ACCEPT": {"DELIVERED": "DONE"},
+    "REWORK": {"DELIVERED": "IN_PROGRESS"},
+}
+
+
+def _hall_task_event(task_id, event, actor, actor_role, note=""):
+    conn = _db()
+    try:
+        conn.execute("INSERT INTO mt_lab_task_events (hall_task_id,event,actor,actor_role,note) VALUES (?,?,?,?,?)",
+                     (task_id, event, actor, actor_role, note[:300]))
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def _hall_transition(task_id, action, actor, actor_role, extra=None):
+    """原子状态迁移: UPDATE ... WHERE status=期望前置态 (并发抢单安全, 唯一赢家)"""
+    expect = _VALID_TRANSITIONS[action]
+    pre_status = next(iter(expect))
+    new_status = expect[pre_status]
+    extra = extra or {}
+    sets = ["status=?", "updated_at=datetime('now','localtime')"]
+    args = [new_status]
+    for col, val in extra.items():
+        sets.append(f"{col}=?")
+        args.append(val)
+    args.append(task_id)
+    args.append(pre_status)
+    conn = _db()
+    try:
+        cur = conn.execute(f"UPDATE mt_lab_task_hall SET {', '.join(sets)} WHERE id=? AND status=?", args)
+        conn.commit()
+        won = cur.rowcount == 1
+        if won:
+            row = conn.execute("SELECT title FROM mt_lab_task_hall WHERE id=?", (task_id,)).fetchone()
+            title = row["title"] if row else f"#{task_id}"
+        else:
+            row = conn.execute("SELECT status, claim_owner FROM mt_lab_task_hall WHERE id=?", (task_id,)).fetchone()
+            title = ""
+    finally:
+        conn.close()
+    return won, new_status, title, (dict(row) if row else {})
+
+
+def _hall_ensure_deadline(task_id, hours):
+    conn = _db()
+    try:
+        conn.execute("UPDATE mt_lab_task_hall SET deadline_at=datetime('now','localtime', ?) "
+                     "WHERE id=? AND deadline_at IS NULL", (f'+{int(hours)} hours', task_id))
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def run_hall_recycle():
+    """超时回收: CLAIMED 未开工 / IN_PROGRESS 未交付 超时 → 回池 QUEUED (原子)"""
+    _ensure_claim_tables()
+    conn = _db()
+    try:
+        stale = conn.execute(
+            """SELECT id, status, claim_owner, title FROM mt_lab_task_hall
+               WHERE (status='CLAIMED' AND claimed_at IS NOT NULL
+                      AND claimed_at < datetime('now','localtime', ?))
+                  OR (status='IN_PROGRESS' AND started_at IS NOT NULL
+                      AND started_at < datetime('now','localtime', ?))""",
+            (f'-{_HALL_CLAIM_TIMEOUT_HOURS} hours', f'-{_HALL_PROGRESS_TIMEOUT_HOURS} hours')).fetchall()
+        recycled = []
+        for t in stale:
+            limit_h = _HALL_CLAIM_TIMEOUT_HOURS if t["status"] == "CLAIMED" else _HALL_PROGRESS_TIMEOUT_HOURS
+            cur = conn.execute(
+                "UPDATE mt_lab_task_hall SET status='QUEUED', updated_at=datetime('now','localtime'), "
+                "reject_reason='超时回收: '||? WHERE id=? AND status=?",
+                (f'{t["status"]} 超过 {limit_h}h 未推进', t["id"], t["status"]))
+            if cur.rowcount == 1:
+                recycled.append({"id": t["id"], "title": t["title"], "was": t["status"], "owner": t["claim_owner"]})
+        conn.commit()
+    finally:
+        conn.close()
+    for r in recycled:
+        _hall_task_event(r["id"], "RECYCLE", "system", "system", f'{r["was"]} 超时 → 回池 QUEUED (原认领: {r["owner"]})')
+        _audit("hall", "HALL_RECYCLE", r["title"][:60], r)
+    return recycled
+
+
+@daemon_skill_lab_bp.route("/api/daemon-lab/hall/claim", methods=["POST"])
+@_login_required
+def hall_claim():
+    """抢单: 并发安全 (原子 UPDATE WHERE status=DISPATCHED), 唯一赢家"""
+    _ensure_claim_tables()
+    u = _get_user()
+    data = request.get_json(silent=True) or {}
+    task_id = data.get("task_id")
+    if not task_id:
+        return jsonify({"ok": False, "error": "缺少 task_id"}), 400
+    won, new_status, title, cur = _hall_transition(
+        task_id, "CLAIM", u.get("username") or "?", u.get("role") or "?",
+        {"claim_owner": u.get("username") or "?",
+         "claim_owner_role": u.get("role") or "?",
+         "claim_type": data.get("claim_type") or "self",       # self(本人)/team(代表团队)
+         "claimed_at": datetime.now().isoformat(timespec="seconds")})
+    if not won:
+        who = cur.get("claim_owner") or "-"
+        return jsonify({"ok": False, "error": f"抢单失败: 任务已被认领 (当前: {cur.get('status')}·{who})"}), 409
+    _hall_ensure_deadline(task_id, _HALL_CLAIM_TIMEOUT_HOURS)
+    _hall_task_event(task_id, "CLAIM", u.get("username"), u.get("role"), data.get("note") or "")
+    _audit("hall", "HALL_CLAIM", title[:60], {"task_id": task_id, "owner": u.get("username")})
+    try:
+        from blueprints.wecom_hub_bp import wecom_push
+        wecom_push("hall", "🙋 任务被抢单",
+                   f"> **{title[:40]}**\n> 认领人: {u.get('username')} ({u.get('role')})\n"
+                   f"> 类型: {data.get('claim_type') or 'self'} · {_HALL_CLAIM_TIMEOUT_HOURS}h 内需开工, 否则回池", operator=u.get("username"))
+    except Exception:
+        pass
+    return jsonify({"ok": True, "task_id": task_id, "status": new_status, "owner": u.get("username"),
+                    "deadline_hours": _HALL_CLAIM_TIMEOUT_HOURS,
+                    "message": f"抢单成功: {title[:40]} ( {_HALL_CLAIM_TIMEOUT_HOURS}h 内开工)"})
+
+
+@daemon_skill_lab_bp.route("/api/daemon-lab/hall/start", methods=["POST"])
+@_login_required
+def hall_start():
+    """开工: 仅认领人本人"""
+    _ensure_claim_tables()
+    u = _get_user()
+    data = request.get_json(silent=True) or {}
+    task_id = data.get("task_id")
+    conn = _db()
+    try:
+        t = conn.execute("SELECT status, claim_owner FROM mt_lab_task_hall WHERE id=?", (task_id,)).fetchone()
+    finally:
+        conn.close()
+    if not t:
+        return jsonify({"ok": False, "error": "任务不存在"}), 404
+    if t["status"] != "CLAIMED":
+        return jsonify({"ok": False, "error": f"状态非 CLAIMED (当前 {t['status']})"}), 409
+    if t["claim_owner"] != u.get("username"):
+        return jsonify({"ok": False, "error": f"仅认领人 {t['claim_owner']} 可开工"}), 403
+    won, new_status, title, _ = _hall_transition(task_id, "START", u.get("username"), u.get("role"),
+                                                 {"started_at": datetime.now().isoformat(timespec="seconds"),
+                                                  "progress": "0"})
+    if not won:
+        return jsonify({"ok": False, "error": "状态已变化, 请刷新"}), 409
+    _hall_ensure_deadline(task_id, _HALL_PROGRESS_TIMEOUT_HOURS)
+    _hall_task_event(task_id, "START", u.get("username"), u.get("role"), data.get("note") or "")
+    _audit("hall", "HALL_START", title[:60], {"task_id": task_id})
+    return jsonify({"ok": True, "status": new_status, "deadline_hours": _HALL_PROGRESS_TIMEOUT_HOURS,
+                    "message": "已开工, 交付时限 72h"})
+
+
+@daemon_skill_lab_bp.route("/api/daemon-lab/hall/progress", methods=["POST"])
+@_login_required
+def hall_progress():
+    """进度上报: 认领人本人, IN_PROGRESS 态, 顺带续期防误回收"""
+    _ensure_claim_tables()
+    u = _get_user()
+    data = request.get_json(silent=True) or {}
+    task_id = data.get("task_id")
+    pct = data.get("progress")
+    try:
+        pct = int(pct)
+    except (TypeError, ValueError):
+        return jsonify({"ok": False, "error": "progress 需 0-100 整数"}), 400
+    if not (0 <= pct <= 100):
+        return jsonify({"ok": False, "error": "progress 需 0-100 整数"}), 400
+    conn = _db()
+    try:
+        t = conn.execute("SELECT status, claim_owner FROM mt_lab_task_hall WHERE id=?", (task_id,)).fetchone()
+    finally:
+        conn.close()
+    if not t or t["status"] != "IN_PROGRESS":
+        return jsonify({"ok": False, "error": "任务不在 IN_PROGRESS 态"}), 409
+    if t["claim_owner"] != u.get("username"):
+        return jsonify({"ok": False, "error": "仅认领人可上报进度"}), 403
+    won, _, title, _ = _hall_transition(task_id, "PROGRESS", u.get("username"), u.get("role"),
+                                        {"progress": str(pct),
+                                         "progress_note": (data.get("note") or "")[:200],
+                                         "started_at": datetime.now().isoformat(timespec="seconds")})
+    if not won:
+        return jsonify({"ok": False, "error": "状态已变化, 请刷新"}), 409
+    _hall_task_event(task_id, "PROGRESS", u.get("username"), u.get("role"), f"{pct}% {data.get('note') or ''}")
+    _audit("hall", "HALL_PROGRESS", title[:60], {"task_id": task_id, "progress": pct})
+    return jsonify({"ok": True, "progress": pct})
+
+
+@daemon_skill_lab_bp.route("/api/daemon-lab/hall/deliver", methods=["POST"])
+@_login_required
+def hall_deliver():
+    """交付: 产出物摘要落库 → DELIVERED 待验收"""
+    _ensure_claim_tables()
+    u = _get_user()
+    data = request.get_json(silent=True) or {}
+    task_id = data.get("task_id")
+    deliverable = (data.get("deliverable") or "").strip()
+    if not deliverable:
+        return jsonify({"ok": False, "error": "交付说明 (deliverable) 不能为空"}), 400
+    conn = _db()
+    try:
+        t = conn.execute("SELECT status, claim_owner FROM mt_lab_task_hall WHERE id=?", (task_id,)).fetchone()
+    finally:
+        conn.close()
+    if not t or t["status"] not in ("IN_PROGRESS", "REWORK"):
+        return jsonify({"ok": False, "error": f"任务不在可交付态 (当前 {t['status'] if t else 'N/A'})"}), 409
+    if t["claim_owner"] != u.get("username"):
+        return jsonify({"ok": False, "error": "仅认领人可交付"}), 403
+    won, _, title, _ = _hall_transition(task_id, "DELIVER", u.get("username"), u.get("role"),
+                                        {"delivered_at": datetime.now().isoformat(timespec="seconds"),
+                                         "deliverable": deliverable[:4000],
+                                         "progress": "100"})
+    if not won:
+        return jsonify({"ok": False, "error": "状态已变化, 请刷新"}), 409
+    _hall_task_event(task_id, "DELIVER", u.get("username"), u.get("role"), deliverable[:200])
+    _audit("hall", "HALL_DELIVER", title[:60], {"task_id": task_id, "deliverable": deliverable[:300]})
+    try:
+        from blueprints.wecom_hub_bp import wecom_push
+        wecom_push("hall", "📦 任务交付待验收",
+                   f"> **{title[:40]}**\n> 交付人: {u.get('username')}\n> 产出: {deliverable[:150]}", operator=u.get("username"))
+    except Exception:
+        pass
+    return jsonify({"ok": True, "status": "DELIVERED", "message": "交付成功, 等待验收"})
+
+
+@daemon_skill_lab_bp.route("/api/daemon-lab/hall/accept", methods=["POST"])
+@_login_required
+def hall_accept():
+    """验收/返工: admin 及以上; REWORK 带 reason 回 IN_PROGRESS"""
+    _ensure_claim_tables()
+    u = _get_user()
+    if u.get("role") not in ("admin", "super_admin"):
+        return jsonify({"ok": False, "error": "仅 admin/super_admin 可验收"}), 403
+    data = request.get_json(silent=True) or {}
+    task_id = data.get("task_id")
+    decision = (data.get("decision") or "accept").strip()
+    if decision not in ("accept", "rework"):
+        return jsonify({"ok": False, "error": "decision 须 accept/rework"}), 400
+    conn = _db()
+    try:
+        t = conn.execute("SELECT status, title, claim_owner FROM mt_lab_task_hall WHERE id=?", (task_id,)).fetchone()
+    finally:
+        conn.close()
+    if not t or t["status"] != "DELIVERED":
+        return jsonify({"ok": False, "error": f"任务不在 DELIVERED 态 (当前 {t['status'] if t else 'N/A'})"}), 409
+    if decision == "accept":
+        won, _, _, _ = _hall_transition(task_id, "ACCEPT", u.get("username"), u.get("role"),
+                                        {"acceptor": u.get("username"),
+                                         "accepted_at": datetime.now().isoformat(timespec="seconds")})
+        event, note = "ACCEPT", data.get("note") or "验收通过"
+        # HR 人力账: 完成
+        conn = _db()
+        try:
+            for emp in conn.execute("SELECT employee_name, employee_code FROM mt_lab_assignments WHERE hall_task_id=?", (task_id,)):
+                conn.execute("INSERT INTO mt_lab_hr_log (employee_name, employee_code, role, hall_task_id, action, verdict) VALUES (?,?,?,?,?,?)",
+                             (emp["employee_name"], emp["employee_code"], "employee", task_id, "COMPLETE", "验收通过"))
+            conn.commit()
+        except Exception:
+            pass
+        finally:
+            conn.close()
+    else:
+        reason = (data.get("reason") or "").strip()
+        if not reason:
+            return jsonify({"ok": False, "error": "返工必须说明 reason"}), 400
+        won, _, _, _ = _hall_transition(task_id, "REWORK", u.get("username"), u.get("role"),
+                                        {"reject_reason": reason[:300]})
+        event, note = "REWORK", reason[:200]
+    if not won:
+        return jsonify({"ok": False, "error": "状态已变化, 请刷新"}), 409
+    _hall_task_event(task_id, event, u.get("username"), u.get("role"), note)
+    _audit("hall", "HALL_ACCEPT" if decision == "accept" else "HALL_REWORK",
+           t["title"][:60], {"task_id": task_id, "decision": decision, "note": note})
+    try:
+        from blueprints.wecom_hub_bp import wecom_push
+        wecom_push("hall", "✅ 任务验收通过" if decision == "accept" else "🔁 任务返工",
+                   f"> **{t['title'][:40]}**\n> 决策人: {u.get('username')}\n> {note}", operator=u.get("username"))
+    except Exception:
+        pass
+    return jsonify({"ok": True, "decision": decision,
+                    "status": "DONE" if decision == "accept" else "IN_PROGRESS"})
+
+
+@daemon_skill_lab_bp.route("/api/daemon-lab/hall/task")
+@_login_required
+def hall_task_detail():
+    """任务详情: 状态机轨迹 + 生命周期字段"""
+    _ensure_claim_tables()
+    task_id = request.args.get("task_id")
+    conn = _db()
+    try:
+        t = conn.execute("SELECT h.*, c.name AS center_name FROM mt_lab_task_hall h "
+                         "LEFT JOIN mt_lab_centers c ON c.id=h.center_id WHERE h.id=?", (task_id,)).fetchone()
+        if not t:
+            return jsonify({"ok": False, "error": "任务不存在"}), 404
+        events = [dict(r) for r in conn.execute(
+            "SELECT event,actor,actor_role,note,created_at FROM mt_lab_task_events "
+            "WHERE hall_task_id=? ORDER BY id DESC LIMIT 50", (task_id,))]
+    finally:
+        conn.close()
+    return jsonify({"ok": True, "task": dict(t), "events": events})
+
+
+@daemon_skill_lab_bp.route("/api/daemon-lab/hall/recycle", methods=["POST"])
+@_login_required
+def hall_recycle_api():
+    """手动/被动触发超时回收"""
+    recycled = run_hall_recycle()
+    return jsonify({"ok": True, "recycled": recycled, "count": len(recycled),
+                    "rules": {"claim_timeout_h": _HALL_CLAIM_TIMEOUT_HOURS,
+                              "progress_timeout_h": _HALL_PROGRESS_TIMEOUT_HOURS}})
 
 
 @daemon_skill_lab_bp.route("/api/daemon-lab/audit")
