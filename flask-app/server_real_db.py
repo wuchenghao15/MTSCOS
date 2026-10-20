@@ -13670,6 +13670,18 @@ def register():
                 except Exception:
                     pass
 
+            # flow_vault_20261021: email 敏感收口 — 落金库, 明文列即时清空 (个保法 P2)
+            # users.email 有 UNIQUE 约束, 清列用每行唯一墓碑 pv1:uid:{uid}, 不能多行同置 ''
+            if email:
+                try:
+                    from core.services.phone_vault import store_field as _store_field
+                    _store_field(write_db, 'mt_user_email_vault', uid, email)
+                    conn.execute("UPDATE users SET email=?, email_enc='' WHERE id=?",
+                                 (f"pv1:uid:{uid}", uid))
+                    conn.commit()
+                except Exception:
+                    pass
+
             # 【STEP_7 SSL绑定】注册成功后绑定SSL证书到用户（is_primary=True）
             try:
                 _bind_id = _bind_user_ssl_cert(uid, username, ssl_fingerprint_reg,
