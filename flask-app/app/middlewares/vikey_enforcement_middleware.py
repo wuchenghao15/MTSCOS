@@ -54,6 +54,9 @@ VIKEY_WHITELIST_PATHS = [
     '/auth/register',
     '/auth/forgot_password',
     '/api/vikey/',
+    # flow_sa_kick_20261020: SA 会话心跳白名单 — 端点自带 fail-closed (双钥原子校验+踢出+审计),
+    # 必须放行到端点否则外层拦截抢跑 403, 拔钥永远无法触发 kick
+    '/api/sa/session/',
     '/api/health',
     '/api/status',
     '/api/time',

@@ -786,12 +786,15 @@
 })();
 </script>
 <script>
-/* flow_sa_session_20261020: SA 会话免密维持 — 每5min心跳续期(双钥在位才续), 掉钥被动提示 */
+/* flow_sa_session_20261020 + flow_sa_kick_20261020: SA 会话心跳 — 5s高频(服务端2s缓存兜底),
+   双钥在位→续期; 离线→立即 location.replace 踢出 SA; 页面回前台即时检测 */
 (function(){
     var _ba = document.createElement('div');
     _ba.style.cssText = 'position:fixed;bottom:10px;right:12px;z-index:9999;font:11px/1.4 -apple-system,sans-serif;color:#0f8;padding:3px 10px;border-radius:10px;background:rgba(0,0,0,.55);backdrop-filter:blur(4px);transition:.3s;display:none;';
     document.body.appendChild(_ba);
+    var _kicking = false;
     function _beat(){
+        if (_kicking) return;
         fetch('/api/sa/session/keepalive', {method:'POST', credentials:'same-origin'})
             .then(function(r){ return r.json().then(function(j){ return {s:r.status, j:j}; }); })
             .then(function(r){
@@ -799,16 +802,27 @@
                     _ba.style.display = 'block';
                     _ba.style.color = '#0f8';
                     _ba.textContent = '🔐 双钥在位 · 会话续期 ' + (r.j.lifetime_hours || 168) + 'h';
-                } else {
+                } else if (r.j && r.j.kick) {
+                    _kicking = true;
                     _ba.style.display = 'block';
                     _ba.style.color = '#f66';
-                    _ba.textContent = '⚠️ 双钥离线 · 会话不续期';
+                    _ba.textContent = '⚠️ ' + (r.j.error || '双钥离线') + ' — 正在脱离…';
+                    setTimeout(function(){ location.replace(r.j.redirect || '/index?from=sa_key_lost'); }, 900);
+                } else if (r.s === 403) {
+                    _kicking = true;
+                    _ba.style.display = 'block';
+                    _ba.style.color = '#f66';
+                    _ba.textContent = '⚠️ 会话失效 — 正在脱离…';
+                    setTimeout(function(){ location.replace('/index?from=sa_key_lost'); }, 900);
                 }
             })
-            .catch(function(){ /* 网络抖动静默 */ });
+            .catch(function(){ /* 网络抖动静默, 下一轮再测 */ });
     }
     _beat();
-    setInterval(_beat, 5 * 60 * 1000);
+    setInterval(_beat, 5000);                                    /* 5s 高频: 拔钥最迟 ~5s 踢出 */
+    document.addEventListener('visibilitychange', function(){    /* 回前台立即检测, 不等下一轮 */
+        if (document.visibilityState === 'visible') _beat();
+    });
 })();
 </script>
 </body>
