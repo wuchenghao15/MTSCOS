@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+{# ===========================================================================
+ # MTSCOS 移动端统一布局基类 · base_mobile.html
+ #
+ # 设计规范:
+ #   · 消费 --mtscos-* 语义Token (与PC端base_unified.html一致)
+ #   · 三段式布局: 顶部标题栏(56px) + 主内容区(可滚动) + 底部TabBar(56px)
+ #   · 触摸友好: 按钮最小44px、touch-action优化、-webkit-tap-highlight-color
+ #   · PWA就绪: manifest.json + service-worker.js 自动注册
+ #   · 主题跟随: data-theme 属性切换青瓷卷/青瓷黛
+ #
+ # Jinja2 继承块:
+ #   {% block title %}          — 浏览器标题
+ #   {% block page_title %}      — 顶部标题栏标题
+ #   {% block header_right %}    — 顶部右侧操作区
+ #   {% block content %}         — 主内容区
+ #   {% block tabbar_active %}   — 激活的TabBar项 (home/exam/learn/profile)
+ # ========================================================================= #}
+<html lang="zh-CN" data-theme="{{ session.get('theme','auto') if session else 'auto' }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="MTSCOS">
+    <meta name="theme-color" content="#5B8FB9">
+    <meta name="format-detection" content="telephone=no">
+    <meta name="csrf-token" content="{{ csrf_token() if csrf_token is callable else (csrf_token or '') }}">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="icon" href="/static/img/favicon-iceberg.svg">
+    <link rel="apple-touch-icon" href="/static/img/icon-192.png">
+    <title>{% block title %}MTSCOS Mobile{% endblock %} - MTSCOS</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        :root {
+            --m-header-h: 56px;
+            --m-tabbar-h: 56px;
+            --m-safe-top: env(safe-area-inset-top, 0px);
+            --m-safe-bottom: env(safe-area-inset-bottom, 0px);
+        }
+        html, body {
+            height: 100%;
+            overflow: hidden;
+            font-family: var(--mtscos-font-sans, -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif);
+            background: var(--mtscos-bg-page, #F7F3EC);
+            color: var(--mtscos-text-primary, #2C2E33);
+            -webkit-font-smoothing: antialiased;
+            -webkit-text-size-adjust: 100%;
+            touch-action: manipulation;
+        }
+        a { color: inherit; text-decoration: none; -webkit-touch-callout: none; }
+        button { font-family: inherit; -webkit-appearance: none; appearance: none; }
+        input, textarea, select { font-family: inherit; -webkit-appearance: none; appearance: none; }
+
+        /* === 顶部标题栏 === */
+        .m-header {
+            height: var(--m-header-h);
+            padding-top: var(--m-safe-top);
+            background: var(--mtscos-bg-card, #FFFFFF);
+            border-bottom: 1px solid var(--mtscos-border-light, #E8E4DD);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-left: 12px;
+            padding-right: 12px;
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            z-index: 100;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+        }
+        .m-header-left { display: flex; align-items: center; gap: 8px; min-width: 44px; }
+        .m-header-title {
+            flex: 1;
+            text-align: center;
+            font-size: 17px;
+            font-weight: 600;
+            color: var(--mtscos-text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .m-header-right { display: flex; align-items: center; gap: 8px; min-width: 44px; justify-content: flex-end; }
+        .m-icon-btn {
+            width: 40px; height: 40px;
+            border: none;
+            background: transparent;
+            color: var(--mtscos-text-primary);
+            font-size: 20px;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: var(--mtscos-radius-md, 8px);
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .m-icon-btn:active { background: var(--mtscos-bg-page, #F7F3EC); }
+
+        /* === 主内容区 === */
+        .m-content {
+            padding-top: calc(var(--m-header-h) + var(--m-safe-top));
+            padding-bottom: calc(var(--m-tabbar-h) + var(--m-safe-bottom));
+            height: 100vh;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            padding-left: 16px;
+            padding-right: 16px;
+        }
+        .m-content.no-tabbar { padding-bottom: var(--m-safe-bottom); }
+
+        /* === 底部 TabBar === */
+        .m-tabbar {
+            height: var(--m-tabbar-h);
+            padding-bottom: var(--m-safe-bottom);
+            background: var(--mtscos-bg-card, #FFFFFF);
+            border-top: 1px solid var(--mtscos-border-light, #E8E4DD);
+            display: flex;
+            position: fixed;
+            bottom: 0; left: 0; right: 0;
+            z-index: 100;
+            box-shadow: 0 -1px 4px rgba(0,0,0,0.06);
+        }
+        .m-tabbar-item {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 2px;
+            color: var(--mtscos-text-secondary, #6B7280);
+            font-size: 11px;
+            transition: color 0.15s;
+        }
+        .m-tabbar-item:active { background: var(--mtscos-bg-page, #F7F3EC); }
+        .m-tabbar-item.active { color: var(--mtscos-primary-base, #5B8FB9); }
+        .m-tabbar-icon { font-size: 22px; line-height: 1; }
+        .m-tabbar-badge {
+            position: absolute;
+            top: 4px; right: 50%;
+            transform: translateX(20px);
+            background: var(--mtscos-danger, #DC2626);
+            color: #fff;
+            font-size: 10px;
+            min-width: 16px; height: 16px;
+            border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            padding: 0 4px;
+        }
+        .m-tabbar-item { position: relative; }
+
+        /* === 通用组件 === */
+        .m-card {
+            background: var(--mtscos-bg-card, #FFFFFF);
+            border-radius: var(--mtscos-radius-xl, 16px);
+            padding: 16px;
+            margin-bottom: 12px;
+            box-shadow: var(--mtscos-shadow-card, 0 2px 8px rgba(0,0,0,0.04));
+        }
+        .m-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            min-height: 44px;
+            padding: 0 20px;
+            border: none;
+            border-radius: var(--mtscos-radius-md, 8px);
+            background: var(--mtscos-primary-base, #5B8FB9);
+            color: var(--mtscos-text-inverse, #FFFFFF);
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.15s, transform 0.1s;
+        }
+        .m-btn:active { transform: scale(0.98); opacity: 0.9; }
+        .m-btn-outline {
+            background: transparent;
+            color: var(--mtscos-primary-base, #5B8FB9);
+            border: 1.5px solid var(--mtscos-primary-base, #5B8FB9);
+        }
+        .m-btn-block { width: 100%; }
+        .m-list-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 16px;
+            background: var(--mtscos-bg-card, #FFFFFF);
+            border-bottom: 1px solid var(--mtscos-border-lighter, #F0EDE7);
+            min-height: 56px;
+        }
+        .m-list-item:last-child { border-bottom: none; }
+        .m-list-item:active { background: var(--mtscos-bg-page, #F7F3EC); }
+        .m-list-icon {
+            width: 36px; height: 36px;
+            border-radius: var(--mtscos-radius-md, 8px);
+            background: var(--mtscos-primary-soft, #E8F0F7);
+            color: var(--mtscos-primary-base, #5B8FB9);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+        .m-list-main { flex: 1; min-width: 0; }
+        .m-list-title { font-size: 15px; font-weight: 500; color: var(--mtscos-text-primary); }
+        .m-list-sub { font-size: 12px; color: var(--mtscos-text-secondary, #6B7280); margin-top: 2px; }
+        .m-list-arrow { color: var(--mtscos-text-tertiary, #9CA3AF); font-size: 14px; }
+        .m-tag {
+            display: inline-flex;
+            align-items: center;
+            padding: 2px 8px;
+            border-radius: var(--mtscos-radius-full, 999px);
+            font-size: 11px;
+            font-weight: 500;
+        }
+        .m-tag-success { background: var(--mtscos-success-soft, #E7F5EC); color: var(--mtscos-success, #16A34A); }
+        .m-tag-warning { background: var(--mtscos-warning-soft, #FDF3E0); color: var(--mtscos-warning, #D97706); }
+        .m-tag-danger { background: var(--mtscos-danger-soft, #FCE8E8); color: var(--mtscos-danger, #DC2626); }
+        .m-tag-primary { background: var(--mtscos-primary-soft, #E8F0F7); color: var(--mtscos-primary-base, #5B8FB9); }
+        .m-empty {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--mtscos-text-secondary, #6B7280);
+        }
+        .m-empty i { font-size: 48px; margin-bottom: 12px; display: block; color: var(--mtscos-border-dark, #D1D5DB); }
+        .m-empty h3 { font-size: 16px; color: var(--mtscos-text-primary); margin-bottom: 4px; }
+        .m-empty p { font-size: 13px; }
+        .m-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .m-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+        .m-stat {
+            background: var(--mtscos-bg-card, #FFFFFF);
+            border-radius: var(--mtscos-radius-lg, 12px);
+            padding: 14px;
+            text-align: center;
+        }
+        .m-stat-num { font-size: 24px; font-weight: 700; color: var(--mtscos-primary-base, #5B8FB9); }
+        .m-stat-label { font-size: 12px; color: var(--mtscos-text-secondary, #6B7280); margin-top: 2px; }
+
+        /* === Toast === */
+        .m-toast {
+            position: fixed;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.8);
+            color: #fff;
+            padding: 12px 20px;
+            border-radius: var(--mtscos-radius-md, 8px);
+            font-size: 14px;
+            z-index: 9999;
+            opacity: 0;
+            transition: opacity 0.2s;
+            pointer-events: none;
+            max-width: 80%;
+            text-align: center;
+        }
+        .m-toast.show { opacity: 1; }
+
+        /* === 下拉刷新提示 === */
+        .m-pull-refresh {
+            position: fixed;
+            top: calc(var(--m-header-h) + var(--m-safe-top));
+            left: 0; right: 0;
+            height: 40px;
+            display: flex; align-items: center; justify-content: center;
+            color: var(--mtscos-text-secondary, #6B7280);
+            font-size: 13px;
+            z-index: 50;
+            transform: translateY(-40px);
+            transition: transform 0.2s;
+        }
+        .m-pull-refresh.show { transform: translateY(0); }
+
+        @media (prefers-color-scheme: dark) {
+            html:not([data-theme="light"]) body { background: var(--mtscos-bg-page-dark, #1A1D24); color: var(--mtscos-text-primary-dark, #E5E7EB); }
+        }
+    </style>
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    <!-- 顶部标题栏 -->
+    <header class="m-header">
+        <div class="m-header-left">
+            {% block header_left %}
+            <button class="m-icon-btn" onclick="history.length > 1 ? history.back() : location.href='/mobile/home'">
+                <i class="fas fa-arrow-left"></i>
+            </button>
+            {% endblock %}
+        </div>
+        <div class="m-header-title">{% block page_title %}MTSCOS{% endblock %}</div>
+        <div class="m-header-right">
+            {% block header_right %}
+            <button class="m-icon-btn" id="mThemeToggle" onclick="mToggleTheme()">
+                <i class="fas fa-moon"></i>
+            </button>
+            {% endblock %}
+        </div>
+    </header>
+
+    <!-- 主内容区 -->
+    <main class="m-content {% if not tabbar_active %}no-tabbar{% endif %}" id="mContent">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- 底部 TabBar -->
+    {% if tabbar_active %}
+    <nav class="m-tabbar">
+        <a href="/mobile/home" class="m-tabbar-item {% if tabbar_active == 'home' %}active{% endif %}">
+            <span class="m-tabbar-icon"><i class="fas fa-house"></i></span>
+            <span>首页</span>
+        </a>
+        <a href="/mobile/question_bank" class="m-tabbar-item {% if tabbar_active == 'bank' %}active{% endif %}">
+            <span class="m-tabbar-icon"><i class="fas fa-book-open-reader"></i></span>
+            <span>题库</span>
+        </a>
+        <a href="/mobile/learn" class="m-tabbar-item {% if tabbar_active == 'learn' %}active{% endif %}">
+            <span class="m-tabbar-icon"><i class="fas fa-book-open"></i></span>
+            <span>学习</span>
+        </a>
+        <a href="/mobile/profile" class="m-tabbar-item {% if tabbar_active == 'profile' %}active{% endif %}">
+            <span class="m-tabbar-icon"><i class="fas fa-user"></i></span>
+            <span>我的</span>
+        </a>
+    </nav>
+    {% endif %}
+
+    <!-- Toast 容器 -->
+    <div class="m-toast" id="mToast"></div>
+
+    <script>
+        // PWA Service Worker 注册
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('/service-worker.js').catch(function(e) {
+                    console.warn('SW注册失败:', e);
+                });
+            });
+        }
+        // 主题切换
+        function mToggleTheme() {
+            var html = document.documentElement;
+            var cur = html.getAttribute('data-theme') || 'auto';
+            var next = cur === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', next);
+            try { localStorage.setItem('mtscos-theme', next); } catch(e) {}
+            var icon = document.querySelector('#mThemeToggle i');
+            if (icon) icon.className = next === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+        }
+        // 初始化主题
+        (function() {
+            try {
+                var saved = localStorage.getItem('mtscos-theme');
+                if (saved) document.documentElement.setAttribute('data-theme', saved);
+            } catch(e) {}
+        })();
+        // Toast
+        function mToast(msg, duration) {
+            var el = document.getElementById('mToast');
+            if (!el) return;
+            el.textContent = msg;
+            el.classList.add('show');
+            setTimeout(function() { el.classList.remove('show'); }, duration || 2000);
+        }
+        // CSRF Token (供fetch使用)
+        window.CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]')?.content || '';
+        // API 请求封装
+        window.mApi = function(url, opts) {
+            opts = opts || {};
+            opts.headers = opts.headers || {};
+            if (CSRF_TOKEN) opts.headers['X-CSRFToken'] = CSRF_TOKEN;
+            opts.credentials = 'same-origin';
+            return fetch(url, opts).then(function(r) {
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.json();
+            });
+        };
+    </script>
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>

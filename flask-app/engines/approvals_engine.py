@@ -32,7 +32,7 @@ from engines.approval.policy import (
 )
 from engines.approval.chains import build_nodes as _build_nodes
 from engines.approval.service import ApprovalService as _ApprovalService
-# [unused] from engines.approval.db import DB_PATH as _REAL_DB_PATH, ensure_schema
+from engines.approval.db import DB_PATH as _REAL_DB_PATH, ensure_schema as _ensure_schema  # flow_pages_all_20261020: 恢复 (L41 引用 _REAL_DB_PATH)
 
 
 # ═══════════════════════════════════════════════════════════

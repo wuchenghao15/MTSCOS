@@ -65,6 +65,58 @@ _FLASK_APP = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _PROJECT_ROOT = os.path.dirname(_FLASK_APP)
 ANDROMEDA_DB = os.path.join(_FLASK_APP, 'engines', 'app.db')
 
+
+def _ensure_andromeda_tables():
+    """flow_pages_all_20261020: 知识脑库/贡献者人格/文案永久存档 3 表幂等建表
+    (修复 /api/copy_archive + /api/knowledge_brain/* no such table 500)"""
+    conn = sqlite3.connect(ANDROMEDA_DB, timeout=10)
+    try:
+        conn.executescript("""
+        CREATE TABLE IF NOT EXISTS mt_andromeda_knowledge_base (
+            k_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT DEFAULT '',
+            domain TEXT DEFAULT '综合',
+            source_platform TEXT DEFAULT '',
+            source_url TEXT DEFAULT '',
+            author_name TEXT DEFAULT '',
+            author_profile_url TEXT DEFAULT '',
+            difficulty_level TEXT DEFAULT '',
+            play_count INTEGER DEFAULT 0,
+            duration_seconds INTEGER DEFAULT 0,
+            published_at TEXT DEFAULT '',
+            ai_summary TEXT DEFAULT '',
+            knowledge_points TEXT DEFAULT '',
+            quality_score REAL DEFAULT 0.8,
+            collected_at TEXT DEFAULT (datetime('now','localtime'))
+        );
+        CREATE TABLE IF NOT EXISTS mt_andromeda_contributor_persona (
+            persona_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            type TEXT DEFAULT '专家',
+            domain TEXT DEFAULT '综合',
+            knowledge_summary TEXT DEFAULT '',
+            thought_pattern TEXT DEFAULT '',
+            question_template TEXT DEFAULT '',
+            is_active INTEGER DEFAULT 1
+        );
+        CREATE TABLE IF NOT EXISTS mt_copy_permanent_archive (
+            copy_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            copy_category TEXT DEFAULT 'general',
+            copy_source TEXT DEFAULT '',
+            copy_content TEXT DEFAULT '',
+            archive_status TEXT DEFAULT 'ACTIVE',
+            use_count INTEGER DEFAULT 0,
+            last_used_at TEXT,
+            created_at TEXT DEFAULT (datetime('now','localtime'))
+        );
+        """)
+        conn.commit()
+    finally:
+        conn.close()
+
+
+_ensure_andromeda_tables()
+
 # daemon 分类 (7 大类, 与 smart_mount_engine.py SYSTEM_REQUIRED_DAEMONS 对齐)
 DAEMON_CATEGORIES = OrderedDict([
     ("heartbeat/巡检", [
@@ -789,7 +841,8 @@ def api_eigenflux():
     conn = _conn()
     conn.row_factory = sqlite3.Row
     daemons = []
-    for r in sorted(_daemon_rows(conn), key=lambda x: x['interval_sec']):
+    # flow_pages_all_20261020: interval_sec 混合类型 (None/int/str) 防御排序, 防止 '<' not supported 500
+    for r in sorted(_daemon_rows(conn), key=lambda x: str(x['interval_sec'] if x['interval_sec'] is not None else '')):
         daemons.append({
             'name': r['daemon_name'],
             'status': r['status'],
