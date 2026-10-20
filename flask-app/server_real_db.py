@@ -5652,6 +5652,25 @@ def _current_user():
     }
 
 
+def _safe_user_ctx(u):
+    """flow_admin_reorg_20261020: _current_user 的 None 安全包装 — None → guest 空 dict, 防止模板 .name 炸 500
+    v22.40.2 注释声明了该函数但一直未落实现, 导致 routes/admin_subpage_routes.py 等导入即全线 500, 此处补齐。
+    """
+    if not u:
+        return {'id': None, 'username': 'guest', 'role': 'guest',
+                'is_admin': False, 'is_super_admin': False}
+    if isinstance(u, dict):
+        ctx = dict(u)
+        ctx.setdefault('id', None)
+        ctx.setdefault('username', 'guest')
+        ctx.setdefault('role', 'user')
+        ctx.setdefault('is_admin', False)
+        ctx.setdefault('is_super_admin', False)
+        return ctx
+    return {'id': None, 'username': 'guest', 'role': 'guest',
+            'is_admin': False, 'is_super_admin': False}
+
+
 def _safe_super_approved(uid):
     if not uid or not os.path.exists(AUTH_DB):
         return False
@@ -13717,6 +13736,61 @@ def _agg_realtime_stats():
         stats.setdefault('rule_integrity_pct', 100)
         stats.setdefault('routing_table_count', 300)
         stats.setdefault('uptime_seconds', 3600)
+
+        # ── flow_admin_reorg_20261020: 补齐旧契约 13 键 (admin_app 67页面消费, 修复 KeyError 500) ──
+        def _count_or(table, default=0):
+            try:
+                return conn2[0].execute(f'SELECT COUNT(*) FROM {table}').fetchone()[0]
+            except Exception:
+                return default
+        try:
+            conn2 = [sqlite3.connect(db_path, timeout=10)]
+            # 用户总数/活跃
+            stats['total_users'] = _count_or('users')
+            try:
+                stats['active_users'] = conn2[0].execute(
+                    "SELECT COUNT(*) FROM users WHERE COALESCE(is_active,enabled,1)=1").fetchone()[0]
+            except Exception:
+                stats['active_users'] = stats['total_users']
+            # AI 相关
+            stats['total_ai'] = stats.get('ai_employees', 0)
+            stats['total_clusters'] = _count_or('ai_clusters') or _count_or('mt_ai_clusters')
+            # 题库/考试/课程 (真实表: test_questions / exam_sessions; 课程表缺失回退0)
+            stats['total_questions'] = _count_or('test_questions')
+            stats['total_exams'] = _count_or('exam_sessions')
+            stats['total_courses'] = _count_or('courses') or _count_or('adult_courses') or _count_or('admin_courses')
+            # 规则数 = 规则目录文件数
+            try:
+                _rules_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '.trae', 'rules')
+                stats['total_rules'] = len([f for f in os.listdir(_rules_dir) if f.endswith('.md')])
+            except Exception:
+                stats['total_rules'] = 0
+            # 脑库条目
+            stats['total_brain_entries'] = stats.get('brain_rows', 0)
+            # 最近活动 (审计+flow 事件, 取10条时间线)
+            try:
+                rows = conn2[0].execute(
+                    "SELECT operator AS actor, action AS kind, subject AS brief, created_at AS ts "
+                    "FROM mt_lab_audit_log ORDER BY id DESC LIMIT 10").fetchall()
+                stats['activities'] = [dict(r) for r in rows]
+            except Exception:
+                stats['activities'] = []
+            # 告警/已解决 (异常代码字典+审计)
+            try:
+                stats['alerts'] = conn2[0].execute(
+                    "SELECT COUNT(*) FROM mt_permission_audit_detail").fetchone()[0]
+            except Exception:
+                stats['alerts'] = 0
+            stats['resolved_count'] = 0
+            conn2[0].close()
+        except Exception:
+            for k, dv in [('total_users', 0), ('active_users', 0), ('total_ai', 0),
+                          ('total_clusters', 0), ('pending_tasks', 0), ('total_questions', 0),
+                          ('total_exams', 0), ('total_courses', 0), ('total_rules', 0),
+                          ('total_brain_entries', 0), ('activities', []), ('alerts', 0),
+                          ('resolved_count', 0)]:
+                stats.setdefault(k, dv)
+        stats.setdefault('pending_tasks', 0)
         return stats
     except Exception:
         return {
