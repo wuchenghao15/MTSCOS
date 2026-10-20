@@ -10,6 +10,7 @@
   window.__MT_SA_REJOIN__ = true;
 
   var _stopped = false;
+  var K_REJOIN = 'mt_sa_last_rejoin', K_KICK = 'mt_sa_last_kick';
   function _poll() {
     if (_stopped) return;
     fetch('/api/hardware/dual-status?hardware_only=1', { credentials: 'same-origin' })
@@ -22,6 +23,12 @@
       .then(function (j) {
         if (!j) return;
         if ((j.both_present || j.both_authenticated) === true) {
+          /* flow_sa_loop_20261020: 重入冷却 — 12s 内刚跳过/刚被踢出不再跳, 防乒乓刷屏+限流 */
+          var now = Date.now();
+          var lastRe = parseInt(sessionStorage.getItem(K_REJOIN) || '0', 10);
+          var lastKick = parseInt(sessionStorage.getItem(K_KICK) || '0', 10);
+          if (now - lastRe < 12000 || now - lastKick < 12000) { setTimeout(_poll, 8000); return; }
+          sessionStorage.setItem(K_REJOIN, String(now));
           location.replace('/sa/dashboard');
           return;
         }

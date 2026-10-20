@@ -4181,6 +4181,14 @@ def _mt_vikey_enforcement_check():
         result = vikey_enforcement.check_vikey_enforcement(path, username, extra=extra)
 
         if not result['allowed']:
+            # flow_sa_loop_20261020: 302 乒乓熔断 — SZU100 判定抖动时中间件 302 login ↔
+            # 心跳/回归自动跳回 SA 形成无限刷新并触发限流。8s 内已弹过一次 → 放行本次页面
+            # (API 仍拦, fail-closed 由 kick 心跳 + 原子校验兜底)
+            if not path.startswith('/api/'):
+                _last_bounce = session.get('_vikey_gate_bounce_ts') or 0
+                if time.time() - _last_bounce < 8:
+                    return None
+            session['_vikey_gate_bounce_ts'] = time.time()
             if request.path.startswith('/api/'):
                 return jsonify({
                     'success': False,

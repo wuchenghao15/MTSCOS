@@ -804,12 +804,14 @@
                     _ba.textContent = '🔐 双钥在位 · 会话续期 ' + (r.j.lifetime_hours || 168) + 'h';
                 } else if (r.j && r.j.kick) {
                     _kicking = true;
+                    try { sessionStorage.setItem('mt_sa_last_kick', String(Date.now())); } catch(e) {}
                     _ba.style.display = 'block';
                     _ba.style.color = '#f66';
                     _ba.textContent = '⚠️ ' + (r.j.error || '双钥离线') + ' — 正在脱离…';
                     setTimeout(function(){ location.replace(r.j.redirect || '/index?from=sa_key_lost'); }, 900);
                 } else if (r.s === 403) {
                     _kicking = true;
+                    try { sessionStorage.setItem('mt_sa_last_kick', String(Date.now())); } catch(e) {}
                     _ba.style.display = 'block';
                     _ba.style.color = '#f66';
                     _ba.textContent = '⚠️ 会话失效 — 正在脱离…';
