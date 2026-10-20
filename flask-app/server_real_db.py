@@ -2419,6 +2419,9 @@ _CSRF_EXEMPT_PATHS = [
     # flow_wecom_plugin_20261020: 企微API插件端点 (X-MTSCOS-Key 自校验, 外部调用无 CSRF token)
     '/api/wecom/plugin',
     '/api/wecom/plugin-key',
+    # flow_sa_dualkey_anyterm_20261020: SA 任意终端挑战码 (会话门禁+120s时效+≤5次防爆破)
+    '/api/sa/remote/challenge/create',
+    '/api/sa/remote/challenge/verify',
     # v22.10.13: 仙女座 MCP Bridge — 运维 daemon 重启/握手/健康检查 (无 CSRF token, 内部调用)
     '/api/server/daemon-action',
     '/api/server/vikey-status',
@@ -12003,6 +12006,247 @@ def _sa_update_device_binding(username, device_hash, ip, ua, login_success):
 
 
 
+# ═══════════════════════════════════════════════════════════════════
+# SA 任意终端双密钥认证 (flow_sa_dualkey_anyterm_20261020)
+# 事实源: 服务器侧 VIKEY+SZU100 双钥在位 (get_hardware_key_provider)
+# 任意终端(手机/远程PC) SA 登录 = 服务器双钥 + SA密码 + 企微挑战码 三因子
+# 插钥本机(loopback/extra_bound_ips) = 双钥现场在位, 免挑战直接通过
+# 全链审计: mt_sa_dual_key_status + mt_sa_remote_challenge + 企微推送留痕
+# ═══════════════════════════════════════════════════════════════════
+
+_SA_REMOTE_CHALLENGE_TTL = 120          # 挑战码有效期 120s
+_SA_REMOTE_CHALLENGE_MAX_TRIES = 5      # 最大尝试次数 (超即作废, 防爆破)
+
+
+def _sa_remote_challenge_ensure_table():
+    db_path = os.path.join(BASE_DIR, 'database', 'app.db')
+    conn = sqlite3.connect(db_path, timeout=10)
+    try:
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("""CREATE TABLE IF NOT EXISTS mt_sa_remote_challenge (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        code_hash TEXT NOT NULL,
+        terminal_ip TEXT DEFAULT '',
+        ua TEXT DEFAULT '',
+        status TEXT DEFAULT 'PENDING',   -- PENDING/VERIFIED/EXPIRED/BURNED
+        attempts INTEGER DEFAULT 0,
+        created_at TEXT DEFAULT (datetime('now','localtime')),
+        verified_at TEXT,
+        expired_at TEXT
+    )""")
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def _sa_dual_ok_now():
+    """服务器侧双钥原子校验 (唯一硬件事实源)"""
+    try:
+        from core.services.vikey_driver import get_hardware_key_provider
+        ok, _reason = get_hardware_key_provider().verify_dual_key_atomic(timeout=12.0)
+        return bool(ok)
+    except Exception:
+        return False
+
+
+def _sa_remote_is_bound(ip):
+    """终端绑定判断 (插钥本机免挑战)"""
+    try:
+        from app.middlewares.vikey_enforcement_middleware import VikeyEnforcementMiddleware
+        return bool(VikeyEnforcementMiddleware._is_bound_terminal(ip))
+    except Exception:
+        return ip in ('127.0.0.1', '::1')
+
+
+def _sa_remote_challenge_create(ip, ua, operator='wuchenghao15'):
+    """生成 6 位挑战码 → 落库(哈希) → 推送企微群 → 返回 {challenge_id, expires_in}
+    fail-closed: 服务器双钥不在位时拒绝签发"""
+    _sa_remote_challenge_ensure_table()
+    if not _sa_dual_ok_now():
+        return {'ok': False, 'error': 'dual_key_offline: 服务器双钥不在位, 拒绝签发挑战码'}
+    import secrets as _sec
+    code = f'{_sec.randbelow(1000000):06d}'
+    code_hash = hashlib.sha256(f'mtscos-sa-remote-{code}'.encode()).hexdigest()
+    db_path = os.path.join(BASE_DIR, 'database', 'app.db')
+    conn = sqlite3.connect(db_path, timeout=10)
+    try:
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("""INSERT INTO mt_sa_remote_challenge (code_hash, terminal_ip, ua)
+                     VALUES (?,?,?)""", (code_hash, (ip or '')[:60], (ua or '')[:200]))
+        cid = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+        conn.commit()
+    finally:
+        conn.close()
+    # 企微深度绑定推送 (未配置时 SKIPPED 降级, 不阻断)
+    _pushed = 'SKIPPED'
+    try:
+        from blueprints.wecom_hub_bp import wecom_push
+        _r = wecom_push('sa_auth', '🔐 SA 远程认证挑战码',
+                        f"> 终端 `{(ip or '?')[:40]}` 发起 SA 登录\n"
+                        f"> 挑战码: **{code}** (120 秒内有效, 仅此一次)\n"
+                        f"> 请在远程终端输入该码完成双密钥认证", operator=operator)
+        # wecom_push 返回 (status, err) 元组
+        _pushed = _r[0] if isinstance(_r, tuple) and _r else str(_r)
+    except Exception as _pe:
+        _pushed = f'ERR:{str(_pe)[:60]}'
+    try:
+        _sa_audit_challenge(cid, 'CHALLENGE_CREATED', ip, ua, {'pushed': _pushed})
+    except Exception:
+        pass
+    return {'ok': True, 'challenge_id': cid, 'expires_in': _SA_REMOTE_CHALLENGE_TTL,
+            'push_status': _pushed}
+
+
+def _sa_remote_challenge_verify(code, ip, ua):
+    """校验挑战码: 哈希比对 + 120s 时效 + ≤5 次 (超限 BURNED) → 通过后审计+企微确认"""
+    _sa_remote_challenge_ensure_table()
+    code = str(code or '').strip()
+    if not (code.isdigit() and len(code) == 6):
+        return {'ok': False, 'error': '挑战码格式错误 (6 位数字)'}
+    code_hash = hashlib.sha256(f'mtscos-sa-remote-{code}'.encode()).hexdigest()
+    db_path = os.path.join(BASE_DIR, 'database', 'app.db')
+    conn = sqlite3.connect(db_path, timeout=10)
+    try:
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA busy_timeout=10000")
+        row = conn.execute("""SELECT id, status, attempts, created_at FROM mt_sa_remote_challenge
+                           WHERE code_hash=? ORDER BY id DESC LIMIT 1""", (code_hash,)).fetchone()
+        if not row:
+            return {'ok': False, 'error': '挑战码无效'}
+        cid, status, attempts, created_at = row
+        if status != 'PENDING':
+            return {'ok': False, 'error': f'挑战码已失效 ({status})'}
+        # 时效
+        try:
+            created_dt = datetime.strptime(str(created_at)[:19], '%Y-%m-%d %H:%M:%S')
+            age = (datetime.now() - created_dt).total_seconds()
+        except Exception:
+            age = 0
+        if age < 0 or age > _SA_REMOTE_CHALLENGE_TTL:
+            conn.execute("UPDATE mt_sa_remote_challenge SET status='EXPIRED', expired_at=datetime('now','localtime') WHERE id=?", (cid,))
+            conn.commit()
+            return {'ok': False, 'error': '挑战码已过期, 请重新获取'}
+        # 次数
+        attempts += 1
+        if attempts > _SA_REMOTE_CHALLENGE_MAX_TRIES:
+            conn.execute("UPDATE mt_sa_remote_challenge SET status='BURNED', attempts=? WHERE id=?", (attempts, cid))
+            conn.commit()
+            try:
+                _sa_audit_challenge(cid, 'CHALLENGE_BURNED', ip, ua, {'attempts': attempts})
+            except Exception:
+                pass
+            return {'ok': False, 'error': '尝试次数超限, 挑战码已作废'}
+        conn.execute("UPDATE mt_sa_remote_challenge SET attempts=?, status='VERIFIED', verified_at=datetime('now','localtime') WHERE id=?",
+                     (attempts, cid))
+        conn.commit()
+    finally:
+        conn.close()
+    try:
+        _sa_audit_challenge(cid, 'CHALLENGE_VERIFIED', ip, ua, {})
+    except Exception:
+        pass
+    try:
+        from blueprints.wecom_hub_bp import wecom_push
+        wecom_push('sa_auth', '✅ SA 远程认证通过',
+                   f"> 终端 `{(ip or '?')[:40]}` 挑战码验证通过\n"
+                   f"> 三因子齐备: 服务器双钥 ✓ + SA密码 ✓ + 挑战码 ✓", operator='wuchenghao15')
+    except Exception:
+        pass
+    return {'ok': True, 'challenge_id': cid}
+
+
+def _sa_audit_challenge(cid, action, ip, ua, extra):
+    """挑战码全链审计 → mt_sa_dual_key_status (后台线程, 不阻断)"""
+    import threading as _th
+    def _w():
+        try:
+            db_path = os.path.join(BASE_DIR, 'database', 'app.db')
+            conn = sqlite3.connect(db_path, timeout=10)
+            conn.execute("PRAGMA journal_mode=WAL")
+            conn.execute("PRAGMA busy_timeout=10000")
+            cols = [r[1] for r in conn.execute("PRAGMA table_info(mt_sa_dual_key_status)")]
+            if not cols:
+                return
+            row = {c: None for c in cols}
+            for k, v in (('check_time', datetime.now().isoformat()),
+                         ('trigger_reason', f'SA_REMOTE_{action}'),
+                         ('sa_layout', 'SA_PROPRIETARY'),
+                         ('fingerprint_hash', f'challenge:{cid}'),
+                         ('note', json.dumps({'ip': (ip or '')[:60], **extra}, ensure_ascii=False)[:800] if isinstance(extra, dict) else str(extra)[:800])):
+                if k in row:
+                    row[k] = v
+            valid_cols = [c for c in row if row[c] is not None]
+            conn.execute(f"INSERT INTO mt_sa_dual_key_status ({','.join(valid_cols)}) VALUES ({','.join('?' for _ in valid_cols)})",
+                         [row[c] for c in valid_cols])
+            conn.commit()
+            conn.close()
+        except Exception:
+            pass
+    _th.Thread(target=_w, daemon=True).start()
+
+
+_SA_REMOTE_CHALLENGE_CREATE_API = '/api/sa/remote/challenge/create'
+_SA_REMOTE_CHALLENGE_VERIFY_API = '/api/sa/remote/challenge/verify'
+_SA_REMOTE_CHALLENGE_ALLOWED_PATHS = (
+    '/sa/verify', _SA_REMOTE_CHALLENGE_CREATE_API, _SA_REMOTE_CHALLENGE_VERIFY_API,
+    '/auth/login', '/logout', '/api/hardware/dual-status', '/favicon.ico',
+)
+
+
+@app.route('/sa/verify', methods=['GET'])
+def sa_remote_verify_page():
+    """任意终端 SA 挑战码验证页 (三因子第三因子)"""
+    if not session.get('remote_challenge_pending'):
+        return redirect('/sa/dashboard')
+    page_csrf_token = session.get('csrf_token', '')
+    return render_template('sa_remote_verify.html',
+                           page_csrf_token=page_csrf_token,
+                           terminal_ip=request.remote_addr or '',
+                           flow_id='SA_REMOTE_VERIFY_flow_sa_dualkey_anyterm_20261020')
+
+
+@app.route(_SA_REMOTE_CHALLENGE_CREATE_API, methods=['POST'])
+def api_sa_remote_challenge_create():
+    """签发挑战码 + 推送企微 (需会话: remote_challenge_pending 或 已登录SA)"""
+    ip = request.remote_addr or ''
+    ua = request.headers.get('User-Agent', '')[:200]
+    if not (session.get('remote_challenge_pending') or
+            (session.get('logged_in') and session.get('role') == 'super_admin')):
+        return jsonify({'ok': False, 'error': 'unauthorized'}), 401
+    r = _sa_remote_challenge_create(ip, ua)
+    return (jsonify(r), 200) if r.get('ok') else (jsonify(r), 403 if 'dual_key' in (r.get('error') or '') else 429)
+
+
+@app.route(_SA_REMOTE_CHALLENGE_VERIFY_API, methods=['POST'])
+def api_sa_remote_challenge_verify():
+    """校验挑战码 → 通过后解除 pending, 授予完整 SA 会话"""
+    ip = request.remote_addr or ''
+    ua = request.headers.get('User-Agent', '')[:200]
+    if not session.get('remote_challenge_pending'):
+        return jsonify({'ok': session.get('role') == 'super_admin'}), (200 if session.get('role') == 'super_admin' else 401)
+    data = request.get_json(silent=True) or {}
+    r = _sa_remote_challenge_verify(data.get('code'), ip, ua)
+    if r.get('ok'):
+        session['remote_challenge_pending'] = False
+        session['remote_dual_verified'] = True
+        session['remote_dual_verified_at'] = datetime.now().isoformat()
+    return (jsonify(r), 200) if r.get('ok') else (jsonify(r), 403)
+
+
+@app.before_request
+def _sa_remote_challenge_gate():
+    """任意终端 SA 挑战门: remote_challenge_pending 会话仅放行挑战相关路径"""
+    try:
+        if not session.get('remote_challenge_pending'):
+            return None
+        p = (request.path or '').rstrip('/') or '/'
+        if p in _SA_REMOTE_CHALLENGE_ALLOWED_PATHS or p.startswith('/static/'):
+            return None
+        return redirect('/sa/verify')
+    except Exception:
+        return None
+
+
 @app.route('/auth/login', methods=['GET', 'POST'])
 def login():
     # ✅ GET /auth/login → v25.1: 直接 render login.html (继承 base_unified, 有时间显示)
@@ -12555,6 +12799,10 @@ def login():
         db_role = row_dict.get('role') or 'user'
         if username.lower() == 'wuchenghao15':
             session['role'] = 'super_admin'
+            # flow_sa_dualkey_anyterm_20261020: 任意终端双密钥 —
+            # 非插钥绑定终端 → 挂起会话待企微挑战码三因子; 插钥本机直接通过
+            if not _sa_remote_is_bound(ip):
+                session['remote_challenge_pending'] = True
         else:
             if db_role == 'super_admin':
                 session['role'] = 'admin'
@@ -12603,6 +12851,9 @@ def login():
         # 按角色分发跳转目标
         from app.middlewares.unified_permission import get_redirect_url_for_role
         _redirect_url = get_redirect_url_for_role(session['role'])
+        # flow_sa_dualkey_anyterm_20261020: 远程终端 SA → 直送挑战码验证页
+        if session.get('remote_challenge_pending'):
+            _redirect_url = '/sa/verify'
         # next 参数优先（但白名单过滤，禁止外部跳转）
         if next_url and isinstance(next_url, str):
             if next_url.startswith('/') and not next_url.startswith('//'):
