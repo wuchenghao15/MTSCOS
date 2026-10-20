@@ -394,9 +394,11 @@
             <button onclick="wecomTest(this)" style="border:1px solid #d97706;background:rgba(217,119,6,.08);color:#d97706;border-radius:8px;font-size:11px;padding:6px 14px;cursor:pointer">📡 测试推送</button>
             <button onclick="wecomMeet(this)" style="border:1px solid #7c3aed;background:rgba(124,58,237,.08);color:#7c3aed;border-radius:8px;font-size:11px;padding:6px 14px;cursor:pointer">🔔 自动开会</button>
             <button id="wecom-approval-btn" onclick="wecomApprovalToggle(this)" style="border:1px solid #dc2626;background:rgba(220,38,38,.06);color:#dc2626;border-radius:8px;font-size:11px;padding:6px 14px;cursor:pointer">🛡 审批门: ?</button>
+            <button onclick="wecomPluginKey(this)" style="border:1px solid #0891b2;background:rgba(8,145,178,.06);color:#0891b2;border-radius:8px;font-size:11px;padding:6px 14px;cursor:pointer">🔑 插件密钥</button>
         </div>
         <div style="font-size:10px;color:#94a3b8;margin-bottom:8px">
             🌉 指令桥: POST /api/wecom/callback (token 校验) · 白名单指令 daemon_status/hall/patrol/meeting/exam/approve/reject · 流水 <a href="/api/wecom/commands" target="_blank" style="color:#06b6d4">/api/wecom/commands</a>
+            <br>🧩 企微API插件: 插件URL填 <code style="color:#0891b2">https://&lt;可信域名&gt;/api/wecom/plugin</code> · 授权 Header · Parameter name <code style="color:#0891b2">X-MTSCOS-Key</code> · 值用「🔑 插件密钥」生成
         </div>
         <div id="wecom-board" style="font-size:12px;color:#64748b">加载中…</div>
     </div>
@@ -458,6 +460,15 @@
         .then(r=>r.json()).then(d=>{
             btn.disabled=false;
             if(d.ok) loadWecom(); else alert('失败: '+(d.error||''));
+        }).catch(()=>{ btn.disabled=false; alert('请求失败'); });
+    }
+    function wecomPluginKey(btn){
+        if(!confirm('生成新的企微API插件密钥? (旧密钥立即失效, 需同步更新企微插件配置)')) return;
+        btn.disabled=true;
+        fetch('/api/wecom/plugin-key',{method:'POST'}).then(r=>r.json()).then(d=>{
+            btn.disabled=false;
+            if(d.ok) alert('密钥已生成 (仅显示一次, 请立即复制):\n\n'+d.plugin_api_key+'\n\n企微插件填写:\n· 插件URL: https://<可信域名>'+d.plugin_url_path+'\n· 授权: Service token / API key → Header\n· Parameter name: '+d.header_name);
+            else alert('失败: '+(d.error||''));
         }).catch(()=>{ btn.disabled=false; alert('请求失败'); });
     }
     loadWecom();

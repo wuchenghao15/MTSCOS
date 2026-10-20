@@ -2416,6 +2416,9 @@ _CSRF_EXEMPT_PATHS = [
     '/api/ai-edu/exam-auto/run',
     # flow_wecom_andromeda_20261020: 企微×仙女座指令桥 (上行回调端点, token 自校验, 无 CSRF token 外部调用)
     '/api/wecom/callback',
+    # flow_wecom_plugin_20261020: 企微API插件端点 (X-MTSCOS-Key 自校验, 外部调用无 CSRF token)
+    '/api/wecom/plugin',
+    '/api/wecom/plugin-key',
     # v22.10.13: 仙女座 MCP Bridge — 运维 daemon 重启/握手/健康检查 (无 CSRF token, 内部调用)
     '/api/server/daemon-action',
     '/api/server/vikey-status',

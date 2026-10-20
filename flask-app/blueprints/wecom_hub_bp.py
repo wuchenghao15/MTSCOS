@@ -401,10 +401,10 @@ def _cmd_reject(args):
 
 _CMD_DISPATCH = {
     "daemon_status": lambda a: _cmd_daemon_status(),
-    "hall": _cmd_hall,
-    "patrol": _cmd_patrol,
-    "meeting": _cmd_meeting,
-    "exam": _cmd_exam,
+    "hall": lambda a: _cmd_hall(),
+    "patrol": lambda a: _cmd_patrol(),
+    "meeting": lambda a: _cmd_meeting(),
+    "exam": lambda a: _cmd_exam(),
     "approve": _cmd_approve,
     "reject": _cmd_reject,
 }
@@ -511,6 +511,79 @@ def wecom_callback():
             return jsonify(result), 400 if not result["ok"] else 200
     result = run_wecom_command(cmd, args, operator=data.get("operator") or "wecom")
     return jsonify(result), 200 if result["ok"] else 400
+
+
+@wecom_hub_bp.route("/api/wecom/plugin-key", methods=["POST"])
+@_login_required
+def wecom_plugin_key():
+    """生成/轮换 企微API插件密钥 (仅登录管理员, 明文仅此一次返回)"""
+    import secrets
+    _ensure_tables()
+    key = "mtsk_" + secrets.token_hex(16)
+    u = _get_user()
+    _set_cfg("plugin_api_key", key, u.get("username") or "unknown")
+    _audit("wecom", "PLUGIN_KEY_SET", "生成企微API插件密钥", {"operator": u.get("username")})
+    return jsonify({"ok": True, "plugin_api_key": key,
+                    "plugin_url_path": "/api/wecom/plugin",
+                    "header_name": "X-MTSCOS-Key"})
+
+
+@wecom_hub_bp.route("/api/wecom/plugin", methods=["GET", "POST"])
+def wecom_plugin():
+    """企微 API 插件端点 (智能机器人工具调用 → 仙女座指令桥):
+    鉴权: Header X-MTSCOS-Key == cfg(plugin_api_key)
+    请求: {"question": "状态"} (兼容 text/content/query, 支持 {"text":{"content":...}})
+    响应: {"code": 0, "answer": "markdown文本"}
+    文本映射: 同意#id / 驳回#id / 开会 / 考试(出题) / 大厅(任务) / 状态, 其余返回指令帮助
+    """
+    _ensure_tables()
+    key_cfg = _cfg("plugin_api_key")
+    data = request.get_json(silent=True) or {}
+    req_key = request.headers.get("X-MTSCOS-Key") or data.get("key")
+    if not key_cfg or not req_key or req_key != key_cfg:
+        return jsonify({"code": 403, "answer": "⛔ X-MTSCOS-Key 校验失败, 请在管理中心生成插件密钥"}), 403
+    if request.method == "GET":
+        return jsonify({"code": 0, "answer": "🟢 仙女座API插件在线 (flow_wecom_plugin_20261020)"})
+
+    q = ""
+    for k in ("question", "text", "content", "query"):
+        v = data.get(k)
+        if isinstance(v, dict):                      # 兼容 {"text": {"content": ...}}
+            v = v.get("content")
+        if isinstance(v, str) and v.strip():
+            q = v.strip()
+            break
+    operator = request.headers.get("userid") or data.get("operator") or "wecom_plugin"
+
+    def _sid(t):
+        try:
+            return int(t.split("#")[-1].strip().split()[0])
+        except (ValueError, IndexError):
+            return 0
+
+    if "同意" in q and "#" in q:
+        cmd, args = "approve", {"suggestion_id": _sid(q)}
+    elif "驳回" in q and "#" in q:
+        cmd, args = "reject", {"suggestion_id": _sid(q)}
+    elif "开会" in q:
+        cmd, args = "meeting", {}
+    elif "考试" in q or "出题" in q:
+        cmd, args = "exam", {}
+    elif "大厅" in q or "任务" in q:
+        cmd, args = "hall", {}
+    elif "状态" in q or "daemon" in q.lower():
+        cmd, args = "daemon_status", {}
+    else:
+        help_md = ("> 仙女座指令: **状态** (daemon全景) / **大厅** (任务分配) / **开会** (即时例会)\n"
+                   "> **考试** (真实时间出题入库) / **同意 #id** / **驳回 #id** (挂载审批)")
+        try:
+            _audit("wecom", "PLUGIN_HELP", q[:80], {"operator": operator})
+        except Exception:
+            pass
+        return jsonify({"code": 0, "answer": help_md})
+
+    r = run_wecom_command(cmd, args, operator=operator, source="plugin")
+    return jsonify({"code": 0, "answer": r["result_md"]})
 
 
 @wecom_hub_bp.route("/api/wecom/commands")
