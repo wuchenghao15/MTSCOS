@@ -7,6 +7,10 @@
 (function () {
   if (location.pathname.indexOf('/sa/') === 0) return;  /* 已在 SA 区, 由 sa_dashboard 自有 keepalive 心跳负责 */
   if (window.__MT_SA_REJOIN__) return;                  /* 防重复注入 */
+  /* flow_sa_jsstop_20261020: 权限拒绝落点不轮询 — from=sa_denied 表示服务端守卫已判定
+   * 该身份进不了 SA; 若仍轮询会形成 JS推→守卫弹回→JS再推 的慢速乒乓(浏览器实测~19s/次)。
+   * 注意 from=sa_key_lost / sa_no_keys (硬件态, 可恢复) 仍保持轮询以支持重插自动回归。 */
+  if (location.search.indexOf('from=sa_denied') !== -1) return;
   window.__MT_SA_REJOIN__ = true;
 
   var _stopped = false;
