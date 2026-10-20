@@ -26,6 +26,7 @@
   python3 dev_flow_cli.py test1000 <flow_id> [--quick]    # STEP_12 (1000轮, --quick=300)
   python3 dev_flow_cli.py done     <flow_id>              # 最终收尾
   python3 dev_flow_cli.py gc       [flows|daemons|all] [--dry-run] [days]  # 僵尸清理
+  python3 dev_flow_cli.py index-sync [--write]                           # 规则索引§5机器生成
 
 来源: flow_devflow_cli_v2_20261021 (12开发步骤完善补全)
 """
@@ -398,6 +399,22 @@ def cmd_done(fid: str) -> int:
                      final_status='DONE', git_sync_status='SYNCED', acceptance_passed=1,
                      db_written=1, brain_fed=1, updated_at=? WHERE flow_id=?""", (NOW(), fid))
         _emit(c, fid, "STEP_12_TEST1000", "STEP_12_DONE", "ACCEPTED", {"via": "dev_flow_cli_v2", "summary_fed": True})
+        # flow_andromeda_polish_20261021: 真投喂 — 此前仅打 brain_fed=1 标记,
+        # 从未写 mt_ai_brain_feed_log, 违反「脑库投喂」硬约束的字面要求。补真落库。
+        try:
+            c.execute("""CREATE TABLE IF NOT EXISTS mt_ai_brain_feed_log (
+                feed_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                flow_id TEXT, feed_target TEXT, payload_preview TEXT,
+                fed_at TEXT, fed_by TEXT)""")
+            _t = c.execute("SELECT proposal_title FROM mt_dev_flow_session WHERE flow_id=?", (fid,)).fetchone()
+            _payload = json.dumps({"type": "flow_done", "title": (_t[0] if _t else fid),
+                                   "test1000_total": row[1], "via": "dev_flow_cli_done"},
+                                  ensure_ascii=False)[:2000]
+            c.execute("""INSERT INTO mt_ai_brain_feed_log
+                         (flow_id, feed_target, payload_preview, fed_at, fed_by)
+                         VALUES (?,?,?,?,?)""", (fid, "ai_brain", _payload, NOW(), "dev_flow_cli"))
+        except Exception as _e:
+            print(f"  [{tag}] ⚠️ 脑库投喂落库失败(不阻断收尾): {_e}")
         c.commit()
         r = c.execute("SELECT final_status,current_step FROM mt_dev_flow_session WHERE flow_id=?", (fid,)).fetchone()
         c.close()
@@ -537,6 +554,73 @@ def cmd_gc(target: str, dry_run: bool = False, days: int = GC_DEFAULT_DAYS) -> i
     print("✅ gc 完成")
     return 0
 
+# ───────────────── index-sync (规则索引 §5 机器生成) ─────────────────
+# 规则治理一致性规范要求"元数据可机器验证" — §5 系统状态此前纯手工维护易漂移。
+# 默认 dry-run 只打印; --write 才回写 .trae/rules/00-规则总索引.md。
+INDEX_FILE = ROOT / ".trae" / "rules" / "00-规则总索引.md"
+
+def _route_count() -> int:
+    import re as _re
+    pat = _re.compile(r"@\w+\.route\(")
+    n = 0
+    for p in (ROOT / "flask-app").rglob("*.py"):
+        sp = str(p)
+        if "_runtime" in sp or "site-packages" in sp or "/venv" in sp:
+            continue
+        try:
+            n += len(pat.findall(p.read_text(encoding="utf-8", errors="ignore")))
+        except Exception:
+            pass
+    return n
+
+def cmd_index_sync(dry_run: bool = True) -> int:
+    main_db = _dbs()[0][1]
+    c = sqlite3.connect(f"file:{main_db}?mode=ro", uri=True, timeout=10)
+    c.row_factory = sqlite3.Row
+    stat: dict[str, str] = {}
+    def _q1(key: str, sql: str):
+        try:
+            stat[key] = str(c.execute(sql).fetchone()[0])
+        except Exception:
+            pass  # 表不存在则保留原文
+    _q1("tables", "SELECT COUNT(*) FROM sqlite_master WHERE type='table'")
+    _q1("ai_emp", "SELECT COUNT(*) FROM ai_employees")
+    _q1("mt_emp", "SELECT COUNT(*) FROM mtscos_ai_employees")
+    _q1("ef_reg", "SELECT COUNT(*) FROM eigenflux_registrations")
+    _q1("daemon", "SELECT COUNT(*) FROM mt_daemon_registry WHERE status='RUNNING'")
+    c.close()
+    routes = _route_count()
+    today = time.strftime("%Y-%m-%d")
+    # 注: 「自动化引擎」不自动统计 — engines/ 堆积 165 个 .py 与 §6.2 权威白名单(13个)
+    # 口径冲突, 自动化会制造假矛盾; 该行保留人工维护。
+    rows = {
+        "| 数据库表 |": f"| 数据库表 | {stat.get('tables','?')}张 (index-sync 实时统计 {today}) |",
+        "| AI员工 |": (f"| AI员工 | {stat.get('ai_emp','?')}人 (ai_employees {stat.get('ai_emp','?')} + "
+                      f"mtscos_ai_employees {stat.get('mt_emp','?')}) |"),
+        "| EigenFlux注册 |": f"| EigenFlux注册 | {stat.get('ef_reg','?')}人 (AI员工+EigenFlux专家) |",
+        "| API路由 |": f"| API路由 | {routes} (@*.route 静态扫描 {today}) |",
+        "| 自动化进程 |": f"| 自动化进程 | {stat.get('daemon','?')}个daemon RUNNING (smart_mount_engine管理) |",
+    }
+    lines = INDEX_FILE.read_text(encoding="utf-8").splitlines()
+    hit, changed = 0, []
+    for i, ln in enumerate(lines):
+        for key, new in rows.items():
+            if ln.startswith(key):
+                hit += 1
+                if ln != new:
+                    changed.append((i, ln, new))
+    print(f"  [index-sync] 命中 {hit}/{len(rows)} 行, 待更新 {len(changed)} 行, dry_run={dry_run}")
+    for i, old, new in changed:
+        print(f"    L{i+1}: {old[:80]}\n       → {new[:80]}")
+    if dry_run or not changed:
+        print("  [index-sync] dry-run 完, 加 --write 落盘" if dry_run else "  [index-sync] 已是最新, 无需写")
+        return 0
+    for i, _old, new in changed:
+        lines[i] = new
+    INDEX_FILE.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    print(f"✅ index-sync 已回写 {INDEX_FILE.name} ({len(changed)} 行)")
+    return 0
+
 def main() -> int:
     a = sys.argv
     if len(a) < 2:
@@ -546,6 +630,8 @@ def main() -> int:
         target = next((x for x in a[2:] if not x.startswith("--") and not x.isdigit()), "all")
         days = int(next((x for x in a[2:] if x.isdigit()), GC_DEFAULT_DAYS))
         return cmd_gc(target, dry_run="--dry-run" in a, days=days)
+    if cmd == "index-sync":
+        return cmd_index_sync(dry_run="--write" not in a)
     if cmd == "start" and len(a) >= 4:
         return cmd_start(a[2], a[3], a[4] if len(a) > 4 else "")
     if cmd == "status":
