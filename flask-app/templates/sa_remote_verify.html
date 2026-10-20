@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+{# flow_sa_dualkey_anyterm_20261020: 任意终端 SA 双密钥挑战码验证页 #}
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SA 双密钥认证 · 挑战码</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: radial-gradient(1200px 600px at 50% -10%, rgba(64,158,255,.08), transparent),
+                var(--el-bg-color-page, #0b1220);
+    color: var(--el-text-color-primary, #e2e8f0);
+    min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px;
+  }
+  .card {
+    width: 100%; max-width: 420px;
+    background: var(--el-bg-color, #111a2e);
+    border: 1px solid var(--el-border-color, rgba(148,163,184,.18));
+    border-radius: 16px; padding: 30px 26px;
+    box-shadow: 0 12px 40px -12px rgba(0,0,0,.55);
+  }
+  .icon { font-size: 38px; text-align: center; }
+  h1 { font-size: 18px; font-weight: 800; text-align: center; margin: 10px 0 4px; letter-spacing: .5px; }
+  .sub { text-align: center; font-size: 12px; color: var(--el-text-color-secondary, #94a3b8); margin-bottom: 20px; line-height: 1.7; }
+  .steps { font-size: 11px; color: #64748b; background: rgba(64,158,255,.05); border: 1px dashed rgba(64,158,255,.25);
+           border-radius: 10px; padding: 10px 12px; margin-bottom: 18px; line-height: 1.9; }
+  .steps b { color: var(--el-color-primary, #409eff); }
+  input.code {
+    width: 100%; text-align: center; font-size: 26px; letter-spacing: 10px; font-weight: 700;
+    padding: 14px; border-radius: 12px; border: 1px solid rgba(148,163,184,.3);
+    background: rgba(2,6,23,.5); color: #e2e8f0; outline: none; font-family: ui-monospace, Menlo, monospace;
+  }
+  input.code:focus { border-color: var(--el-color-primary, #409eff); box-shadow: 0 0 0 3px rgba(64,158,255,.15); }
+  button.go {
+    width: 100%; margin-top: 14px; padding: 13px; font-size: 14px; font-weight: 700;
+    border: none; border-radius: 12px; cursor: pointer; color: #fff;
+    background: linear-gradient(135deg, var(--el-color-primary, #409eff), #66b1ff);
+  }
+  button.go:disabled { opacity: .5; cursor: not-allowed; }
+  button.resend {
+    width: 100%; margin-top: 10px; padding: 9px; font-size: 12px; border-radius: 10px; cursor: pointer;
+    background: transparent; border: 1px solid rgba(148,163,184,.3); color: var(--el-text-color-secondary, #94a3b8);
+  }
+  .msg { margin-top: 14px; font-size: 12px; text-align: center; min-height: 18px; }
+  .msg.err { color: #f87171; }
+  .msg.ok { color: #34d399; }
+  .timer { text-align: center; font-size: 11px; color: #64748b; margin-top: 8px; }
+  .meta { margin-top: 18px; text-align: center; font-size: 10px; color: #475569; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="icon">🔐</div>
+  <h1>SA 双密钥认证</h1>
+  <div class="sub">远程终端 · 三因子验证 (第 3/3 步)</div>
+  <div class="steps">
+    <b>①</b> 服务器双密钥在位检测 ✓ (自动)<br>
+    <b>②</b> SA 密码验证 ✓ (已完成)<br>
+    <b>③</b> 挑战码已推送至企业微信群 — 请查收并输入
+  </div>
+  <input class="code" id="code" maxlength="6" inputmode="numeric" autocomplete="one-time-code" placeholder="••••••" autofocus>
+  <button class="go" id="btn" onclick="doVerify()">验证并进入 SA 面板</button>
+  <button class="resend" id="resend" onclick="doResend()">未收到? 重新发送挑战码</button>
+  <div class="msg" id="msg"></div>
+  <div class="timer" id="timer">挑战码 120 秒内有效</div>
+  <div class="meta">终端 {{ terminal_ip }} · {{ flow_id }}</div>
+</div>
+<script>
+const CSRF = '{{ page_csrf_token }}';
+const $ = id => document.getElementById(id);
+let cd = 120, timer = null;
+
+function tick(){
+  cd--; $('timer').textContent = `挑战码 ${cd} 秒后过期`;
+  if(cd <= 0){ clearInterval(timer); $('timer').textContent = '挑战码已过期, 请重新获取'; }
+}
+timer = setInterval(tick, 1000);
+$('code').addEventListener('keydown', e => { if(e.key === 'Enter') doVerify(); });
+
+async function post(url, body){
+  const r = await fetch(url, {method:'POST', headers:{'Content-Type':'application/json','X-CSRF-Token':CSRF}, body: JSON.stringify(body||{})});
+  return r.json().catch(()=>({ok:false,error:'响应异常'}));
+}
+
+async function doVerify(){
+  const code = $('code').value.trim();
+  if(!/^\d{6}$/.test(code)){ $('msg').className='msg err'; $('msg').textContent='请输入 6 位数字挑战码'; return; }
+  $('btn').disabled = true; $('msg').className='msg'; $('msg').textContent='验证中…';
+  const d = await post('/api/sa/remote/challenge/verify', {code});
+  if(d.ok){
+    $('msg').className='msg ok'; $('msg').textContent='✅ 认证通过, 正在进入 SA 面板…';
+    clearInterval(timer);
+    setTimeout(()=>{ location.href = '/sa/dashboard'; }, 600);
+  } else {
+    $('msg').className='msg err'; $('msg').textContent = d.error || '验证失败';
+    $('btn').disabled = false;
+  }
+}
+
+async function doResend(){
+  $('resend').disabled = true;
+  const d = await post('/api/sa/remote/challenge/create', {});
+  $('msg').className = 'msg ' + (d.ok ? 'ok' : 'err');
+  $('msg').textContent = d.ok ? '✅ 新挑战码已推送企微群' : (d.error || '发送失败');
+  if(d.ok){ cd = d.expires_in || 120; }
+  setTimeout(()=>{ $('resend').disabled = false; }, 3000);
+}
+</script>
+</body>
+</html>
