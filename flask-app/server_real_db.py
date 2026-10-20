@@ -2422,6 +2422,12 @@ _CSRF_EXEMPT_PATHS = [
     # flow_sa_dualkey_anyterm_20261020: SA 任意终端挑战码 (会话门禁+120s时效+≤5次防爆破)
     '/api/sa/remote/challenge/create',
     '/api/sa/remote/challenge/verify',
+    # flow_sa_pc_mobile_20261020: 移动端三因子 (WebAuthn+蓝牙Passport, 会话门禁)
+    '/api/sa/mobile/webauthn/options',
+    '/api/sa/mobile/webauthn/result',
+    '/api/sa/mobile/bt-passport/register',
+    '/api/sa/mobile/bt-passport/verify',
+    '/api/sa/mobile/complete',
     # v22.10.13: 仙女座 MCP Bridge — 运维 daemon 重启/握手/健康检查 (无 CSRF token, 内部调用)
     '/api/server/daemon-action',
     '/api/server/vikey-status',
@@ -2492,6 +2498,9 @@ _SA_ONLY_PATH_PREFIXES = (
 def _sa_path_guard():
     """普通用户访问 SA 专属路径 → 403。只给 super_admin。"""
     _p = request.path
+    # flow_sa_pc_mobile_20261020: 即插即用免密入口放行 (自身校验信任令牌+双钥, fail-closed)
+    if _p.rstrip('/') == '/sa/plug-login':
+        return None
     if not any(_p.startswith(p) for p in _SA_ONLY_PATH_PREFIXES):
         return None  # 非 SA 路径, 放行
 
@@ -2962,6 +2971,9 @@ except Exception as _edu_err:
 try:
     from blueprints.wecom_hub_bp import wecom_hub_bp
     app.register_blueprint(wecom_hub_bp)
+    # flow_sa_pc_mobile_20261020: PC即插即用免密 + 移动端面部/指纹/蓝牙Passport三因子
+    from blueprints.sa_terminal_auth_bp import sa_terminal_auth_bp, TRUST_COOKIE, issue_trust_token, _trust_valid, _dual_ok, _is_mobile_ua
+    app.register_blueprint(sa_terminal_auth_bp)
     print('[WECOM-HUB] ✅ /api/wecom/* 企业微信中枢已注册')
 except Exception as _wecom_err:
     print(f'[WECOM-HUB] ⚠️ 企业微信中枢模块加载失败: {_wecom_err}')
@@ -3902,6 +3914,8 @@ _MT_HOTLINK_WHITELIST_PATHS = {
     # 🔧 2026-10-06 SERVER 模式本机直进后台: /sa/dashboard 无 Referer 直达放行
     # (Mac mini loopback 本机访问由 check_sa_redirect 的 SERVER 短路已验证可信)
     '/sa/dashboard',
+    # flow_sa_pc_mobile_20261020: 即插即用免密入口 (信任令牌+双钥自校验) + 挑战/三因子页 无 Referer 直达
+    '/sa/plug-login', '/sa/verify', '/sa/mobile-verify',
 }
 _MT_HOTLINK_WHITELIST_PREFIXES = (
     '/static/', '/assets/', '/auth/', '/_ui/', '/api/auth/',
@@ -10369,6 +10383,15 @@ def sa_dashboard():
             f'mtscos-csrf-sess-{_tm.time()}-{_os.urandom(16)}'.encode()).hexdigest()
         session['csrf_token'] = page_csrf_token
 
+    # flow_sa_pc_mobile_20261020: 即插即用免密 — pre_auth 态 + 设备信任令牌 + 双钥在位 → 自动建立 SA 会话
+    if _sa_check.get('auth_stage') == 'pre_auth':
+        try:
+            from blueprints.sa_terminal_auth_bp import plug_login_hook
+            if plug_login_hook():
+                _sa_check['auth_stage'] = 'full_auth'
+        except Exception:
+            pass
+
     auth_stage = _sa_check.get('auth_stage', 'pre_auth')
     # 登录回跳目标（白名单过滤，默认回本页）
     login_next = _sa_safe_next(request.args.get('next'))
@@ -12193,6 +12216,28 @@ _SA_REMOTE_CHALLENGE_ALLOWED_PATHS = (
 )
 
 
+def _sa_pc_trust_issue(ip):
+    """PC 完整认证通过 → 排程签发设备信任令牌 (after_request 回写 Cookie, 30天免密)"""
+    try:
+        session['_trust_token_issue'] = issue_trust_token(label=f'PC-{(ip or "")[:20]}')
+    except Exception:
+        pass
+
+
+@app.after_request
+def _sa_trust_cookie_write(response):
+    """信任令牌 Cookie 回写 (HttpOnly 30天, SameSite=Lax)"""
+    tok = session.get('_trust_token_issue')
+    if tok:
+        try:
+            response.set_cookie(TRUST_COOKIE, tok, max_age=30*86400, httponly=True,
+                                samesite='Lax', secure=False)
+        except Exception:
+            pass
+        session.pop('_trust_token_issue', None)
+    return response
+
+
 @app.route('/sa/verify', methods=['GET'])
 def sa_remote_verify_page():
     """任意终端 SA 挑战码验证页 (三因子第三因子)"""
@@ -12230,13 +12275,22 @@ def api_sa_remote_challenge_verify():
         session['remote_challenge_pending'] = False
         session['remote_dual_verified'] = True
         session['remote_dual_verified_at'] = datetime.now().isoformat()
+        # flow_sa_pc_mobile_20261020: PC 挑战通过 → 签发设备信任令牌, 此后即插即用免密
+        if not _is_mobile_ua():
+            _sa_pc_trust_issue(ip)
     return (jsonify(r), 200) if r.get('ok') else (jsonify(r), 403)
 
 
 @app.before_request
 def _sa_remote_challenge_gate():
-    """任意终端 SA 挑战门: remote_challenge_pending 会话仅放行挑战相关路径"""
+    """任意终端 SA 挑战门: remote_challenge_pending / sa_mobile_pending 会话仅放行认证相关路径"""
     try:
+        # flow_sa_pc_mobile_20261020: 移动端三因子门禁
+        if session.get('sa_mobile_pending'):
+            p_m = (request.path or '').rstrip('/')
+            if p_m.startswith('/api/sa/mobile') or p_m in ('/sa/mobile-verify', '/auth/login', '/logout') or p_m.startswith('/static/'):
+                return None
+            return redirect('/sa/mobile-verify')
         if not session.get('remote_challenge_pending'):
             return None
         p = (request.path or '').rstrip('/') or '/'
@@ -12799,10 +12853,16 @@ def login():
         db_role = row_dict.get('role') or 'user'
         if username.lower() == 'wuchenghao15':
             session['role'] = 'super_admin'
-            # flow_sa_dualkey_anyterm_20261020: 任意终端双密钥 —
-            # 非插钥绑定终端 → 挂起会话待企微挑战码三因子; 插钥本机直接通过
-            if not _sa_remote_is_bound(ip):
+            # flow_sa_pc_mobile_20261020: 终端分流 —
+            # 移动终端 → 三因子 (WebAuthn面部+指纹 + 蓝牙Trae AI Passport)
+            # PC 非绑定终端 → 企微挑战码; 插钥绑定终端/挑战通过 → 免密 + 签发设备信任令牌(30天)
+            if _is_mobile_ua():
+                session['sa_mobile_pending'] = True
+                session['sa_mobile_factors'] = {}
+            elif not _sa_remote_is_bound(ip):
                 session['remote_challenge_pending'] = True
+            else:
+                _sa_pc_trust_issue(ip)
         else:
             if db_role == 'super_admin':
                 session['role'] = 'admin'
@@ -12854,6 +12914,9 @@ def login():
         # flow_sa_dualkey_anyterm_20261020: 远程终端 SA → 直送挑战码验证页
         if session.get('remote_challenge_pending'):
             _redirect_url = '/sa/verify'
+        # flow_sa_pc_mobile_20261020: 移动终端 SA → 直送三因子验证页
+        elif session.get('sa_mobile_pending'):
+            _redirect_url = '/sa/mobile-verify'
         # next 参数优先（但白名单过滤，禁止外部跳转）
         if next_url and isinstance(next_url, str):
             if next_url.startswith('/') and not next_url.startswith('//'):
