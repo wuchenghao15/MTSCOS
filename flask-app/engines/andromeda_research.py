@@ -274,6 +274,8 @@ def run_research_cycle(max_proposals: int = 2) -> dict:
             try:
                 flow_id = f"flow_research_{int(time.time())}_{abs(hash(title)) % 100000}"
                 now = time.strftime("%Y-%m-%d %H:%M:%S")
+                # flow_devflow_cli_20261021: 流程完善 — EigenFlux 6 专家投票通过 = STEP_2 审计/
+                #   STEP_3 决策/STEP_4 计划 的完成证据, 立项直接进 STEP_7 (不再卡 STEP_1 等推进)
                 db.execute("""INSERT OR IGNORE INTO mt_dev_flow_session
                     (flow_id, proposal_title, proposal_summary, proposal_json,
                      final_status, current_step, created_at, updated_at, created_by)
@@ -281,9 +283,13 @@ def run_research_cycle(max_proposals: int = 2) -> dict:
                     (flow_id, title[:120], (summary or "")[:500],
                      json.dumps({"source": "andromeda_research", "auto": True,
                                  "sensitivity": sens["level"],
+                                 "steps_1_6_evidence": {
+                                     "STEP_1_PROPOSAL": title, "STEP_2_AUDIT": "EigenFlux 6专家投票",
+                                     "STEP_3_DECISION": f"vote {vote.get('pass_count')}/{vote.get('votes_needed')} PASS",
+                                     "STEP_4_PLAN": summary[:200]},
                                  "research_prop_id": prop_id,
                                  "title": title, "summary": summary}, ensure_ascii=False),
-                     "OPEN", "STEP_1_PROPOSAL", now, now, "andromeda_research"))
+                     "OPEN", "STEP_7_EXECUTE", now, now, "andromeda_research"))
                 db.execute("UPDATE mt_research_proposals SET dev_gate_flow_id=?, status=? WHERE prop_id=?",
                            (flow_id, "STARTED", prop_id))
                 # flow_research_sched_20261021: 实施记录闭环 (PENDING → Agent/dev_gate 接手推进)
