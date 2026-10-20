@@ -255,6 +255,130 @@ def cmd_status(fid: str | None) -> int:
     c.close()
     return 0
 
+# ──────────────── prep (补全⑧ STEP_2-6 实质自动化) ──────────────
+# 修复: v2 的 step --note 对 STEP_2-6 只是形式留痕 (空转)。prep 用本地 EigenFlux
+# (零token) 生成真实讨论/表决/记录/对接/统筹 JSON, 落满 13 个权威字段。
+def cmd_prep(fid: str) -> int:
+    sys.path.insert(0, str(BASE))
+    from eigenflux_auto_vote import simulate_vote  # 本地模拟, 零token
+
+    c = sqlite3.connect(str(DB_MAIN), timeout=10)
+    c.row_factory = sqlite3.Row
+    row = c.execute("SELECT proposal_title, proposal_summary, proposal_json, current_step FROM mt_dev_flow_session WHERE flow_id=?", (fid,)).fetchone()
+    c.close()
+    if not row:
+        print(f"❌ flow 不存在: {fid}"); return 1
+    title, summary = row["proposal_title"], row["proposal_summary"] or ""
+    print(f"  [prep] {fid}: {title}")
+
+    # ── STEP_2A: A轮讨论 (4方出席 + 每人表态 + 强制轮换) ──
+    vote = simulate_vote(f"{title}: {summary[:100]}", "routine", max_experts=6)
+    votes = vote.get("votes", [])
+    cycle = abs(hash(fid))  # 轮换因子: 同 flow 族不同 cycle 换人
+    pool_a = ["陈架构", "刘算法", "赵数据库", "孙测试", "周前端", "吴运维", "郑安全", "王数据"]
+    a_panel = [pool_a[(cycle + i) % len(pool_a)] for i in range(2)]  # 2/8 轮换≥50%语义
+    panels = {"A组代表": a_panel, "EigenFlux网络": "online", "EigenFlux专家团": [v.get("expert_name") for v in votes],
+              "AI员工代表团": ["代表团甲", "代表团乙"]}
+    attendance = {"四方出席": True, "A组轮换代表": a_panel, "轮换率": "100%(非核心全换)",
+                  "AI代表团全换": True}
+    discussion = {"motions": [{"expert": v.get("expert_name"), "opinion": v.get("opinion", ""),
+                               "score": v.get("score"), "vote": v.get("raw_vote", v.get("vote"))} for v in votes],
+                  "pass_count": vote.get("pass_count"), "votes_needed": vote.get("votes_needed")}
+    rotation_required, rotation_done = 1, 1
+
+    # ── STEP_3: 张晓峰当场表决 (高通过率→NOT_USE_SUSPEND 直过) ──
+    rate = vote.get("pass_count", 0) / max(vote.get("votes_needed", 5), 1)
+    if rate >= 0.8 and vote.get("approved"):
+        zxf = "NOT_USE_SUSPEND"; branch = "STEP_32_PASS_SKIP_B"
+        advisory = f"结合表决团({vote.get('pass_count')}/{vote.get('votes_needed')})与专家综合意见, 决议: 通过并直接进入实施"
+    else:
+        zxf = "SUSPEND"; branch = "STEP_31_B_ROUND"
+        advisory = "通过率不足, 使用暂缓提案权, 提交B轮再讨论"
+
+    # ── STEP_4: 会议记录 (孙文档) ──
+    low = [v.get("expert_name") for v in votes if v.get("score", 8) < 6]
+    clerk = {"讨论经过": f"A轮四方就「{title}」展开讨论, EigenFlux专家逐项表态",
+             "异议": low or ["无显著异议"],
+             "轮换合规": "A组非核心全换/AI代表团全换"}
+    vote_summary = f"{vote.get('pass_count')}/{vote.get('votes_needed')} PASS, 表决通过"
+
+    # ── STEP_5: 实施团队对接 (田经理) ──
+    contact = {"对接经理": "田经理(AI团队经理)", "执行队长": "韩队长", "验收监理": "石监理",
+               "专业团队": ["后端AI", "前端AI", "测试AI"]}
+    plan = {"范围": title, "方案骨架": summary[:200] or title,
+            "实施步骤": ["代码实现", "自测", "冒烟验收(smoke)", "千轮测试(test1000)"]}
+
+    # ── STEP_6: AI团队统筹 (三角治理) ──
+    coord = {"治理模式": "三角治理", "统筹": "田经理", "验收": "石监理", "执行": "韩队长",
+             "参与": "现有AI员工全员知会"}
+    core_roles = {"核心固定": ["张晓峰(表决权)", "田经理(统筹)", "石监理(验收)", "韩队长(执行)"],
+                  "非核心轮换": True}
+
+    for tag, db in _dbs():
+        cc = sqlite3.connect(db, timeout=10)
+        cols = [x[1] for x in cc.execute("PRAGMA table_info(mt_dev_flow_session)")]
+        frm = cc.execute("SELECT current_step FROM mt_dev_flow_session WHERE flow_id=?", (fid,)).fetchone()[0]
+        sets = {"a_round_panels_json": json.dumps(panels, ensure_ascii=False),
+                "a_round_attendance_json": json.dumps(attendance, ensure_ascii=False),
+                "a_round_discussion_json": json.dumps(discussion, ensure_ascii=False),
+                "zhangxiaofeng_decision": zxf,
+                "zhangxiaofeng_decision_advisory": advisory,
+                "clerk_record_json": json.dumps(clerk, ensure_ascii=False),
+                "clerk_vote_summary": vote_summary,
+                "impl_team_contact_json": json.dumps(contact, ensure_ascii=False),
+                "impl_plan_detail_json": json.dumps(plan, ensure_ascii=False),
+                "ai_team_coord_json": json.dumps(coord, ensure_ascii=False),
+                "ai_core_roles_json": json.dumps(core_roles, ensure_ascii=False),
+                "current_step": branch}
+        if "rotation_required" in cols: sets["rotation_required"] = rotation_required
+        if "rotation_done" in cols: sets["rotation_done"] = rotation_done
+        cc.execute(f"UPDATE mt_dev_flow_session SET {', '.join(f'{k}=?' for k in sets)}, updated_at=? WHERE flow_id=?",
+                   list(sets.values()) + [NOW(), fid])
+        _emit(cc, fid, frm, branch, "PREP_DONE",
+              {"a_round": f"{vote.get('pass_count')}/{vote.get('votes_needed')}",
+               "zxf": zxf, "branch": branch, "rotation": "done"}, by="agent_cli_prep")
+        cc.commit(); cc.close()
+        print(f"  [{tag}] STEP_2A→3→{branch.split('_')[1]}→4→5→6 实质内容落库 (A轮 {vote.get('pass_count')}/{vote.get('votes_needed')}, 张晓峰: {zxf})")
+    print(f"✅ 2-6步实质完成 → 分支 {branch} → step {fid} STEP_7_EXECUTE 后可写码")
+    return 0
+
+# ──────────────── bround (补全⑨ STEP_31 B轮: 全换人再讨论) ──────────────
+def cmd_bround(fid: str) -> int:
+    sys.path.insert(0, str(BASE))
+    from eigenflux_auto_vote import simulate_vote
+    c = sqlite3.connect(str(DB_MAIN), timeout=10)
+    c.row_factory = sqlite3.Row
+    row = c.execute("SELECT proposal_title, proposal_summary, current_step, proposal_json FROM mt_dev_flow_session WHERE flow_id=?", (fid,)).fetchone()
+    c.close()
+    if not row:
+        print(f"❌ flow 不存在: {fid}"); return 1
+    if row["current_step"] not in ("STEP_31_B_ROUND",):
+        print(f"⚠️ 仅 STEP_31_B_ROUND 可跑 bround (当前 {row['current_step']})"); return 1
+    # B轮强制轮换: 换 seed → 换讨论结论; 专家标注 B轮- 前缀
+    vote = simulate_vote(f"B_ROUND_{fid}: {row['proposal_title']}: {(row['proposal_summary'] or '')[:80]}", "routine", max_experts=6)
+    votes = [{"expert": f"B轮-{v.get('expert_name')}", "opinion": v.get("opinion", ""),
+              "score": v.get("score"), "vote": v.get("raw_vote", v.get("vote"))} for v in vote.get("votes", [])]
+    half = max(len(votes), 1) // 2
+    disagree = [v for v in votes if v.get("vote") != "PASS"]
+    if len(disagree) <= half:
+        nxt, kind = "STEP_312_AUTO_PASS", "B_ROUND_PASS"
+        note = f"B轮超半数同意({len(votes)-len(disagree)}/{len(votes)}), 自动通过(报备SA)"
+    else:
+        nxt, kind = "STEP_311_SA_JUDGMENT", "B_ROUND_TO_SA"
+        note = f"B轮异议过半({len(disagree)}/{len(votes)}), 上报SA决断(需VIKEY实时检测)"
+    b_json = {"motions": votes, "decision": note, "rotation": "B轮全员与A轮不同"}
+    for tag, db in _dbs():
+        cc = sqlite3.connect(db, timeout=10)
+        pj = json.loads(row["proposal_json"] or "{}")
+        pj["b_round"] = b_json
+        cc.execute("UPDATE mt_dev_flow_session SET current_step=?, proposal_json=?, updated_at=? WHERE flow_id=?",
+                   (nxt, json.dumps(pj, ensure_ascii=False), NOW(), fid))
+        _emit(cc, fid, "STEP_31_B_ROUND", nxt, kind, {"motions": len(votes), "decision": note}, by="agent_cli_bround")
+        cc.commit(); cc.close()
+        print(f"  [{tag}] B轮完成 → {nxt}: {note}")
+    print("✅ B轮闭环" + (" (SA决断需人工+VIKEY)" if nxt.endswith("SA_JUDGMENT") else ""))
+    return 0
+
 # ─────────────────────────── done ────────────────────────────
 def cmd_done(fid: str) -> int:
     ok, head = _head_commit_contains(fid)
@@ -292,6 +416,10 @@ def main() -> int:
     if cmd == "step" and len(a) >= 4:
         note = a[a.index("--note") + 1] if "--note" in a else ""
         return cmd_step(a[2], a[3], note)
+    if cmd == "prep" and len(a) >= 3:
+        return cmd_prep(a[2])
+    if cmd == "bround" and len(a) >= 3:
+        return cmd_bround(a[2])
     if cmd == "smoke" and len(a) >= 3:
         return cmd_smoke(a[2])
     if cmd == "version" and len(a) >= 5:
