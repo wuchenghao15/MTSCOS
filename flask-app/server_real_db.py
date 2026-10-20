@@ -2921,6 +2921,14 @@ try:
 except Exception as _cl_err:
     print(f'[CHAT-LOCAL] ⚠️ 本地聊天模块加载失败: {_cl_err}')
 
+# ── Daemon & Skill 研发中心 Blueprint: /daemon-skill-lab (flow_lab_20261020) ──
+try:
+    from blueprints.daemon_skill_lab_bp import daemon_skill_lab_bp
+    app.register_blueprint(daemon_skill_lab_bp)
+    print('[DAEMON-SKILL-LAB] ✅ /daemon-skill-lab + /api/daemon-lab/* 研发中心已注册')
+except Exception as _lab_err:
+    print(f'[DAEMON-SKILL-LAB] ⚠️ 研发中心模块加载失败: {_lab_err}')
+
 # ── 仙女座工作全景统计 Blueprint: /andromeda/stats (flow_andromeda_stats_20261016) ──
 try:
     from blueprints.andromeda_stats_bp import andromeda_stats_bp
