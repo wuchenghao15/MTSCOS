@@ -3449,6 +3449,17 @@ class DarwinHardwareKeyProvider(HardwareKeyProvider):
         #          但 auth_token + serial + username + role 四字段校验强制保留, 不降安全)
         if os.environ.get('VIKEY_BACKEND', '').strip().lower() in ('sim', 'mock', 'simulation'):
             return True
+        # flow_sa_hw_state_20261020: 官方 SDK 链路优先级0 — 官方参数(Vikey.h/VikeyAPI.js枚举)
+        # + 官方方法(VikeyFind契约{code,count}) + 官方协议(WS桥 255|ViKeyWebSocket|{FunctionType}),
+        # 桥不在时 ioreg 官方格式回退; 官方链失败 → 原双路检测兜底, 行为不变
+        try:
+            from core.services.vikey_official import official_present as _of_present
+            _ok, _detail = _of_present()
+            if _ok:
+                logger.info(f"[DarwinProvider] VIKEY 官方链路命中: via={_detail.get('via')} count={_detail.get('count')}")
+                return True
+        except Exception as _of_err:
+            logger.info(f"[DarwinProvider] 官方链路跳过: {_of_err}")
         try:
             import subprocess as _sp, os as _os
             env = {**_os.environ, "PATH": self._MACOS_SYSTEM_PATH}
