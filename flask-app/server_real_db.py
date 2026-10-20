@@ -2417,6 +2417,8 @@ _CSRF_EXEMPT_PATHS = [
     '/api/daemon-lab/hall/residents',
     # flow_hall_resident_20261020: AI 自动接单引擎 (抢单→组队→委派专家磋商→自动交付待验收, 登录门禁 + 全落库审计)
     '/api/daemon-lab/hall/auto-work',
+    # flow_hall_delegate_20261020: 各中心自动委派能力提升任务 (短板自查→24h去重→入厅, 登录门禁 + 全落库审计)
+    '/api/daemon-lab/hall/center-delegate',
     # flow_edu_20261020: AI教育中心+考试院 (一键培养流水线, 登录门禁 + 全落库审计)
     '/api/ai-edu/run',
     # flow_wecom_20261020: 企业微信中枢 (推送/开会/配置, 登录门禁 + 全落库审计)

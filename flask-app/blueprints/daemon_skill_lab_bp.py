@@ -1066,6 +1066,177 @@ def hall_auto_work():
                     "mine_open": mine_open, "mine_delivered": delivered, "mine_done": mine_done})
 
 
+# ════════════════ 各中心自动委派能力提升任务 (flow_hall_delegate_20261020) ════════════════
+# 中心自查能力短板 (本地 SQL 零 token) → 自动生成提升任务入厅 → AI 自动接单提升自身能力
+_DELEGATE_COOLDOWN_HOURS = 24   # 同中心 24h 内不重复委派
+
+
+def _dg_daemon_ops(conn):
+    n = conn.execute("SELECT count(*) FROM mt_daemon_registry WHERE status='FAILED'").fetchone()[0]
+    if not n:
+        return None
+    return f"daemon 修复能力提升 ({n} 个 FAILED 待练手)", f"当前 {n} 个 FAILED daemon, 修复实战可提升中心运维能力", "HIGH"
+
+
+def _dg_security_audit(conn):
+    n = conn.execute("SELECT count(*) FROM mt_rule_violation_alert WHERE alert_status='OPEN'").fetchone()[0]
+    if not n:
+        return None
+    return f"安全审计复盘能力提升 ({n} 条 OPEN 告警样本)", f"{n} 条规则违反告警可作审计复盘实战样本", "HIGH"
+
+
+def _dg_dev_flow(conn):
+    n = conn.execute("SELECT count(*) FROM mt_dev_flow_session WHERE final_status='OPEN' AND current_step='STEP_7_EXECUTE'").fetchone()[0]
+    if n < 2:
+        return None
+    return f"开发流程并行能力提升 ({n} 个 OPEN flow)", f"{n} 个进行中 flow, 可演练并行 flow 编排与收尾能力", "NORMAL"
+
+
+def _dg_ai_engine(conn):
+    n = conn.execute("SELECT count(*) FROM mt_ai_brain_feed_log WHERE created_at < datetime('now','localtime','-24 hours')").fetchone()[0]
+    if n:
+        return None  # 24h 内有投喂 → 能力在线
+    return "AI 脑库投喂量提升", "近 24h 脑库零投喂, 委派任务复盘近期经验充实脑库", "NORMAL"
+
+
+def _dg_workflow(conn):
+    n = conn.execute("SELECT count(*) FROM mt_lab_suggestions WHERE status='PROPOSED'").fetchone()[0]
+    if n < 3:
+        return None
+    return f"工作流消化提速 ({n} 个候选积压)", f"{n} 个候选待消化, 委派流水线提效演练", "NORMAL"
+
+
+def _dg_data_research(conn):
+    n = conn.execute("SELECT count(*) FROM mt_lab_audit_log WHERE created_at > datetime('now','localtime','-24 hours')").fetchone()[0]
+    if n >= 10:
+        return None
+    return "审计数据利用率提升", f"近 24h 仅 {n} 条中心操作留痕, 委派数据画像与利用率分析", "NORMAL"
+
+
+def _dg_edu_qbank(conn):
+    q = conn.execute("SELECT count(*) FROM sqlite_master WHERE type='table' AND name='mt_edu_sync_question_types'").fetchone()[0]
+    if not q:
+        return None
+    n = conn.execute("SELECT count(*) FROM mt_edu_sync_question_types").fetchone()[0]
+    if n >= 7:
+        return None
+    return "教辅题库扩充能力提升", f"教辅题型 {n}/7 未满编, 委派题型与母题扩充", "NORMAL"
+
+
+def _dg_rules_gov(conn):
+    n = conn.execute("SELECT count(*) FROM mt_rule_changelog WHERE created_at > datetime('now','localtime','-7 days')").fetchone()[0]
+    if n:
+        return None
+    return "规则治理活跃度提升", "近 7 天零规则变更, 委派规则体检与 changelog 补录演练", "NORMAL"
+
+
+def _dg_legal(conn):
+    return None  # 法务日巡检已由 resident:legal 常驻, 不重复委派
+
+
+def _dg_hr_center(conn):
+    n = conn.execute("SELECT count(*) FROM ai_employees WHERE is_enabled=0").fetchone()[0]
+    if n < 5:
+        return None
+    return f"员工状态治理能力提升 ({n} 人停用)", f"{n} 名 AI 员工停用, 委派名册治理与复编评估", "NORMAL"
+
+
+def _dg_expert_team(conn):
+    n = conn.execute("SELECT count(*) FROM eigenflux_experts").fetchone()[0]
+    if n >= 10:
+        return None
+    return f"专家队伍扩编 (当前 {n} 人)", f"EigenFlux 专家 {n}<10, 委派专家招募与连线扩编", "NORMAL"
+
+
+def _dg_skill_dev(conn):
+    daemons = conn.execute("SELECT count(*) FROM mt_daemon_registry").fetchone()[0]
+    if os.path.isdir(SKILLS_DIR):
+        skills = len([d for d in os.listdir(SKILLS_DIR) if os.path.isdir(os.path.join(SKILLS_DIR, d))])
+    else:
+        skills = 0
+    if skills >= daemons:
+        return None
+    return f"Skill 覆盖率提升 ({skills} skills / {daemons} daemons)", f"Skill({skills}) 少于 daemon({daemons}), 委派缺失 skill 补编", "NORMAL"
+
+
+def _dg_frontend_design(conn):
+    return None  # 无低成本本地信号, 暂不委派
+
+
+_CENTER_DELEGATE_CHECKS = {
+    "daemon_ops": _dg_daemon_ops, "security_audit": _dg_security_audit, "dev_flow": _dg_dev_flow,
+    "ai_engine": _dg_ai_engine, "workflow": _dg_workflow, "data_research": _dg_data_research,
+    "frontend_design": _dg_frontend_design, "edu_qbank": _dg_edu_qbank,
+    "rules_gov": _dg_rules_gov, "legal": _dg_legal, "hr_center": _dg_hr_center,
+    "expert_team": _dg_expert_team, "skill_dev": _dg_skill_dev,
+}
+
+
+def run_hall_center_delegations():
+    """各中心自动委派: 自查能力短板 → 24h 去重 → 生成提升任务入厅 (DISPATCHED 可被 AI 接单)"""
+    _ensure_claim_tables()
+    created, idle, cooled = [], [], []
+    conn = _db()
+    try:
+        for code, check in _CENTER_DELEGATE_CHECKS.items():
+            center = conn.execute("SELECT id, name FROM mt_lab_centers WHERE center_code=?", (code,)).fetchone()
+            if not center:
+                continue
+            # 24h 冷却: 同中心在办/近期委派不重复
+            recent = conn.execute(
+                "SELECT 1 FROM mt_lab_task_hall WHERE source=? AND status NOT IN ('DONE','FAILED') LIMIT 1",
+                (f"center:{code}",)).fetchone()
+            if recent:
+                cooled.append(code)
+                continue
+            try:
+                gap = check(conn)
+            except Exception:
+                gap = None
+            if not gap:
+                idle.append(code)
+                continue
+            title, desc, prio = gap
+            cur = conn.execute(
+                "INSERT INTO mt_lab_task_hall (title,description,source,priority,status,center_id,dispatched_at) "
+                "VALUES (?,?,?,?,'DISPATCHED',?,datetime('now','localtime'))",
+                (f"{center['name']}: {title}"[:120], desc[:500], f"center:{code}", prio, center["id"]))
+            conn.execute("INSERT INTO mt_lab_task_events (hall_task_id,event,actor,actor_role,note) VALUES (?,?,?,?,?)",
+                         (cur.lastrowid, "DISPATCH", f"center:{code}", "system", "中心自动委派(能力提升)"))
+            created.append({"id": cur.lastrowid, "center": code, "title": f"{center['name']}: {title}", "priority": prio})
+        conn.commit()
+    finally:
+        conn.close()
+    if created:
+        _audit("hall", "HALL_CENTER_DELEGATE", f"中心自动委派{len(created)}项", {"created": created, "idle": idle, "cooldown": cooled})
+    return {"created": created, "created_count": len(created), "idle": idle, "cooldown": cooled}
+
+
+@daemon_skill_lab_bp.route("/api/daemon-lab/hall/center-delegate", methods=["GET", "POST"])
+@_login_required
+def hall_center_delegate():
+    """中心自动委派: GET=13中心自查总览; POST=跑一轮委派 (能力短板→任务入厅)"""
+    if request.method == "POST":
+        result = run_hall_center_delegations()
+        return jsonify({"ok": True, **result})
+    _ensure_claim_tables()
+    conn = _db()
+    try:
+        overview = []
+        for code, check in _CENTER_DELEGATE_CHECKS.items():
+            center = conn.execute("SELECT id, name FROM mt_lab_centers WHERE center_code=?", (code,)).fetchone()
+            if not center:
+                continue
+            open_n = conn.execute("SELECT count(*) FROM mt_lab_task_hall WHERE source=? AND status NOT IN ('DONE','FAILED')",
+                                  (f"center:{code}",)).fetchone()[0]
+            done_n = conn.execute("SELECT count(*) FROM mt_lab_task_hall WHERE source=? AND status='DONE'",
+                                  (f"center:{code}",)).fetchone()[0]
+            overview.append({"code": code, "name": center["name"], "open_delegations": open_n, "done_delegations": done_n})
+    finally:
+        conn.close()
+    return jsonify({"ok": True, "centers": overview})
+
+
 @daemon_skill_lab_bp.route("/api/daemon-lab/audit")
 @_login_required
 def lab_audit_query():
