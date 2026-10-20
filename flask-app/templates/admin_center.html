@@ -195,6 +195,7 @@
         <a href="/api/daemon-lab/hall/board" target="_blank">📋 大厅看板 API</a>
         <a href="/api/daemon-lab/hr/roster" target="_blank">👥 HR 名册 API</a>
         <a href="/api/ai-edu/overview" target="_blank">🎓 教育中心 API</a>
+        <a href="/api/ai-edu/exam-auto/status" target="_blank">📅 考试自动引擎 API</a>
         <a href="/api/wecom/status" target="_blank">💼 企微中枢 API</a>
     </div>
 
@@ -308,6 +309,47 @@
         }).catch(()=>{ btn.disabled=false; btn.textContent='⚡ 一键培养流水线'; });
     }
     loadEdu();
+    </script>
+
+    {# ══ 考试自动引擎数显 (flow_exam_auto_20261020, 真实时间取题/入题库/认领/学习/备课) ══ #}
+    <div id="exam-auto-section" class="admin-card" style="margin-top:16px;width:100%">
+        <h3 style="display:flex;align-items:center;gap:10px">📅 考试自动引擎
+            <span id="exam-chips" style="font-size:11px;font-weight:400;color:#64748b"></span>
+            <button onclick="examAutoRun(this)" style="margin-left:auto;border:1px solid #06b6d4;background:transparent;color:#06b6d4;border-radius:8px;font-size:11px;padding:5px 12px;cursor:pointer">🚀 按真实时间执行一轮</button>
+            <button onclick="loadExamAuto()" style="border:1px solid #d1d5db;background:transparent;color:#64748b;border-radius:8px;font-size:11px;padding:5px 12px;cursor:pointer">↻</button>
+        </h3>
+        <div id="exam-board" style="font-size:12px;color:#64748b">加载中…</div>
+    </div>
+    <script>
+    function loadExamAuto(){
+        fetch('/api/ai-edu/exam-auto/status').then(r=>r.json()).then(d=>{
+            if(!d.ok) throw 0;
+            const cal=d.calendar;
+            document.getElementById('exam-chips').textContent =
+                `当前窗口 ${cal.exam_types.join('/')} · ${cal.semester} · 题库累计 ${d.total_in_qbank} 题`;
+            const batches=d.recent_batches.map(b=>
+                `<span style="display:inline-block;margin:2px 6px 2px 0;padding:2px 8px;border-radius:8px;font-size:10px;color:#059669;background:rgba(5,150,105,.07)" title="${b.mode}">【${b.exam_type}】${b.window_label} 取${b.fetched}/入${b.inserted}/重${b.skipped_dup}·${b.created_at||''}</span>`).join('');
+            const plans=d.prep_plans.map(p=>
+                `<div style="display:flex;gap:8px;padding:4px 0;border-bottom:1px dashed rgba(0,0,0,.05)">
+                    <span style="font-size:10px;color:#2563eb">#${p.id} ${p.status}</span>
+                    <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">【${p.exam_type}】${p.window_label} 学科:${p.subject||'综合'} 大厅任务#${p.hall_task_id||'-'}</span></div>`).join('');
+            document.getElementById('exam-board').innerHTML =
+                `<div style="margin-bottom:8px"><b style="color:#374151">最近批次 (取题/入库/去重):</b><br>${batches||'暂无 — 点「按真实时间执行一轮」'}</div>`+
+                `<div><b style="color:#374151">自动备课计划:</b><br>${plans||'暂无'}</div>`;
+        }).catch(()=>{ document.getElementById('exam-board').textContent='⚠️ 考试自动引擎加载失败'; });
+    }
+    function examAutoRun(btn){
+        btn.disabled=true; btn.textContent='⏳ 引擎运行中…';
+        fetch('/api/ai-edu/exam-auto/run',{method:'POST'}).then(r=>r.json()).then(d=>{
+            btn.disabled=false; btn.textContent='🚀 按真实时间执行一轮';
+            if(d.ok){
+                const c=d.claim||{};
+                alert(`窗口: ${(d.calendar.exam_types||[]).join('/')}\n入库 ${d.total_inserted} 题(含结题讲解)\n大厅任务#${d.hall_task_id||'-'} 认领: ${c.center||'-'} ${c.status||''}\n团队学习 ${d.learned.length} 人次 · 备课计划 #${d.prep_plan_id||'-'}`);
+            } else alert('失败: '+(d.error||''));
+            loadExamAuto();
+        }).catch(()=>{ btn.disabled=false; btn.textContent='🚀 按真实时间执行一轮'; });
+    }
+    loadExamAuto();
     </script>
 
     {# ══ 统一审计日志 (flow_audit_20261020, 回溯追责入口, 内嵌后台) ══ #}

@@ -17,7 +17,7 @@ import json
 import os
 import re
 import sqlite3
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, request
 
 from blueprints.chat_local_bp import _login_required, _get_user
 from blueprints.daemon_skill_lab_bp import _audit  # 统一审计 (flow_audit_20261020)
@@ -407,3 +407,30 @@ def edu_overview():
                         "levels": _LEVELS})
     finally:
         conn.close()
+
+
+# ══════════ 考试自动引擎 (flow_exam_auto_20261020) ══════════
+
+@ai_edu_academy_bp.route("/api/ai-edu/exam-auto/run", methods=["POST"])
+@_login_required
+def exam_auto_run():
+    """按真实时间自动获取考试题(摸底/自招/月考/模拟/自由行) → 分析入题库(结题讲解)
+    → 任务大厅自动认领 → 团队自动学习 → 自动备课 → 企微播报"""
+    try:
+        from engines.ai_exam_auto_engine import run_exam_auto
+        data = request.get_json(silent=True) or {}
+        summary = run_exam_auto(use_local=bool(data.get("local")))
+        return jsonify(summary)
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@ai_edu_academy_bp.route("/api/ai-edu/exam-auto/status")
+@_login_required
+def exam_auto_status():
+    """考试自动引擎状态: 真实时间窗口 + 最近批次 + 备课计划"""
+    try:
+        from engines.ai_exam_auto_engine import exam_status
+        return jsonify(exam_status())
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500

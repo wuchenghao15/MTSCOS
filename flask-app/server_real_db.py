@@ -2412,6 +2412,8 @@ _CSRF_EXEMPT_PATHS = [
     '/api/wecom/config',
     '/api/wecom/test',
     '/api/wecom/meeting',
+    # flow_exam_auto_20261020: 考试自动引擎 (真实时间取题/入题库/认领/学习/备课, 登录门禁 + 全落库审计)
+    '/api/ai-edu/exam-auto/run',
     # v22.10.13: 仙女座 MCP Bridge — 运维 daemon 重启/握手/健康检查 (无 CSRF token, 内部调用)
     '/api/server/daemon-action',
     '/api/server/vikey-status',
