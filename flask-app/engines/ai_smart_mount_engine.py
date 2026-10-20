@@ -207,6 +207,39 @@ for r in conn.execute("SELECT process_name, pid, heartbeat_at FROM mt_ai_smart_m
     except:
         conn.execute("UPDATE mt_ai_smart_mount_processes SET current_state='STOPPED' WHERE process_name=?", (r[0],))
 conn.commit(); conn.close()
+
+# flow_keepalive_rebuild_20261021: 引擎自监控 — daemon 巡检引擎自己没人巡,
+# 引擎死亡时 daemon 表状态失真(STOPPED 假象)且 auto_repair 失效。
+# 本 daemon 由引擎派生但进程独立 — 引擎死了它仍活着, 正好承担引擎拉起。
+import subprocess as _sp
+_eng_alive = _sp.run(['pgrep', '-f', 'engines/ai_smart_mount_engine.py'],
+                     capture_output=True, text=True).returncode == 0
+if not _eng_alive:
+    _stamp = os.path.join(_PROJECT_ROOT, '_runtime', 'pids', 'engine_relaunch.stamp')
+    _now = time.time()
+    try:
+        _last = float(open(_stamp).read().strip())
+    except Exception:
+        _last = 0
+    if _now - _last > 300:  # 防风暴: 300s 最多拉起一次
+        try:
+            os.makedirs(os.path.dirname(_stamp), exist_ok=True)
+            _logf = open(os.path.join(_PROJECT_ROOT, '_runtime', 'logs', 'engine_relaunch.log'), 'a')
+            # 🔧 必须带 'start' 参数 + cwd=flask-app:
+            #   无参时 main() 打印 __doc__(=None) 后 exit 0 (看似秒退)
+            #   引擎用相对路径解析 DB/模板, cwd 必须为 flask-app
+            _sp.Popen([sys.executable,
+                       os.path.join(_PROJECT_ROOT, 'flask-app', 'engines', 'ai_smart_mount_engine.py'),
+                       'start'],
+                      cwd=os.path.join(_PROJECT_ROOT, 'flask-app'),
+                      stdout=_logf, stderr=_logf, start_new_session=True)
+            with open(_stamp, 'w') as _sf:
+                _sf.write(str(_now))
+            _log("[patrol] ENGINE DOWN -> relaunched (flow_keepalive_rebuild_20261021)")
+        except Exception as _e:
+            _log(f"[patrol] engine relaunch err: {_e}")
+    else:
+        _log("[patrol] ENGINE DOWN, 防风暴窗口内跳过")
 """,
         "inspect_cycle": 60,
     },
@@ -2844,9 +2877,14 @@ ENGINE_DIR = os.path.join(_PROJECT_ROOT, "flask-app", "ai_engines")
 # 🔧 2026-10-16 修复: DB 解析 env 优先 + 补 PROD 真实路径候选 (旧模板只找 Database/app.db, PROD 树真实库在 flask-app/database/)
 APP_DB = os.environ.get('MTSCOS_DB_PATH', '') or os.environ.get('APP_DB', '')
 if not APP_DB:
+    # 🔧 flow_keepalive_rebuild_20261021: 候选顺序修正 —
+    #   项目根 `Database` 是软链 → _runtime/databases/Database (Mac mini 旧 16KB 库, 无
+    #   mt_ai_smart_mount_processes 表/旧 schema), 旧顺序把它排第一 → daemon 全部
+    #   "no such table: mt_ai_smart_mount_processes" 报错, 巡检/自监控段被跳过。
+    #   正解: flask-app/database/app.db 优先 (当前唯一真实库)。
     for _cand in (
-        os.path.join(_PROJECT_ROOT, "Database", "app.db"),
         os.path.join(_PROJECT_ROOT, "flask-app", "database", "app.db"),
+        os.path.join(_PROJECT_ROOT, "Database", "app.db"),
         os.path.join(_PROJECT_ROOT, "flask-app", "ai_engines", "app.db"),
     ):
         if os.path.exists(_cand):
