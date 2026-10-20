@@ -515,6 +515,25 @@ except Exception as _e:
         "inspect_cycle": 600,
     },
     {
+        # flow_archive_20261021 P1数据归档: 心跳/消息/安全事件 append-only 只进不出,
+        #   主库 8.2GB 单调膨胀。每6h跑一轮 ai_archive_engine run: 超保留期旧行
+        #   分批同事务搬至 app_archive.db (INSERT+DELETE 强一致, 单轮上限30万行)
+        "process_name": "sys_archive_engine",
+        "duty": "P1滚动归档 - 每21600s调 ai_archive_engine run, 心跳14d/消息60d/安全事件90d/巡检60d, 分批事务搬运至 app_archive.db",
+        "work_body": """
+_fa_dir = os.path.join(_PROJECT_ROOT, 'flask-app')
+_engine = os.path.join(_fa_dir, 'engines', 'ai_archive_engine.py')
+try:
+    _r = subprocess.run([sys.executable, _engine, 'run'],
+                        capture_output=True, text=True, timeout=580)
+    _tail = (_r.stdout or _r.stderr or '').strip().splitlines()
+    _log(f"[archive] rc={_r.returncode} tail={_tail[-1] if _tail else '(empty)'}")
+except Exception as _e:
+    _log(f"[archive] err: {_e}")
+""",
+        "inspect_cycle": 21600,
+    },
+    {
         # flow_backup_20261021 P0备份体系: 8.2GB 主库单点零备份, OneDrive 同步≠备份。
         #   每小时调一次 ai_backup_engine backup (内部幂等: 当日快照已存在秒回) →
         #   VACUUM INTO 冷快照至 OneDrive 之外 /Users/wuchenghao/MTSCOS_BACKUPS,
