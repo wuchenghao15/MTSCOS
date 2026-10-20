@@ -1,6 +1,6 @@
 {% extends "admin_app/base.html" %}
 
-{% block title %}管理中心 · SA{% endblock %}
+{% block title %}管理中心 · 管理员{% endblock %}
 
 {% block extra_head %}
 <style>
@@ -57,6 +57,19 @@
   .btn-warning { background: linear-gradient(135deg, var(--el-color-warning, #e6a23c), var(--el-color-warning-light-1, #ebb563)); }
   .btn-info { background: linear-gradient(135deg, var(--el-color-info, #909399), var(--el-color-info-light-1, #a6a9ad)); }
   .back-link { display: block; text-align: center; margin-top: 28px; color: var(--el-text-color-secondary, #909399); font-size: 13px; text-decoration: none; }
+  /* flow_admin_reorg_20261020: 分区标题 + 中心体系快捷条 */
+  .section-title {
+    display: flex; align-items: center; gap: 10px; margin: 26px 0 14px;
+    font-size: 15px; font-weight: 700; color: var(--el-text-color-primary, #f8fafc);
+  }
+  .section-title::after { content: ''; flex: 1; height: 1px; background: var(--el-border-color, rgba(148,163,184,.25)); }
+  .section-title .cnt { font-size: 11px; font-weight: 400; color: var(--el-text-color-secondary, #94a3b8); }
+  .center-strip { display: flex; gap: 10px; flex-wrap: wrap; margin: 0 0 14px; }
+  .center-strip a {
+    padding: 7px 14px; border: 1px solid var(--el-border-color, rgba(6,182,212,.35)); border-radius: 10px;
+    font-size: 12px; text-decoration: none; color: var(--el-color-primary, #06b6d4); transition: all .15s;
+  }
+  .center-strip a:hover { background: rgba(6,182,212,.1); transform: translateY(-1px); }
 </style>
 {% endblock %}
 
@@ -83,6 +96,7 @@
         </div>
     </div>
 
+    <div class="section-title">🏫 教学与用户 <span class="cnt">用户 · 考试 · 课程</span></div>
     <div class="admin-grid">
         <div class="admin-card">
             <div class="icon">👥</div>
@@ -107,16 +121,20 @@
         <div class="admin-card">
             <div class="icon">📚</div>
             <h3>{{ t('auto.admin_center.x_6e598bc7', default='课程管理') }}</h3>
-            <p>{{ t('auto.admin_center.x_d5493c99') }}') }}</p>
+            <p>{{ t('auto.admin_center.x_d5493c99', default='管理课程内容与学习路径') }}</p>
             <div class="btn-group">
                 <a href="/admin_app/courses" class="btn btn-primary">{{ t('auto.admin_center.x_38c9af3a', default='课程列表') }}</a>
                 <a href="/admin_app/learning_paths" class="btn btn-info">学习路径</a>
             </div>
         </div>
 
+    </div>
+
+    <div class="section-title">📊 数据与通知 <span class="cnt">分析 · 公告</span></div>
+    <div class="admin-grid">
         <div class="admin-card">
             <div class="icon">📊</div>
-            <h3>{{ t('auto.admin_center.x_6450d843') }}') }}</h3>
+            <h3>{{ t('auto.admin_center.x_6450d843', default='数据分析') }}</h3>
             <p>{{ t('auto.admin_center.x_6f451c9e', default='查看系统数据统计和分析') }}</p>
             <div class="btn-group">
                 <a href="/admin_app/data_analysis" class="btn btn-primary">数据分析</a>
@@ -130,13 +148,17 @@
             <p>{{ t('auto.admin_center.x_020347a5', default='发送系统通知和公告') }}</p>
             <div class="btn-group">
                 <a href="/admin_app/notifications" class="btn btn-primary">{{ t('auto.admin_center.x_3a955e29', default='通知中心') }}</a>
-                <a href="/admin_app/settings" class="btn btn-warning">{{ t('auto.admin_center.x_14097695') }}') }}</a>
+                <a href="/admin_app/settings" class="btn btn-warning">{{ t('auto.admin_center.x_14097695', default='通知设置') }}</a>
             </div>
         </div>
 
+    </div>
+
+    <div class="section-title">🛠 系统与 AI <span class="cnt">资源 · 智能 · 运维</span></div>
+    <div class="admin-grid">
         <div class="admin-card">
             <div class="icon">💾</div>
-            <h3>{{ t('auto.admin_center.x_6478fcbd') }}') }}</h3>
+            <h3>{{ t('auto.admin_center.x_6478fcbd', default='资源管理') }}</h3>
             <p>{{ t('auto.admin_center.x_b0e60c24', default='管理系统资源和文件') }}</p>
             <div class="btn-group">
                 <a href="/admin_app/resource_manager" class="btn btn-primary">资源管理</a>
@@ -163,6 +185,16 @@
                 <a href="/admin_app/health_monitor" class="btn btn-warning">{{ t('auto.admin_center.x_0d77cf1f', default='健康监控') }}</a>
             </div>
         </div>
+    </div>
+
+    {# ══ 中心体系 (flow_admin_reorg_20261020 分区) ══ #}
+    <div class="section-title">🏛 中心体系 <span class="cnt">研发 · 大厅 · 人力 · 教育 · 审计</span></div>
+    <div class="center-strip">
+        <a href="/daemon-skill-lab">🔬 Daemon & Skill 研发中心</a>
+        <a href="/api/daemon-lab/overview" target="_blank">⚙ 研发总览 API</a>
+        <a href="/api/daemon-lab/hall/board" target="_blank">📋 大厅看板 API</a>
+        <a href="/api/daemon-lab/hr/roster" target="_blank">👥 HR 名册 API</a>
+        <a href="/api/ai-edu/overview" target="_blank">🎓 教育中心 API</a>
     </div>
 
     {# ══ 任务大厅数显 (flow_hall_20261020, 内嵌管理后台, 不专开一页) ══ #}
