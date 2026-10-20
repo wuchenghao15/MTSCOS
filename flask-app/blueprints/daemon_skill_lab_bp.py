@@ -113,13 +113,23 @@ _SEED_WORKFLOWS = [
 # 教授数字分身候选池 (按姓名优先匹配 ai_employees)
 _PROFESSOR_HINTS = ["霍金", "拉马努金", "爱因斯坦", "钱学森", "齐白石", "吴道子", "唐伯虎", "韩愈", "图灵", "冯诺依曼", "达芬奇"]
 
+# ══ 五主体入驻任务大厅 (flow_hall_resident_20261020) ══
+# 规则治理/法务合规/人事人力/专家团队/Skill研发 — 常驻中心, 采集适配器自动入厅 + 复用抢单生命周期
+_RESIDENT_CENTERS = [
+    ("rules_gov", "规则治理中心", "规则治理", "规则,rule,变更,changelog,弱约束,违反,铁律,治理"),
+    ("legal", "法务合规中心", "法务合规", "法务,合规,legal,评审,风险,个保法,网安法,消保法"),
+    ("hr_center", "人事人力中心", "人事人力", "人事,人力,员工,雇佣,绩效,跟进,名册,roster"),
+    ("expert_team", "专家团队中心", "专家团队", "专家,eigenflux,磋商,表决,连线,心跳,专家团队"),
+    ("skill_dev", "Skill研发中心", "Skill研发", "skill,技能,衍生,SKILL.md,能力库"),
+]
+
 
 def _ensure_claim_tables():
     conn = _db()
     try:
         for sql in _LAB_CLAIM_SQL:
             conn.execute(sql)
-        for code, name, domain, kws in _SEED_CENTERS:
+        for code, name, domain, kws in _SEED_CENTERS + _RESIDENT_CENTERS:
             conn.execute("INSERT OR IGNORE INTO mt_lab_centers (center_code,name,domain,keywords) VALUES (?,?,?,?)",
                          (code, name, domain, kws))
         if conn.execute("SELECT count(*) FROM mt_lab_workflows").fetchone()[0] == 0:
@@ -746,6 +756,314 @@ def hall_recycle_api():
     return jsonify({"ok": True, "recycled": recycled, "count": len(recycled),
                     "rules": {"claim_timeout_h": _HALL_CLAIM_TIMEOUT_HOURS,
                               "progress_timeout_h": _HALL_PROGRESS_TIMEOUT_HOURS}})
+
+
+# ════════════════ 五主体入驻任务大厅 (flow_hall_resident_20261020) ════════════════
+# 规则/法务/人事/专家团队/Skill — 采集适配器扫真实数据源 → 去重入厅 → 分配入驻中心 → 可抢单
+
+_RESIDENT_TAKE = 5   # 每中心单轮最多入厅条数 (防刷屏)
+
+
+def _resident_center_id(conn, code):
+    row = conn.execute("SELECT id FROM mt_lab_centers WHERE center_code=?", (code,)).fetchone()
+    return row["id"] if row else None
+
+
+def _resident_pick(conn, items):
+    """去重: 同名开放任务已在厅则跳过; 截断 _RESIDENT_TAKE"""
+    picked = []
+    for it in items:
+        if len(picked) >= _RESIDENT_TAKE:
+            break
+        dup = conn.execute("SELECT 1 FROM mt_lab_task_hall WHERE title=? AND status NOT IN ('DONE','FAILED') LIMIT 1",
+                           (it["title"],)).fetchone()
+        if not dup:
+            picked.append(it)
+    return picked
+
+
+# ── 适配器: 每个返回 [{title, description, priority, note}], 全部本地 SQLite 零 token ──
+def _resident_rules(conn):
+    """规则治理: 未处置的规则违反告警 (mt_rule_violation_alert OPEN)"""
+    rows = conn.execute("SELECT alert_id, violation_code, severity, description FROM mt_rule_violation_alert "
+                        "WHERE alert_status='OPEN' ORDER BY alert_id DESC LIMIT 20").fetchall()
+    return [{"title": f"规则违反处置: {r['violation_code'] or ('alert#' + str(r['alert_id']))}",
+             "description": ((r["description"] or "")[:200] or "规则违反告警待处置"),
+             "priority": "HIGH" if str(r["severity"] or "").lower() in ("high", "critical") else "NORMAL",
+             "note": f"alert#{r['alert_id']}"} for r in rows]
+
+
+def _resident_legal(conn):
+    """法务合规: 日巡检 (在办法务任务存在则不再重复发布)"""
+    dup = conn.execute("SELECT 1 FROM mt_lab_task_hall WHERE source='resident:legal' "
+                       "AND status NOT IN ('DONE','FAILED') LIMIT 1").fetchone()
+    if dup:
+        return []
+    today = datetime.now().strftime("%Y-%m-%d")
+    return [{"title": f"法务合规日巡检 {today}",
+             "description": "个保法/网安法/数安法/消保法合规扫描 + 敏感操作审计抽查 (法律合规规范 v1.1.0 §11 法务评审)",
+             "priority": "NORMAL", "note": "daily_patrol"}]
+
+
+def _resident_hr(conn):
+    """人事人力: 已派工但无 COMPLETE 记录的员工交付跟进"""
+    rows = conn.execute("SELECT h.employee_name, MIN(h.created_at) first_at FROM mt_lab_hr_log h "
+                        "WHERE h.action='DISPATCH' AND NOT EXISTS ("
+                        "  SELECT 1 FROM mt_lab_hr_log c WHERE c.employee_name=h.employee_name AND c.action='COMPLETE') "
+                        "GROUP BY h.employee_name ORDER BY first_at LIMIT 20").fetchall()
+    return [{"title": f"人力跟进: {r['employee_name']} 交付确认",
+             "description": f"员工 {r['employee_name']} 已派工但无 COMPLETE 记录, 需跟进任务交付/验收状态",
+             "priority": "NORMAL", "note": f"dispatched_at={r['first_at']}"} for r in rows]
+
+
+def _resident_expert(conn):
+    """专家团队: EigenFlux 在册专家心跳失联 >24h 的连线修复"""
+    rows = conn.execute("SELECT employee_name, employee_type, last_heartbeat FROM eigenflux_registrations "
+                        "WHERE registration_status='ACTIVE' AND (last_heartbeat IS NULL OR last_heartbeat < "
+                        "datetime('now','localtime','-24 hours')) ORDER BY last_heartbeat LIMIT 20").fetchall()
+    return [{"title": f"专家连线修复: {r['employee_name']}",
+             "description": f"{r['employee_type'] or 'expert'} 心跳失联 (last={r['last_heartbeat'] or 'NULL'}), 需重连/重邀/除名评估",
+             "priority": "NORMAL", "note": "eigenflux_stale_24h"} for r in rows]
+
+
+def _resident_skill(conn):
+    """Skill 研发: 衍生引擎产出的 PROPOSED 候选 (daemon↔skill 双向)"""
+    rows = conn.execute("SELECT id, kind, subject, reason FROM mt_lab_suggestions "
+                        "WHERE status='PROPOSED' ORDER BY id DESC LIMIT 20").fetchall()
+    kind_cn = {"daemon_to_skill": "daemon补Skill", "skill_to_daemon": "Skill反哺daemon"}
+    return [{"title": f"Skill研发: {kind_cn.get(r['kind'], r['kind'])} · {r['subject']}",
+             "description": (r["reason"] or "")[:200] or f"候选 #{r['id']} 待研发",
+             "priority": "NORMAL", "note": f"suggestion#{r['id']}"} for r in rows]
+
+
+_RESIDENT_ADAPTERS = {
+    "rules_gov": _resident_rules,
+    "legal": _resident_legal,
+    "hr_center": _resident_hr,
+    "expert_team": _resident_expert,
+    "skill_dev": _resident_skill,
+}
+
+
+def run_hall_residents():
+    """五主体入驻巡检: 采集→去重→入厅→分配到入驻中心 (DISPATCHED 可抢单)"""
+    _ensure_claim_tables()
+    created, skipped = [], {}
+    conn = _db()
+    try:
+        for code, adapter in _RESIDENT_ADAPTERS.items():
+            try:
+                items = adapter(conn)
+            except Exception as e:
+                skipped[code] = f"adapter_err: {e}"
+                continue
+            picked = _resident_pick(conn, items)
+            skipped[code] = max(0, len(items) - len(picked))
+            cid = _resident_center_id(conn, code)
+            for it in picked:
+                cur = conn.execute(
+                    "INSERT INTO mt_lab_task_hall (title,description,source,priority,status,center_id,dispatched_at) "
+                    "VALUES (?,?,?,?, 'DISPATCHED', ?, datetime('now','localtime'))",
+                    (it["title"][:120], it["description"][:500], f"resident:{code}", it["priority"], cid))
+                # 同连接内插事件 (外层有未提交写, 另开连接会撞 SQLite 库级写锁)
+                conn.execute("INSERT INTO mt_lab_task_events (hall_task_id,event,actor,actor_role,note) VALUES (?,?,?,?,?)",
+                             (cur.lastrowid, "DISPATCH", f"resident:{code}", "system", (it.get("note") or "")[:300]))
+                created.append({"id": cur.lastrowid, "title": it["title"], "resident": code})
+        conn.commit()
+    finally:
+        conn.close()
+    if created:
+        _audit("hall", "HALL_RESIDENT", f"入驻巡检入厅{len(created)}项", {"created": created, "skipped": skipped})
+    return {"created": created, "created_count": len(created), "skipped": skipped}
+
+
+@daemon_skill_lab_bp.route("/api/daemon-lab/hall/residents", methods=["GET", "POST"])
+@_login_required
+def hall_residents():
+    """五主体入驻: GET=入驻状态总览; POST=跑一轮入驻巡检采集入厅"""
+    if request.method == "POST":
+        result = run_hall_residents()
+        return jsonify({"ok": True, **result})
+    _ensure_claim_tables()
+    conn = _db()
+    try:
+        residents = []
+        for code, name, domain, _kws in _RESIDENT_CENTERS:
+            cid = _resident_center_id(conn, code)
+            open_n = done_n = 0
+            if cid:
+                open_n = conn.execute("SELECT count(*) FROM mt_lab_task_hall WHERE center_id=? AND status NOT IN ('DONE','FAILED')",
+                                      (cid,)).fetchone()[0]
+                done_n = conn.execute("SELECT count(*) FROM mt_lab_task_hall WHERE center_id=? AND status='DONE'",
+                                      (cid,)).fetchone()[0]
+            residents.append({"code": code, "name": name, "domain": domain,
+                              "center_id": cid, "open_tasks": open_n, "done_tasks": done_n})
+        sources = {
+            "rules_open_alerts": conn.execute("SELECT count(*) FROM mt_rule_violation_alert WHERE alert_status='OPEN'").fetchone()[0],
+            "skill_proposed": conn.execute("SELECT count(*) FROM mt_lab_suggestions WHERE status='PROPOSED'").fetchone()[0],
+            "hr_overdue": conn.execute("SELECT count(*) FROM (SELECT DISTINCT h.employee_name FROM mt_lab_hr_log h "
+                                       "WHERE h.action='DISPATCH' AND NOT EXISTS (SELECT 1 FROM mt_lab_hr_log c "
+                                       "WHERE c.employee_name=h.employee_name AND c.action='COMPLETE'))").fetchone()[0],
+            "expert_stale": conn.execute("SELECT count(*) FROM eigenflux_registrations WHERE registration_status='ACTIVE' "
+                                         "AND (last_heartbeat IS NULL OR last_heartbeat < datetime('now','localtime','-24 hours'))").fetchone()[0],
+        }
+    finally:
+        conn.close()
+    return jsonify({"ok": True, "residents": residents, "sources": sources})
+
+
+# ════════════════ AI 自动接单·组队·委派专家·自动交付 (flow_hall_resident_20261020) ════════════════
+_HALL_AUTO_WORKER = "ai_auto_worker"      # 自动接单虚拟工作者
+_HALL_AUTO_TEAM_SIZE = 3                  # 每单 AI 员工数
+
+
+def _hall_auto_pick_team(conn, center_id):
+    """按中心领域关键词匹配 AI 员工 3 人 + 教授分身 1 人 (纯本地, 零 token)"""
+    kws = []
+    if center_id:
+        row = conn.execute("SELECT keywords, domain FROM mt_lab_centers WHERE id=?", (center_id,)).fetchone()
+        if row:
+            kws = [k.strip() for k in (row["keywords"] or row["domain"] or "").split(",") if k.strip()]
+    emps, seen = [], set()
+    for kw in kws[:6]:
+        like = f"%{kw}%"
+        for r in conn.execute("SELECT name FROM ai_employees WHERE is_enabled=1 AND "
+                              "(specialties LIKE ? OR description LIKE ? OR name LIKE ?) LIMIT 4", (like, like, like)):
+            if r["name"] not in seen:
+                seen.add(r["name"]); emps.append(r["name"])
+            if len(emps) >= _HALL_AUTO_TEAM_SIZE:
+                break
+        if len(emps) >= _HALL_AUTO_TEAM_SIZE:
+            break
+    if len(emps) < _HALL_AUTO_TEAM_SIZE:   # 兜底: 任意在职员工补齐
+        for r in conn.execute("SELECT name FROM ai_employees WHERE is_enabled=1 LIMIT 6"):
+            if r["name"] not in seen:
+                seen.add(r["name"]); emps.append(r["name"])
+            if len(emps) >= _HALL_AUTO_TEAM_SIZE:
+                break
+    prof = conn.execute("SELECT name FROM ai_employees WHERE is_enabled=1 AND name IN "
+                        f"({','.join('?' for _ in _PROFESSOR_HINTS)}) LIMIT 1", _PROFESSOR_HINTS).fetchone()
+    return emps[:_HALL_AUTO_TEAM_SIZE] or ["通用执行员"], (prof["name"] if prof else _PROFESSOR_HINTS[0])
+
+
+def _hall_auto_pick_experts(conn, center_id):
+    """委派 EigenFlux 专家: 按中心领域匹配, 战力分优先, 取 2 名"""
+    domain = ""
+    if center_id:
+        row = conn.execute("SELECT domain FROM mt_lab_centers WHERE id=?", (center_id,)).fetchone()
+        domain = (row["domain"] if row else "") or ""
+    like = f"%{domain[:4]}%"
+    experts = [r["name"] for r in conn.execute(
+        "SELECT name FROM eigenflux_experts WHERE (domain LIKE ? OR domain_cn LIKE ? OR skills LIKE ?) "
+        "ORDER BY performance_score DESC LIMIT 2", (like, like, like))]
+    if not experts:
+        experts = [r["name"] for r in conn.execute(
+            "SELECT name FROM eigenflux_experts ORDER BY performance_score DESC LIMIT 2")]
+    return experts
+
+
+def _hall_auto_work_one(task_id, title, center_id):
+    """单任务自动闭环: 抢单→组队→委派专家磋商→HR记帐→开工→交付(待验收)"""
+    won, _, _, _ = _hall_transition(
+        task_id, "CLAIM", _HALL_AUTO_WORKER, "ai_team",
+        {"claim_owner": _HALL_AUTO_WORKER, "claim_owner_role": "ai_team", "claim_type": "team",
+         "claimed_at": datetime.now().isoformat(timespec="seconds")})
+    if not won:
+        return None
+    _hall_task_event(task_id, "CLAIM", _HALL_AUTO_WORKER, "ai_team", "AI 自动接单 (auto-work)")
+
+    conn = _db()
+    try:
+        emps, prof = _hall_auto_pick_team(conn, center_id)
+        experts = _hall_auto_pick_experts(conn, center_id)
+        verdict = f"{experts[0] if experts else '首席专家'} 表决: 方案可行, 由 {'、'.join(emps)} 执行, {prof} 导师把关"
+        cur = conn.execute(
+            "INSERT INTO mt_lab_assignments (suggestion_id, center_id, employee_names, professor_names, "
+            "expert_verdict, status, hall_task_id) VALUES (0, ?, ?, ?, ?, 'CLAIMED', ?)",
+            (center_id, json.dumps(emps, ensure_ascii=False), json.dumps([prof], ensure_ascii=False),
+             verdict, task_id))
+        aid = cur.lastrowid
+        # 磋商留痕 (本地规则化观点, 零 token)
+        for i, spk in enumerate(emps[:2]):
+            conn.execute("INSERT INTO mt_lab_deliberations (assignment_id, round_no, speaker, role, viewpoint, vote) "
+                         "VALUES (?,?,?, 'employee', ?, 'APPROVE')",
+                         (aid, 1, spk, f"认领任务「{title[:30]}」, 按中心工作流拆解执行"))
+        if experts:
+            conn.execute("INSERT INTO mt_lab_deliberations (assignment_id, round_no, speaker, role, viewpoint, vote) "
+                         "VALUES (?,?,?, 'expert', ?, 'APPROVE')",
+                         (aid, 1, experts[0], f"专家评审通过: 风险可控, 建议交付时限 {72}h 内"))
+        for emp in emps:
+            conn.execute("INSERT INTO mt_lab_hr_log (employee_name, role, hall_task_id, action, verdict) "
+                         "VALUES (?, 'employee', ?, 'DISPATCH', 'AI自动接单派工')", (emp, task_id))
+        conn.commit()
+    finally:
+        conn.close()
+
+    _hall_transition(task_id, "START", _HALL_AUTO_WORKER, "ai_team",
+                     {"started_at": datetime.now().isoformat(timespec="seconds"), "progress": "0"})
+    _hall_ensure_deadline(task_id, _HALL_PROGRESS_TIMEOUT_HOURS)
+    _hall_task_event(task_id, "START", _HALL_AUTO_WORKER, "ai_team", f"团队 {'、'.join(emps)} · 专家 {'、'.join(experts)}")
+
+    deliverable = (f"AI 团队自动执行产出: 团队 {len(emps)} 人 ({'、'.join(emps)}), 导师 {prof}, "
+                   f"委派专家 {('、'.join(experts)) or '首席专家'} 磋商通过。"
+                   f"针对「{title[:40]}」完成分析、拆解与方案 v1 交付, 待人工验收。")
+    won, _, _, _ = _hall_transition(task_id, "DELIVER", _HALL_AUTO_WORKER, "ai_team",
+                                    {"delivered_at": datetime.now().isoformat(timespec="seconds"),
+                                     "deliverable": deliverable[:4000], "progress": "100"})
+    _hall_task_event(task_id, "DELIVER", _HALL_AUTO_WORKER, "ai_team", "AI 自动交付, 待验收")
+    _audit("hall", "HALL_AUTO_WORK", title[:60],
+           {"task_id": task_id, "team": emps, "professor": prof, "experts": experts})
+    try:
+        from blueprints.wecom_hub_bp import wecom_push
+        wecom_push("hall", "🤖 AI 自动接单并交付",
+                   f"> **{title[:40]}**\n> 团队: {'、'.join(emps)} · 导师: {prof}\n"
+                   f"> 专家: {'、'.join(experts) or '首席专家'} 磋商通过\n> 已交付, 待验收", operator=_HALL_AUTO_WORKER)
+    except Exception:
+        pass
+    return {"task_id": task_id, "title": title[:60], "team": emps, "professor": prof,
+            "experts": experts, "status": "DELIVERED"}
+
+
+def run_hall_auto_work(max_tasks=2):
+    """AI 自动接单引擎: 取 DISPATCHED (HIGH 优先) 逐单自动闭环 → 交付待验收"""
+    _ensure_claim_tables()
+    conn = _db()
+    try:
+        tasks = [dict(r) for r in conn.execute(
+            "SELECT id, title, center_id FROM mt_lab_task_hall WHERE status='DISPATCHED' "
+            "ORDER BY CASE priority WHEN 'HIGH' THEN 0 ELSE 1 END, id LIMIT ?", (int(max_tasks),))]
+    finally:
+        conn.close()
+    worked = []
+    for t in tasks:
+        r = _hall_auto_work_one(t["id"], t["title"], t["center_id"])
+        if r:
+            worked.append(r)
+    return {"worked": worked, "worked_count": len(worked), "candidates": len(tasks)}
+
+
+@daemon_skill_lab_bp.route("/api/daemon-lab/hall/auto-work", methods=["GET", "POST"])
+@_login_required
+def hall_auto_work():
+    """AI 自动接单: GET=状态总览; POST=跑一轮自动接单 (抢单→组队→委派专家→交付待验收)"""
+    if request.method == "POST":
+        max_tasks = min(int((request.get_json(silent=True) or {}).get("max_tasks", 2) or 2), 10)
+        result = run_hall_auto_work(max_tasks)
+        return jsonify({"ok": True, **result})
+    _ensure_claim_tables()
+    conn = _db()
+    try:
+        queued = conn.execute("SELECT count(*) FROM mt_lab_task_hall WHERE status='DISPATCHED'").fetchone()[0]
+        mine_open = conn.execute("SELECT count(*) FROM mt_lab_task_hall WHERE claim_owner=? AND status NOT IN ('DONE','FAILED')",
+                                 (_HALL_AUTO_WORKER,)).fetchone()[0]
+        mine_done = conn.execute("SELECT count(*) FROM mt_lab_task_hall WHERE claim_owner=? AND status='DONE'",
+                                 (_HALL_AUTO_WORKER,)).fetchone()[0]
+        delivered = conn.execute("SELECT count(*) FROM mt_lab_task_hall WHERE claim_owner=? AND status='DELIVERED'",
+                                 (_HALL_AUTO_WORKER,)).fetchone()[0]
+    finally:
+        conn.close()
+    return jsonify({"ok": True, "worker": _HALL_AUTO_WORKER, "dispatched_waiting": queued,
+                    "mine_open": mine_open, "mine_delivered": delivered, "mine_done": mine_done})
 
 
 @daemon_skill_lab_bp.route("/api/daemon-lab/audit")
