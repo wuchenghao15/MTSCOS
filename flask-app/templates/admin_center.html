@@ -393,6 +393,10 @@
             <button onclick="wecomSave(this)" style="border:1px solid #06b6d4;background:rgba(6,182,212,.1);color:#06b6d4;border-radius:8px;font-size:11px;padding:6px 14px;cursor:pointer">💾 保存配置</button>
             <button onclick="wecomTest(this)" style="border:1px solid #d97706;background:rgba(217,119,6,.08);color:#d97706;border-radius:8px;font-size:11px;padding:6px 14px;cursor:pointer">📡 测试推送</button>
             <button onclick="wecomMeet(this)" style="border:1px solid #7c3aed;background:rgba(124,58,237,.08);color:#7c3aed;border-radius:8px;font-size:11px;padding:6px 14px;cursor:pointer">🔔 自动开会</button>
+            <button id="wecom-approval-btn" onclick="wecomApprovalToggle(this)" style="border:1px solid #dc2626;background:rgba(220,38,38,.06);color:#dc2626;border-radius:8px;font-size:11px;padding:6px 14px;cursor:pointer">🛡 审批门: ?</button>
+        </div>
+        <div style="font-size:10px;color:#94a3b8;margin-bottom:8px">
+            🌉 指令桥: POST /api/wecom/callback (token 校验) · 白名单指令 daemon_status/hall/patrol/meeting/exam/approve/reject · 流水 <a href="/api/wecom/commands" target="_blank" style="color:#06b6d4">/api/wecom/commands</a>
         </div>
         <div id="wecom-board" style="font-size:12px;color:#64748b">加载中…</div>
     </div>
@@ -402,7 +406,10 @@
             if(!d.ok) throw 0;
             document.getElementById('wecom-chips').textContent =
                 (d.configured?'✅ 已配置':'⚠️ 未配置') + (d.enabled?' · 启用中':' · 已停用') +
-                ` · 发送 ${Object.values(d.send_stats).reduce((a,b)=>a+b,0)||0} 条 · 开会 ${(d.meetings||[]).length} 场`;
+                ` · 发送 ${Object.values(d.send_stats).reduce((a,b)=>a+b,0)||0} 条 · 开会 ${(d.meetings||[]).length} 场` +
+                (d.approval_required?' · 🛡 审批门开':' · 审批门关');
+            const ab=document.getElementById('wecom-approval-btn');
+            if(ab) ab.textContent = d.approval_required ? '🛡 审批门: 开 (点击关闭)' : '🛡 审批门: 关 (点击开启)';
             if(d.webhook_masked) document.getElementById('wecom-url').placeholder = '当前: '+d.webhook_masked+' (输入新地址可更换)';
             const sends = (d.recent_sends||[]).map(s=>
                 `<div style="display:flex;gap:8px;padding:3px 0;border-bottom:1px dashed rgba(0,0,0,.05)">
@@ -441,6 +448,17 @@
             else alert('失败: '+(d.error||''));
             loadWecom(); })
         .catch(()=>{ btn.disabled=false; alert('请求失败'); });
+    }
+    function wecomApprovalToggle(btn){
+        const cur = btn.textContent.includes('开 (点击关闭)');
+        if(!confirm(cur ? '关闭审批门: 高风险建议将直接自动挂载, 确认?' : '开启审批门: 风险分≥0.5 的挂载建议将推送企微群等待你「同意/驳回」, 确认?')) return;
+        btn.disabled=true;
+        fetch('/api/wecom/config',{method:'POST',headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({key:'wecom_approval_required',value:cur?'0':'1'})})
+        .then(r=>r.json()).then(d=>{
+            btn.disabled=false;
+            if(d.ok) loadWecom(); else alert('失败: '+(d.error||''));
+        }).catch(()=>{ btn.disabled=false; alert('请求失败'); });
     }
     loadWecom();
     </script>

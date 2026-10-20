@@ -217,10 +217,23 @@ conn.commit(); conn.close()
 import sqlite3, os, time
 conn = sqlite3.connect(APP_DB); conn.execute('PRAGMA busy_timeout=5000')
 stale = conn.execute("SELECT process_name FROM mt_ai_smart_mount_processes WHERE current_state='FAILED' AND restart_count<5").fetchall()
+repaired = []
 for r in stale:
     _log(f"[auto_repair] FAILED→STOPPED: {r[0]}")
     conn.execute("UPDATE mt_ai_smart_mount_processes SET current_state='STOPPED', restart_count=restart_count+1 WHERE process_name=?", (r[0],))
+    repaired.append(r[0])
 conn.commit(); conn.close()
+# 企微×仙女座 P2 (flow_wecom_andromeda_20261020): 修复事件播报企微群
+if repaired:
+    try:
+        import sys as _s
+        _fa = os.path.dirname(os.path.dirname(APP_DB))
+        if _fa not in _s.path: _s.path.insert(0, _fa)
+        from blueprints.wecom_hub_bp import wecom_push as _wp
+        _wp('smart_mount', '🔧 仙女座 · daemon自动修复',
+            '> 本轮修复 **%d** 个 FAILED daemon:\n%s' % (len(repaired), '\\n'.join('- %s → STOPPED (待重挂载)' % n for n in repaired[:6])))
+    except Exception as _we:
+        print('[auto_repair] wecom skip:', _we)
 """,
         "inspect_cycle": 120,
     },
@@ -376,10 +389,44 @@ try:
     eigenflux = c.execute("SELECT COUNT(*) FROM mt_eigenflux_registrations").fetchone()[0]
     c.commit(); c.close()
     _log(f"[auto_hire] hired={hired} eigenflux_registered={eigenflux}")
+    # 企微×仙女座 P2 (flow_wecom_andromeda_20261020): 雇佣事件播报企微群
+    if hired:
+        try:
+            import sys as _s
+            _fa = os.path.dirname(os.path.dirname(APP_DB))
+            if _fa not in _s.path: _s.path.insert(0, _fa)
+            from blueprints.wecom_hub_bp import wecom_push as _wp
+            _wp('smart_mount', '🤖 仙女座 · AI自动雇佣',
+                '> 建议池直聘 **%d** 名新 AI 员工入职 (已标记 EVALUATED 防重复雇佣)' % hired)
+        except Exception as _we:
+            print('[auto_hire] wecom skip:', _we)
 except Exception as e:
     _log(f"[auto_hire] err: {e}")
 """,
         "inspect_cycle": 300,
+    },
+    {
+        "process_name": "sys_wecom_meeting",
+        "duty": "企微每日例会 - 每日09:00后首轮自动召开全域例会(含周聚合), 纪要推送企微群并落库",
+        "work_body": """
+import sqlite3 as _sq, datetime as _dt, os as _o, sys as _s
+_log("[wecom_meeting] 检查今日例会...")
+c = _sq.connect(APP_DB, timeout=10); c.execute('PRAGMA busy_timeout=5000')
+row = c.execute("SELECT MAX(created_at) FROM mt_wecom_meetings").fetchone()
+c.close()
+today = _dt.datetime.now().strftime('%Y-%m-%d')
+last = (row[0] or '')[:10] if row else ''
+hour = _dt.datetime.now().hour
+if last == today or hour < 9:
+    _log(f"[wecom_meeting] skip (last={last} hour={hour})")
+else:
+    _fa = _o.path.dirname(_o.path.dirname(APP_DB))
+    if _fa not in _s.path: _s.path.insert(0, _fa)
+    from blueprints.wecom_hub_bp import run_auto_meeting
+    r = run_auto_meeting(topic='仙女座每日例会', convener='sys_wecom_meeting')
+    _log(f"[wecom_meeting] done: {r}")
+""",
+        "inspect_cycle": 600,
     },
     {
         "process_name": "sys_eigenflux_network",
@@ -3262,11 +3309,42 @@ def scan_and_mount() -> Dict:
     # 2. 收集EigenFlux专家权重
     expert_weights = collect_expert_weights()
 
+    # P4 审批闭环 (flow_wecom_andromeda_20261020): 审批开关读取 (数据中心化配置)
+    _approval_on = False
+    _req_approval = None
+    try:
+        import sys as _s2
+        _fa2 = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        if _fa2 not in _s2.path:
+            _s2.path.insert(0, _fa2)
+        from blueprints.wecom_hub_bp import _cfg as _wcfg, request_approval as _req_appr
+        _approval_on = _wcfg("wecom_approval_required", "0") == "1"
+        _req_approval = _req_appr
+    except Exception as _ae:
+        sm_log(f'  approval cfg read err: {_ae}')
+
     # 3. 逐条决策
     for sug in suggestions:
         decision = smart_mount_decision(sug, expert_weights)
 
         if decision["decision"] == "MOUNT":
+            # P4: 审批开关开启 且 风险分>=0.5 → 转企微审批, 不直接挂载
+            if _approval_on and _req_approval and float(sug.get("risk_score") or 0) >= 0.5:
+                try:
+                    sug["final_score"] = decision["final_score"]
+                    _req_approval(sug)
+                    with _LOCK:
+                        _c4 = _get_conn()
+                        _c4.execute("UPDATE mt_ai_suggestion_pool SET status='DEFERRED' WHERE suggestion_id=? AND status='EVALUATED'", (sug["suggestion_id"],))
+                        _c4.commit()
+                        _c4.close()
+                    result["pending_approval"] = result.get("pending_approval", 0) + 1
+                    decision["decision"] = "PENDING_APPROVAL"
+                    _log(f"[APPROVAL] suggestion_id={sug['suggestion_id']} → 企微审批 (risk={sug.get('risk_score')})")
+                    result["details"].append(decision)
+                    continue
+                except Exception as _ape:
+                    sm_log(f'  approval gate err: {_ape} → 直接挂载')
             # 自动生成daemon脚本
             process_name = f"auto_{sug.get('direction', 'gen')}_{sug['suggestion_id']}"
             duty = sug.get("suggestion", "")[:100]

@@ -53,6 +53,19 @@ _DDL = [
     convener TEXT,
     created_at TEXT DEFAULT (datetime('now','localtime'))
 )""",
+    # 指令桥 (flow_wecom_andromeda_20261020 P1): 企微上行指令 → 白名单执行器
+    """CREATE TABLE IF NOT EXISTS mt_wecom_commands (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    cmd TEXT NOT NULL,               -- 白名单指令: daemon_status/hall/patrol/meeting/exam/approve/reject
+    args_json TEXT,                  -- 参数 (如 approve: {"suggestion_id": N})
+    source TEXT DEFAULT 'callback',  -- callback / api / approval_gate
+    operator TEXT DEFAULT 'wecom',
+    status TEXT DEFAULT 'PENDING',   -- PENDING/RUNNING/DONE/REJECTED/FAILED
+    result_md TEXT,                  -- 执行结果 (markdown, 回推企微群)
+    error TEXT,
+    created_at TEXT DEFAULT (datetime('now','localtime')),
+    executed_at TEXT
+)""",
 ]
 
 
@@ -227,6 +240,8 @@ def wecom_status():
         return jsonify({"ok": True, "configured": url.startswith("http"),
                         "webhook_masked": (url[:42] + "…") if len(url) > 42 else url,
                         "enabled": _cfg("enabled", "1") == "1",
+                        "approval_required": _cfg("wecom_approval_required", "0") == "1",
+                        "callback_token_set": bool(_cfg("callback_token")),
                         "send_stats": stats, "recent_sends": recent, "meetings": meetings})
     finally:
         conn.close()
@@ -244,8 +259,13 @@ def wecom_config_set():
     _ensure_tables()
     _set_cfg("webhook_url", url, operator)
     _set_cfg("enabled", "1" if data.get("enabled", True) else "0", operator)
+    # 指令桥/审批闭环配置 (flow_wecom_andromeda_20261020): 白名单键才可写
+    extra_key = (data.get("key") or "").strip()
+    if extra_key in ("callback_token", "wecom_approval_required"):
+        _set_cfg(extra_key, str(data.get("value") or ""), operator)
     _audit("wecom", "CONFIG_SET", f"webhook={'已设' if url else '已清'}",
-           {"enabled": bool(data.get("enabled", True)), "operator": operator})
+           {"enabled": bool(data.get("enabled", True)), "operator": operator,
+            "extra": {extra_key: str(data.get("value") or "")} if extra_key else {}})
     return jsonify({"ok": True, "message": "配置已存数据中心库"})
 
 
@@ -292,5 +312,221 @@ def wecom_meeting_detail(mid):
         if not r:
             return jsonify({"ok": False, "error": "会议不存在"}), 404
         return jsonify({"ok": True, "meeting": dict(r)})
+    finally:
+        conn.close()
+
+
+# ══════════ 指令桥 (flow_wecom_andromeda_20261020 P1) ══════════
+# 企微上行通道: 企微自建应用回调 → token 校验 → 白名单指令执行 → 结果回推企微群
+
+_CMD_WHITELIST = ("daemon_status", "hall", "patrol", "meeting", "exam", "approve", "reject")
+
+
+def _cmd_daemon_status():
+    """P2 配套: 仙女座 daemon 全景 (供群内查询)"""
+    conn = _db()
+    try:
+        by_state = {r["status"]: r["n"] for r in conn.execute(
+            "SELECT status, count(*) n FROM mt_daemon_registry GROUP BY status")}
+        bad = [dict(r) for r in conn.execute(
+            "SELECT process_name, status FROM mt_daemon_registry "
+            "WHERE status IN ('FAILED','TIMEOUT','STOPPED') LIMIT 8")]
+        total = conn.execute("SELECT count(*) FROM mt_daemon_registry").fetchone()[0]
+    finally:
+        conn.close()
+    lines = [f"> 注册 **{total}** 个 · " + " · ".join(f"{k}:{v}" for k, v in sorted(by_state.items())) or "空"]
+    for b in bad:
+        lines.append(f"- ⚠️ {b['process_name']} [{b['status']}]")
+    return "\n".join(lines) if len(lines) > 1 else lines[0]
+
+
+def _cmd_hall():
+    from blueprints.daemon_skill_lab_bp import run_hall_auto
+    auto = run_hall_auto()
+    return (f"> 归集 **{auto['ingested']}** 项 · 分配 **{auto['dispatched']}** 项\n" +
+            "\n".join(f"- {r['task'][:28]} → {r['center']} [{r['status']}]" for r in auto["results"][:6]) or "无分配")
+
+
+def _cmd_patrol():
+    return _cmd_hall()
+
+
+def _cmd_meeting():
+    result = run_auto_meeting(topic="企微指令 · 即时例会", convener="wecom_command")
+    return f"> 会议 #{result.get('meeting_id')} 已召开, 纪要已推送群内 (列出 {result.get('sections', '全域')} 快照)"
+
+
+def _cmd_exam():
+    from engines.ai_exam_auto_engine import run_exam_auto
+    s = run_exam_auto()
+    cal = s["calendar"]
+    return (f"> 窗口 **{'/'.join(cal['exam_types'])}** · 入库 **{s['total_inserted']}** 题 (含结题讲解) · "
+            f"大厅#{s['hall_task_id'] or '-'} · 备课#{s['prep_plan_id'] or '-'}")
+
+
+def _cmd_approve(args):
+    """P4 审批闭环: 群内「同意」→ 放行挂载 (建议 DEFERRED → EVALUATED, 下轮 scan_and_mount 自动挂载)"""
+    sid = args.get("suggestion_id")
+    if not sid:
+        return "缺少 suggestion_id"
+    conn = _db()
+    try:
+        cur = conn.execute("UPDATE mt_ai_suggestion_pool SET status='EVALUATED' "
+                           "WHERE suggestion_id=? AND status='DEFERRED'", (sid,))
+        conn.commit()
+        n = cur.rowcount
+    except sqlite3.Error as e:
+        return f"建议池更新失败: {e}"
+    finally:
+        conn.close()
+    if n:
+        return f"> 建议 **#{sid}** 已同意放行, 下轮扫描自动挂载 🚀"
+    return f"> 建议 #{sid} 不在待审批状态 (可能已处理)"
+
+
+def _cmd_reject(args):
+    sid = args.get("suggestion_id")
+    if not sid:
+        return "缺少 suggestion_id"
+    conn = _db()
+    try:
+        cur = conn.execute("UPDATE mt_ai_suggestion_pool SET status='REJECTED' "
+                           "WHERE suggestion_id=? AND status='DEFERRED'", (sid,))
+        conn.commit()
+        n = cur.rowcount
+    finally:
+        conn.close()
+    return f"> 建议 **#{sid}** 已驳回 🛑" if n else f"> 建议 #{sid} 不在待审批状态"
+
+
+_CMD_DISPATCH = {
+    "daemon_status": lambda a: _cmd_daemon_status(),
+    "hall": _cmd_hall,
+    "patrol": _cmd_patrol,
+    "meeting": _cmd_meeting,
+    "exam": _cmd_exam,
+    "approve": _cmd_approve,
+    "reject": _cmd_reject,
+}
+
+
+def run_wecom_command(cmd, args=None, operator="wecom", source="callback"):
+    """指令桥执行器: 落库 → 白名单分发 → 结果回推企微群。永不抛异常。"""
+    _ensure_tables()
+    args = args or {}
+    conn = _db()
+    try:
+        cur = conn.execute("INSERT INTO mt_wecom_commands (cmd,args_json,source,operator,status) VALUES (?,?,?,?,?)",
+                           (cmd, json.dumps(args, ensure_ascii=False), source, operator,
+                            "REJECTED" if cmd not in _CMD_WHITELIST else "RUNNING"))
+        cid = cur.lastrowid
+        conn.commit()
+    finally:
+        conn.close()
+    result_md, err = "", None
+    if cmd not in _CMD_WHITELIST:
+        err = f"指令不在白名单: {cmd}"
+        result_md = f"> ⛔ {err}"
+    else:
+        try:
+            result_md = _CMD_DISPATCH[cmd](args) or "(空结果)"
+        except Exception as e:
+            err = str(e)[:300]
+            result_md = f"> ⚠️ 指令执行失败: {err}"
+    conn = _db()
+    try:
+        conn.execute("UPDATE mt_wecom_commands SET status=?, result_md=?, error=?, executed_at=datetime('now','localtime') WHERE id=?",
+                     ("FAILED" if err else "DONE", result_md, err, cid))
+        conn.commit()
+    finally:
+        conn.close()
+    # 结果回推企微群
+    try:
+        wecom_push("command", f"📮 指令回执 · {cmd} #{cid}", result_md, operator=operator)
+    except Exception:
+        pass
+    try:
+        _audit("wecom", "CMD_" + cmd.upper(), "FAILED" if err else "DONE",
+               {"cmd": cmd, "args": args, "cid": cid, "error": err, "operator": operator})
+    except Exception:
+        pass
+    return {"ok": not err, "cmd_id": cid, "cmd": cmd, "result_md": result_md, "error": err}
+
+
+def request_approval(suggestion):
+    """P4 审批闭环 (供 smart_mount 引擎调用): 高风险建议 → 企微审批播报 + 待审批指令落库"""
+    _ensure_tables()
+    sid = suggestion.get("suggestion_id")
+    text = (suggestion.get("suggestion") or suggestion.get("suggestion_text") or "")[:120]
+    risk = float(suggestion.get("risk_score") or 0)
+    score = suggestion.get("final_score") or suggestion.get("total_score") or 0
+    conn = _db()
+    try:
+        conn.execute("INSERT INTO mt_wecom_commands (cmd,args_json,source,operator,status) VALUES (?,?,?,?,?)",
+                     ("approve", json.dumps({"suggestion_id": sid}, ensure_ascii=False),
+                      "approval_gate", "wecom", "PENDING"))
+        cid = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+        conn.commit()
+    finally:
+        conn.close()
+    wecom_push("approval", "🛡 仙女座挂载审批",
+               f"> 建议 **#{sid}** 综合分 {score} · 风险分 {risk}\n> 内容: {text}\n"
+               f"> 回复指令同意/驳回: `{{\"cmd\":\"approve\",\"args\":{{\"suggestion_id\":{sid}}}}}` (指令 #{cid})")
+    return cid
+
+
+@wecom_hub_bp.route("/api/wecom/callback", methods=["GET", "POST"])
+def wecom_callback():
+    """企微自建应用回调端点 (上行通道):
+    GET  = 企微 URLVerification (echostr 回显)
+    POST = 指令桥: {"token": "...", "cmd": "...", "args": {...}, "operator": "..."}
+    """
+    _ensure_tables()
+    if request.method == "GET":
+        return request.args.get("echostr", "ok")
+    data = request.get_json(silent=True) or {}
+    token_cfg = _cfg("callback_token")
+    if not token_cfg or data.get("token") != token_cfg:
+        return jsonify({"ok": False, "error": "callback token 校验失败"}), 403
+    cmd = (data.get("cmd") or "").strip()
+    if not cmd:
+        # 自由文本指令: "同意 #12" / "开会" 简易映射
+        text = (data.get("text") or "").strip()
+        if "同意" in text and "#" in text:
+            cmd, args = "approve", {"suggestion_id": text.split("#")[-1].strip()}
+        elif "驳回" in text and "#" in text:
+            cmd, args = "reject", {"suggestion_id": text.split("#")[-1].strip()}
+        elif "开会" in text:
+            cmd, args = "meeting", {}
+        elif "状态" in text:
+            cmd, args = "daemon_status", {}
+        else:
+            return jsonify({"ok": False, "error": "缺少 cmd 且文本未命中指令映射"}), 400
+        if isinstance(args.get("suggestion_id"), str) and args["suggestion_id"].isdigit():
+            args["suggestion_id"] = int(args["suggestion_id"])
+    else:
+        args = data.get("args") or {}
+        if cmd not in _CMD_WHITELIST:
+            result = run_wecom_command(cmd, args, operator=data.get("operator") or "wecom")
+            return jsonify(result), 400 if not result["ok"] else 200
+    result = run_wecom_command(cmd, args, operator=data.get("operator") or "wecom")
+    return jsonify(result), 200 if result["ok"] else 400
+
+
+@wecom_hub_bp.route("/api/wecom/commands")
+@_login_required
+def wecom_commands():
+    """指令流水: 回溯追责入口"""
+    _ensure_tables()
+    limit = min(int(request.args.get("limit", 30) or 30), 100)
+    conn = _db()
+    try:
+        rows = [dict(r) for r in conn.execute(
+            "SELECT id,cmd,args_json,source,operator,status,substr(result_md,1,120) result_md,error,created_at "
+            "FROM mt_wecom_commands ORDER BY id DESC LIMIT ?", (limit,))]
+        by_status = {r["status"]: r["n"] for r in conn.execute(
+            "SELECT status, count(*) n FROM mt_wecom_commands GROUP BY status")}
+        return jsonify({"ok": True, "by_status": by_status, "commands": rows,
+                        "whitelist": list(_CMD_WHITELIST)})
     finally:
         conn.close()
