@@ -66,11 +66,38 @@ SYNC_INTERVAL = 600  # 同步间隔: 10分钟
 # 1. 建表 (幂等)
 # ============================================================
 def ensure_edu_sync_tables() -> Dict[str, bool]:
-    """创建教辅同步相关表 (4张)"""
+    """创建教辅同步相关表 (4张) + 旧schema自动迁移"""
     results = {}
     with _LOCK:
         conn = sqlite3.connect(APP_DB, timeout=30)
         c = conn.cursor()
+
+        # ── 坏 schema 检测与重建 (flow_andromeda_gapfix_20261021) ──
+        # 根因: PROD 库残留旧版 mt_edu_sync_content/mt_edu_sync_log, content_id/sync_id 为
+        #   INTEGER PRIMARY KEY AUTOINCREMENT, 引擎写入字符串 ID ('EDU-K12-xxx') →
+        #   IntegrityError: datatype mismatch → daemon 长期停摆 (obsolete_old_register)。
+        #   早期 ALTER 补列无法修复 PK 类型 — 唯一正解是重建表。
+        # 策略: 先于 CREATE 执行; INTEGER PK 且 0 行 → DROP (下方 CREATE 重建正统版);
+        #       INTEGER PK 且有数据 → RENAME legacy 保留, CREATE 重建后人工搬迁。
+        _PK_TEXT_TABLES = {
+            "mt_edu_sync_content":      ("content_id", "mt_edu_sync_content_legacy"),
+            "mt_edu_sync_log":          ("sync_id", "mt_edu_sync_log_legacy"),
+        }
+        for _tbl, (_pk, _legacy) in _PK_TEXT_TABLES.items():
+            try:
+                _info = c.execute(f"PRAGMA table_info({_tbl})").fetchall()
+                if not _info:
+                    continue  # 表不存在, 下方 CREATE 会建正统版
+                _pk_row = next((r for r in _info if r[5] == 1), None)  # pk=1 的列
+                if _pk_row is None or str(_pk_row[2]).upper() not in ("INTEGER", "INT"):
+                    continue  # PK 已是 TEXT 或无 PK, 无需处理
+                _cnt = c.execute(f"SELECT COUNT(*) FROM {_tbl}").fetchone()[0]
+                if _cnt > 0:
+                    c.execute(f"ALTER TABLE {_tbl} RENAME TO {_legacy}")
+                c.execute(f"DROP TABLE IF EXISTS {_tbl}")
+                results[f"{_tbl}_rebuild"] = f"integer_pk_dropped rows_moved={_cnt}"
+            except Exception as _re:
+                results[f"{_tbl}_rebuild_err"] = str(_re)
 
         # 表1: 教辅内容同步主表
         c.execute("""
@@ -156,6 +183,7 @@ def ensure_edu_sync_tables() -> Dict[str, bool]:
 
         conn.commit()
         conn.close()
+
     return results
 
 

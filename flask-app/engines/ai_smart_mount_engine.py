@@ -477,6 +477,132 @@ except Exception as _e:
         "inspect_cycle": 600,
     },
     {
+        # flow_andromeda_gapfix_20261021 缺口1: edu_sync 曾因旧注册体系废弃而 STOPPED(obsolete_old_register),
+        #   现以 SYSTEM_REQ 常驻恢复 — 每600s 跑一轮教辅同步 (K12/高等/成人/文科/理化实验)
+        "process_name": "sys_edu_sync",
+        "duty": "教辅教改同步 - 每600s跑一轮 ai_edu_sync_engine sync (K12/高等/成人/文科/理化实验) 落库 mt_edu_sync_*",
+        "work_body": """
+_fa_dir = os.path.join(_PROJECT_ROOT, 'flask-app')
+_engine = os.path.join(_fa_dir, 'engines', 'ai_edu_sync_engine.py')
+try:
+    _r = subprocess.run([sys.executable, _engine, 'sync'],
+                        capture_output=True, text=True, timeout=560)
+    _tail = (_r.stdout or _r.stderr or '').strip().splitlines()
+    _log(f"[edu_sync] rc={_r.returncode} tail={_tail[-1] if _tail else '(empty)'}")
+except Exception as _e:
+    _log(f"[edu_sync] err: {_e}")
+""",
+        "inspect_cycle": 600,
+    },
+    {
+        # flow_andromeda_gapfix_20261021 缺口2: sys_wendaemon(自养活: hire_employee 6h + knowledge_ingest 30min)
+        #   曾 graceful shutdown 后无人拉起 — 本看门狗只做存活检测+拉起原引擎脚本, 不重复实现业务逻辑
+        "process_name": "sys_wendaemon_watchdog",
+        "duty": "自养活看门狗 - 每300s检测 sys_wendaemon(hire_employee+knowledge_ingest) 存活, 死亡自动拉起原引擎脚本(600s防风暴)",
+        "work_body": """
+_pid_f = None
+# 🔧 路径实测: sys_wendaemon.py 的 ROOT=flask-app → PID 实际写在 flask-app/_runtime/pids/,
+#    兼容旧位置项目根/_runtime/pids (双位置探测, 命中即用)
+for _cand in (os.path.join(_PROJECT_ROOT, 'flask-app', '_runtime', 'pids', 'sys_wendaemon.pid'),
+              os.path.join(_PROJECT_ROOT, '_runtime', 'pids', 'sys_wendaemon.pid')):
+    if os.path.exists(_cand):
+        _pid_f = _cand
+        break
+_wd_engine = os.path.join(_PROJECT_ROOT, 'flask-app', 'engines', 'sys_wendaemon.py')
+_wd_log = os.path.join(_PROJECT_ROOT, 'flask-app', '_runtime', 'logs', 'sys_wendaemon.stdout.log')
+_alive = False
+if _pid_f:
+    try:
+        _pid = int(open(_pid_f).read().strip())
+        os.kill(_pid, 0)
+        _alive = True
+    except Exception:
+        _alive = False
+if _alive:
+    _log("[wendaemon_watchdog] sys_wendaemon alive")
+elif not os.path.exists(_wd_engine):
+    _log("[wendaemon_watchdog] engine script missing, skip")
+else:
+    # 防拉起风暴: 600s 内最多拉起一次 (stamp 固定在 flask-app/_runtime/pids/, 与 _pid_f 是否存在无关)
+    _stamp = os.path.join(_PROJECT_ROOT, 'flask-app', '_runtime', 'pids', 'sys_wendaemon.pid.laststart')
+    _now = time.time()
+    try:
+        _last = float(open(_stamp).read().strip())
+    except Exception:
+        _last = 0
+    if _now - _last > 600:
+        try:
+            os.makedirs(os.path.dirname(_wd_log), exist_ok=True)
+            _lf = open(_wd_log, 'a')
+            subprocess.Popen([sys.executable, _wd_engine], stdout=_lf, stderr=_lf,
+                             cwd=os.path.dirname(_wd_engine), start_new_session=True)
+            with open(_stamp, 'w') as _sf:
+                _sf.write(str(_now))
+            _log("[wendaemon_watchdog] sys_wendaemon DOWN -> relaunched (pid 由其自写 PID 文件)")
+        except Exception as _e:
+            _log(f"[wendaemon_watchdog] relaunch err: {_e}")
+    else:
+        _log("[wendaemon_watchdog] sys_wendaemon DOWN, 防风暴窗口内跳过")
+""",
+        "inspect_cycle": 300,
+    },
+    {
+        # flow_andromeda_gapfix_20261021 缺口3: Arduino detect/sync daemon 因 no_arduino_hardware 停摆。
+        #   软件补偿: 每60s轻扫 ioreg idVendor 十进制精确匹配 VID 白名单(与 vikey_official._ARD_VID_WHITELIST 同源),
+        #   硬件插入(状态翻转)立即跑一轮 detect scan + arduino sync; 持续在位每1800s复刷; 无硬件零负载零空跑
+        "process_name": "sys_arduino_wakeup",
+        "duty": "Arduino软件补偿 - 每60s扫ioreg VID白名单(12家), 硬件插入自动跑 detect scan+sync 唤醒链路; 无硬件零开销",
+        "work_body": """
+# ioreg idVendor 为十进制: 0x2341→9025 0x2a03→10755 0x1a86→6790 0x10c4→4292 0x0403→1027
+#   0x303a→12346 0x067b→1659 0x0483→1155 0x03eb→1003 0x239a→9114 0x1b4f→6991 0x2886→10374
+_VID_DEC = ('9025', '10755', '6790', '4292', '1027', '12346',
+            '1659', '1155', '1003', '9114', '6991', '10374')
+_state_f = os.path.join(_PROJECT_ROOT, '_runtime', 'arduino_wakeup_state.json')
+try:
+    _raw = subprocess.run(['ioreg', '-r', '-c', 'IOUSBHostDevice'],
+                          capture_output=True, text=True, timeout=20).stdout.lower()
+    _present = any(('idvendor" = ' + v) in _raw for v in _VID_DEC)
+except Exception as _ie:
+    _log(f"[ard_wakeup] ioreg err: {_ie}")
+    _present = None
+if _present is None:
+    pass  # ioreg 失败, 本轮不更新状态
+else:
+    _st = {'present': False, 'last_run': 0}
+    try:
+        _st = json.loads(open(_state_f).read())
+    except Exception:
+        pass
+    _prev = bool(_st.get('present', False))
+    if _present:
+        _now = time.time()
+        _first_insert = (not _prev)
+        _due_refresh = (_now - float(_st.get('last_run', 0)) > 1800)
+        if _first_insert or _due_refresh:
+            _fa_dir = os.path.join(_PROJECT_ROOT, 'flask-app')
+            try:
+                _r1 = subprocess.run([sys.executable, os.path.join(_fa_dir, 'engines', 'ai_arduino_detect_engine.py'), 'scan'],
+                                     capture_output=True, text=True, timeout=300)
+                _r2 = subprocess.run([sys.executable, os.path.join(_fa_dir, 'engines', 'ai_arduino_engine.py'), 'sync'],
+                                     capture_output=True, text=True, timeout=300)
+                _st['last_run'] = _now
+                _log(f"[ard_wakeup] {'插入' if _first_insert else '刷新'}触发: detect rc={_r1.returncode} sync rc={_r2.returncode}")
+            except Exception as _e:
+                _log(f"[ard_wakeup] engine run err: {_e}")
+        _st['present'] = True
+    else:
+        if _prev:
+            _log("[ard_wakeup] Arduino 硬件移除, 回到零负载监听")
+        _st['present'] = False
+    try:
+        with open(_state_f, 'w') as _sf:
+            json.dump(_st, _sf)
+    except Exception:
+        pass
+""",
+        "inspect_cycle": 60,
+    },
+    {
         "process_name": "sys_copy_inspection",
         "duty": "文案合规巡检 - 每900s扫描模板硬编码中文",
         "work_body": """
@@ -2020,6 +2146,9 @@ log.info(f'🧠 思维闭环 ✅ 完成! elapsed={elapsed}ms{ver_str}')
     # ════════════════════════════════════════════════════════════════════
     {
         "process_name": "sys_andromeda_life_daemon",
+        # 🔧 flow_andromeda_gapfix_20261021: 补 duty 键 — mount_system_required 读 req["duty"],
+        #    此条目原只有 daemon_duty 键, 每轮 mount 报 KeyError 'duty' → 脚本生成失败
+        "duty": "仙女座生命循环引擎 — 繁衍/辩论/博弈/顿悟/生长/交友/拜师/脑库投喂",
         "daemon_duty": "仙女座生命循环引擎 — 繁衍/辩论/博弈/顿悟/生长/交友/拜师/脑库投喂",
         "priority": "high",
         "inspect_cycle": 2400,    # 40min 一轮 (生命循环重)
