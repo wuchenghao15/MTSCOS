@@ -2406,6 +2406,8 @@ _CSRF_EXEMPT_PATHS = [
     # flow_hall_20261020: 任务大厅纯后端 (自动归集+自动分配, 登录门禁 + 全落库审计)
     '/api/daemon-lab/hall/board',
     '/api/daemon-lab/hall/submit',
+    # flow_edu_20261020: AI教育中心+考试院 (一键培养流水线, 登录门禁 + 全落库审计)
+    '/api/ai-edu/run',
     # v22.10.13: 仙女座 MCP Bridge — 运维 daemon 重启/握手/健康检查 (无 CSRF token, 内部调用)
     '/api/server/daemon-action',
     '/api/server/vikey-status',
@@ -2933,6 +2935,14 @@ try:
     print('[DAEMON-SKILL-LAB] ✅ /daemon-skill-lab + /api/daemon-lab/* 研发中心已注册')
 except Exception as _lab_err:
     print(f'[DAEMON-SKILL-LAB] ⚠️ 研发中心模块加载失败: {_lab_err}')
+
+# ── AI 教育中心 + 考试院 Blueprint: /api/ai-edu/* (flow_edu_20261020) ──
+try:
+    from blueprints.ai_edu_academy_bp import ai_edu_academy_bp
+    app.register_blueprint(ai_edu_academy_bp)
+    print('[AI-EDU-ACADEMY] ✅ /api/ai-edu/* 教育中心+考试院已注册')
+except Exception as _edu_err:
+    print(f'[AI-EDU-ACADEMY] ⚠️ 教育中心模块加载失败: {_edu_err}')
 
 # ── 仙女座工作全景统计 Blueprint: /andromeda/stats (flow_andromeda_stats_20261016) ──
 try:
