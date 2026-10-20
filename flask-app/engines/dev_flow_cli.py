@@ -25,6 +25,7 @@
   python3 dev_flow_cli.py version  <flow_id> <ver_from> <ver_to> [--reason "..."]  # STEP_10
   python3 dev_flow_cli.py test1000 <flow_id> [--quick]    # STEP_12 (1000轮, --quick=300)
   python3 dev_flow_cli.py done     <flow_id>              # 最终收尾
+  python3 dev_flow_cli.py gc       [flows|daemons|all] [--dry-run] [days]  # 僵尸清理
 
 来源: flow_devflow_cli_v2_20261021 (12开发步骤完善补全)
 """
@@ -404,11 +405,147 @@ def cmd_done(fid: str) -> int:
     print("✅ 收尾 (双库 DONE, 四必落库标记完成) → git push gitee main && git push origin main")
     return 0
 
+# ─────────────────────────── gc (僵尸清理) ───────────────────────────
+# 只做「状态收敛 + 归档留痕」, 不删除 flow 行, 不 DROP 表:
+#   - flow 侧: 长期无动作的 OPEN/REOPENED/BYPASSED → ABANDONED (可追溯, 可人工改回)
+#   - daemon 侧: auto_gen_* 僵尸行先 JSON 归档再删; status=RUNNING 但心跳停更 → 收敛为 STOPPED
+#   - mt_daemon_registry 被 20+ 模块引用, 禁止退役/删除, 仅收敛状态
+GC_DEFAULT_DAYS = 7
+GC_PROTECTED_PREFIXES = (
+    "flow_敏感_用户手机号加密存储",   # 法务 P2 整改项, 待兑现, 不得清理
+)
+GC_STALE_DAEMON_MIN = 10
+
+def _parse_ts(s: str | None):
+    if not s:
+        return None
+    try:
+        from datetime import datetime
+        return datetime.strptime(str(s).replace("T", " ")[:19], "%Y-%m-%d %H:%M:%S")
+    except Exception:
+        return None
+
+def _gc_archive(data: dict, name: str) -> str:
+    out_dir = ROOT / "_runtime" / "logs"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    p = out_dir / f"gc_archive_{name}_{time.strftime('%Y%m%d_%H%M%S')}.json"
+    p.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    return str(p)
+
+def cmd_gc(target: str, dry_run: bool = False, days: int = GC_DEFAULT_DAYS) -> int:
+    from datetime import datetime, timedelta
+    target = (target or "all").lower()
+    if target not in ("flows", "daemons", "all"):
+        print(f"❌ gc 目标非法: {target} (可选 flows/daemons/all)"); return 1
+    print(f"  [gc] target={target} dry_run={dry_run} days={days}")
+
+    if target in ("flows", "all"):
+        cutoff = datetime.now() - timedelta(days=days)
+        for tag, db in _dbs():
+            c = sqlite3.connect(db, timeout=15)
+            c.row_factory = sqlite3.Row
+            rows = c.execute("""SELECT flow_id, current_step, final_status, proposal_title,
+                                       updated_at, created_at FROM mt_dev_flow_session
+                                WHERE final_status IN ('OPEN','REOPENED','BYPASSED')""").fetchall()
+            cands, protected = [], []
+            for r in rows:
+                fid = r["flow_id"]
+                if any(fid.startswith(p) for p in GC_PROTECTED_PREFIXES):
+                    protected.append(fid); continue
+                ts = _parse_ts(r["updated_at"]) or _parse_ts(r["created_at"])
+                if ts is None or ts < cutoff:
+                    cands.append({"flow_id": fid, "step": r["current_step"],
+                                  "status": r["final_status"], "title": r["proposal_title"],
+                                  "touched": str(r["updated_at"] or r["created_at"] or "")})
+            print(f"  [{tag}] 僵尸候选 {len(cands)} 条, 白名单保护 {len(protected)} 条")
+            for x in cands:
+                print(f"    - {x['flow_id']:46s} {x['step']:28s} {x['status']:9s} {x['title'] or ''}"[:140])
+            if protected:
+                print(f"    [保护] {', '.join(protected)}")
+            if not cands:
+                print(f"  [{tag}] 无需清理"); c.close(); continue
+            if dry_run:
+                print(f"  [{tag}] DRY-RUN: 未落库"); c.close(); continue
+            arch = _gc_archive({"db": db, "tag": tag, "scope": "flows", "rows": cands},
+                               f"flows_{'prod' if tag == 'PROD' else 'main'}")
+            print(f"  [{tag}] 归档 → {arch}")
+            for x in cands:
+                c.execute("""UPDATE mt_dev_flow_session SET final_status='ABANDONED',
+                             updated_at=? WHERE flow_id=?""", (NOW(), x["flow_id"]))
+                _emit(c, x["flow_id"], x["step"], x["step"], "GC_ABANDONED",
+                      {"reason": f"无动作超过 {days} 天", "prev_status": x["status"],
+                       "last_touched": x["touched"], "by": "dev_flow_cli_gc"}, by="dev_flow_cli_gc")
+            c.commit()
+            left = c.execute("SELECT COUNT(*) FROM mt_dev_flow_session WHERE final_status IN ('OPEN','REOPENED','BYPASSED')").fetchone()[0]
+            c.close()
+            print(f"  [{tag}] 已标记 ABANDONED {len(cands)} 条, 剩余活跃 {left} 条")
+
+    if target in ("daemons", "all"):
+        # 时间戳时区混用 (datetime('now')=UTC vs datetime('now','localtime')), 字符串比较会误判。
+        # 安全判定: 同一时间戳分别按 UTC / 本地解释, 两种解释都过期才算僵尸。
+        now_local, now_utc = datetime.now(), datetime.utcnow()
+        tz_offset = now_local - now_utc
+        cutoff_utc = now_utc - timedelta(minutes=GC_STALE_DAEMON_MIN)
+
+        def _stale(ts) -> bool:
+            t = _parse_ts(ts)
+            if t is None:
+                return True
+            return t < cutoff_utc and (t - tz_offset) < cutoff_utc
+
+        for tag, db in _dbs():
+            c = sqlite3.connect(db, timeout=15)
+            c.row_factory = sqlite3.Row
+            # ① 状态谎报: status=RUNNING 但心跳停更 → STOPPED
+            stale_running = [r for r in c.execute(
+                "SELECT process_name, last_heartbeat FROM mt_daemon_registry WHERE status='RUNNING'")
+                if _stale(r["last_heartbeat"])]
+            # ② 自动生成的僵尸 daemon 记录 (auto_gen_* 已 STOPPED 且心跳陈旧)
+            zombies = [r for r in c.execute(
+                """SELECT process_name, pid, heartbeat_at FROM mt_ai_smart_mount_processes
+                   WHERE process_name LIKE 'auto_gen_%' AND current_state='STOPPED'""")
+                if _stale(r["heartbeat_at"])]
+            print(f"  [{tag}] registry 状态谎报 {len(stale_running)} 条, auto_gen 僵尸 {len(zombies)} 条")
+            for r in stale_running[:10]:
+                print(f"    ~ RUNNING→STOPPED {r['process_name']:34s} hb={r['last_heartbeat']}")
+            if len(stale_running) > 10:
+                print(f"    ~ ... 其余 {len(stale_running) - 10} 条")
+            if zombies:
+                names = [r["process_name"] for r in zombies]
+                more = f" ... 其余 {len(names) - 10} 条" if len(names) > 10 else ""
+                print(f"    - 待归档删除 {', '.join(names[:10])}{more}")
+            if not stale_running and not zombies:
+                print(f"  [{tag}] 无需清理"); c.close(); continue
+            if dry_run:
+                print(f"  [{tag}] DRY-RUN: 未落库"); c.close(); continue
+            arch = _gc_archive({
+                "db": db, "tag": tag, "scope": "daemons",
+                "registry_stale_running": [dict(r) for r in stale_running],
+                "mount_processes_zombies": [dict(r) for r in zombies]},
+                f"daemons_{'prod' if tag == 'PROD' else 'main'}")
+            print(f"  [{tag}] 归档 → {arch}")
+            for r in stale_running:
+                c.execute("""UPDATE mt_daemon_registry SET status='STOPPED', updated_at=datetime('now','localtime')
+                             WHERE process_name=?""", (r["process_name"],))
+            for r in zombies:
+                c.execute("DELETE FROM mt_ai_smart_mount_processes WHERE process_name=?",
+                          (r["process_name"],))
+            c.commit()
+            n = c.execute("SELECT COUNT(*) FROM mt_ai_smart_mount_processes WHERE current_state='RUNNING'").fetchone()[0]
+            c.close()
+            print(f"  [{tag}] 收敛 {len(stale_running)} 条, 删除 {len(zombies)} 条, 当前 RUNNING {n}")
+    print("✅ gc 完成")
+    return 0
+
 def main() -> int:
     a = sys.argv
     if len(a) < 2:
         print(__doc__); return 1
     cmd = a[1]
+    if cmd == "gc":
+        target = next((x for x in a[2:] if not x.startswith("--") and not x.isdigit()), "all")
+        days = int(next((x for x in a[2:] if x.isdigit()), GC_DEFAULT_DAYS))
+        return cmd_gc(target, dry_run="--dry-run" in a, days=days)
     if cmd == "start" and len(a) >= 4:
         return cmd_start(a[2], a[3], a[4] if len(a) > 4 else "")
     if cmd == "status":
