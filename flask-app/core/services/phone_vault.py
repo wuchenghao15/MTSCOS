@@ -96,39 +96,41 @@ def mask(phone: str) -> str:
     return f"{raw[:2]}{'*' * (len(raw) - 4)}{raw[-2:]}"
 
 
-def ensure_schema(db_path: str) -> None:
+def ensure_schema(db_path: str, table: str = "") -> None:
+    """幂等建表 (flow_vault_20261021 泛化): table 可指定 phone/email 各自 vault 表。"""
+    t = table or TABLE
     c = sqlite3.connect(db_path, timeout=15)
     try:
-        c.execute(f"""CREATE TABLE IF NOT EXISTS {TABLE} (
+        c.execute(f"""CREATE TABLE IF NOT EXISTS {t} (
             user_id     TEXT PRIMARY KEY,
             phone_enc   TEXT NOT NULL,
             phone_fp    TEXT NOT NULL,
             updated_at  TEXT NOT NULL
         )""")
-        c.execute(f"CREATE INDEX IF NOT EXISTS idx_phone_vault_fp ON {TABLE}(phone_fp)")
+        c.execute(f"CREATE INDEX IF NOT EXISTS idx_{t}_fp ON {t}(phone_fp)")
         c.commit()
     finally:
         c.close()
 
 
-def store_phone(db_path: str, user_id, phone: str) -> bool:
-    """加密落库; 传空串表示解绑 (删除记录)。返回是否写入成功。"""
-    ensure_schema(db_path)
+def store_field(db_path: str, vault_table: str, user_id, value: str) -> bool:
+    """通用加密落库 (flow_vault_20261021 泛化): 表名参数化, phone/email 各自 vault 表。"""
+    ensure_schema(db_path, vault_table)
     uid = str(user_id)
     c = sqlite3.connect(db_path, timeout=15)
     try:
-        if not normalize(phone):
-            c.execute(f"DELETE FROM {TABLE} WHERE user_id=?", (uid,))
+        if not normalize(value):
+            c.execute(f"DELETE FROM {vault_table} WHERE user_id=?", (uid,))
             c.commit()
             return True
         import time
-        c.execute(f"""INSERT INTO {TABLE} (user_id, phone_enc, phone_fp, updated_at)
+        c.execute(f"""INSERT INTO {vault_table} (user_id, phone_enc, phone_fp, updated_at)
                       VALUES (?,?,?,?)
                       ON CONFLICT(user_id) DO UPDATE SET
                         phone_enc=excluded.phone_enc,
                         phone_fp=excluded.phone_fp,
                         updated_at=excluded.updated_at""",
-                  (uid, encrypt(phone), fingerprint(phone),
+                  (uid, encrypt(value), fingerprint(value),
                    time.strftime("%Y-%m-%d %H:%M:%S")))
         c.commit()
         return True
@@ -138,15 +140,56 @@ def store_phone(db_path: str, user_id, phone: str) -> bool:
         c.close()
 
 
-def load_phone(db_path: str, user_id) -> str:
-    """解密取回明文 (仅供本人鉴权后的展示/业务使用, 不得落日志)。"""
+def load_field(db_path: str, vault_table: str, user_id) -> str:
+    """通用解密读取 (仅限本人鉴权后的业务使用, 不得落日志)。"""
     try:
         c = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True, timeout=8)
-        row = c.execute(f"SELECT phone_enc FROM {TABLE} WHERE user_id=?", (str(user_id),)).fetchone()
+        row = c.execute(f"SELECT phone_enc FROM {vault_table} WHERE user_id=?", (str(user_id),)).fetchone()
         c.close()
         return decrypt(row[0]) if row else ""
     except Exception:
         return ""
+
+
+def store_phone(db_path: str, user_id, phone: str) -> bool:
+    """加密落库; 传空串表示解绑 (删除记录)。返回是否写入成功。"""
+    return store_field(db_path, TABLE, user_id, phone)
+
+
+def load_phone(db_path: str, user_id) -> str:
+    """解密取回明文 (仅供本人鉴权后的展示/业务使用, 不得落日志)。"""
+    return load_field(db_path, TABLE, user_id)
+
+
+EMAIL_TABLE = "mt_user_email_vault"
+
+
+def migrate_users_email(db_path: str) -> int:
+    """存量迁移: users.email 明文 → mt_user_email_vault, 迁移后清空明文列。
+    (flow_vault_20261021, 个保法 P2 — 实测存量仅 5 条)"""
+    ensure_schema(db_path, EMAIL_TABLE)
+    c = sqlite3.connect(db_path, timeout=15)
+    n = 0
+    try:
+        rows = c.execute("SELECT id, email FROM users "
+                         "WHERE email IS NOT NULL AND email<>'' AND email NOT LIKE 'pv1:%'").fetchall()
+        ok_uids = []
+        for uid, email in rows:
+            # 注意: store_field 开独立连接写库, 外层连接须保持只读直到收集完,
+            # 否则未提交 UPDATE 的写锁会让后续 INSERT 锁等待失败 (实测 5 条只迁 1 条)
+            if store_field(db_path, EMAIL_TABLE, uid, email):
+                ok_uids.append(uid)
+        for uid in ok_uids:
+            # users.email 有 UNIQUE 约束, 不能多行同置 '' → 每行唯一墓碑 pv1:uid:{uid}
+            c.execute("UPDATE users SET email=?, email_enc='' WHERE id=?", (f"pv1:uid:{uid}", uid))
+        c.commit()
+        n = len(ok_uids)
+        print(f"[migrate] users.email → {EMAIL_TABLE}: 迁移 {n} 条, 明文列已清空")
+    except Exception as _e:
+        print(f"[migrate] err: {_e}")
+    finally:
+        c.close()
+    return n
 
 
 def masked_phone(db_path: str, user_id) -> str:
