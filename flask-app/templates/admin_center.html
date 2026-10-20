@@ -233,6 +233,50 @@
     loadHR();
     </script>
 
+    {# ══ AI 教育中心 + 考试院数显 (flow_edu_20261020, 内嵌后台) ══ #}
+    <div id="edu-section" class="admin-card" style="margin-top:16px;width:100%">
+        <h3 style="display:flex;align-items:center;gap:10px">🎓 AI 教育中心 + 考试院
+            <span id="edu-chips" style="font-size:11px;font-weight:400;color:#64748b"></span>
+            <button onclick="eduRun(this)" style="margin-left:auto;border:1px solid #06b6d4;background:transparent;color:#06b6d4;border-radius:8px;font-size:11px;padding:5px 12px;cursor:pointer">⚡ 一键培养流水线</button>
+            <button onclick="loadEdu()" style="border:1px solid #d1d5db;background:transparent;color:#64748b;border-radius:8px;font-size:11px;padding:5px 12px;cursor:pointer">↻</button>
+        </h3>
+        <div id="edu-board" style="font-size:12px;color:#64748b">加载中…</div>
+    </div>
+    <script>
+    function loadEdu(){
+        fetch('/api/ai-edu/overview').then(r=>r.json()).then(d=>{
+            if(!d.ok) throw 0;
+            const S=d.stats;
+            document.getElementById('edu-chips').textContent =
+                `课程 ${S.courses} · 在学 ${S.learning} · 毕业 ${S.graduated} · 考试通过 ${S.exam_passed} · 有晋升资格 ${S.qualified}`;
+            const cs = d.courses.map(c=>
+                `<span style="display:inline-block;margin:2px 6px 2px 0;padding:2px 8px;border-radius:8px;font-size:10px;color:#2563eb;background:rgba(37,99,235,.06)" title="${c.source}">${c.title}·${c.students}人</span>`).join('');
+            const res = d.recent_results.map(r=>
+                `<div style="display:flex;gap:8px;padding:4px 0;border-bottom:1px dashed rgba(0,0,0,.05)">
+                    <span style="font-size:10px;color:${r.passed?'#059669':'#dc2626'}">${r.passed?'通过':'不及格'} ${r.score}分</span>
+                    <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.employee_name} ← 《${r.title}》 考官:${r.examiner}</span></div>`).join('');
+            const ladder = d.ladder.map(p=>
+                `<span style="display:inline-block;margin:2px 6px 2px 0;padding:2px 8px;border-radius:8px;font-size:10px;color:#7c3aed;background:rgba(124,58,237,.08)">${p.employee_name}·${p.level}·过${p.passed_exams}科</span>`).join('');
+            document.getElementById('edu-board').innerHTML =
+                `<div style="margin-bottom:8px"><b style="color:#374151">学习资源课程:</b><br>${cs||'暂无 — 点「一键培养流水线」自动建课'}</div>`+
+                `<div style="margin-bottom:8px"><b style="color:#374151">考试院最近成绩 (教授分身阅卷):</b><br>${res||'暂无'}</div>`+
+                `<div><b style="color:#374151">晋升资格榜 (考试通过才晋升):</b><br>${ladder||'暂无'}</div>`;
+        }).catch(()=>{ document.getElementById('edu-board').textContent='⚠️ 教育中心加载失败'; });
+    }
+    function eduRun(btn){
+        btn.disabled=true; btn.textContent='⏳ 培养流水线运行中…';
+        fetch('/api/ai-edu/run',{method:'POST'}).then(r=>r.json()).then(d=>{
+            btn.disabled=false; btn.textContent='⚡ 一键培养流水线';
+            if(d.ok){
+                const p=d.pipeline;
+                alert(`建课 ${p.courses_added} · 入学 ${p.enrolled} · 毕业 ${p.graduated} · 出卷 ${p.papers} · 应试 ${p.exam_taken} · 通过 ${p.exam_passed} · 回炉 ${p.failed_back_to_school} · 晋升 ${p.promoted.length}`);
+            } else alert('失败: '+(d.error||''));
+            loadEdu();
+        }).catch(()=>{ btn.disabled=false; btn.textContent='⚡ 一键培养流水线'; });
+    }
+    loadEdu();
+    </script>
+
     <a href="/" class="back-link">{{ t('auto.admin_center.__x_bfa6f584', default='← 返回首页') }}</a>
 </div>
 {% endblock %}
