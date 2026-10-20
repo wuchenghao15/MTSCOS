@@ -23,7 +23,7 @@ import uuid
 from datetime import datetime, timedelta
 from typing import Any
 
-# [unused] from .db import get_conn, db_retry, ensure_schema
+from .db import get_conn, db_retry, ensure_schema  # flow_pages_all_20261020: 恢复 (ensure_schema 在 __init__ 使用)
 from .policy import (
     assess_risk, sla_for,
     REQ_STATUS_PENDING, NODE_STATUS_PENDING,

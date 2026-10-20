@@ -1436,6 +1436,7 @@ def ai_entry():
 
 @chat_local_bp.route('/ai/', methods=['GET'])
 def ai_entry_slash():
+    from flask import redirect
     return redirect('/ai', code=301)
 
 

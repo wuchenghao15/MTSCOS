@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+{# flow_pages_all_20261020: 审批工作台 (补齐缺失模板 andromeda_approval_center.html) #}
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>审批中心 · 仙女座</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: var(--el-bg-color-page, #0b1220);
+    color: var(--el-text-color-primary, #e2e8f0);
+    min-height: 100vh; padding: 28px 20px;
+  }
+  .wrap { max-width: 1100px; margin: 0 auto; }
+  h1 { font-size: 24px; font-weight: 800; text-align: center; letter-spacing: 1px; margin-bottom: 6px; }
+  .sub { text-align: center; font-size: 12px; color: var(--el-text-color-secondary, #94a3b8); margin-bottom: 24px; }
+  .sub b { color: var(--el-color-primary, #409eff); font-weight: 600; }
+  .panel {
+    background: var(--el-bg-color, #111a2e);
+    border: 1px solid var(--el-border-color, rgba(148,163,184,.18));
+    border-radius: 14px; padding: 20px; margin-bottom: 20px;
+    box-shadow: 0 4px 16px -8px rgba(0,0,0,.4);
+  }
+  .panel h2 { font-size: 15px; font-weight: 700; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+  .badge {
+    font-size: 11px; font-weight: 600; padding: 2px 10px; border-radius: 999px;
+    background: rgba(64,158,255,.12); color: var(--el-color-primary, #409eff);
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th { text-align: left; color: var(--el-text-color-secondary, #94a3b8); font-weight: 600; padding: 8px 10px; border-bottom: 1px solid var(--el-border-color, rgba(148,163,184,.18)); }
+  td { padding: 9px 10px; border-bottom: 1px dashed rgba(148,163,184,.12); word-break: break-all; }
+  tr:hover td { background: rgba(64,158,255,.04); }
+  .risk { font-size: 11px; padding: 2px 8px; border-radius: 6px; font-weight: 600; }
+  .risk-high { background: rgba(220,38,38,.12); color: #f87171; }
+  .risk-medium { background: rgba(217,119,6,.12); color: #fbbf24; }
+  .risk-low { background: rgba(5,150,105,.12); color: #34d399; }
+  .empty { text-align: center; padding: 26px 0; color: var(--el-text-color-secondary, #64748b); font-size: 13px; }
+  .empty .icon { font-size: 30px; display: block; margin-bottom: 8px; }
+  .mono { font-family: ui-monospace, Menlo, monospace; font-size: 11px; color: var(--el-color-primary, #6ee7ff); }
+  a.back { display: block; text-align: center; margin-top: 10px; color: var(--el-text-color-secondary, #64748b); font-size: 12px; text-decoration: none; }
+  a.back:hover { color: var(--el-color-primary, #409eff); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🛡 审批中心</h1>
+  <div class="sub">仙女座审批工作台 · 当前角色 <b>{{ role or 'guest' }}</b> · 操作人 <b>{{ username }}</b></div>
+
+  <div class="panel">
+    <h2>📥 待我审批 <span class="badge">{{ pending|length }} 项</span></h2>
+    {% if pending %}
+    <table>
+      <tr><th>请求ID</th><th>类别</th><th>主题</th><th>发起人</th><th>风险</th><th>提交时间</th></tr>
+      {% for r in pending %}
+      <tr>
+        <td class="mono">{{ r.get('request_id','') }}</td>
+        <td>{{ r.get('category','') }}</td>
+        <td>{{ r.get('subject_hint') or r.get('subject_id','') or '—' }}</td>
+        <td>{{ r.get('initiator','') }}<span style="color:#64748b;font-size:10px"> ({{ r.get('initiator_role','') }})</span></td>
+        <td><span class="risk risk-{{ r.get('risk_level','medium') }}">{{ r.get('risk_level','medium') }}</span></td>
+        <td>{{ r.get('created_at','') }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+    {% else %}
+    <div class="empty"><span class="icon">🎉</span>暂无待审批事项 — 全部处理完毕</div>
+    {% endif %}
+  </div>
+
+  <div class="panel">
+    <h2>📤 我的提交 <span class="badge">{{ my_submissions|length }} 项</span></h2>
+    {% if my_submissions %}
+    <table>
+      <tr><th>请求ID</th><th>类别</th><th>主题</th><th>风险</th><th>提交时间</th></tr>
+      {% for r in my_submissions %}
+      <tr>
+        <td class="mono">{{ r.get('request_id','') }}</td>
+        <td>{{ r.get('category','') }}</td>
+        <td>{{ r.get('subject_hint') or r.get('subject_id','') or '—' }}</td>
+        <td><span class="risk risk-{{ r.get('risk_level','medium') }}">{{ r.get('risk_level','medium') }}</span></td>
+        <td>{{ r.get('created_at','') }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+    {% else %}
+    <div class="empty"><span class="icon">📭</span>暂无由你发起的审批记录</div>
+    {% endif %}
+  </div>
+
+  <a class="back" href="/">← 返回首页</a>
+</div>
+</body>
+</html>

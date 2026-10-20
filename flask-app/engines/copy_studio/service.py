@@ -9,7 +9,8 @@ from __future__ import annotations
 import json, uuid, time, datetime
 from pathlib import Path
 from typing import Optional, Dict, Any, List
-# [unused] from .db import get_conn, ensure_schema, db_retry
+# flow_pages_all_20261020: 恢复被误注释的 db 导入 (get_conn/ensure_schema 全文件使用)
+from engines.copy_studio.db import get_conn, ensure_schema, db_retry
 from .policy import (GENRE_CONFIG, GENRE_NOVEL, GENRE_SCRIPT, GENRE_AD_COPY,
                      assess_risk, get_sla_hours, is_llm_safe_to_auto_pass)
 from .generator import (ollama_call, generate_outline, write_chapter_text,
@@ -33,6 +34,7 @@ class ApprovalService(SnapshotMixin):
     """copy_studio 门面. 继承 SnapshotMixin 获得章节版本快照能力."""
 
     def __init__(self, db_path: Optional[Path | str] = None):
+        from engines.copy_studio.db import ensure_schema
         ensure_schema(db_path)
         self._db_path = str(Path(db_path)) if db_path else None
 
