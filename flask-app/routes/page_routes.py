@@ -1148,7 +1148,19 @@ def adult_education_page():
 @system_container(require_auth='guest')
 def settings_page():
     """用户/系统设置页 — 任何人可访问, 页面内判断登录态"""
-    return render_template('settings.html')
+    phone_display = ''
+    try:
+        from flask import session as _s
+        uid = _s.get('user_id') or (_s.get('user') or {}).get('id')
+        if uid:
+            import os as _os
+            from core.services.phone_vault import masked_phone
+            _vault_db = _os.path.join(_os.path.dirname(_os.path.dirname(
+                _os.path.abspath(__file__))), 'database', 'app.db')
+            phone_display = masked_phone(_vault_db, uid)   # 手机号仅脱敏展示 (个保法 P2)
+    except Exception:
+        phone_display = ''
+    return render_template('settings.html', phone_display=phone_display)
 
 
 # ===== 仪表盘 /dashboard (路由迁移期间丢了, 导航引用) =====

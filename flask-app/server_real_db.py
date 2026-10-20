@@ -13662,6 +13662,14 @@ def register():
                 }), 500
             conn.commit()
 
+            # flow_敏感_用户手机号加密存储_1790217583: 手机号只入加密金库, 不落明文
+            if phone:
+                try:
+                    from core.services.phone_vault import store_phone as _store_phone
+                    _store_phone(write_db, uid, phone)
+                except Exception:
+                    pass
+
             # 【STEP_7 SSL绑定】注册成功后绑定SSL证书到用户（is_primary=True）
             try:
                 _bind_id = _bind_user_ssl_cert(uid, username, ssl_fingerprint_reg,
