@@ -11,6 +11,7 @@ API:   GET /api/daemon-lab/overview  — 研究总览 JSON (daemon 注册表 + s
   Skill  研究所: 扫描 ~/.trae-cn/skills/*/SKILL.md frontmatter, 关键词分类
   衍生引擎:      daemon 无对应 skill 管理Skill → 生成候选, 落库 mt_lab_suggestions
 """
+import json
 import os
 import re
 import sqlite3
@@ -152,9 +153,71 @@ def _ensure_claim_tables():
             verdict TEXT,
             created_at TEXT DEFAULT (datetime('now','localtime'))
         )""")
+        # ══ 统一审计层 (flow_audit_20261020): 所有操作入库入日志, 可回溯追责 ══
+        conn.execute("""CREATE TABLE IF NOT EXISTS mt_lab_audit_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            operator TEXT NOT NULL,          -- 操作者 (username)
+            operator_role TEXT,              -- 操作者角色
+            center TEXT NOT NULL,            -- 来源中心: lab/hall/hr/edu/exam
+            action TEXT NOT NULL,            -- AUTO_CLAIM/HALL_DISPATCH/HALL_SUBMIT/EDU_RUN...
+            subject TEXT,                    -- 主体 (任务/课程/员工/统计)
+            detail_json TEXT,                -- 完整载荷+结果摘要 (JSON)
+            ip TEXT,
+            user_agent TEXT,
+            created_at TEXT DEFAULT (datetime('now','localtime'))
+        )""")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_lab_audit_created ON mt_lab_audit_log(created_at DESC)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_lab_audit_operator ON mt_lab_audit_log(operator)")
         conn.commit()
     finally:
         conn.close()
+
+
+# ── 统一审计 helper (flow_audit_20261020): DB + 文件双写 ──
+import logging as _logging
+from flask import request as _flask_request
+
+_AUDIT_LOGGER = _logging.getLogger("mtscos.center_audit")
+if not _AUDIT_LOGGER.handlers:
+    try:
+        os.makedirs(os.path.join(_APP_DIR, "logs"), exist_ok=True)
+        _fh = _logging.FileHandler(os.path.join(_APP_DIR, "logs", "center_audit.log"), encoding="utf-8")
+        _fh.setFormatter(_logging.Formatter("%(asctime)s | %(message)s"))
+        _AUDIT_LOGGER.addHandler(_fh)
+        _AUDIT_LOGGER.setLevel(_logging.INFO)
+    except OSError:
+        pass
+
+
+def _audit(center, action, subject, detail):
+    """统一审计: 操作者级落库 mt_lab_audit_log + 文件 logs/center_audit.log 双写"""
+    operator, orole = "anonymous", "-"
+    try:
+        u = _get_user()
+        operator = u.get("username") or f"user:{u.get('user_id')}" or "anonymous"
+        orole = u.get("role") or "-"
+    except Exception:
+        pass
+    ip = ua = ""
+    try:
+        ip = _flask_request.remote_addr or ""
+        ua = (_flask_request.user_agent.string or "")[:180]
+    except Exception:
+        pass
+    try:
+        detail_json = json.dumps(detail, ensure_ascii=False, default=str)[:4000]
+    except Exception:
+        detail_json = str(detail)[:4000]
+    conn = _db()
+    try:
+        conn.execute("INSERT INTO mt_lab_audit_log (operator,operator_role,center,action,subject,detail_json,ip,user_agent) VALUES (?,?,?,?,?,?,?,?)",
+                     (operator, orole, center, action, str(subject)[:200], detail_json, ip, ua))
+        conn.commit()
+    except sqlite3.Error:
+        pass
+    finally:
+        conn.close()
+    _AUDIT_LOGGER.info("%s | %s | %s | %s | %s", operator, center, action, subject, detail_json[:600])
 
 
 # ══ 任务大厅 (flow_hall_20261020): 任务自动汇聚 → 自动分配 ══
@@ -284,7 +347,12 @@ def hall_board():
     if request.method == "POST":
         try:
             auto = run_hall_auto()
+            # 审计 (flow_audit_20261020): 大厅归集+分配操作入库入日志
+            _audit("hall", "HALL_AUTO", f"归集{auto['ingested']}·分配{auto['dispatched']}",
+                   {"ingested": auto["ingested"], "dispatched": auto["dispatched"],
+                    "results": auto["results"]})
         except Exception as e:
+            _audit("hall", "HALL_AUTO", "FAILED", {"error": str(e)})
             return jsonify({"ok": False, "error": str(e)}), 500
     conn = _db()
     try:
@@ -317,7 +385,45 @@ def hall_submit():
         conn.commit()
     finally:
         conn.close()
+    # 审计 (flow_audit_20261020): 手动入厅入库入日志
+    _audit("hall", "HALL_SUBMIT", title[:80],
+           {"description": (data.get("description") or "")[:200], "priority": data.get("priority") or "NORMAL"})
     return jsonify({"ok": True, "message": f"任务已入厅: {title[:40]}"})
+
+
+@daemon_skill_lab_bp.route("/api/daemon-lab/audit")
+@_login_required
+def lab_audit_query():
+    """统一审计查询 (flow_audit_20261020): 回溯追责入口 — 支持操作者/中心/动作过滤"""
+    _ensure_claim_tables()
+    limit = min(int(request.args.get("limit", 50) or 50), 200)
+    operator = request.args.get("operator", "").strip()
+    center = request.args.get("center", "").strip()
+    action = request.args.get("action", "").strip()
+    conds, args = [], []
+    if operator:
+        conds.append("operator LIKE ?")
+        args.append(f"%{operator}%")
+    if center:
+        conds.append("center = ?")
+        args.append(center)
+    if action:
+        conds.append("action LIKE ?")
+        args.append(f"%{action}%")
+    where = ("WHERE " + " AND ".join(conds)) if conds else ""
+    conn = _db()
+    try:
+        rows = [dict(r) for r in conn.execute(
+            f"SELECT * FROM mt_lab_audit_log {where} ORDER BY id DESC LIMIT ?", args + [limit])]
+        total = conn.execute(f"SELECT count(*) FROM mt_lab_audit_log {where}", args).fetchone()[0]
+        by_action = {r["action"]: r["n"] for r in conn.execute(
+            "SELECT action, count(*) n FROM mt_lab_audit_log GROUP BY action")}
+        by_operator = {r["operator"]: r["n"] for r in conn.execute(
+            "SELECT operator, count(*) n FROM mt_lab_audit_log GROUP BY operator ORDER BY n DESC LIMIT 10")}
+        return jsonify({"ok": True, "total": total, "by_action": by_action,
+                        "by_operator": by_operator, "items": rows})
+    finally:
+        conn.close()
 
 
 def _match_center(text):
@@ -433,8 +539,15 @@ def run_auto_claim():
 def lab_auto_claim():
     try:
         results = run_auto_claim()
+        # 审计 (flow_audit_20261020): 认领操作入库入日志
+        _audit("lab", "AUTO_CLAIM", f"{len(results)}项候选认领",
+               {"count": len(results),
+                "items": [{"subject": r["subject"], "center": r["center"],
+                           "employees": r["employees"], "professors": r["professors"],
+                           "verdict": r["verdict"]} for r in results]})
         return jsonify({"ok": True, "claimed": len(results), "results": results})
     except Exception as e:
+        _audit("lab", "AUTO_CLAIM", "FAILED", {"error": str(e)})
         return jsonify({"ok": False, "error": str(e)}), 500
 
 

@@ -277,6 +277,36 @@
     loadEdu();
     </script>
 
+    {# ══ 统一审计日志 (flow_audit_20261020, 回溯追责入口, 内嵌后台) ══ #}
+    <div id="audit-section" class="admin-card" style="margin-top:16px;width:100%">
+        <h3 style="display:flex;align-items:center;gap:10px">🗄 中心审计日志
+            <span id="audit-chips" style="font-size:11px;font-weight:400;color:#64748b"></span>
+            <input id="audit-q" placeholder="按操作者过滤…" style="margin-left:auto;border:1px solid #d1d5db;border-radius:8px;font-size:11px;padding:4px 10px;width:150px">
+            <button onclick="loadAudit()" style="border:1px solid #d1d5db;background:transparent;color:#64748b;border-radius:8px;font-size:11px;padding:5px 12px;cursor:pointer">↻ 查询</button>
+        </h3>
+        <div id="audit-board" style="font-size:12px;color:#64748b">加载中…</div>
+    </div>
+    <script>
+    function loadAudit(){
+        const q=document.getElementById('audit-q').value.trim();
+        fetch('/api/daemon-lab/audit?limit=12'+(q?`&operator=${encodeURIComponent(q)}`:'')).then(r=>r.json()).then(d=>{
+            if(!d.ok) throw 0;
+            document.getElementById('audit-chips').textContent =
+                `总记录 ${d.total} · 动作 ${Object.keys(d.by_action).length} 种 · 操作者 ${Object.keys(d.by_operator).length} 人`;
+            document.getElementById('audit-board').innerHTML = d.items.length ? d.items.map(a=>
+                `<div style="display:flex;gap:8px;padding:4px 0;border-bottom:1px dashed rgba(0,0,0,.05);align-items:center">
+                    <span style="font-size:10px;color:#7c3aed;background:rgba(124,58,237,.08);padding:1px 6px;border-radius:6px">${a.center}</span>
+                    <span style="font-size:10px;color:#2563eb">${a.action}</span>
+                    <span style="font-weight:600;color:#374151">${a.operator}</span>
+                    <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${(a.detail_json||'').replace(/"/g,'&quot;')}">${a.subject}</span>
+                    <span style="font-size:10px;color:#9ca3af">${a.ip||''} ${a.created_at||''}</span>
+                </div>`).join('') : '暂无审计记录 — 执行任一中心操作后自动记录';
+        }).catch(()=>{ document.getElementById('audit-board').textContent='⚠️ 审计日志加载失败'; });
+    }
+    document.getElementById('audit-q').addEventListener('keydown',e=>{ if(e.key==='Enter') loadAudit(); });
+    loadAudit();
+    </script>
+
     <a href="/" class="back-link">{{ t('auto.admin_center.__x_bfa6f584', default='← 返回首页') }}</a>
 </div>
 {% endblock %}

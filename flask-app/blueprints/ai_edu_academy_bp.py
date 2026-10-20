@@ -20,6 +20,7 @@ import sqlite3
 from flask import Blueprint, jsonify
 
 from blueprints.chat_local_bp import _login_required, _get_user
+from blueprints.daemon_skill_lab_bp import _audit  # 统一审计 (flow_audit_20261020)
 
 ai_edu_academy_bp = Blueprint("ai_edu_academy_bp", __name__)
 
@@ -339,6 +340,17 @@ def edu_run():
         papers = _gen_papers()
         exam_results = _run_exams()
         promotions = _grant_promotions()
+        # 审计 (flow_audit_20261020): 培养流水线全链路入库入日志
+        _audit("edu", "EDU_RUN",
+               f"建课{courses}·入学{enrolled}·毕业{graduated}·出卷{papers}·应试{len(exam_results)}",
+               {"courses_added": courses, "enrolled": enrolled, "graduated": graduated,
+                "papers": papers, "exam_taken": len(exam_results),
+                "exam_passed": sum(1 for r in exam_results if r["passed"]),
+                "failed_back_to_school": sum(1 for r in exam_results if not r["passed"]),
+                "exam_results": [{"employee": r["employee"], "score": r["score"],
+                                  "passed": r["passed"], "examiner": r["examiner"]}
+                                 for r in exam_results[:20]],
+                "promotions": promotions[:20]})
         return jsonify({"ok": True, "pipeline": {
             "courses_added": courses, "enrolled": enrolled, "graduated": graduated,
             "papers": papers, "exam_taken": len(exam_results),
@@ -347,6 +359,7 @@ def edu_run():
             "promoted": promotions[:20],
         }})
     except Exception as e:
+        _audit("edu", "EDU_RUN", "FAILED", {"error": str(e)})
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
