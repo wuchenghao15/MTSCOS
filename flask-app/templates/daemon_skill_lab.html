@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="andromeda">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🧬 Daemon & Skill 研发中心 | MTSCOS AI</title>
+<style>
+  :root{
+    --mtscos-primary-base:#06b6d4;
+    --mtscos-secondary-base:#a855f7;
+    --bg:#0B0A1E;
+    --panel:rgba(255,255,255,.04);
+    --panel-hover:rgba(255,255,255,.08);
+    --line:rgba(6,182,212,.25);
+    --text:#f8fafc;
+    --text-dim:rgba(248,250,252,.65);
+    --text-faint:rgba(248,250,252,.35);
+    --green:#6ee7b7;
+    --amber:#fbbf24;
+    --red:#f87171;
+    --radius:16px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{font-family:-apple-system,"SF Pro","PingFang SC","Helvetica Neue",sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+  .wrap{max-width:1280px;margin:0 auto;padding:28px 24px 60px}
+  .hdr{display:flex;align-items:center;gap:16px;margin-bottom:8px}
+  .hdr .logo{width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,var(--mtscos-primary-base),var(--mtscos-secondary-base));display:flex;align-items:center;justify-content:center;font-size:22px}
+  .hdr h1{font-size:20px;font-weight:700}
+  .hdr .sub{font-size:12px;color:var(--text-dim);margin-top:2px}
+  .chips{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0 22px}
+  .chip{padding:7px 14px;border:1px solid var(--line);border-radius:999px;font-size:12px;color:var(--text-dim);background:var(--panel)}
+  .chip b{color:var(--mtscos-primary-base);font-size:14px;margin-right:4px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  @media(max-width:900px){.grid{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px;min-width:0}
+  .card h2{font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px;margin-bottom:12px}
+  .card h2 .cnt{margin-left:auto;font-size:11px;color:var(--text-faint);font-weight:400}
+  .statebar{display:flex;height:10px;border-radius:6px;overflow:hidden;margin-bottom:12px;background:rgba(255,255,255,.05)}
+  .statebar i{display:block;height:100%}
+  .legend{display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--text-dim);margin-bottom:14px}
+  .legend s{width:8px;height:8px;border-radius:2px;display:inline-block;margin-right:4px;text-decoration:none}
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  th{color:var(--text-faint);text-align:left;font-weight:600;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+  td{padding:7px 8px;border-bottom:1px solid rgba(255,255,255,.04);color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px}
+  tr:hover td{background:var(--panel-hover);color:var(--text)}
+  .st{display:inline-block;padding:1px 8px;border-radius:8px;font-size:10px;border:1px solid}
+  .st.RUNNING{color:var(--green);border-color:rgba(110,231,183,.35);background:rgba(110,231,183,.08)}
+  .st.IDLE{color:var(--amber);border-color:rgba(251,191,36,.35);background:rgba(251,191,36,.08)}
+  .st.FAILED,.st.STOPPED{color:var(--red);border-color:rgba(248,113,113,.35);background:rgba(248,113,113,.08)}
+  .st.OTHER{color:var(--text-dim);border-color:rgba(255,255,255,.15)}
+  .skills{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}
+  .sk{border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:11px 13px;background:rgba(0,0,0,.15);transition:border-color .15s}
+  .sk:hover{border-color:var(--line)}
+  .sk .nm{font-size:12px;font-weight:700;color:var(--mtscos-primary-base);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .sk .ct{display:inline-block;margin-top:5px;padding:1px 7px;border-radius:8px;font-size:9px;background:rgba(168,85,247,.15);color:#c084fc;border:1px solid rgba(168,85,247,.3)}
+  .sk .ds{font-size:10px;color:var(--text-faint);margin-top:6px;line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .full{grid-column:1/-1}
+  .sug{display:flex;flex-direction:column;gap:8px}
+  .sug-it{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;background:rgba(6,182,212,.06);border:1px solid var(--line);border-radius:12px;font-size:12px}
+  .sug-it .tag{flex-shrink:0;padding:2px 8px;border-radius:8px;font-size:10px;background:rgba(251,191,36,.15);color:var(--amber);border:1px solid rgba(251,191,36,.3)}
+  .sug-it .tx{color:var(--text-dim);line-height:1.5;min-width:0}
+  .sug-it .tm{margin-left:auto;flex-shrink:0;font-size:10px;color:var(--text-faint);white-space:nowrap}
+  .empty{padding:26px;text-align:center;color:var(--text-faint);font-size:12px}
+  .btn{border:1px solid var(--line);background:transparent;color:var(--mtscos-primary-base);border-radius:10px;cursor:pointer;font-size:12px;padding:6px 14px;transition:all .15s}
+  .btn:hover{background:rgba(6,182,212,.12)}
+  .loading{text-align:center;color:var(--text-faint);font-size:13px;padding:60px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hdr">
+    <div class="logo">🧬</div>
+    <div>
+      <h1>Daemon &amp; Skill 研究与研发中心</h1>
+      <div class="sub">R&amp;D LAB — 本地零 token 研究 · 注册表扫描 · 衍生候选挖掘 · flow_lab_20261020</div>
+    </div>
+    <div style="margin-left:auto"><button class="btn" onclick="load()">↻ 重新研究</button></div>
+  </div>
+  <div class="chips" id="chips">
+    <div class="chip"><b>-</b>daemon 注册</div>
+    <div class="chip"><b>-</b>存活进程</div>
+    <div class="chip"><b>-</b>本地 Skill</div>
+    <div class="chip"><b>-</b>衍生候选</div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h2>⚙️ Daemon 研究所 <span class="cnt" id="d-cnt"></span></h2>
+      <div class="statebar" id="statebar"></div>
+      <div class="legend" id="legend"></div>
+      <div style="max-height:420px;overflow-y:auto">
+        <table><thead><tr><th>进程</th><th>状态</th><th>重启</th><th>分</th><th>来源</th></tr></thead>
+        <tbody id="d-body"></tbody></table>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>🧩 Skill 研究所 <span class="cnt" id="s-cnt"></span></h2>
+      <div class="legend" id="s-legend"></div>
+      <div class="skills" id="skills"><div class="loading">加载中…</div></div>
+    </div>
+
+    <div class="card full">
+      <h2>🔬 衍生候选 — daemon → skill 研发建议</h2>
+      <div class="sug" id="sug"><div class="loading">加载中…</div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const ST_COLOR = {RUNNING:'#6ee7b7', IDLE:'#fbbf24', FAILED:'#f87171', STOPPED:'#f87171'};
+function load(){
+  fetch('/api/daemon-lab/overview').then(r=>r.json()).then(d=>{
+    if(!d.ok) throw 0;
+    const D=d.daemon, S=d.skill, G=d.suggestions;
+    document.getElementById('chips').innerHTML =
+      `<div class="chip"><b>${D.total}</b>daemon 注册</div>`+
+      `<div class="chip"><b>${D.live_processes}</b>存活进程</div>`+
+      `<div class="chip"><b>${S.total}</b>本地 Skill</div>`+
+      `<div class="chip"><b>${G.fresh.length}</b>衍生候选</div>`;
+    // state bar
+    const total=Math.max(D.total,1); let bar='', lg='';
+    for(const [st,n] of Object.entries(D.states)){
+      const c=ST_COLOR[st]||'#94a3b8';
+      bar+=`<i style="width:${(n/total*100).toFixed(1)}%;background:${c}"></i>`;
+      lg+=`<s style="background:${c}"></s>${st}:${n}`;
+    }
+    document.getElementById('statebar').innerHTML=bar||'<i style="width:100%;background:#334155"></i>';
+    document.getElementById('legend').innerHTML=lg||'<s style="background:#334155"></s>无注册数据';
+    document.getElementById('d-cnt').textContent=`${D.total} 条注册 / ${D.live_processes} 存活`;
+    document.getElementById('d-body').innerHTML = D.items.map(p=>{
+      const k=ST_COLOR[p.state]?'':'OTHER';
+      return `<tr><td title="${p.name}">${p.name}</td>`+
+        `<td><span class="st ${k===''?p.state:'OTHER'}">${p.state}</span></td>`+
+        `<td>${p.restarts}</td><td>${p.score}</td><td>${p.source}</td></tr>`;
+    }).join('') || '<tr><td colspan="5" class="empty">注册表为空</td></tr>';
+    // skills
+    document.getElementById('s-cnt').textContent=`${S.total} 个`;
+    document.getElementById('s-legend').innerHTML=Object.entries(S.categories).map(([c,n])=>`<s style="background:#a855f7"></s>${c}:${n}`).join('');
+    document.getElementById('skills').innerHTML = S.items.map(s=>
+      `<div class="sk"><div class="nm" title="${s.dir}">${s.name}</div>`+
+      `<span class="ct">${s.category}</span>`+
+      `<div class="ds" title="${s.desc||''}">${s.desc||'(无描述)'}</div></div>`
+    ).join('') || '<div class="empty">未发现本地 Skill</div>';
+    // suggestions
+    const all=[...G.fresh.map(x=>({...x,tm:'新发现'})), ...G.persisted.filter(p=>!G.fresh.some(f=>f.subject===p.subject)).map(p=>({...p,tm:p.created_at||''}))];
+    document.getElementById('sug').innerHTML = all.slice(0,12).map(x=>
+      `<div class="sug-it"><span class="tag">${x.kind==='daemon_to_skill'?'DAEMON→SKILL':x.kind}</span>`+
+      `<div class="tx"><b>${x.subject}</b> — ${x.reason||''}</div><span class="tm">${x.tm}</span></div>`
+    ).join('') || '<div class="empty">暂无衍生候选 — 全部 daemon 已有配套 Skill 覆盖</div>';
+  }).catch(()=>{ document.getElementById('sug').innerHTML='<div class="empty">⚠️ API 请求失败, 请稍后重试</div>'; });
+}
+load();
+</script>
+</body>
+</html>
