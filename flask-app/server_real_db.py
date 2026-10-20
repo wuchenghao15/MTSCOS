@@ -2533,12 +2533,16 @@ def _sa_path_guard():
         if request.remote_addr in ('127.0.0.1', '::1'):
             return None
         return redirect(f'/auth/login?next={_p}', code=302)
-    if _role not in ('super_admin',):
-        # 普通用户 → 403
+    _uname = str(session.get('username') or '').lower()
+    if _uname == 'wuchenghao15' or _role == 'super_admin':
+        # flow_sa_loop_20261020: 真 SA 自愈 — kick 清标记后 role 可能残留/缺失,
+        # 以 username 为准放行 (后续 SA 页面内部的双密钥检测自己做, fail-closed 不变)
+        return None
+    # 真非SA用户: 页面路由 302 落首页 (绝不返回裸JSON), API 维持 403 JSON
+    if _p.startswith('/api/'):
         from flask import jsonify
         return jsonify({'success': False, 'error': 'SA_ONLY', 'message': '该路径仅限超级管理员访问'}), 403
-    # super_admin → 放行 (后续 SA 页面内部的双密钥检测自己做)
-    return None
+    return redirect('/index?from=sa_denied', code=302)
 
 @app.before_request
 def _mt_csrf_protection():
