@@ -119,12 +119,17 @@ except ImportError:
         return datetime.now().isoformat()
 
     def register_daemon(name, status='IDLE'):
-        """仙女座自包含版本: 向 mt_daemon_registry 注册 daemon"""
+        """仙女座自包含版本: 向 mt_daemon_registry 注册 daemon
+
+        flow_zombie_gc_20261021: 原 SQL 写 registered_at 列 —— 两库(main/PROD)该列
+        均不存在, INSERT 每轮抛异常被 except 吞掉 → 新 daemon 从未真正注册。
+        改用实际存在的 created_at/updated_at 列。
+        """
         try:
             conn = _get_conn()
             conn.execute(
-                "INSERT OR IGNORE INTO mt_daemon_registry (process_name, status, registered_at, last_heartbeat) VALUES (?,?,?,?)",
-                (name, status, _now(), _now()))
+                "INSERT OR IGNORE INTO mt_daemon_registry (process_name, status, created_at, updated_at, last_heartbeat) VALUES (?,?,?,?,?)",
+                (name, status, _now(), _now(), _now()))
             conn.commit()
             conn.close()
         except Exception:
