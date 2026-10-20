@@ -11384,9 +11384,21 @@ def api_hardware_dual_status():
     - 未登录：401
     - SA 用户：完整信息（both_authenticated / layout_mode / serial / volume_name）
     - 非SA 用户：layout_mode=STANDARD，敏感字段(serial/volume_name)清空，返回 both_authenticated=False
+    - flow_sa_hw_state_20261020: 全分支附 arduino_present + hw_state 硬件状态机
+      NONE(无钥) / HALF(单钥=无效) / DUAL(双钥) / DUAL_ARDUINO(双钥+Arduino)
     """
     try:
         from app.middlewares.vikey_enforcement_middleware import vikey_enforcement as _mt_dual
+        from core.services.vikey_official import arduino_present as _ard_present
+
+        def _hw_state(vp, sp, ard):
+            if vp and sp:
+                return 'DUAL_ARDUINO' if ard else 'DUAL'
+            if vp or sp:
+                return 'HALF'      # 单钥: 无效, 状态机不产生任何进入动作
+            return 'NONE'
+
+        _ard = _ard_present(force_refresh=request.args.get('hardware_only') == '1')
         username = session.get('username', '') or ''
         if not username:
             # v24.3.2: guest + loopback + hardware_only=1 → 仅返回硬件在位布尔
@@ -11410,13 +11422,16 @@ def api_hardware_dual_status():
                         'vikey_present': _vp,
                         'szu100_present': _sp,
                         'both_present': _vp and _sp,
+                        'arduino_present': _ard,
+                        'hw_state': _hw_state(_vp, _sp, _ard),
                         'layout_mode': 'SA_PROPRIETARY',
                     })
                 except Exception:
                     return jsonify({
                         'success': False, 'hardware_only': True,
                         'vikey_present': False, 'szu100_present': False,
-                        'both_present': False, 'layout_mode': 'STANDARD',
+                        'both_present': False, 'arduino_present': False,
+                        'hw_state': 'NONE', 'layout_mode': 'STANDARD',
                     })
             # 会话缺省无用户名 → 视为未登录。401 不重定向(防盗链保持原状)
             return jsonify({
@@ -11424,6 +11439,8 @@ def api_hardware_dual_status():
                 'error': '未登录',
                 'status_code': 401,
                 'both_authenticated': False,
+                'arduino_present': _ard,
+                'hw_state': _hw_state(False, False, _ard),
                 'layout_mode': 'STANDARD',
             }), 401
         role = (session.get('role') or session.get('role_name') or '')
@@ -11450,6 +11467,10 @@ def api_hardware_dual_status():
             dual['szu100']['volume_name'] = None
         dual.setdefault('success', True)
         dual['is_sa'] = bool(is_sa)
+        # flow_sa_hw_state_20261020: 硬件状态机字段 (登录态分支)
+        dual['arduino_present'] = _ard
+        dual['hw_state'] = _hw_state(bool(dual.get('vikey', {}).get('present')),
+                                     bool(dual.get('szu100', {}).get('present')), _ard)
         return jsonify(dual)
     except Exception as e:
         return jsonify({
