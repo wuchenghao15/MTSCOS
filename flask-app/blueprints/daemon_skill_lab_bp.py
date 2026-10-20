@@ -225,6 +225,7 @@ def _hall_ingest():
     """任务归集: ①衍生候选(PROPOSED) ②daemon异常(FAILED/STOPPED) 自动入厅"""
     conn = _db()
     added = 0
+    new_bad = []
     try:
         for r in conn.execute("SELECT id, subject, reason FROM mt_lab_suggestions WHERE status='PROPOSED'").fetchall():
             if not conn.execute("SELECT 1 FROM mt_lab_task_hall WHERE source='derivation' AND source_id=?", (r["id"],)).fetchone():
@@ -243,6 +244,14 @@ def _hall_ingest():
                               f"daemon {r['process_name']} 状态 {r['current_state']}, 需巡检修复",
                               "daemon_repair", r["id"], "HIGH"))
                 added += 1
+                new_bad.append(dict(r))
+        # 企微中枢 (flow_wecom_20261020): daemon 异常自动告警推送
+        if new_bad:
+            try:
+                from blueprints.wecom_hub_bp import notify_daemon_alert
+                notify_daemon_alert(new_bad)
+            except Exception:
+                pass
         conn.commit()
     finally:
         conn.close()
@@ -351,6 +360,12 @@ def hall_board():
             _audit("hall", "HALL_AUTO", f"归集{auto['ingested']}·分配{auto['dispatched']}",
                    {"ingested": auto["ingested"], "dispatched": auto["dispatched"],
                     "results": auto["results"]})
+            # 企微中枢 (flow_wecom_20261020): 分配播报推送
+            try:
+                from blueprints.wecom_hub_bp import notify_hall_dispatch
+                notify_hall_dispatch(auto["results"], auto["ingested"])
+            except Exception:
+                pass
         except Exception as e:
             _audit("hall", "HALL_AUTO", "FAILED", {"error": str(e)})
             return jsonify({"ok": False, "error": str(e)}), 500
@@ -545,6 +560,14 @@ def lab_auto_claim():
                 "items": [{"subject": r["subject"], "center": r["center"],
                            "employees": r["employees"], "professors": r["professors"],
                            "verdict": r["verdict"]} for r in results]})
+        # 企微中枢 (flow_wecom_20261020): 认领结果推送
+        try:
+            from blueprints.wecom_hub_bp import wecom_push
+            if results:
+                md = "\n".join(f"- **{r['subject'][:30]}** → {r['center']} [{r['verdict'][:10]}]" for r in results[:8])
+                wecom_push("lab", "🔬 研发中心 · 自动认领播报", md)
+        except Exception:
+            pass
         return jsonify({"ok": True, "claimed": len(results), "results": results})
     except Exception as e:
         _audit("lab", "AUTO_CLAIM", "FAILED", {"error": str(e)})

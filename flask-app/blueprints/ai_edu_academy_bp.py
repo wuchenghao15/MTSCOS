@@ -351,6 +351,16 @@ def edu_run():
                                   "passed": r["passed"], "examiner": r["examiner"]}
                                  for r in exam_results[:20]],
                 "promotions": promotions[:20]})
+        # 企微中枢 (flow_wecom_20261020): 考试晋升播报推送
+        try:
+            from blueprints.wecom_hub_bp import notify_edu_run
+            notify_edu_run({"courses_added": courses, "enrolled": enrolled, "graduated": graduated,
+                            "papers": papers, "exam_taken": len(exam_results),
+                            "exam_passed": sum(1 for r in exam_results if r["passed"]),
+                            "failed_back_to_school": sum(1 for r in exam_results if not r["passed"]),
+                            "promoted": promotions[:20]})
+        except Exception:
+            pass
         return jsonify({"ok": True, "pipeline": {
             "courses_added": courses, "enrolled": enrolled, "graduated": graduated,
             "papers": papers, "exam_taken": len(exam_results),
