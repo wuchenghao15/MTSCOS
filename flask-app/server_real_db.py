@@ -10206,22 +10206,25 @@ def index():
         return redirect(_dev_dashboard_path, code=302)
     else:
         # 其他节点: 保留原 SA redirect 逻辑
-        try:
-            from app.middlewares.vikey_enforcement_middleware import VikeyEnforcementMiddleware
-            _sa_check = VikeyEnforcementMiddleware.check_sa_redirect(
-                username=session.get('username', ''),
-                role=session.get('role', ''),
-                ip=request.remote_addr if request else None,
-            )
-            if _sa_check['should_redirect']:
-                return redirect('/sa/dashboard', code=302)
-        except Exception as _sa_redir_err:
+        # flow_sa_rootloop_20261020: 逃逸参数熔断 — 带 from= 落地(守卫弹回/踢出落点)时
+        # 不再 SA 跳转, 否则 /sa/dashboard守卫→/index→根路由SA跳转→/sa/dashboard 死循环
+        if not (request.args.get('from') or ''):
             try:
-                import logging as _lg_sa
-                _lg_sa_sa = _lg_sa.getLogger('sa_redirect')
-                _lg_sa_sa.warning("[sa_redirect] 检测异常，降级 STANDARD: %s", _sa_redir_err)
-            except Exception:
-                pass
+                from app.middlewares.vikey_enforcement_middleware import VikeyEnforcementMiddleware
+                _sa_check = VikeyEnforcementMiddleware.check_sa_redirect(
+                    username=session.get('username', ''),
+                    role=session.get('role', ''),
+                    ip=request.remote_addr if request else None,
+                )
+                if _sa_check['should_redirect']:
+                    return redirect('/sa/dashboard', code=302)
+            except Exception as _sa_redir_err:
+                try:
+                    import logging as _lg_sa
+                    _lg_sa_sa = _lg_sa.getLogger('sa_redirect')
+                    _lg_sa_sa.warning("[sa_redirect] 检测异常，降级 STANDARD: %s", _sa_redir_err)
+                except Exception:
+                    pass
 
     version, info, latest = get_version_info()
     stats = _get_homepage_stats()
