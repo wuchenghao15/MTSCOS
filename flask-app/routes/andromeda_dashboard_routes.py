@@ -1119,6 +1119,27 @@ def api_knowledge_search():
     })
 
 
+@bp.route('/api/knowledge_brain/semantic', methods=['GET'])
+def api_knowledge_semantic():
+    """脑库语义检索 API (flow_andromeda_iceberg_20261021) — 新版仙女座能力适配冰山系统
+    消费 engines.ai_brain_vector_engine.search_brain (零 token 本地 Ollama embed,
+    768 维余弦 top-k → join ai_brain_enhanced_knowledge 标题/摘要), 与旧式 LIKE 关键词搜索并存"""
+    q = (request.args.get('q') or request.args.get('keyword') or '').strip()
+    try:
+        top_k = max(1, min(int(request.args.get('top_k') or 5), 20))
+    except (TypeError, ValueError):
+        top_k = 5
+    if not q:
+        return jsonify({'code': 0, 'data': {'query': '', 'results': [], 'note': '空查询'}})
+    try:
+        from engines.ai_brain_vector_engine import search_brain
+        out = search_brain(q, top_k)
+        return jsonify({'code': 0, 'data': out})
+    except Exception as e:
+        # fail-open: 语义检索异常不 500, 前端回退提示
+        return jsonify({'code': 1, 'data': {'query': q, 'results': [], 'error': str(e)}})
+
+
 @bp.route('/api/knowledge_brain/personas', methods=['GET'])
 def api_knowledge_personas():
     """知识贡献者人格档案列表"""

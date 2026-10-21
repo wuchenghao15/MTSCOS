@@ -754,6 +754,59 @@ body.andromeda-has-nav .container { padding-left:260px; }
     </div>
   </section>
 
+  {# ═══════════ Section 6B: 新版仙女座能力适配 (flow_andromeda_iceberg_20261021) ═══════════ #}
+  <section class="section">
+    <div class="section-hd">
+      <span class="section-num">06B — NEW CAPABILITIES</span>
+      <h2 class="section-title">新版仙女座能力适配</h2>
+      <span class="section-desc">v22.25.x · Real Data Only · 数据源 /api/andromeda/hub L5</span>
+    </div>
+    <div class="engine-grid">
+      <div class="engine-card" style="border-top-color:#0A2342">
+        <div class="engine-icon">💾</div>
+        <div class="engine-name">每日冷备份</div>
+        <div class="engine-en">Daily Cold Backup</div>
+        <div class="engine-num"><span id="capBk">—</span><small id="capBkSub"></small></div>
+        <div class="engine-desc">VACUUM INTO 冷快照 · MTSCOS_BACKUPS · 3 份轮转</div>
+      </div>
+      <div class="engine-card" style="border-top-color:#1E4A63">
+        <div class="engine-icon">🗄️</div>
+        <div class="engine-name">滚动归档</div>
+        <div class="engine-en">Rolling Archive</div>
+        <div class="engine-num"><span id="capAr">—</span><small>行已归档</small></div>
+        <div class="engine-desc">心跳14d / 消息60d / 安全事件90d · 分批同事务强一致</div>
+      </div>
+      <div class="engine-card" style="border-top-color:#C9A96E">
+        <div class="engine-icon">🔐</div>
+        <div class="engine-name">敏感三金库</div>
+        <div class="engine-en">Fernet Vault</div>
+        <div class="engine-num"><span id="capVault">—</span><small>机 / 邮 / 密</small></div>
+        <div class="engine-desc">手机号 · 邮箱 · 密码哈希入金库 · 明文列残留 0 · 仅计密文数</div>
+      </div>
+      <div class="engine-card" style="border-top-color:#16A34A">
+        <div class="engine-icon">🧭</div>
+        <div class="engine-name">脑库语义向量</div>
+        <div class="engine-en">Brain Vectors</div>
+        <div class="engine-num"><span id="capVec">—</span><small>distinct · 768 维</small></div>
+        <div class="engine-desc">1.57M 行脑库去重回填 · 零 token 本地 embed · 盲区 0</div>
+      </div>
+      <div class="engine-card" style="border-top-color:#2C5F7C">
+        <div class="engine-icon">🔍</div>
+        <div class="engine-name">语义检索基准</div>
+        <div class="engine-en">Semantic Bench</div>
+        <div class="engine-num"><span id="capBench">—</span><small id="capBenchSub">hit@5</small></div>
+        <div class="engine-desc">余弦 top-k 真实量化 · 结果落库 mt_brain_vector_bench</div>
+      </div>
+      <div class="engine-card" style="border-top-color:#6366f1">
+        <div class="engine-icon">📡</div>
+        <div class="engine-name">脑库 RAG 投喂</div>
+        <div class="engine-en">Brain RAG Feed</div>
+        <div class="engine-num"><span id="capFeed">—</span><small>次 / 24h</small></div>
+        <div class="engine-desc">chat 入口自动注入脑库知识 · 开销占比 1.4% · fail-open</div>
+      </div>
+    </div>
+  </section>
+
   {# ═══════════ Section 7: 美工与艺术渲染团队 ═══════════ #}
   <section class="section">
     <div class="section-hd">
@@ -906,7 +959,16 @@ async function loadEngineAndTeams() {
       const ev = document.getElementById('engVector');
       if (ev) ev.textContent = fmtNum(j.data.vectors || 0);
       const er = document.getElementById('engRag');
-      if (er) er.textContent = '99.2%';
+      // RAG 余弦精度: 修复硬编码假数据 '99.2%' (flow_andromeda_iceberg_20261021) → 取 bench 真实 hit@5
+      try {
+        const rh = await fetch('/api/andromeda/hub', {credentials:'same-origin'});
+        const rj = await rh.json();
+        const c5 = rj.L5_capabilities || {};
+        const bench = (c5.brain_vector || {}).bench;
+        if (er && bench && bench.hit_at_5_pct != null) er.textContent = bench.hit_at_5_pct + '%';
+        else if (er) er.textContent = '—';
+        loadNewCaps(c5);
+      } catch(e2) { if (er) er.textContent = '—'; }
     }
   } catch(e) {}
 
@@ -932,6 +994,38 @@ async function loadEngineAndTeams() {
   } catch(e) {}
 }
 loadEngineAndTeams();
+
+// 新版仙女座能力适配面板 (06B, flow_andromeda_iceberg_20261021) — 全部真实落库数据
+function loadNewCaps(c5){
+  c5 = c5 || {};
+  const fmtMB = b => b>=1073741824 ? (b/1073741824).toFixed(2)+' GB' : (b/1048576).toFixed(1)+' MB';
+  const bk = c5.daily_backup;
+  const elBk = document.getElementById('capBk');
+  if (elBk){
+    if (bk){ elBk.textContent = bk.ok ? '正常' : '异常'; elBk.style.color = bk.ok ? '' : 'var(--mtscos-color-danger,#ef4444)';
+      const sub=document.getElementById('capBkSub'); if(sub) sub.textContent = ' '+(bk.size_bytes?fmtMB(bk.size_bytes):'')+' · '+(bk.elapsed_sec!=null?bk.elapsed_sec+'s':'');
+    } else elBk.textContent = '无记录';
+  }
+  const ar = c5.rolling_archive;
+  const elAr = document.getElementById('capAr');
+  if (elAr) elAr.textContent = ar ? fmtNum(ar.rows_archived||0) : '—';
+  const v = c5.vaults || {};
+  const elV = document.getElementById('capVault');
+  if (elV) elV.textContent = (v.phone||0)+' / '+(v.email||0)+' / '+(v.password||0);
+  const bv = c5.brain_vector || {};
+  const elVec = document.getElementById('capVec');
+  if (elVec) elVec.textContent = fmtNum(bv.distinct||0);
+  const be = bv.bench;
+  const elBe = document.getElementById('capBench');
+  if (elBe){
+    if (be){ elBe.textContent = (be.hit_at_5_pct!=null?be.hit_at_5_pct:'—')+'%';
+      const sub=document.getElementById('capBenchSub'); if(sub) sub.textContent=' hit@5 · P50 '+(be.p50_ms!=null?be.p50_ms:'—')+'ms';
+      elBe.title='ran_at '+(be.ran_at||'')+' · hit@1 '+(be.hit_at_1_pct!=null?be.hit_at_1_pct:'—')+'% · P95 '+(be.p95_ms!=null?be.p95_ms:'—')+'ms';
+    } else elBe.textContent = '未跑';
+  }
+  const elFeed = document.getElementById('capFeed');
+  if (elFeed) elFeed.textContent = fmtNum(c5.brain_feed_24h||0);
+}
 </script>
 
 {# ========== 守护能力矩阵 ========== #}

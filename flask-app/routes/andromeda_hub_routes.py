@@ -1,11 +1,12 @@
 """
 仙女座总枢纽 — API 网关 (flow_andromeda_p3_20261018)
 
-GET /api/andromeda/hub → 四层聚合 (内部聚合现有表, 不重写逻辑):
+GET /api/andromeda/hub → 五层聚合 (内部聚合现有表, 不重写逻辑):
   L1 引擎层: mt_andromeda_engine_inventory 分层统计
   L2 数据层: mt_andromeda_data_dictionary 双胞胎裁决
   L3 网络层: EigenFlux 注册/消息/专家
   L4 运行层: daemon 状态 + 错误中心 OPEN + 规则违反
+  L5 能力层: 新版仙女座能力 (冷备份/滚动归档/三金库/脑库向量+bench/RAG投喂, flow_andromeda_iceberg_20261021)
 """
 import os
 import sqlite3
@@ -49,6 +50,16 @@ def _hub_payload():
             err_open = 0
         rule_7d = _q(conn, "SELECT COUNT(*) n FROM mt_rule_violation_alert WHERE created_at >= datetime('now','-7 day')")[0]['n']
         brain = _q(conn, "SELECT COUNT(*) n FROM sqlite_master WHERE type='table' AND name LIKE '%brain%'")[0]['n']
+        # ── L5 新版能力层 (flow_andromeda_iceberg_20261021): 新版仙女座 6 项能力真数据聚合 ──
+        bk = _q(conn, "SELECT action, ok, size_bytes, elapsed_sec, created_at FROM mt_backup_log ORDER BY id DESC LIMIT 1")
+        ar = _q(conn, "SELECT COUNT(*) rounds, COALESCE(SUM(archived_rows),0) rows_archived, MAX(created_at) last_at FROM mt_archive_log")
+        pv = _q(conn, "SELECT COUNT(*) n FROM mt_user_phone_vault")
+        ev = _q(conn, "SELECT COUNT(*) n FROM mt_user_email_vault")
+        pwv = _q(conn, "SELECT COUNT(*) n FROM mt_user_password_vault")
+        vec_total = _q(conn, "SELECT COUNT(*) n FROM mt_ai_brain_vector")
+        vec_dist = _q(conn, "SELECT COUNT(DISTINCT content_sha) n FROM mt_ai_brain_vector")
+        bench = _q(conn, "SELECT ran_at, model, hit_at_1_pct, hit_at_5_pct, p50_ms, p95_ms FROM mt_brain_vector_bench ORDER BY id DESC LIMIT 1")
+        feed24 = _q(conn, "SELECT COUNT(*) n FROM mt_ai_brain_feed_log WHERE fed_at >= datetime('now','-1 day')")
     layer_cnt = Counter(e['layer'] for e in engines)
     return {
         'generated_at': __import__('datetime').datetime.now().isoformat(),
@@ -56,6 +67,21 @@ def _hub_payload():
         'L2_data': {'twin_groups': [{'group': t['group_key'], 'authoritative': t['authoritative_table'], 'tables': t['tables_json']} for t in twins]},
         'L3_network': {'eigenflux_registered': ef_reg, 'heartbeat_24h': ef_reg24, 'comm_messages': ef_msg, 'experts': experts, 'brain_tables': brain},
         'L4_runtime': {'daemons_total': daemons_total, 'daemons_abnormal': daemons_bad, 'error_center_open': err_open, 'rule_violations_7d': rule_7d},
+        'L5_capabilities': {
+            'daily_backup': bk[0] if bk else None,
+            'rolling_archive': ar[0] if ar else None,
+            'vaults': {
+                'phone': pv[0]['n'] if pv else 0,
+                'email': ev[0]['n'] if ev else 0,
+                'password': pwv[0]['n'] if pwv else 0,
+            },
+            'brain_vector': {
+                'total': vec_total[0]['n'] if vec_total else 0,
+                'distinct': vec_dist[0]['n'] if vec_dist else 0,
+                'bench': bench[0] if bench else None,
+            },
+            'brain_feed_24h': feed24[0]['n'] if feed24 else 0,
+        },
     }
 
 

@@ -477,6 +477,7 @@
     <div class="search-row">
       <input class="search-input" id="kw" placeholder="{{ t('andromeda.关键词__JLPT_4d25b5', default='🔍 关键词: JLPT / 新概念英语 / 高等数学 / 雅思 ...') }}">
       <button class="search-btn" onclick="search()">{{ t('andromeda.搜索_e5f71f', default='搜索') }}</button>
+      <button class="search-btn" id="semBtn" onclick="semanticSearch()" title="768 维余弦 top-k · 零 token 本地推理 (flow_andromeda_iceberg_20261021)">语义检索</button>
     </div>
     <div class="filter-row" id="filters">
       <!-- JS 填充 -->
@@ -597,6 +598,48 @@ async function search() {
 function toggleFilter(type, val) {
   state.domain = type==='domain' && val!=='全部领域' ? val : (type==='domain' ? '' : state.domain);
   if (type==='domain') search();
+}
+
+// 语义检索 (flow_andromeda_iceberg_20261021) — 新版仙女座 search_brain 能力消费, 零 token 本地
+async function semanticSearch() {
+  const kw = document.getElementById('kw').value.trim();
+  const grid = document.getElementById('results');
+  const empty = document.getElementById('empty');
+  const btn = document.getElementById('semBtn');
+  if (!kw) { empty.textContent='请输入语义查询词'; empty.style.display='block'; grid.innerHTML=''; return; }
+  btn.disabled = true; const oldTxt = btn.textContent; btn.textContent = '检索中…';
+  try {
+    const r = await fetch('/andromeda/api/knowledge_brain/semantic?q='+encodeURIComponent(kw)+'&top_k=8');
+    const j = await r.json();
+    const d = j.data || {};
+    if (j.code !== 0 || d.error) {
+      grid.innerHTML = ''; empty.style.display='block';
+      empty.textContent = '语义检索暂不可用: '+(d.error||'未知错误');
+      return;
+    }
+    if (!(d.results||[]).length) {
+      grid.innerHTML = ''; empty.style.display='block';
+      empty.textContent = d.note || '无语义命中';
+      return;
+    }
+    empty.style.display='none';
+    grid.innerHTML = (d.ms ? `<div class="filter-chip active" style="cursor:default">🧭 语义 top-${d.results.length} · 向量 ${d.vector_total} · embed ${d.ms.embed}ms · 排序 ${d.ms.rank}ms · 零 token</div>` : '') +
+      d.results.map(row => {
+      const title = (row.title || '').replace(/<[^>]+>/g,'');
+      const pct = row.score != null ? (row.score*100).toFixed(1)+'%' : '';
+      return `
+    <div class="knowledge-card">
+      <div class="card-domain">${row.category||'通用'} · 余弦 ${pct}</div>
+      <div class="card-title">${title}</div>
+      <div class="card-meta"><span>🆔 ${row.knowledge_id||''}</span></div>
+      <div class="card-summary">${row.content_preview||'—'}</div>
+    </div>`;
+    }).join('');
+  } catch(e) {
+    grid.innerHTML = ''; empty.style.display='block'; empty.textContent = '语义检索请求失败: '+e.message;
+  } finally {
+    btn.disabled = false; btn.textContent = oldTxt;
+  }
 }
 
 document.getElementById('kw').addEventListener('keydown', e => {

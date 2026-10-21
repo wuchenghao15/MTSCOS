@@ -39,7 +39,7 @@
 </head>
 <body>
 <h1>🪐 仙女座总枢纽</h1>
-<div class="meta">flow_andromeda_p4_20261018 · 四层全景: 引擎 / 数据 / 网络 / 运行 · 数据源 /api/andromeda/hub</div>
+<div class="meta">flow_andromeda_p4_20261018 · 五层全景: 引擎 / 数据 / 网络 / 运行 / 新版能力 · 数据源 /api/andromeda/hub</div>
 
 <div class="layers">
   <div class="panel">
@@ -56,6 +56,16 @@
     <div class="stat"><span>专家</span><b id="n_exp">—</b></div>
     <div class="stat"><span>交流消息</span><b id="n_msg">—</b></div>
     <div class="stat"><span>脑库表</span><b id="n_brain">—</b></div>
+  </div>
+  <div class="panel">
+    <h2>L5 能力层 (新版仙女座)</h2>
+    <div class="stat"><span>每日冷备份</span><b id="c_bk">—</b></div>
+    <div class="stat"><span>快照体积</span><b id="c_bksize">—</b></div>
+    <div class="stat"><span>滚动归档</span><b id="c_ar">—</b></div>
+    <div class="stat"><span>三金库 (机/邮/密)</span><b id="c_vault">—</b></div>
+    <div class="stat"><span>脑库向量 (distinct)</span><b id="c_vec">—</b></div>
+    <div class="stat"><span>语义检索 hit@5 / P50</span><b id="c_bench">—</b></div>
+    <div class="stat"><span>脑库投喂 (24h)</span><b id="c_feed">—</b></div>
   </div>
   <div class="panel">
     <h2>L4 运行层</h2>
@@ -100,6 +110,25 @@ async function load(){
     const re=document.getElementById('r_err');re.textContent=rt.error_center_open;
     re.className=rt.error_center_open>0?'warn':'good';
     document.getElementById('r_rule').textContent=rt.rule_violations_7d;
+    // L5 新版能力层 (flow_andromeda_iceberg_20261021)
+    const c5=d.L5_capabilities||{};
+    function fmtMB(b){return b>=1073741824?(b/1073741824).toFixed(2)+' GB':(b/1048576).toFixed(1)+' MB';}
+    const bk=c5.daily_backup;
+    const cbk=document.getElementById('c_bk');
+    if(bk){cbk.textContent=bk.ok?'正常':'异常';cbk.className=bk.ok?'good':'bad';cbk.title=(bk.created_at||'')+' '+(bk.action||'');
+      document.getElementById('c_bksize').textContent=fmtMB(bk.size_bytes||0)+' · '+(bk.elapsed_sec||0)+'s';
+    }else{cbk.textContent='无记录';cbk.className='warn';}
+    const ar=c5.rolling_archive;
+    document.getElementById('c_ar').textContent=ar?(ar.rows_archived.toLocaleString()+' 行 · '+ar.rounds+' 轮'):'—';
+    const v=c5.vaults||{};
+    document.getElementById('c_vault').textContent=(v.phone||0)+' / '+(v.email||0)+' / '+(v.password||0);
+    const bv=c5.brain_vector||{};
+    document.getElementById('c_vec').textContent=(bv.distinct||0).toLocaleString();
+    const be=bv.bench;
+    const cbe=document.getElementById('c_bench');
+    if(be){cbe.textContent=(be.hit_at_5_pct??'—')+'% / '+(be.p50_ms??'—')+'ms';cbe.title='ran_at '+(be.ran_at||'')+' · hit@1 '+(be.hit_at_1_pct??'—')+'% · P95 '+(be.p95_ms??'—')+'ms';}
+    else cbe.textContent='未跑 bench';
+    document.getElementById('c_feed').textContent=c5.brain_feed_24h||0;
     document.querySelector('#tbl_twins tbody').innerHTML=d.L2_data.twin_groups.map(t=>
       '<tr><td>'+esc(t.group)+'</td><td><b>'+esc(t.authoritative)+'</b></td></tr>').join('')
       ||'<tr><td colspan="2" class="empty">无双胞胎表 ✓</td></tr>';
