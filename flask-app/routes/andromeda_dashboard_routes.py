@@ -44,12 +44,13 @@ Phase 4 🆕 (档案库补齐):
 from __future__ import annotations
 
 import os
+import sys
 import time
 import sqlite3
 import subprocess
 from collections import OrderedDict
 
-from flask import jsonify, render_template, request
+from flask import jsonify, render_template, request, session
 from app.middlewares.system_container import system_container
 
 from . import andromeda_dashboard_bp as bp
@@ -731,14 +732,44 @@ def api_knowledge_graph_data():
 
 @bp.route('/api/persona_chat', methods=['POST'])
 def api_persona_chat():
-    """💬 AI 人格聊天室 — 调 Ollama qwen2.5:7b"""
-    import urllib.request as _ur, json as _json
+    """💬 AI 人格聊天室 — Ollama qwen2.5:7b + 脑库RAG + 会话落库 (flow_andromeda_chat_20261021)
+
+    完善项: ①脑库RAG注入 (零token本地, fail-open, MTSCOS_BRAIN_RAG=0 关闭, 与网关同参 top_k=3/≥0.45)
+           ②会话持久化 chat_sessions/chat_messages (主库唯一数据源)
+           ③响应带 sid/rag_used/rag_count (前端 RAG 徽标 + 会话恢复)
+    注意: 实际端点为 /andromeda/api/persona_chat (bp url_prefix=/andromeda),
+          前端旧版 fetch('/api/persona_chat') 必 404 — 已在前端修正"""
+    import urllib.request as _ur, json as _json, uuid as _uuid
     data = request.get_json(silent=True) or {}
     question = (data.get('question') or '').strip()
     persona = data.get('persona') or {}  # {name, role, domain, layer}
     if not question: return jsonify({'code': 1, 'msg': '请输入问题'})
-    # 构建角色扮演 prompt
-    system_prompt = f"你是【{persona.get('name','AI')}】，身份：{persona.get('role','专家')}，领域：{persona.get('domain','综合')}。请以【{persona.get('name')}】的身份和口吻回答，保持这个角色的独特视角和语言风格。回答用中文。"
+    uid = session.get('user_id') or 0
+    uname = session.get('username') or 'guest_andromeda'
+    # ── 脑库 RAG (fail-open: 检索层故障不外泄, 不影响聊天主链路)
+    rag_ctx, rag_used, rag_n = '', 0, 0
+    if os.environ.get('MTSCOS_BRAIN_RAG', '1') != '0':
+        try:
+            _eng = os.path.join(_FLASK_APP, 'engines')
+            if _eng not in sys.path:
+                sys.path.insert(0, _eng)
+            from ai_brain_vector_engine import search_brain as _sb
+            _out = _sb(question, top_k=3) or {}
+            hits = [r for r in (_out.get('results') or [])
+                    if float(r.get('score') or 0) >= 0.45]
+            if hits:
+                rag_used, rag_n = 1, len(hits)
+                lines = [f"- {(r.get('title') or '')[:60]}: {(r.get('content_preview') or '')[:160]}"
+                         for r in hits]
+                rag_ctx = ("\n\n【脑库相关知识·仅供参考 (语义检索 top-%d, 相似度≥0.45)】\n" % len(lines)
+                           + "\n".join(lines)
+                           + "\n回答时可适当参考以上知识, 但必须保持你的人格口吻。")
+        except Exception:
+            rag_ctx, rag_used, rag_n = '', 0, 0  # fail-open
+    # ── 构建角色扮演 prompt + Ollama
+    system_prompt = (f"你是【{persona.get('name','AI')}】，身份：{persona.get('role','专家')}，"
+                     f"领域：{persona.get('domain','综合')}。请以【{persona.get('name')}】的身份和口吻回答，"
+                     f"保持这个角色的独特视角和语言风格。回答用中文。") + rag_ctx
     ollama_payload = {
         'model': 'qwen2.5:7b',
         'messages': [
@@ -756,7 +787,62 @@ def api_persona_chat():
         answer = body.get('message', {}).get('content', '')
     except Exception as ex:
         answer = f'[Ollama 未就绪，降级固定回答]\n{persona.get("name","AI")} 说：关于"{question[:30]}..."，这是一个值得深思的问题。让我从{persona.get("domain","这个领域")}的角度来思考...'
-    return jsonify({'code': 0, 'data': {'persona': persona.get('name'), 'answer': answer}})
+    # ── 会话落库 (chat_sessions/chat_messages; 落库失败不阻断聊天)
+    sid = (data.get('sid') or '').strip()
+    conn = None
+    try:
+        conn = sqlite3.connect(os.path.join(_FLASK_APP, 'database', 'app.db'), timeout=10)
+        cur = conn.cursor()
+        if sid:
+            row = cur.execute("SELECT session_id FROM chat_sessions WHERE session_id=?", (sid,)).fetchone()
+            if not row:
+                sid = ''  # 客户端 sid 失效 → 新建
+        if not sid:
+            sid = f"pc_{_uuid.uuid4().hex[:12]}"
+            cur.execute(
+                "INSERT INTO chat_sessions (session_id,user_id,username,title,message_count,last_message) "
+                "VALUES (?,?,?,?,0,?)",
+                (sid, uid, uname, question[:60], f"你: {question[:120]}"))
+        cur.execute("INSERT INTO chat_messages (session_id,user_id,role,content,model) VALUES (?,?,?,?,?)",
+                    (sid, uid, 'user', question, ''))
+        cur.execute("INSERT INTO chat_messages (session_id,user_id,role,content,model) VALUES (?,?,?,?,?)",
+                    (sid, uid, 'assistant', answer, f"qwen2.5:7b/{persona.get('name','AI')}"))
+        cur.execute(
+            "UPDATE chat_sessions SET message_count=message_count+2, last_message=?, "
+            "updated_at=datetime('now','localtime') WHERE session_id=?",
+            (f"{persona.get('name','AI')}: {answer[:120]}", sid))
+        conn.commit()
+    except Exception:
+        pass
+    finally:
+        if conn:
+            conn.close()
+    return jsonify({'code': 0, 'data': {'persona': persona.get('name'), 'answer': answer,
+                                        'sid': sid, 'rag_used': rag_used, 'rag_count': rag_n}})
+
+
+@bp.route('/api/persona_chat/history', methods=['GET'])
+def api_persona_chat_history():
+    """💬 persona_chat 会话历史回放 (flow_andromeda_chat_20261021) ?sid= 会话ID"""
+    sid = (request.args.get('sid') or '').strip()
+    if not sid:
+        return jsonify({'code': 1, 'msg': '缺少 sid'})
+    out = {'code': 0, 'data': {'sid': sid, 'title': '', 'messages': []}}
+    try:
+        conn = sqlite3.connect(os.path.join(_FLASK_APP, 'database', 'app.db'), timeout=10)
+        conn.row_factory = sqlite3.Row
+        srow = conn.execute("SELECT session_id, title FROM chat_sessions WHERE session_id=?", (sid,)).fetchone()
+        if not srow:
+            conn.close()
+            return jsonify({'code': 1, 'msg': '会话不存在'})
+        out['data']['title'] = srow['title'] or ''
+        out['data']['messages'] = [dict(r) for r in conn.execute(
+            "SELECT role, content, model, created_at FROM chat_messages "
+            "WHERE session_id=? ORDER BY id ASC LIMIT 400", (sid,)).fetchall()]
+        conn.close()
+    except Exception as ex:
+        return jsonify({'code': 1, 'msg': str(ex)[:200]})
+    return jsonify(out)
 
 
 @bp.route('/api/iceberg/health', methods=['GET'])
