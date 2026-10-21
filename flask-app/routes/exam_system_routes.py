@@ -1546,6 +1546,35 @@ def question_bank_search():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+@exam_bp.route('/question_banks/semantic_search', methods=['GET'])
+@system_container(page_name='(auto)', require_auth='login', allowed_roles=['student', 'student_vip', 'teacher', 'admin', 'super_admin'])
+def question_bank_semantic_search():
+    """题库语义搜题 (flow_qbank_semantic_20261021): search_brain 泛化消费落地 —
+    脑库向量 27874 条 (768维余弦 top-k, 零 token 本地 Ollama), 与结构化筛选
+    /question_banks/search 双通道并存; 脑库承载题库母题/题型/讲解知识, 语义命中
+    即为出题与讲解的知识锚点; fail-open: 语义引擎异常时返回空结果不阻塞"""
+    user = _current_safe_user()
+    ok, err = _check_login(user)
+    if not ok:
+        return jsonify({'success': False, 'error': err[1]}), err[0]
+    q = _safe_str(request.args.get('q'), default='')
+    try:
+        top_k = max(1, min(int(request.args.get('top_k') or 8), 20))
+    except (TypeError, ValueError):
+        top_k = 8
+    if not q:
+        return jsonify({'success': True, 'data': {'query': '', 'results': []}})
+    try:
+        from engines.ai_brain_vector_engine import search_brain
+        out = search_brain(q, top_k)
+        # 统一 exam API 返回形态: success/data (与 question_bank_search 一致)
+        return jsonify({'success': True, 'data': out})
+    except Exception as e:
+        logger.error(f"[QBank] semantic_search 失败: {e}")
+        # fail-open: 语义引擎不可用时不 500, 前端可回退结构化搜索
+        return jsonify({'success': True, 'data': {'query': q, 'results': [], 'error': str(e)}})
+
+
 bp = Blueprint('exam_system_bp', __name__)
 
 @bp.route('/stats/overview', methods=['GET'])
