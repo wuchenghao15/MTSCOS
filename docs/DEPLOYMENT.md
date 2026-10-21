@@ -1,4 +1,10 @@
 # 🚀 部署指南
+---
+
+> 🚀 **2026-10-21 更新**: modular_start.py 支持 `--port=N` 参数化 (原硬编码 8888); 主库 8888 + PROD 5001 双站均 v22.25.16;
+> 今日新端点: /api/exam/question_banks/semantic_search (题库语义搜题) / /andromeda/api/knowledge_brain/semantic (脑库语义) /
+> /api/andromeda/hub L5 聚合。启动: cd flask-app && python3 modular_start.py [--port=8888]。
+
 
 > 从零启动 MTSCOS AI 系统 · macOS 原生
 

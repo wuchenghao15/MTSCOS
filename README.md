@@ -1,4 +1,12 @@
 # 🌊 MTSCOS AI — 冰山智能管理系统
+---
+
+> ## 🔄 2026-10-21 · v22.25.16 更新
+> 今日 14 flow 全部 §14 DONE 双推: 每日冷备份(1.80GB/3份轮转) · 滚动归档(60万行) · email+password 双金库收口 ·
+> 脑库向量去重回填(27874向量) · 语义检索(hit@1=80%/P50=9.2ms) · chat RAG · hub L5+06B 能力面板 ·
+> 三端代码闭环(7660/7660 SAME) · 题库语义搜题 · 广度战略规划 · P1四维(语义出题/RAG三出口/巡检语义化/敏感第四列评估) · 文档全量刷新
+> **当前**: v22.25.16 · 双站生效(8888+5001) · 483表 · 276 AI员工 · 14 daemon · 保活=cron+Python直跑(launchd已废弃)
+
 
 [![Python](https://img.shields.io/badge/python-3.14+-blue.svg)](https://www.python.org/)
 [![Flask](https://img.shields.io/badge/flask-3.1+-black.svg)](https://flask.palletsprojects.com/)
