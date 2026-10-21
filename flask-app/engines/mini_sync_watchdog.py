@@ -149,19 +149,75 @@ def run_sync(tables: list, create_missing: bool, label: str) -> dict:
         return {'label': label, 'rc': 1, 'secs': 0, 'tail': [str(e)[:160]]}
 
 
-def run_all() -> list:
+def remote_git_pull() -> dict:
+    """把开发机已推送到 gitee/origin 的功能代码拉到 Mini (功能同步到服务器)"""
+    _log('▶ phase0_Mini 拉取代码 (git ff-only)')
+    cmd = ['ssh', '-T', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=8', HOST,
+           'cd ~/MTSCOS_AI_Project && git fetch --all -q && git checkout main -q && '
+           'git merge --ff-only origin/main && git rev-parse --short HEAD && git log -1 --oneline']
+    try:
+        r = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+        out = (r.stdout or '').strip().splitlines()
+        err = (r.stderr or '').strip().splitlines()
+        for ln in out[-2:]:
+            _log(f"  | {ln[:160]}")
+        if r.returncode != 0:
+            _log(f"  ✗ git pull rc={r.returncode}: {(err[-1][:140] if err else '')}")
+        return {'label': 'phase0_代码同步', 'rc': r.returncode,
+                'head': out[-2] if len(out) >= 2 else '', 'tail': out[-2:] + err[-1:]}
+    except Exception as e:
+        _log(f"✗ git pull 失败: {e}")
+        return {'label': 'phase0_代码同步', 'rc': 1, 'tail': [str(e)[:160]]}
+
+
+def verify_sync() -> tuple:
+    """读同步报告判断是否真同步 — 远端不可读的 skip 不能算成功"""
+    path = os.path.join(FA_DIR, '_runtime', 'logs', 'bidirectional_sync_last.json')
+    try:
+        with open(path, encoding='utf-8') as f:
+            d = json.load(f)
+    except Exception as e:
+        return False, f'报告不可读: {e}'
+    unreachable = bad = applied = synced = 0
+    for row in d.get('results', []):
+        for side in ('pull', 'push'):
+            r = row.get(side) or {}
+            if 'error' in r:
+                bad += 1
+            elif 'skip' in r:
+                if '远端不可读' in str(r['skip']) or 'channel 0' in str(r['skip']):
+                    unreachable += 1
+                else:
+                    bad += 1
+            elif 'applied' in r or 'scanned' in r:
+                synced += 1
+                applied += int(r.get('applied') or 0)
+    if unreachable:
+        return False, f'远端不可读 {unreachable} 项 (未真正同步)'
+    if bad:
+        return False, f'失败 {bad} 项'
+    return True, f'真同步 {synced} 项, 写入 {applied} 行'
+
+
+def run_all() -> tuple:
+    """返回 (results, ok, detail). phase0 先把开发机功能代码拉到 Mini"""
     results = [
+        remote_git_pull(),
         run_sync(MISSING_TABLES, True, 'phase1_缺表建表+拉全量'),
         run_sync([], False, 'phase2_默认白名单双向增量'),
     ]
+    ok, detail = verify_sync()
+    if not ok:
+        _log(f"⚠ 同步未达成: {detail}")
     try:
         os.makedirs(os.path.dirname(REPORT), exist_ok=True)
         with open(REPORT, 'w', encoding='utf-8') as f:
             json.dump({'finished_at': time.strftime('%Y-%m-%d %H:%M:%S'),
-                       'host': HOST, 'results': results}, f, ensure_ascii=False, indent=2)
+                       'host': HOST, 'ok': ok, 'detail': detail,
+                       'results': results}, f, ensure_ascii=False, indent=2)
     except Exception:
         pass
-    return results
+    return results, ok, detail
 
 
 def main() -> int:
@@ -180,17 +236,27 @@ def main() -> int:
     signal.signal(signal.SIGTERM, lambda *_: (_ for _ in ()).throw(SystemExit(0)))
     try:
         deadline = time.time() + MAX_HOURS * 3600
+        attempts = 0
         _log(f"守护启动 pid={os.getpid()} host={HOST} poll={POLL_SECS}s max={MAX_HOURS}h")
         n = 0
         while True:
             ok, info = probe()
             n += 1
             if ok:
-                _log(f"✅ Mini 恢复 (第 {n} 次探活) → 开始补跑")
-                res = run_all()
-                ok_all = all(r['rc'] == 0 for r in res)
-                _log(f"补跑完成 {'全部成功' if ok_all else '有失败, 详见报告'} → 守护退出")
-                return 0 if ok_all else 1
+                _log(f"✅ Mini 恢复 (第 {n} 次探活) → 开始代码同步+数据补跑")
+                res, ok_all, detail = run_all()
+                if ok_all:
+                    _log(f"✅ 补跑完成 ({detail}) → 守护退出")
+                    return 0
+                attempts += 1
+                _log(f"⚠ 第 {attempts} 次补跑未达成 ({detail}), 继续等待重试")
+                if attempts >= 3:
+                    _log('⚠ 连续 3 次补跑未达成 → 守护退出, 详见报告')
+                    return 4
+                if once:
+                    return 2
+                time.sleep(max(POLL_SECS, 120))
+                continue
             if n == 1 or n % 10 == 0:
                 _log(f"探活 #{n} 未通: {info}")
             if once:
