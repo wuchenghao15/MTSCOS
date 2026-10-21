@@ -4,6 +4,20 @@
 
 ---
 
+> ## 🔄 2026-10-21 · v22.25.16 全量更新（12 flow 双推收口）
+>
+> **今日落成**（全部 §14 12步骤 DONE，commit 双推 gitee+origin）：
+> 每日冷备份(1.80GB/6.3s) · 滚动归档(90.4万行/6轮) · email金库收口 · 脑库向量去重回填(27874向量盲区=0) ·
+> 脑库语义检索 search(hit@1=80%/P50=9.2ms) · bench量化 · chat入口脑库RAG · password三列金库(mt_user_password_vault) ·
+> 仙女座能力适配冰山(hub L5五层聚合+06B能力面板) · 语义检索UI · 冰山三端代码闭环(7660/7660 SAME+PROD:5001复活) ·
+> 题库语义搜题(/api/exam/question_banks/semantic_search) · 广度发展战略规划 · 四维P1全量(语义出题锚点+RAG三出口下沉+巡检语义化+敏感第四列评估=无需新增)
+>
+> **当前状态**: 系统版本 v22.25.16 · 双站生效(主库8888+PROD:5001) · 三端代码一致 · 483表 · 276 AI员工 · 14 daemon
+> **新表**: mt_user_password_vault(密码Fernet金库) · 三端同步沿用三表白名单
+> **保活**: cron+Python直跑(每分钟+@reboot)；LAUNCHD plist 链路已废弃(2026-10-21)
+
+---
+
 ## v25.5.0 (2026-10-05)
 
 ### 🆕 新增
