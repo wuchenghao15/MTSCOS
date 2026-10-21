@@ -944,6 +944,24 @@ class DeepInspectionEngine:
             c = _get_conn()
             cur = c.cursor()
             report_data = {'report_id': self._report.report_id, 'inspection_time': self._report.inspection_time, 'routes_found': self._report.routes_found, 'files_inspected': self._report.files_inspected, 'lines_inspected': self._report.lines_inspected, 'items_found': self._report.items_found, 'items_fixed': self._report.items_fixed, 'items_verified': self._report.items_verified, 'items_resolved': self._report.items_resolved, 'teams_involved': self._report.teams_involved, 'summary': self._report.summary, 'timeline': self._report.timeline[-20:]}
+            # P1 巡检语义化 (flow_p1_wave_20261021): 未解决问题附脑库历史相似解法 top-2 (零token, fail-open, 限流前3条)
+            try:
+                unresolved = [it for it in self._items if it.lifecycle_status in ('failed', 'discovered', 'assigned')][:3]
+                hints = []
+                if unresolved:
+                    from ai_brain_vector_engine import search_brain
+                    for it in unresolved:
+                        try:
+                            so = search_brain(f'{it.category} {it.message[:60]}', top_k=2)
+                            hints.append({'item': f'{it.file}:{it.line}', 'matches': [
+                                {'title': (r.get('title') or '')[:50], 'preview': (r.get('content_preview') or '')[:100],
+                                 'score': round(float(r.get('score') or 0), 3)} for r in (so.get('results') or [])]})
+                        except Exception:
+                            continue
+                if hints:
+                    report_data['semantic_hints'] = hints
+            except Exception:
+                pass  # fail-open: 语义增强不阻塞持久化主链路
             cur.execute('INSERT OR REPLACE INTO mt_super_admin_reports\n                (flow_id, report_type, title, content, operator, created_at)\n                VALUES(?,?,?,?,?,?)', (flow_id, 'DEEP_INSPECTION_REPORT', f'深度巡检报告-{self._report.report_id}', json.dumps(report_data, ensure_ascii=False), 'DeepInspection', now))
             stored += 1
             for item in self._items:

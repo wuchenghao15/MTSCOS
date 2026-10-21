@@ -299,6 +299,19 @@ def _prep_plan_md(etype, window_label, qids, subjects, rows, use_local=False):
           f"## 三、结题讲解要点\n- 选择题: 定考点 → 排除法 → 回归题干验证\n"
           f"- 填空题: 条件转化 → 公式代入 → 回代检验\n- 主观题: 拆设问 → 列要点 → 模板作答\n\n"
           f"## 四、团队学习\n- 对应团队已完成入库题学习并沉淀知识至教育中心学习档案\n")
+    # P1 语义出题 (flow_p1_wave_20261021): 备课计划注入脑库知识锚点 (零token语义检索, fail-open)
+    try:
+        sys.path.insert(0, _APP_DIR)
+        from ai_brain_vector_engine import search_brain
+        anchor_q = " ".join(subjects[:3]) if subjects else f"{etype} 考点"
+        out = search_brain(anchor_q, top_k=3)
+        hits = [r for r in (out.get("results") or []) if float(r.get("score") or 0) >= 0.45]
+        if hits:
+            md += "\n## 四·补、脑库知识锚点 (语义检索 top-%d, 零token)\n" % len(hits)
+            for r in hits:
+                md += f"- [{(r.get('category') or '通用')}] {(r.get('title') or '')[:50]} (余弦 {float(r['score']):.2f}): {(r.get('content_preview') or '')[:80]}\n"
+    except Exception:
+        pass  # fail-open: 检索不可用不阻塞备课主链路
     if use_local:
         try:
             sys.path.insert(0, _APP_DIR)
