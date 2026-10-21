@@ -1,143 +1,18 @@
-/*
- * andromeda_nav.js — 冰山系统统一侧边导航 (自包含: 样式内联, 零依赖)
- * ================================================================
- * flow_integration_20261018 · v1.1.0
- *
- * 注入方式二选一:
- *   1. Flask after_request 自动注入 (server_real_db.py, 全站 184 页生效)
- *   2. 手动: <script src="/static/js/andromeda_nav.js"></script>
- *
- * 幂等: window.__ANDROMEDA_NAV_MOUNTED__ 防重复挂载
- * 孤岛清零: 覆盖入口/冰山/Aurora/知识/天团/治理/系统 全部功能页
- */
+/* ===========================================================
+   仙女座统一导航组件 · 共享 JS (flow_andromeda_chat_20261021)
+   侧边栏 + 面包屑 + 底部快捷栏, 依赖 /static/css/andromeda_nav.css
+   NI 增补: 🪐 总枢纽(/andromeda/hub) + 🤖 本地AI聊天(/local-chat)
+   =========================================================== */
 (function(){
-  'use strict';
-  if (window.__ANDROMEDA_NAV_MOUNTED__) return;
-  window.__ANDROMEDA_NAV_MOUNTED__ = true;
-
-  var NAV_ITEMS = [
-    { group:'🏠 入口', items:[
-      { id:'home',        label:'冰山主页',        href:'/index',                        icon:'🏔️' },
-      { id:'hub',         label:'仙女座总枢纽',    href:'/andromeda/hub',                icon:'🪐' },
-      { id:'ai-chat',     label:'AI 聊天入口',     href:'/ai',                           icon:'💬' },
-      { id:'dashboard',   label:'仙女座仪表盘',    href:'/andromeda/dashboard',          icon:'🎛️' },
-    ]},
-    { group:'🧊 冰山', items:[
-      { id:'iceberg-center', label:'冰山控制中心', href:'/andromeda/iceberg_center',     icon:'🧊' },
-      { id:'evolution',   label:'演化时间线',      href:'/andromeda/iceberg_evolution',  icon:'📜' },
-      { id:'collapse',    label:'坍缩定理',        href:'/andromeda/collapse_theorem',   icon:'⚓' },
-      { id:'meta',        label:'冰山元数据',      href:'/andromeda/iceberg_meta',       icon:'📋' },
-    ]},
-    { group:'✨ Aurora', items:[
-      { id:'aurora',      label:'极光注册表',      href:'/aurora/center',                icon:'✨' },
-      { id:'empower',     label:'AI 员工赋能',     href:'/empower/center',               icon:'🤖' },
-      { id:'gray',        label:'灰度发布中心',    href:'/andromeda/gray_center',        icon:'🌗' },
-    ]},
-    { group:'🧠 知识', items:[
-      { id:'brain',       label:'知识脑库',        href:'/andromeda/knowledge_brain',    icon:'🧠' },
-      { id:'graph',       label:'知识图谱',        href:'/andromeda/knowledge_graph',    icon:'🕸️' },
-      { id:'chat',        label:'AI 人格聊天室',   href:'/andromeda/persona_chat',       icon:'🗨️' },
-      { id:'wenquxing',   label:'文曲星教辅',      href:'/andromeda/wenquxing',          icon:'📖' },
-    ]},
-    { group:'👥 EigenFlux', items:[
-      { id:'eigenflux',   label:'EigenFlux 交流',  href:'/andromeda/eigenflux_council',  icon:'👥' },
-      { id:'ef-center',   label:'EigenFlux 中心',  href:'/admin_app/eigenflux_center',   icon:'🌐' },
-      { id:'team',        label:'AI 团队中枢',     href:'/admin_app/ai_team_hub',        icon:'🏢' },
-    ]},
-    { group:'🧩 治理中心', items:[
-      { id:'devflow',     label:'§14 开发流程',    href:'/admin_app/dev_flow_dashboard', icon:'🔀' },
-      { id:'brainbank',   label:'脑库浏览器',      href:'/admin_app/brain_bank_explorer',icon:'💾' },
-      { id:'neural',      label:'神经网络矩阵',    href:'/admin_app/neural_array_matrix',icon:'🧿' },
-      { id:'errors',      label:'错误异常处理中心', href:'/error-center',                icon:'🚑' },
-      { id:'redblue',     label:'红蓝攻防研究中心', href:'/redblue/center',             icon:'⚔️' },
-      { id:'theme',       label:'主题排版研究中心', href:'/theme-layout/center',         icon:'🎨' },
-    ]},
-    { group:'🛡️ 系统', items:[
-      { id:'health',      label:'健康度仪表盘',    href:'/andromeda/health_board',       icon:'🩺' },
-      { id:'upgrade',     label:'升级报告',        href:'/andromeda/upgrade_board',      icon:'📊' },
-      { id:'stats',       label:'系统统计',        href:'/andromeda/stats',              icon:'📈' },
-    ]},
-  ];
-
-  /* ── 当前路径 → active 项 (最长前缀匹配) ── */
-  var curPath = location.pathname;
-  var active = null, bestLen = 0;
-  NAV_ITEMS.forEach(function(g){ g.items.forEach(function(it){
-    if (curPath.indexOf(it.href) === 0 && it.href.length > bestLen){ active = it; bestLen = it.href.length; }
-  });});
-
-  /* ── 内联样式 (自包含 · 首页浅色框架同源 v1.2) ── */
-  var css = [
-    '.andromeda-sidebar{position:fixed;left:0;top:0;bottom:0;width:212px;background:rgba(255,255,255,.94);',
-    'border-right:1px solid rgba(11,31,58,.08);backdrop-filter:blur(14px);z-index:9800;',
-    'overflow-y:auto;padding:14px 0 90px;font-size:13px;transition:transform .25s;}',
-    '.andromeda-sidebar.collapsed{transform:translateX(-100%);}',
-    '.as-header{padding:6px 16px 12px;border-bottom:1px solid rgba(11,31,58,.08);margin-bottom:8px;}',
-    '.as-logo{font-size:26px;line-height:1;}',
-    '.as-title{font-weight:700;color:#0b1f3a;margin-top:4px;}',
-    '.as-sub{color:#6b7a8f;font-size:11px;}',
-    '.as-group{margin:6px 8px;background:rgba(255,255,255,.85);border:1px solid rgba(11,31,58,.07);border-radius:10px;overflow:hidden;box-shadow:0 1px 2px rgba(11,31,58,.04);}',
-    '.as-group-title{display:flex;align-items:center;gap:6px;background:linear-gradient(90deg,rgba(99,102,241,.16),rgba(99,102,241,.04));',
-    'color:#4338ca;font-size:12px;font-weight:700;padding:7px 12px;letter-spacing:.06em;border-bottom:1px solid rgba(67,56,202,.14);}',
-    '.as-item{display:flex;align-items:center;gap:9px;padding:7px 12px 7px 18px;color:#334155;text-decoration:none;font-size:13px;}',
-    '.as-item:hover{background:rgba(67,56,202,.08);color:#0b1f3a;}',
-    '.as-item.active{background:rgba(67,56,202,.12);color:#4338ca;font-weight:600;box-shadow:inset 3px 0 0 #4338ca;}',
-    '.as-icon{width:18px;text-align:center;}',
-    '.as-footer{position:absolute;bottom:14px;left:0;right:0;padding:10px 16px;color:#9baab8;font-size:11px;}',
-    '.as-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#22c55e;margin-right:6px;}',
-    '.as-link{color:#6b7a8f;text-decoration:none;}',
-    '.andromeda-crumb{position:fixed;top:0;left:0;right:0;height:0;z-index:9790;}',
-    '.as-toggle{position:fixed;left:10px;bottom:12px;z-index:9900;width:40px;height:40px;border-radius:50%;',
-    'border:1px solid rgba(67,56,202,.30);background:rgba(255,255,255,.95);color:#4338ca;font-size:18px;cursor:pointer;box-shadow:0 2px 8px rgba(11,31,58,.12);}',
-    'body.andromeda-has-nav{padding-left:212px;}',
-    'body.andromeda-has-nav.nav-collapsed{padding-left:0;}',
-    '@media(max-width:900px){body.andromeda-has-nav{padding-left:0;}',
-    '.andromeda-sidebar{transform:translateX(-100%);}body.andromeda-has-nav.nav-open .andromeda-sidebar{transform:none;}}'
-  ].join('');
-
-  function mount(){
-    if (!document.body) { setTimeout(mount, 60); return; }
-
-    var style = document.createElement('style');
-    style.textContent = css;
-    document.head.appendChild(style);
-
-    var side = document.createElement('aside');
-    side.className = 'andromeda-sidebar';
-    side.innerHTML =
-      '<div class="as-header"><div class="as-logo">🪐</div><div class="as-title">仙女座</div>' +
-      '<div class="as-sub">冰山功能导航 v1.2</div></div>' +
-      NAV_ITEMS.map(function(g){
-        return '<div class="as-group"><div class="as-group-title">' + g.group + '</div>' +
-          g.items.map(function(it){
-            return '<a class="as-item ' + (active && active.id === it.id ? 'active' : '') +
-              '" href="' + it.href + '"><span class="as-icon">' + it.icon +
-              '</span><span class="as-label">' + it.label + '</span></a>';
-          }).join('') + '</div>';
-      }).join('') +
-      '<div class="as-footer"><span class="as-dot"></span>Flask SERVER · <a class="as-link" href="/index">回主页</a></div>';
-
-    var crumb = document.createElement('nav');
-    crumb.className = 'andromeda-crumb';
-
-    var toggle = document.createElement('button');
-    toggle.className = 'as-toggle';
-    toggle.title = '展开/收起导航';
-    toggle.innerHTML = '🪐';
-    toggle.addEventListener('click', function(){
-      document.body.classList.toggle('nav-collapsed');
-      side.classList.toggle('collapsed');
-      document.body.classList.toggle('nav-open');
-    });
-
-    document.body.insertBefore(side, document.body.firstChild);
-    document.body.appendChild(toggle);
-    document.body.classList.add('andromeda-has-nav');
-  }
-
-  if (document.readyState === 'loading'){
-    document.addEventListener('DOMContentLoaded', mount);
-  } else {
-    mount();
-  }
+var NI=[["🏠 入口",[{id:"home",label:"冰山主页",href:"/index",icon:"🏔️"},{id:"center",label:"控制中心",href:"/andromeda/iceberg_center",icon:"🧊"},{id:"dashboard",label:"仪表盘",href:"/andromeda/dashboard",icon:"🎛️"},{id:"hub",label:"总枢纽",href:"/andromeda/hub",icon:"🪐"}]],["🧊 冰山",[{id:"evolution",label:"演化时间线",href:"/andromeda/iceberg_evolution",icon:"📜"},{id:"collapse",label:"坍缩定理",href:"/andromeda/collapse_theorem",icon:"⚓"}]],["🧠 知识",[{id:"brain",label:"知识脑库",href:"/andromeda/knowledge_brain",icon:"🧠"},{id:"graph",label:"知识图谱",href:"/andromeda/knowledge_graph",icon:"🕸️"},{id:"chat",label:"AI 人格聊天室",href:"/andromeda/persona_chat",icon:"💬"},{id:"aichat",label:"本地AI聊天",href:"/local-chat",icon:"🤖"}]],["👥 天团",[{id:"eigenflux",label:"EigenFlux 矩阵",href:"/andromeda/eigenflux_council",icon:"👥"}]],["🛡️ 系统",[{id:"health",label:"健康度仪表盘",href:"/andromeda/health_board",icon:"🩺"},{id:"upgrade",label:"升级报告",href:"/andromeda/upgrade_board",icon:"📊"}]]];
+var CP=location.pathname,FA=null,BL=0;
+NI.forEach(g=>g.items.forEach(it=>{if(CP.startsWith(it.href)&&it.href.length>BL){FA=it;BL=it.href.length}}));
+if(!FA&&(CP==="/iceberg"||CP==="/andromeda"))FA=NI[0].items[1];
+var side=document.createElement("aside");side.className="andromeda-sidebar";
+side.innerHTML='<div class="as-header"><div class="as-logo">🪐</div><div class="as-title">仙女座</div><div class="as-sub">Andromeda v22.1</div></div>'+NI.map(g=>'<div class="as-group"><div class="as-group-title">'+g.group+'</div>'+g.items.map(it=>'<a class="as-item '+(FA&&FA.id===it.id?"active":"")+'" href="'+it.href+'"><span class="as-icon">'+it.icon+'</span><span class="as-label">'+it.label+'</span></a>').join("")+"</div>").join("")+'<div class="as-footer"><div class="as-status"><span class="as-dot"></span><span>Flask 8888</span></div><a class="as-link" href="/api/sync/health" target="_blank">Sync 状态</a></div>';
+var crumb=document.createElement("nav");crumb.className="andromeda-crumb";
+crumb.innerHTML='<a href="/andromeda/iceberg_center">🧊 仙女座</a>'+(FA?' › <span>'+FA.label+'</span>':"")+'<a href="/index" class="crumb-home">🏠 回主页</a>';
+var bot=document.createElement("nav");bot.className="andromeda-bottom";
+bot.innerHTML=NI.flatMap(g=>g.items).map(it=>'<a href="'+it.href+'" class="'+(FA&&FA.id===it.id?"active":"")+'"><span>'+it.icon+'</span><b>'+it.label+'</b></a>').join("");
+if(document.body){document.body.insertBefore(side,document.body.firstChild);document.body.insertBefore(crumb,document.body.children[1]||document.body.firstChild);document.body.appendChild(bot);document.body.classList.add("andromeda-has-nav")}
 })();

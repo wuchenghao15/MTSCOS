@@ -5,6 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>仙女座总枢纽 · MTSCOS</title>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/mtscos_design_tokens.css') }}">
+<!-- 仙女座统一导航 (flow_andromeda_chat_20261021 入场加强: hub 接入侧边栏/面包屑/底部快捷栏) -->
+<link rel="stylesheet" href="/static/css/andromeda_nav.css">
+<style>
+  body.andromeda-has-nav { padding-top: 52px !important; }
+</style>
 <style>
   :root {
     --bg: var(--mtscos-bg-primary, #0b1020);
@@ -140,5 +145,7 @@ async function load(){
 }
 load();
 </script>
+<!-- 仙女座统一导航 (入场加强: 总枢纽全页导航入口) -->
+<script src="/static/js/andromeda_nav.js"></script>
 </body>
 </html>

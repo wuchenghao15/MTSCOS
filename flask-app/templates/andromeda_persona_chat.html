@@ -125,7 +125,8 @@ MTSCOS AI
 <div class="main">
   <div class="hd">
     <h1>{{ t('andromeda.AI_人格实时聊天室_ee7514', default='AI 人格实时聊天室') }}</h1>
-    <div class="sub">选 1-N 个人格 → 输入话题 → 每个人格独立回答 (Ollama qwen2.5:7b)</div>
+    <div class="sub">选 1-N 个人格 → 输入话题 → 每个人格独立回答 (Ollama qwen2.5:7b) · <button onclick="newSession()" style="padding:2px 12px;font-size:0.7rem;letter-spacing:1px;">✨ 新会话</button></div>
+    <div class="sub" style="color:var(--neon-gold);">🧠 明示: 本页对话永久化落库保存; AI 回答自动注入脑库语义知识 (RAG·可用 MTSCOS_BRAIN_RAG=0 关闭)</div>
   </div>
   <div class="chat-area" id="chatArea">
     <div class="msg-head" style="text-align:center;color:var(--muted);font-size:0.75rem;margin-top:40px;">{{ t('andromeda.左侧选择人格_然后在_f32273', default='← 左侧选择人格，然后在下方输入话题开始讨论') }}</div>
@@ -142,21 +143,8 @@ MTSCOS AI
 
 {% block extra_scripts %}
 
-<script>
-(function(){
-var NI=[["🏠 入口",[{id:"home",label:"冰山主页",href:"/index",icon:"🏔️"},{id:"center",label:"控制中心",href:"/andromeda/iceberg_center",icon:"🧊"},{id:"dashboard",label:"仪表盘",href:"/andromeda/dashboard",icon:"🎛️"}]],["🧊 冰山",[{id:"evolution",label:"演化时间线",href:"/andromeda/iceberg_evolution",icon:"📜"},{id:"collapse",label:"坍缩定理",href:"/andromeda/collapse_theorem",icon:"⚓"}]],["🧠 知识",[{id:"brain",label:"知识脑库",href:"/andromeda/knowledge_brain",icon:"🧠"},{id:"graph",label:"知识图谱",href:"/andromeda/knowledge_graph",icon:"🕸️"},{id:"chat",label:"AI 人格聊天室",href:"/andromeda/persona_chat",icon:"💬"}]],["👥 天团",[{id:"eigenflux",label:"EigenFlux 矩阵",href:"/andromeda/eigenflux_council",icon:"👥"}]],["🛡️ 系统",[{id:"health",label:"健康度仪表盘",href:"/andromeda/health_board",icon:"🩺"},{id:"upgrade",label:"升级报告",href:"/andromeda/upgrade_board",icon:"📊"}]]];
-var CP=location.pathname,FA=null,BL=0;
-NI.forEach(g=>g.items.forEach(it=>{if(CP.startsWith(it.href)&&it.href.length>BL){FA=it;BL=it.href.length}}));
-if(!FA&&(CP==="/iceberg"||CP==="/andromeda"))FA=NI[0].items[1];
-var side=document.createElement("aside");side.className="andromeda-sidebar";
-side.innerHTML='<div class="as-header"><div class="as-logo">🪐</div><div class="as-title">仙女座</div><div class="as-sub">Andromeda v22.1</div></div>'+NI.map(g=>'<div class="as-group"><div class="as-group-title">'+g.group+'</div>'+g.items.map(it=>'<a class="as-item '+(FA&&FA.id===it.id?"active":"")+'" href="'+it.href+'"><span class="as-icon">'+it.icon+'</span><span class="as-label">'+it.label+'</span></a>').join("")+"</div>").join("")+'<div class="as-footer"><div class="as-status"><span class="as-dot"></span><span>Flask 8888</span></div><a class="as-link" href="/api/sync/health" target="_blank">Sync 状态</a></div>';
-var crumb=document.createElement("nav");crumb.className="andromeda-crumb";
-crumb.innerHTML='<a href="/andromeda/iceberg_center">🧊 仙女座</a>'+(FA?' › <span>'+FA.label+'</span>':"")+'<a href="/index" class="crumb-home">🏠 回主页</a>';
-var bot=document.createElement("nav");bot.className="andromeda-bottom";
-bot.innerHTML=NI.flatMap(g=>g.items).map(it=>'<a href="'+it.href+'" class="'+(FA&&FA.id===it.id?"active":"")+'"><span>'+it.icon+'</span><b>'+it.label+'</b></a>').join("");
-if(document.body){document.body.insertBefore(side,document.body.firstChild);document.body.insertBefore(crumb,document.body.children[1]||document.body.firstChild);document.body.appendChild(bot);document.body.classList.add("andromeda-has-nav")}
-})();
-</script>
+<!-- 仙女座统一导航 · 共享组件 (flow_andromeda_chat_20261021: NI 增补总枢纽+本地AI聊天入口) -->
+<script src="/static/js/andromeda_nav.js"></script>
 
 <script>
 const PERSONAS = [
@@ -200,36 +188,77 @@ function updateSelectedBar(){
   });
 }
 
+function esc(s){const d=document.createElement('div');d.textContent=s==null?'':String(s);return d.innerHTML;}
+
+const SID_KEY = 'pc_sid';
+function getSid(){ return localStorage.getItem(SID_KEY) || ''; }
+function setSid(v){ if(v) localStorage.setItem(SID_KEY, v); else localStorage.removeItem(SID_KEY); }
+function chatAppendUser(q){
+  const chat = document.getElementById('chatArea');
+  const ph = chat.querySelector(':scope > .msg-head');
+  if(ph) ph.remove();
+  chat.innerHTML += `<div class="msg me" data-msg="1"><div class="msg-head"><span class="p-name">你</span> · ${new Date().toLocaleTimeString()}</div><div class="msg-body">${esc(q)}</div></div>`;
+  chat.scrollTop = chat.scrollHeight;
+}
+function chatAppendPersona(p, headHtml, bodyHtml){
+  const chat = document.getElementById('chatArea');
+  chat.innerHTML += `<div class="msg" data-msg="1"><div class="msg-head"><span class="p-name">${p.avatar} ${esc(p.name)}</span> · ${esc(p.role)} ${headHtml}</div><div class="msg-body">${bodyHtml}</div></div>`;
+  chat.scrollTop = chat.scrollHeight;
+}
+function newSession(){
+  setSid('');
+  document.getElementById('chatArea').innerHTML = '<div class="msg-head" style="text-align:center;color:var(--muted);font-size:0.75rem;margin-top:40px;">新会话已开启 · 左侧选择人格，然后在下方输入话题开始讨论</div>';
+}
+async function restoreHistory(){
+  const sid = getSid();
+  if(!sid) return;
+  try{
+    const r = await fetch('/andromeda/api/persona_chat/history?sid='+encodeURIComponent(sid), {credentials:'same-origin'});
+    const j = await r.json();
+    if(j.code!==0 || !(j.data.messages||[]).length){ setSid(''); return; }
+    const chat = document.getElementById('chatArea');
+    chat.innerHTML = '';
+    const byName = n => PERSONAS.find(p=>p.name===n) || {avatar:'💬', name:n, role:''};
+    for(const m of j.data.messages){
+      if(m.role==='user'){ chatAppendUser(m.content); continue; }
+      const pn = (m.model||'').split('/').pop() || 'AI';
+      const p = byName(pn);
+      chatAppendPersona(p, '', esc(m.content));
+    }
+  }catch(e){ /* 历史恢复失败静默, 不影响新对话 */ }
+}
+
 async function send(){
   const q = document.getElementById('qInput').value.trim();
   if(!q){alert('输入话题');return;}
   if(!selected.size){alert('至少选 1 个人格');return;}
   // 用户消息
-  const chat = document.getElementById('chatArea');
-  chat.innerHTML += `<div class="msg me"><div class="msg-head"><span class="p-name">你</span> · ${new Date().toLocaleTimeString()}</div><div class="msg-body">${q}</div></div>`;
+  chatAppendUser(q);
   document.getElementById('qInput').value = '';
-  chat.scrollTop = chat.scrollHeight;
 
-  // 每个人格并行（实际上串行调 Ollama）
+  // 每个人格串行调 Ollama (服务端已接脑库RAG+会话落库)
   const ps = [...selected].map(id=>PERSONAS.find(p=>p.id===id));
   for(const p of ps){
     const loadingId = 'loading_'+p.id;
+    const chat = document.getElementById('chatArea');
     chat.innerHTML += `<div class="msg" id="${loadingId}"><div class="msg-head"><span class="p-name">${p.avatar} ${p.name}</span> 思考中...</div><div class="loading">🤔 ${p.name} 正在思考 (Ollama qwen2.5:7b)...</div></div>`;
     chat.scrollTop = chat.scrollHeight;
     try{
-      const r = await fetch('/api/persona_chat', {
+      const r = await fetch('/andromeda/api/persona_chat', {
         method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({question:q, persona:{name:p.name, role:p.role, domain:p.domain, layer:p.layer}})
+        body: JSON.stringify({question:q, persona:{name:p.name, role:p.role, domain:p.domain, layer:p.layer}, sid:getSid()})
       });
       const j = await r.json();
       const div = document.getElementById(loadingId);
       if(j.code===0){
-        div.innerHTML = `<div class="msg-head"><span class="p-name">${p.avatar} ${p.name}</span> · ${p.role}</div><div class="msg-body">${j.data.answer}</div>`;
+        setSid(j.data.sid || '');
+        const rag = j.data.rag_used ? `<span style="color:var(--neon-gold);font-size:0.68rem;" title="脑库语义检索注入 top-${j.data.rag_count}">🧠 脑库×${j.data.rag_count}</span>` : '';
+        div.innerHTML = `<div class="msg-head"><span class="p-name">${p.avatar} ${p.name}</span> · ${p.role} ${rag}</div><div class="msg-body">${esc(j.data.answer)}</div>`;
       } else {
-        div.innerHTML = `<div class="msg-head"><span class="p-name">${p.name}</span></div><div class="msg-body" style="color:var(--red);">❌ ${j.msg}</div>`;
+        div.innerHTML = `<div class="msg-head"><span class="p-name">${p.name}</span></div><div class="msg-body" style="color:var(--red);">❌ ${esc(j.msg||'未知错误')}</div>`;
       }
     } catch(e){
-      document.getElementById(loadingId).innerHTML = `<div class="msg-body" style="color:var(--red);">❌ ${e.message}</div>`;
+      document.getElementById(loadingId).innerHTML = `<div class="msg-body" style="color:var(--red);">❌ ${esc(e.message)}</div>`;
     }
     chat.scrollTop = chat.scrollHeight;
   }
@@ -237,6 +266,7 @@ async function send(){
 
 document.getElementById('qInput').addEventListener('keydown', e=>{if(e.key==='Enter')send();});
 renderPersonas();
+restoreHistory();
 </script>
 
 {% endblock %}
