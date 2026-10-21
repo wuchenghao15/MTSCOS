@@ -1782,6 +1782,8 @@ def register_all_blueprints(app):
         ('error_center_routes', 'error_center_bp'),
         # 仙女座总枢纽 API+页面 (flow_andromeda_p3/p4_20261018)
         ('andromeda_hub_routes', 'andromeda_hub_bp'),
+        # 仙女座参数中心 — 统一参数体系 MT_RULE_PARAM 落地 (flow_andromeda_param_20261021)
+        ('andromeda_param_routes', 'andromeda_param_bp'),
         # 红蓝攻防研究中心 (flow_redblue_ui_20261018)
         ('redblue_routes', 'redblue_bp'),
         # 安全仪表盘 — 杨安 AI 底层安全专家 4安全表/13开关/审计/CSP (v22.7.0 YANG IR14)
