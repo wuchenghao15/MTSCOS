@@ -3014,6 +3014,14 @@ try:
 except Exception as _lab_err:
     print(f'[DAEMON-SKILL-LAB] ⚠️ 研发中心模块加载失败: {_lab_err}')
 
+# ── 跨团队协作总线 Blueprint: /api/collab/* (flow_team_collab_20261022) ──
+try:
+    from blueprints.team_collab_bp import team_collab_bp
+    app.register_blueprint(team_collab_bp)
+    print('[TEAM-COLLAB] ✅ /api/collab/* 跨团队协作总线已注册')
+except Exception as _collab_err:
+    print(f'[TEAM-COLLAB] ⚠️ 协作总线模块加载失败: {_collab_err}')
+
 # ── AI 教育中心 + 考试院 Blueprint: /api/ai-edu/* (flow_edu_20261020) ──
 try:
     from blueprints.ai_edu_academy_bp import ai_edu_academy_bp

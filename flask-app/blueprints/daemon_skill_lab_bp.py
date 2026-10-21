@@ -328,6 +328,16 @@ def _hall_dispatch_one(task):
                 conn.execute("INSERT INTO mt_lab_hr_log (employee_name, employee_code, role, hall_task_id, action, verdict) VALUES (?,?,?,?,?,?)",
                              (p["name"], p.get("code"), "professor", task["id"], "REVIEW", verdict))
         conn.commit()
+        # flow_team_collab_20261022: 分派成功即开跨团队协作频道, 强制各天团实时互通
+        if status == "DISPATCHED":
+            try:
+                from engines.ai_team_collab_engine import init_tables, open_channel
+                init_tables()
+                open_channel({"id": task["id"], "title": task["title"],
+                              "description": task.get("description") or "",
+                              "source": task.get("source") or "开发"})
+            except Exception as _ce:
+                print(f"[TEAM-COLLAB] ⚠️ 开频道失败 task={task['id']}: {_ce}")
     finally:
         conn.close()
     return {"task": task["title"], "center": center["name"],
