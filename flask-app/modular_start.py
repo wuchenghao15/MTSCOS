@@ -208,4 +208,15 @@ if __name__ == "__main__":
     _t_pre_run.sleep(5)
     sys.stderr.write("[BOOT] Flask 开始 listen\n")
 
-    app.run(host="0.0.0.0", port=8888, debug=False, threaded=True)
+    # flow_iceberg_saga_20261021: 支持 --port=N 覆盖 (smart_sync PROD :5001 启动),
+    # 默认仍 8888 (避免 macOS AirPlay 5000 冲突)
+    _mt_port = 8888
+    for _argv in sys.argv[1:]:
+        if _argv.startswith("--port="):
+            try:
+                _mt_port = int(_argv.split("=", 1)[1])
+                sys.stderr.write(f"[BOOT] 端口覆盖: {_mt_port}\n")
+            except ValueError:
+                pass
+            break
+    app.run(host="0.0.0.0", port=_mt_port, debug=False, threaded=True)

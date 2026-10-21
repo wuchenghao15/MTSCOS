@@ -285,7 +285,8 @@ class SmartSyncEngine:
         
         log(f"  🔄 rsync: {src} → {dst}")
         try:
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+            result = subprocess.run(cmd, capture_output=True, text=True,
+                                    encoding='utf-8', errors='replace', timeout=300)
             if result.returncode != 0:
                 log(f"  ⚠️ rsync 有警告: {result.stderr[:80]}")
             # 统计同步文件数
@@ -420,7 +421,8 @@ class SmartSyncEngine:
                    str(self.cfg.prod_rules) + "/"]
         
         try:
-            r = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+            r = subprocess.run(cmd, capture_output=True, text=True,
+                               encoding='utf-8', errors='replace', timeout=60)
             files = len([l for l in r.stdout.split("\n") if l.endswith(".md")])
             log(f"  📜 规则同步: {files} 份")
             return files
@@ -452,10 +454,16 @@ class SmartSyncEngine:
                 sp.Popen(cmd, stdout=logf, stderr=logf, cwd=str(prod_app))
             
             time.sleep(3)
-            # 检查是否起来
-            check = sp.run(["lsof", "-ti", f":{self.cfg.prod_port}"],
-                          capture_output=True, text=True)
-            if check.stdout.strip():
+            # 检查是否起来 — 循环探测 20s (41 蓝图加载 > 3s, flow_iceberg_saga_20261021)
+            up = False
+            for _ in range(10):
+                time.sleep(2)
+                check = sp.run(["lsof", "-ti", f":{self.cfg.prod_port}"],
+                              capture_output=True, text=True)
+                if check.stdout.strip():
+                    up = True
+                    break
+            if up:
                 log(f"  ✅ 生产 Flask 已启动 (port {self.cfg.prod_port})")
                 return f"STARTED port {self.cfg.prod_port}"
             else:
@@ -522,7 +530,8 @@ def trigger_git_commit():
     # 先检查 git diff 大小
     try:
         r = subprocess.run(["git", "diff", "--stat", "HEAD~1", "HEAD"],
-                          capture_output=True, text=True, timeout=10,
+                              capture_output=True, text=True,
+                              encoding='utf-8', errors='replace', timeout=10,
                           cwd=str(CONFIG.dev_root))
         changed = len([l for l in r.stdout.split("\n") if l.strip() and "|" in l])
         log(f"     最近 commit 改了 {changed} 个文件")
