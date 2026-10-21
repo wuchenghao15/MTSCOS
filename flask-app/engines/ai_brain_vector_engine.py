@@ -25,7 +25,7 @@
       ai_bulk_injector_engine (同目录 import)
  向量存储  : float32 little-endian BLOB (array('f')), PK (knowledge_id, model)
  CLI:
-   backfill [--limit N] [--prefix P] [--dry-run] [--chunk N]
+   backfill [--limit N] [--prefix P] [--dry-run] [--chunk N] [--dedupe]
    drain    [--limit N]
    enqueue  --ids id1,id2[,id3...]
    status
@@ -176,11 +176,14 @@ class BrainVectorEngine:
         return f"backfill:{self.model}:{prefix or 'ALL'}"
 
     # --------------------------------------------------------------- backfill
-    def backfill(self, limit: int = 0, prefix: str = "", dry_run: bool = False, chunk: int = BATCH) -> dict:
-        """扫描主库未向量化行 (rowid 水位 + NOT EXISTS), 分块嵌入回填"""
+    def backfill(self, limit: int = 0, prefix: str = "", dry_run: bool = False, chunk: int = BATCH,
+                 dedupe: bool = False) -> dict:
+        """扫描主库未向量化行 (rowid 水位 + NOT EXISTS), 分块嵌入回填
+        flow_brainvec_dedupe_20261021: dedupe=True 时按内容去重, 只向量化每个 distinct
+        内容组的首行 (1.57M 行去重后仅 ~2.5万, 重复副本无检索增益; NOT EXISTS 天然幂等续传)"""
         chunk = max(10, min(int(chunk or BATCH), 500))
         limit = max(0, int(limit or 0))
-        ck_key = self._ck_key(prefix)
+        ck_key = self._ck_key("DEDUPE" if dedupe else prefix)
         c = bi_conn(self.db_path, timeout=5)
         try:
             begin_immediate(c)
@@ -191,30 +194,63 @@ class BrainVectorEngine:
             last_rowid = c.execute(
                 f"SELECT last_rowid FROM {CK_TABLE} WHERE job_key=?", (ck_key,)).fetchone()[0]
 
-            cond = "k.rowid > ? AND NOT EXISTS (SELECT 1 FROM mt_ai_brain_vector v WHERE v.knowledge_id=k.knowledge_id AND v.model=?)"
+            # flow_brainvec_dedupe_20261021: 两段式幂等 —
+            # SQL 层按 id 排除 (PK 索引快; 引擎连接无 sha1 扩展, sha 对账放 Python 层)
+            # + 循环内 Python 层 content_sha 漂移过滤 (id 已向量但内容改写的行重嵌,
+            #   旧口径漂移行永不重嵌 → 盲区无法收敛, 实测 AE-GAP 1948 条)
+            cond = ("k.rowid > ? AND NOT EXISTS (SELECT 1 FROM mt_ai_brain_vector v WHERE v.knowledge_id=k.knowledge_id AND v.model=?)"
+                    " AND k.knowledge_id IS NOT NULL AND TRIM(k.knowledge_id)<>''")  # 脏id过滤: NULL/空 knowledge_id 落库必炸 NOT NULL
             params: list = [last_rowid, self.model]
             if prefix:
                 cond += " AND k.knowledge_id LIKE ?"
                 params.append(prefix + "%")
 
-            todo = c.execute(f"SELECT COUNT(*) FROM ai_brain_enhanced_knowledge k WHERE {cond}", params).fetchone()[0]
+            if dedupe:
+                # temp 表按全量行分组 (含已向量 id; Python 层 sha 对账只嵌缺失/漂移,
+                # 引擎连接无 sha1 扩展故 sha 对账放 _filter_drift)
+                dcond = "k.knowledge_id IS NOT NULL AND TRIM(k.knowledge_id)<>''"
+                dparams: list = []
+                if prefix:
+                    dcond += " AND k.knowledge_id LIKE ?"
+                    dparams.append(prefix + "%")
+                c.execute("DROP TABLE IF EXISTS temp.dedupe_rows")
+                c.execute(f"""CREATE TEMP TABLE dedupe_rows AS
+                    SELECT MIN(k.rowid) AS rid FROM ai_brain_enhanced_knowledge k
+                    WHERE {dcond} GROUP BY COALESCE(k.title,'')||'|'||COALESCE(k.content,'')""",
+                    dparams)
+                todo = c.execute("SELECT COUNT(*) FROM temp.dedupe_rows").fetchone()[0]
+            else:
+                todo = c.execute(f"SELECT COUNT(*) FROM ai_brain_enhanced_knowledge k WHERE {cond}", params).fetchone()[0]
             log(f"backfill[{ck_key}] 起点 rowid>{last_rowid} 待向量化 {todo} 行"
+                + (" [去重模式]" if dedupe else "")
                 + (f" (limit={limit})" if limit else "") + (" [DRY-RUN]" if dry_run else ""))
             if dry_run:
                 return {"todo": todo, "last_rowid": last_rowid, "dry_run": True}
 
             done = skipped = failed = 0
+            done_fetched = 0               # dedupe 模式 OFFSET 游标 (temp 表分页)
             ck_last = last_rowid
             try:
                 while True:
                     if limit and done >= limit:
                         break
                     fetch_n = min(chunk, limit - done) if limit else chunk
-                    rows = c.execute(
-                        f"SELECT k.rowid, k.knowledge_id, k.title, k.content FROM ai_brain_enhanced_knowledge k"
-                        f" WHERE {cond} ORDER BY k.rowid LIMIT ?", params + [fetch_n]).fetchall()
+                    if dedupe:
+                        rows = c.execute(
+                            "SELECT k.rowid, k.knowledge_id, k.title, k.content FROM temp.dedupe_rows d"
+                            " JOIN ai_brain_enhanced_knowledge k ON k.rowid=d.rid"
+                            " ORDER BY d.rid LIMIT ? OFFSET ?", (fetch_n, done_fetched)).fetchall()
+                    else:
+                        rows = c.execute(
+                            f"SELECT k.rowid, k.knowledge_id, k.title, k.content FROM ai_brain_enhanced_knowledge k"
+                            f" WHERE {cond} ORDER BY k.rowid LIMIT ?", params + [fetch_n]).fetchall()
                     if not rows:
                         break
+                    done_fetched += len(rows)
+                    if dedupe:
+                        rows = self._filter_drift(c, rows)
+                        if not rows:
+                            continue
                     vec_rows, ck_last, sk, fl = self._embed_chunk(c, rows)
                     begin_immediate(c)
                     c.executemany(
@@ -243,14 +279,49 @@ class BrainVectorEngine:
         finally:
             c.close()
 
-    def _embed_chunk(self, c, rows) -> tuple:
-        """嵌入一批行; Ollama 不可达 → EmbedUnavailableError 上抛中止 (checkpoint 停在上块)"""
-        vec_rows, ck_last, sk, fl = [], rows[-1]["rowid"], 0, 0
+    def _filter_drift(self, c, rows) -> list:
+        """Python 层 sha 对账 (flow_brainvec_dedupe_20261021): 保留「未向量」或「内容漂移」行。
+        id 已向量且 content_sha 与当前内容一致 → 跳过; 漂移行重嵌 (REPLACE 同 PK 更新)。"""
+        if not rows:
+            return []
+        ph = ",".join("?" * len(rows))
+        have = {r["knowledge_id"]: r["content_sha"] for r in c.execute(
+            f"SELECT knowledge_id, content_sha FROM {VEC_TABLE} WHERE model=? AND knowledge_id IN ({ph})",
+            [self.model] + [r["knowledge_id"] for r in rows]).fetchall()}
+        keep = []
         for r in rows:
-            text = f"{r['title'] or ''}\n{r['content'] or ''}".strip()
-            if not text:
-                sk += 1
-                continue
+            if have.get(r["knowledge_id"]) != text_sha(r["title"], r["content"]):
+                keep.append(r)
+        return keep
+
+    def _embed_chunk(self, c, rows) -> tuple:
+        """嵌入一批行; Ollama 不可达 → EmbedUnavailableError 上抛中止 (checkpoint 停在上块)
+        flow_brainvec_dedupe_20261021: 批量化 embed_batch 接线 (单条回退), 40倍+加速"""
+        vec_rows, ck_last = [], rows[-1]["rowid"]
+        # 组 texts + 过滤空内容 (embed_batch 会剔除空串, 须自带对齐)
+        pairs = [(i, f"{r['title'] or ''}\n{r['content'] or ''}".strip()) for i, r in enumerate(rows)]
+        valid = [(i, t) for i, t in pairs if t]
+        sk = len(pairs) - len(valid)
+        fl = 0
+        embeds = None
+        try:
+            embeds = embed_batch([t for _, t in valid], self.model)
+        except EmbedUnavailableError:
+            raise
+        except Exception:
+            embeds = None          # 单批数据问题 → 回退单条
+        if embeds and len(embeds) == len(valid):
+            for (i, _t), vec in zip(valid, embeds):
+                r = rows[i]
+                if not vec:
+                    fl += 1
+                    continue
+                vec_rows.append((r["knowledge_id"], self.model, len(vec), to_blob(vec),
+                                 text_sha(r["title"], r["content"]), now(), now()))
+            return vec_rows, ck_last, sk, fl
+        # 回退单条 embed_text
+        for i, text in valid:
+            r = rows[i]
             try:
                 vec = embed_text(text, self.model)
             except EmbedUnavailableError:
@@ -478,6 +549,8 @@ def main() -> None:
     b.add_argument("--prefix", default="", help="knowledge_id 前缀过滤, 如 EIGENFLUX-")
     b.add_argument("--dry-run", action="store_true")
     b.add_argument("--chunk", type=int, default=BATCH)
+    b.add_argument("--dedupe", action="store_true",
+                   help="按内容去重, 只向量化 distinct 内容组首行 (flow_brainvec_dedupe_20261021)")
     d = sub.add_parser("drain")
     d.add_argument("--limit", type=int, default=0)
     e = sub.add_parser("enqueue")
@@ -493,7 +566,7 @@ def main() -> None:
         return
     eng = BrainVectorEngine()
     if a.cmd == "backfill":
-        out = eng.backfill(a.limit, a.prefix, a.dry_run, a.chunk)
+        out = eng.backfill(a.limit, a.prefix, a.dry_run, a.chunk, a.dedupe)
     elif a.cmd == "drain":
         out = eng.drain(a.limit)
     elif a.cmd == "status":
