@@ -30,7 +30,11 @@
    enqueue  --ids id1,id2[,id3...]
    status
    verify   [--sample N]
+   search   <query> [--top-k N]    语义检索 (余弦 top-k, 零token本地)
+   bench    [--n N] [--no-save]    量化基准 (命中率+P50/P95, 落库留痕)
  模块API   : enqueue_content_batch(items) / enqueue_ids(db, ids)   (增量接线用)
+             search_brain(query, top_k)  脑库语义检索泛化接线
+             (local_ai gateway / qbank_brain_adapter 后续消费)
 ================================================================================
 """
 from __future__ import annotations
@@ -46,6 +50,11 @@ import urllib.error
 import urllib.request
 from array import array
 from datetime import datetime
+
+try:
+    import numpy as np
+except ImportError:                 # 检索/bench 依赖 numpy; 缺失不影响 backfill/drain
+    np = None
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 if _HERE not in sys.path:
@@ -65,6 +74,9 @@ EMBED_RETRIES = 3               # 连接类错误指数退避 0.5/1/2s
 VEC_TABLE = "mt_ai_brain_vector"
 CK_TABLE = "mt_brain_vector_checkpoint"
 QUEUE_TABLE = "mt_brain_vector_queue"
+BENCH_TABLE = "mt_brain_vector_bench"   # flow_andromeda_gq_20261021: bench 量化结果落库留痕
+BENCH_QUERIES = ["支付", "Arduino 驱动", "EigenFlux 网络", "权限控制", "题库质量",
+                 "向量检索", "数据库备份", "AI员工雇佣", "脑库投喂", "文件整理"]
 
 DDL = (
     f"CREATE TABLE IF NOT EXISTS {VEC_TABLE} ("
@@ -80,6 +92,11 @@ DDL = (
     " q_id INTEGER PRIMARY KEY AUTOINCREMENT, knowledge_id TEXT NOT NULL UNIQUE,"
     " title TEXT, content TEXT, status TEXT DEFAULT 'PENDING', attempts INTEGER DEFAULT 0,"
     " last_error TEXT, enqueued_at TEXT, processed_at TEXT)",
+    f"CREATE TABLE IF NOT EXISTS {BENCH_TABLE} ("
+    " id INTEGER PRIMARY KEY AUTOINCREMENT, ran_at TEXT, model TEXT,"
+    " n_title_queries INTEGER, n_semantic_queries INTEGER,"
+    " hit_at_1_pct REAL, hit_at_5_pct REAL, p50_ms REAL, p95_ms REAL,"
+    " detail_json TEXT)",
 )
 
 
@@ -515,6 +532,143 @@ class BrainVectorEngine:
         finally:
             c.close()
 
+    # ----------------------------------------------------------------- search
+    def _load_matrix(self, c) -> tuple:
+        """全量向量加载+归一化 (flow_andromeda_gq_20261021): ~27874×768 float32 ≈ 85MB"""
+        vrows = c.execute(
+            f"SELECT knowledge_id, embedding FROM {VEC_TABLE} WHERE model=?", (self.model,)).fetchall()
+        if not vrows:
+            return [], None
+        raw = np.frombuffer(b"".join(r["embedding"] for r in vrows), dtype="<f4").reshape(len(vrows), -1)
+        nrm = np.linalg.norm(raw, axis=1, keepdims=True)
+        nrm[nrm == 0] = 1.0
+        return [r["knowledge_id"] for r in vrows], raw / nrm
+
+    def search(self, query: str, top_k: int = 5) -> dict:
+        """语义检索 (零token本地): query 单条 embed → 余弦 top-k → join 主表返回标题/摘要
+        泛化口径: 模块级 search_brain() 供 local_ai gateway / qbank_brain_adapter 后续消费"""
+        if np is None:
+            raise RuntimeError("numpy 不可用, search/bench 需 numpy (pip install numpy)")
+        query = str(query or "").strip()
+        top_k = max(1, min(int(top_k or 5), 50))
+        if not query:
+            return {"query": query, "results": [], "note": "空查询"}
+        t0 = time.time()
+        qv = np.array(embed_text(query, self.model), dtype="<f4")
+        t_embed = (time.time() - t0) * 1000
+        c = bi_conn(self.db_path, timeout=30)
+        try:
+            t1 = time.time()
+            ids, mat = self._load_matrix(c)
+            t_load = (time.time() - t1) * 1000
+            if mat is None:
+                return {"query": query, "results": [], "note": "向量表为空"}
+            t2 = time.time()
+            sims = mat @ (qv / max(float(np.linalg.norm(qv)), 1e-9))
+            top = np.argsort(-sims)[:top_k]
+            t_rank = (time.time() - t2) * 1000
+            hit_ids = [ids[i] for i in top]
+            ph = ",".join("?" * len(hit_ids))
+            kmap = {r["knowledge_id"]: r for r in c.execute(
+                "SELECT knowledge_id, category, title, content FROM ai_brain_enhanced_knowledge"
+                f" WHERE knowledge_id IN ({ph})", hit_ids).fetchall()}
+            results = []
+            for i in top:
+                kid = ids[i]
+                k = kmap.get(kid)
+                results.append({
+                    "knowledge_id": kid,
+                    "score": round(float(sims[i]), 4),
+                    "category": (k["category"] if k else "") or "",
+                    "title": (k["title"] if k else "") or "",
+                    "content_preview": str((k["content"] if k else "") or "")[:200],
+                })
+            return {"query": query, "top_k": top_k, "vector_total": len(ids),
+                    "ms": {"embed": round(t_embed, 1), "load": round(t_load, 1),
+                           "rank": round(t_rank, 1), "total": round((time.time() - t0) * 1000, 1)},
+                    "results": results}
+        finally:
+            c.close()
+
+    # ------------------------------------------------------------------ bench
+    def bench(self, n_title: int = 10, save: bool = True) -> dict:
+        """量化基准 (flow_andromeda_gq_20261021):
+        标题抽样查询 = 抽向量行同文本重嵌 (管道正确性口径: 同文本应 top-1 命中自身)
+        + 预置语义词 (仅延迟+top1示例) → hit@1/hit@5 + P50/P95 (embed+rank 端到端)
+        + cold_load_ms (全量矩阵加载一次成本), 结果落库 BENCH_TABLE 留痕"""
+        if np is None:
+            raise RuntimeError("numpy 不可用, search/bench 需 numpy (pip install numpy)")
+        n_title = max(3, min(int(n_title or 10), 50))
+        c = bi_conn(self.db_path, timeout=30)
+        try:
+            srows = c.execute(
+                f"SELECT v.knowledge_id, k.title, k.content FROM {VEC_TABLE} v"
+                " JOIN ai_brain_enhanced_knowledge k ON k.knowledge_id=v.knowledge_id"
+                " WHERE v.model=? ORDER BY RANDOM() LIMIT ?", (self.model, n_title)).fetchall()
+            t0 = time.time()
+            ids, mat = self._load_matrix(c)
+            cold_load_ms = (time.time() - t0) * 1000
+            if mat is None:
+                return {"note": "向量表为空, bench 无意义"}
+
+            per, sem, h1, h5 = [], [], 0, 0
+            for r in srows:
+                q = f"{r['title'] or ''}\n{r['content'] or ''}".strip()   # 与 _embed_chunk 同构
+                t1 = time.time()
+                qv = np.array(embed_text(q, self.model), dtype="<f4")
+                t2 = time.time()
+                sims = mat @ (qv / max(float(np.linalg.norm(qv)), 1e-9))
+                top5 = [ids[i] for i in np.argsort(-sims)[:5]]
+                t3 = time.time()
+                hit1, hit5 = top5[0] == r["knowledge_id"], r["knowledge_id"] in top5
+                h1 += 1 if hit1 else 0
+                h5 += 1 if hit5 else 0
+                per.append({"q": q[:50], "hit1": hit1, "hit5": hit5,
+                            "embed_ms": round((t2 - t1) * 1000, 1),
+                            "rank_ms": round((t3 - t2) * 1000, 1),
+                            "total_ms": round((t3 - t1) * 1000, 1)})
+            for q in BENCH_QUERIES:
+                t1 = time.time()
+                qv = np.array(embed_text(q, self.model), dtype="<f4")
+                t2 = time.time()
+                sims = mat @ (qv / max(float(np.linalg.norm(qv)), 1e-9))
+                top_ids = [ids[i] for i in np.argsort(-sims)[:3]]
+                t3 = time.time()
+                sem.append({"q": q, "top1_id": top_ids[0],
+                            "embed_ms": round((t2 - t1) * 1000, 1),
+                            "rank_ms": round((t3 - t2) * 1000, 1),
+                            "total_ms": round((t3 - t1) * 1000, 1)})
+            want = sorted({s["top1_id"] for s in sem})
+            if want:
+                ph = ",".join("?" * len(want))
+                tmap = {r["knowledge_id"]: r["title"] for r in c.execute(
+                    "SELECT knowledge_id, title FROM ai_brain_enhanced_knowledge"
+                    f" WHERE knowledge_id IN ({ph})", want).fetchall()}
+                for s in sem:
+                    s["top1_title"] = str(tmap.get(s["top1_id"]) or "")[:60]
+
+            lat = sorted([p["total_ms"] for p in per] + [s["total_ms"] for s in sem])
+            n = len(lat)
+            out = {"model": self.model, "n_title_queries": len(per), "n_semantic_queries": len(sem),
+                   "hit_at_1_pct": round(h1 * 100.0 / max(len(per), 1), 1),
+                   "hit_at_5_pct": round(h5 * 100.0 / max(len(per), 1), 1),
+                   "p50_ms": lat[n // 2] if n else 0,
+                   "p95_ms": lat[max(0, min(n - 1, int(n * 0.95)))] if n else 0,
+                   "cold_load_ms": round(cold_load_ms, 1), "vector_total": len(ids),
+                   "detail": {"title": per, "semantic": sem}}
+            if save:
+                begin_immediate(c)
+                c.execute(
+                    f"INSERT INTO {BENCH_TABLE} (ran_at, model, n_title_queries, n_semantic_queries,"
+                    " hit_at_1_pct, hit_at_5_pct, p50_ms, p95_ms, detail_json) VALUES (?,?,?,?,?,?,?,?,?)",
+                    (now(), self.model, len(per), len(sem), out["hit_at_1_pct"], out["hit_at_5_pct"],
+                     out["p50_ms"], out["p95_ms"], json.dumps(out["detail"], ensure_ascii=False)[:8000]))
+                c.commit()
+                out["saved_to"] = BENCH_TABLE
+            return out
+        finally:
+            c.close()
+
 
 # ------------------------------------------------------------ 模块级接线 API
 def enqueue_content_batch(items, db_path: str = DEFAULT_DB) -> int:
@@ -540,6 +694,13 @@ def enqueue_ids(ids, db_path: str = DEFAULT_DB) -> int:
     return BrainVectorEngine(db_path).enqueue(ids)
 
 
+def search_brain(query: str, top_k: int = 5, db_path: str = DEFAULT_DB,
+                 model: str = OLLAMA_MODEL) -> dict:
+    """泛化服务接线点 (flow_andromeda_gq_20261021): 脑库语义检索能力导出,
+    供 local_ai_unified_gateway / qbank_brain_adapter 等后续消费 (本期不改调用方)"""
+    return BrainVectorEngine(db_path, model).search(query, top_k)
+
+
 # ---------------------------------------------------------------------- CLI
 def main() -> None:
     ap = argparse.ArgumentParser(description="脑库→向量化引擎 (本地零token)")
@@ -558,6 +719,12 @@ def main() -> None:
     sub.add_parser("status")
     v = sub.add_parser("verify")
     v.add_argument("--sample", type=int, default=20)
+    s = sub.add_parser("search", help="语义检索 (零token本地, 余弦 top-k)")
+    s.add_argument("query")
+    s.add_argument("--top-k", type=int, default=5)
+    bn = sub.add_parser("bench", help="量化基准: 命中率+P50/P95, 落库留痕")
+    bn.add_argument("--n", type=int, default=10, help="标题抽样查询数")
+    bn.add_argument("--no-save", action="store_true")
     a = ap.parse_args()
 
     if a.cmd == "enqueue":
@@ -571,6 +738,10 @@ def main() -> None:
         out = eng.drain(a.limit)
     elif a.cmd == "status":
         out = eng.status()
+    elif a.cmd == "search":
+        out = eng.search(a.query, a.top_k)
+    elif a.cmd == "bench":
+        out = eng.bench(a.n, save=not a.no_save)
     else:
         out = eng.verify(a.sample)
     log(json.dumps(out, ensure_ascii=False, indent=2, default=str))
