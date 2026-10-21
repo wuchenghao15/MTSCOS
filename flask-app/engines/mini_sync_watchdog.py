@@ -152,9 +152,19 @@ def run_sync(tables: list, create_missing: bool, label: str) -> dict:
 def remote_git_pull() -> dict:
     """把开发机已推送到 gitee/origin 的功能代码拉到 Mini (功能同步到服务器)"""
     _log('▶ phase0_Mini 拉取代码 (git ff-only)')
-    cmd = ['ssh', '-T', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=8', HOST,
-           'cd ~/MTSCOS_AI_Project && git fetch --all -q && git checkout main -q && '
-           'git merge --ff-only origin/main && git rev-parse --short HEAD && git log -1 --oneline']
+    # flow_mini_dev_sync_20261022: Mini 工作区常年有本地脏改动 (OneDrive 删除/本地修),
+    # 直接 merge --ff-only 会被 "local changes would be overwritten" 拒绝 → 先 stash 再合并, 合并后 pop 还原。
+    # pop 冲突时保留 stash 并打印 STASH_CONFLICT, 不丢用户改动。
+    _remote_sh = (
+        'cd ~/MTSCOS_AI_Project || exit 9; '
+        'git fetch --all -q || exit 8; git checkout main -q 2>/dev/null; '
+        '_S=0; if [ -n "$(git status --porcelain)" ]; then '
+        'git stash push -u -q -m pre_gitpull_watchdog && _S=1; fi; '
+        'git merge --ff-only origin/main; _RC=$?; '
+        'if [ "$_S" = "1" ]; then git stash pop -q || echo STASH_CONFLICT; fi; '
+        'git rev-parse --short HEAD; git log -1 --oneline; exit $_RC'
+    )
+    cmd = ['ssh', '-T', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=8', HOST, _remote_sh]
     try:
         r = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
         out = (r.stdout or '').strip().splitlines()
