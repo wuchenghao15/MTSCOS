@@ -1,4 +1,11 @@
 # 冰山系统使用说明书
+---
+
+> ## 🔄 2026-10-21 · v22.25.16 冰山系统更新
+> hub L5 五层聚合(冷备份/滚动归档/三金库/脑库向量27874/投喂) · 06B 新版能力六卡片 ·
+> 语义检索 UI(knowledge_brain/题库页) · 题库语义搜题 API · 三端代码闭环(7660/7660 SAME) ·
+> PROD :5001 复活(--port 参数化) · 双站 8888+5001 均已升级生效
+
 
 > **引擎**: flask-app/engines/iceberg_consciousness.py | **驱动**: sys_consciousness daemon (120s 周期)
 > **路由**: flask-app/routes/iceberg_meta_routes.py + mobile_iceberg_routes.py
