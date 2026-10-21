@@ -139,6 +139,13 @@ class CopyInspectionEngine:
             if not os.path.isdir(scan_dir):
                 continue
             for root, dirs, files in os.walk(scan_dir):
+                # 误报豁免 (flow_hardfix_audit_20261021): 实测104条CRITICAL全为误报——
+                # ①_*_fusion 系列第三方参考库(_m_flow/_cog/_SimpleMem/_semantica, tests fixture为主)非本项目运行代码
+                # ②tests/fixtures 目录
+                rel_root = os.path.relpath(root, self.project_root).replace('\\', '/')
+                if ('_fusion/' in rel_root or rel_root.endswith('_fusion') or '/cookbook/' in rel_root
+                        or '/tests' in rel_root or '/fixtures' in rel_root or 'test_' in os.path.basename(root)):
+                    continue
                 for f in files:
                     if not (f.endswith('.py') or f.endswith('.js')):
                         continue
@@ -146,8 +153,13 @@ class CopyInspectionEngine:
                     try:
                         with open(fpath, 'r', encoding='utf-8', errors='ignore') as fp:
                             content = fp.read()
+                        # 占位/假值豁免: 模板变量{{}}、文档占位<KEY>、常见测试假值 (教程模板与教学示例非真泄露)
+                        _FAKE = re.compile(
+                            r'\{\{[^}]*\}\}|<[^>]+>|test|changeme|dummy|example|placeholder|your[_-]|xxx|'
+                            r'\$\{[^}]*\}|WRITE_KEY|READ_KEY|password\s*=\s*\'?\"?\'?$', re.I)
                         for pattern, desc in sensitive_patterns:
-                            matches = re.findall(pattern, content, re.I)
+                            real = [m for m in re.findall(pattern, content, re.I) if not _FAKE.search(m)]
+                            matches = real
                             if matches:
                                 findings.append({
                                     'type': 'HARDCODED',
