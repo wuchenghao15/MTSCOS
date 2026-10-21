@@ -19,8 +19,9 @@ class CopyInspectionEngine:
 
     def __init__(self, db_path: str = None, project_root: str = None):
         if db_path is None:
+            # db_path 归正 (flow_bigdata_evolve_20261021): 原默认 flask-app/app.db(不存在) → 项目主库 database/app.db
             base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-            db_path = os.path.join(base, 'app.db')
+            db_path = os.path.join(base, 'database', 'app.db')
         if project_root is None:
             project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         self.db_path = db_path
@@ -180,6 +181,15 @@ class CopyInspectionEngine:
         try:
             conn = self._get_conn()
             cur = conn.cursor()
+            # 引擎自治建表 (flow_bigdata_evolve_20261021): 大数据推演发现全仓无人建此表, 引擎写库必败 → 自建
+            cur.execute("""CREATE TABLE IF NOT EXISTS mt_copy_inspection_report (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                inspection_type TEXT NOT NULL,
+                findings_json TEXT,
+                severity TEXT DEFAULT 'INFO',
+                total_findings INTEGER DEFAULT 0,
+                created_at TEXT DEFAULT (datetime('now','localtime'))
+            )""")
             for finding_type, findings in [('MISSING', missing), ('DUPLICATE', duplicates),
                                             ('PLACEHOLDER', placeholders), ('HARDCODED', hardcoded)]:
                 cur.execute(
@@ -235,3 +245,26 @@ class CopyInspectionEngine:
                 'hardcoded': hardcoded
             }
         }
+
+
+def main():
+    """daemon 入口 (flow_bigdata_evolve_20261021): andromeda_core 注册 `copy_inspection_engine.py --loop`
+    但原文件无 __main__ → daemon 空转、巡检从未落库。补: --loop 常驻(900s) / 无参单次。"""
+    import time
+    interval = 900
+    if '--loop' in sys.argv:
+        print('[sys_copy_inspection] loop 模式启动, 周期 %ds' % interval, flush=True)
+        while True:
+            try:
+                r = CopyInspectionEngine().run_full_inspection()
+                print('[sys_copy_inspection] findings=%d severity=%s' % (r['total_findings'], r['severity']), flush=True)
+            except Exception as e:
+                print('[sys_copy_inspection] 轮次异常(fail-open):', e, flush=True)
+            time.sleep(interval)
+    else:
+        r = CopyInspectionEngine().run_full_inspection()
+        print(json.dumps(r, ensure_ascii=False, indent=2)[:2000])
+
+
+if __name__ == '__main__':
+    main()
