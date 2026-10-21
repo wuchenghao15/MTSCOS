@@ -10,7 +10,7 @@ Trae 优先离线编译代码、主力推理、思考助理的统一入口
   3. 本地模板匹配 — 最终兜底
 
 支持场景:
-  - chat      : 对话/思考助理
+  - chat      : 对话/思考助理 (自动注入脑库语义检索top-k知识, MTSCOS_BRAIN_RAG=0 关闭)
   - analyze   : 代码分析(语法/编译错误/优化建议)
   - think     : 思考助理(推理/决策/方案)
   - compile   : 离线编译辅助(代码检查/错误定位)
@@ -209,9 +209,51 @@ def _route_chat(prompt: str, system: str = "", flow_id: Optional[str] = None,
     }
 
 
+# ===== 脑库语义检索 RAG (flow_brainrag_20261021) =====
+_ENGINES_DIR = os.path.normpath(os.path.join(_AI_ENGINES_DIR, "..", "engines"))
+_BRAIN_RAG_TOP_K = int(os.environ.get("MTSCOS_BRAIN_RAG_TOP_K", "3"))
+_BRAIN_RAG_MIN_SCORE = 0.45   # 低于该相似度不注入 (bench 实测相关命中 0.72-0.83)
+
+
+def _brain_rag_context(prompt: str) -> tuple:
+    """脑库语义检索 RAG (零token本地): search_brain top-k → (system上下文块, 留痕meta)
+    fail-open: Ollama不可达/检索异常/无命中 → ("", None), 不影响聊天主链路
+    kill-switch: env MTSCOS_BRAIN_RAG=0 关闭"""
+    if os.environ.get("MTSCOS_BRAIN_RAG", "1") == "0":
+        return "", None
+    q = str(prompt or "").strip()
+    if not q:
+        return "", None
+    t0 = time.time()
+    try:
+        if _ENGINES_DIR not in sys.path:
+            sys.path.insert(0, _ENGINES_DIR)
+        from ai_brain_vector_engine import search_brain
+        out = search_brain(q, top_k=_BRAIN_RAG_TOP_K)
+    except Exception:
+        return "", None                      # fail-open: 检索层故障不外泄
+    results = [r for r in (out.get("results") or [])
+               if float(r.get("score") or 0) >= _BRAIN_RAG_MIN_SCORE]
+    if not results:
+        return "", None
+    lines = [f"- {(r.get('title') or '')[:60]}: {(r.get('content_preview') or '')[:160]}"
+             for r in results]
+    ctx = (f"【脑库相关知识·仅供参考 (语义检索 top-{len(lines)}, 相似度≥{_BRAIN_RAG_MIN_SCORE})】\n"
+           + "\n".join(lines))
+    meta = {"hits": len(lines), "ms": round((time.time() - t0) * 1000, 1),
+            "source": "ai_brain_vector_engine.search_brain"}
+    return ctx, meta
+
+
 def chat(prompt: str, system: str = "", flow_id: Optional[str] = None) -> Dict[str, Any]:
-    """对话/思考助理入口 (Trae AI对话优先走本地)"""
-    return _route_chat(prompt, system, flow_id)
+    """对话/思考助理入口 (Trae AI对话优先走本地); 脑库RAG: 自动注入语义检索top-k知识"""
+    rag_ctx, rag_meta = _brain_rag_context(prompt)
+    if rag_ctx:
+        system = ((system + "\n\n") if system else "") + rag_ctx
+    result = _route_chat(prompt, system, flow_id)
+    if rag_meta:
+        result["brain_rag"] = rag_meta
+    return result
 
 
 # ===== 终端实时反馈 (仅CLI模式, 消除"假卡死") =====
