@@ -7476,6 +7476,31 @@ def _all_user_db_candidates():
     return candidates
 
 
+# flow_password_vault_20261021: password 哈希收口金库 (users.password/password_hash/password_hash_enc)
+_PASSWORD_VAULT_TABLE = 'mt_user_password_vault'
+
+
+def _user_stored_hash(db, row_dict):
+    """读取用户存储哈希: users 列值优先; 空值/金库墓碑(pv1:前缀)时回读金库表。
+    只改存储位置不改校验算法 — 金库回读值即迁移前列值原样 (Fernet 密文还原)。
+    werkzeug 'pbkdf2:...' 等合法哈希含冒号但不会以 pv1: 开头, 墓碑判定安全。"""
+    try:
+        col_hash = (row_dict.get('password') or row_dict.get('password_hash') or '').strip()
+    except Exception:
+        col_hash = ''
+    if col_hash and not col_hash.startswith('pv1:'):
+        return col_hash
+    try:
+        uid = row_dict.get('id')
+        if uid is None:
+            return col_hash
+        from core.services.phone_vault import load_field
+        vault_hash = (load_field(db, _PASSWORD_VAULT_TABLE, uid) or '').strip()
+        return vault_hash or col_hash
+    except Exception:
+        return col_hash
+
+
 def _find_user_across_dbs(username):
     """
     跨库按用户名（大小写不敏感）查找用户。
@@ -7568,8 +7593,8 @@ def _find_user_and_verify_password(username, password):
                                 d['is_active'] = 1
                             if first_found is None:
                                 first_found = (d, db)
-                            # 尝试密码验证（兼容 password 与 password_hash 两列）
-                            stored_pw = d.get('password') or d.get('password_hash') or ''
+                            # 尝试密码验证（兼容 password/password_hash 两列 + 金库回读 flow_password_vault_20261021）
+                            stored_pw = _user_stored_hash(db, d)
                             pw_ok, need_upgrade = _password_matches(password, stored_pw, username)
                             if pw_ok:
                                 return d, db, need_upgrade
@@ -11827,7 +11852,7 @@ def check_password():
         if not bool(row_dict.get('is_active', 1) or 0):
             return jsonify({'success': True, 'matches': False, 'strength': strength})
 
-        expected_hash = (row_dict.get('password') or '').strip()
+        expected_hash = _user_stored_hash(user_db, row_dict)
         pw_ok, _ = _password_matches(password, expected_hash, username)
 
         return jsonify({
@@ -12804,7 +12829,7 @@ def login():
                 pw_ok = True
                 need_pw_upgrade = True  # 同步密码哈希到当前库
             else:
-                expected_hash = (row_dict.get('password') or '').strip()
+                expected_hash = _user_stored_hash(user_db, row_dict)
                 pw_ok, need_pw_upgrade = _password_matches(password, expected_hash, username)
             if not pw_ok:
                 # 失败计数+1 写入用户所在库（找不到则写入可写库）
@@ -12927,6 +12952,13 @@ def login():
                                 "UPDATE users SET password = ?, updated_at = ? WHERE id = ?",
                                 (new_std_hash, now_iso, row_dict.get('id'))
                             )
+                            # flow_password_vault_20261021: 哈希同步金库, 金库写成功才清列 (零丢失)
+                            try:
+                                from core.services.phone_vault import store_field as _store_pw_field
+                                if _store_pw_field(write_db, _PASSWORD_VAULT_TABLE, row_dict.get('id'), new_std_hash):
+                                    conn.execute("UPDATE users SET password='' WHERE id=?", (row_dict.get('id'),))
+                            except Exception:
+                                pass
                         except Exception:
                             pass
                     conn.execute(
@@ -13681,6 +13713,16 @@ def register():
                     conn.commit()
                 except Exception:
                     pass
+
+            # flow_password_vault_20261021: password 哈希收口金库 — 金库写成功才清列
+            # (零丢失: 金库失败则哈希留在原列, 走旧读取路径, 保证可登录)
+            try:
+                from core.services.phone_vault import store_field as _store_pw_field
+                if _store_pw_field(write_db, _PASSWORD_VAULT_TABLE, uid, pw_hash):
+                    conn.execute("UPDATE users SET password='' WHERE id=?", (uid,))
+                    conn.commit()
+            except Exception:
+                pass
 
             # 【STEP_7 SSL绑定】注册成功后绑定SSL证书到用户（is_primary=True）
             try:
