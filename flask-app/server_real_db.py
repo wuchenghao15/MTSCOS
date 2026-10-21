@@ -2472,6 +2472,8 @@ _CSRF_EXEMPT_PREFIXES = [
     '/andromeda/api/persona_chat',
     # 🆕 flow_andromeda_param_20261021: 仙女座参数中心 — 查询全员/修改仅SA权限装饰器兜底, CSRF 冗余
     '/andromeda/api/param/',
+    # 🆕 flow_andromeda_sync_20261021: Mac mini 双向同步 — 对端无 session/CSRF token, 白名单表 + 增量游标
+    '/api/sync/',
     # §二/§四.5: 教育错题推理 + 大模型升级（daemon 也能调 + POST 无 CSRF token）
     '/api/edu/',
     '/api/model/',
@@ -2643,6 +2645,14 @@ def _init_ai_firewall_and_workforce():
         _fw_logger.info("[listening] blueprint registered: listening_api (/api/listening/*)")
     except Exception as e:
         _fw_logger.warning(f"[listening] blueprint register fail: {e}")
+
+    # 🆕 flow_andromeda_sync_20261021: Mac mini 双向同步蓝图 (实测 /api/sync/health 长期 404 — 从未注册)
+    try:
+        from engines.mac_mini_sync_engine import create_sync_blueprint as _mk_sync_bp
+        app.register_blueprint(_mk_sync_bp())
+        _fw_logger.info("[mtscos_sync] blueprint registered: /api/sync/{health,pull,push,beacon}")
+    except Exception as e:
+        _fw_logger.warning(f"[mtscos_sync] blueprint register fail: {e}")
 
     # v25.1: 日语学习 API (听力/词汇/语法/阅读/播报员/云引擎)
     try:

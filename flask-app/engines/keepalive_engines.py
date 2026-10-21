@@ -21,6 +21,7 @@
 """
 from __future__ import annotations
 import os
+import signal
 import subprocess
 import sys
 import time
@@ -35,6 +36,64 @@ if not os.access(PYTHON_BIN, os.X_OK):
     PYTHON_BIN = sys.executable
 
 THROTTLE_SECS = 300
+# flow_andromeda_selfheal_20261021: 单实例锁 (放 /tmp 本地盘, 不碰 OneDrive)
+#   根因: cron 每分钟拉起一次, 当 OneDrive 文件提供者阻塞时进程不退出
+#   → 实测堆积 1046 个 keepalive + 1046 个 sh -c + 106 个 file_organizer
+LOCK_FILE = "/tmp/mtscos_keepalive.lock"
+LOCK_TTL = 1800          # 旧实例卡死超过 30min 视为僵尸, 强制接管
+SELF_TIMEOUT_SECS = 120  # 单次巡检自超时 (尽力而为, 若阻塞在系统调用则不保证生效)
+
+
+def _acquire_lock() -> bool:
+    """O_EXCL 单实例锁; 僵尸锁自动接管."""
+    try:
+        if os.path.exists(LOCK_FILE):
+            pid, age = 0, 1e9
+            try:
+                pid = int(open(LOCK_FILE).read().split()[0])
+                age = time.time() - os.path.getmtime(LOCK_FILE)
+            except Exception:
+                pass
+            alive = False
+            if pid:
+                try:
+                    os.kill(pid, 0)
+                    alive = True
+                except Exception:
+                    alive = False
+            if alive and age < LOCK_TTL:
+                return False
+            if alive:
+                try:
+                    os.kill(pid, signal.SIGKILL)
+                except Exception:
+                    pass
+            try:
+                os.remove(LOCK_FILE)
+            except Exception:
+                pass
+        fd = os.open(LOCK_FILE, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        os.write(fd, f"{os.getpid()} {time.time()}".encode())
+        os.close(fd)
+        return True
+    except FileExistsError:
+        return False
+    except Exception:
+        return True  # 锁不可用时退化放行, 不阻塞保活
+
+
+def _release_lock() -> None:
+    try:
+        pid = int(open(LOCK_FILE).read().split()[0])
+        if pid == os.getpid():
+            os.remove(LOCK_FILE)
+    except Exception:
+        pass
+
+
+def _on_alarm(signum, frame):
+    raise SystemExit(3)
+
 
 ENGINES = [
     ("ai_smart_mount_engine", "engines/ai_smart_mount_engine.py", "start"),
@@ -67,52 +126,68 @@ def main() -> int:
     os.makedirs(LOG_DIR, exist_ok=True)
     rc = 0
 
-    for name, rel, arg in ENGINES:
-        engine = os.path.join(FA_DIR, rel)
-        pattern = f"{os.path.basename(rel)} {arg}"
-        stamp = os.path.join(RUNTIME_DIR, f".keepalive_last_spawn_{name}")
+    if not _acquire_lock():
+        # 静默跳过: 上一轮仍在跑 (或卡在 OneDrive), 不能每分钟再叠一层
+        return 0
+    try:
+        signal.signal(signal.SIGALRM, _on_alarm)
+        signal.alarm(SELF_TIMEOUT_SECS)
 
-        pid = _running(pattern)
-        if pid:
-            _log(f"{name} RUNNING pid={pid} -> ok")
-            continue
+        for name, rel, arg in ENGINES:
+            engine = os.path.join(FA_DIR, rel)
+            pattern = f"{os.path.basename(rel)} {arg}"
+            stamp = os.path.join(RUNTIME_DIR, f".keepalive_last_spawn_{name}")
 
-        if _throttled(stamp, force):
-            _log(f"{name} DOWN but throttled (<{THROTTLE_SECS}s) -> skip")
-            continue
+            pid = _running(pattern)
+            if pid:
+                _log(f"{name} RUNNING pid={pid} -> ok")
+                continue
 
+            if _throttled(stamp, force):
+                _log(f"{name} DOWN but throttled (<{THROTTLE_SECS}s) -> skip")
+                continue
+
+            try:
+                with open(stamp, "w") as f:
+                    f.write(str(time.time()))
+            except Exception:
+                pass
+
+            if not os.path.exists(engine):
+                _log(f"{name} FATAL missing: {engine}")
+                rc = 2
+                continue
+
+            _log(f"{name} DOWN -> spawn: {PYTHON_BIN} {engine} {arg}")
+            try:
+                logf = open(os.path.join(LOG_DIR, f"{name}_cron.log"), "a")
+                proc = subprocess.Popen(
+                    [PYTHON_BIN, engine, arg],
+                    cwd=FA_DIR,
+                    stdout=logf,
+                    stderr=logf,
+                    start_new_session=True,
+                )
+            except Exception as e:
+                _log(f"{name} spawn err: {e}")
+                rc = 1
+                continue
+
+            time.sleep(4)
+            if proc.poll() is None:
+                _log(f"{name} spawned OK pid={proc.pid}")
+            else:
+                _log(f"{name} FATAL died in 4s rc={proc.returncode}")
+                rc = 1
+    except SystemExit:
+        _log(f"WATCHDOG self-timeout {SELF_TIMEOUT_SECS}s -> abort this round")
+        rc = 1
+    finally:
         try:
-            with open(stamp, "w") as f:
-                f.write(str(time.time()))
+            signal.alarm(0)
         except Exception:
             pass
-
-        if not os.path.exists(engine):
-            _log(f"{name} FATAL missing: {engine}")
-            rc = 2
-            continue
-
-        _log(f"{name} DOWN -> spawn: {PYTHON_BIN} {engine} {arg}")
-        try:
-            logf = open(os.path.join(LOG_DIR, f"{name}_cron.log"), "a")
-            proc = subprocess.Popen(
-                [PYTHON_BIN, engine, arg],
-                cwd=FA_DIR,
-                stdout=logf,
-                stderr=logf,
-                start_new_session=True,
-            )
-        except Exception as e:
-            _log(f"{name} spawn err: {e}")
-            rc = 1
-            continue
-
-        time.sleep(4)
-        if proc.poll() is None:
-            _log(f"{name} spawned OK pid={proc.pid}")
-        else:
-            _log(f"{name} FATAL died in 4s rc={proc.returncode}")
-            rc = 1
+        _release_lock()
 
     return rc
 

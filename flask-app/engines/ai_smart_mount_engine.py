@@ -269,7 +269,7 @@ if repaired:
         if _fa not in _s.path: _s.path.insert(0, _fa)
         from blueprints.wecom_hub_bp import wecom_push as _wp
         _wp('smart_mount', '🔧 仙女座 · daemon自动修复',
-            '> 本轮修复 **%d** 个 FAILED daemon:\n%s' % (len(repaired), '\\n'.join('- %s → STOPPED (待重挂载)' % n for n in repaired[:6])))
+            '> 本轮修复 **%d** 个 FAILED daemon:\\n%s' % (len(repaired), '\\\\n'.join('- %s → STOPPED (待重挂载)' % n for n in repaired[:6])))
     except Exception as _we:
         print('[auto_repair] wecom skip:', _we)
 """,
@@ -860,8 +860,8 @@ try:
     _schema = (
         "严格按 JSON 输出, 不要 Markdown. 公式用纯文本 (如 a = F/m, sin²θ+cos²θ=1). "
         "禁止 LaTeX 反斜杠命令 (frac theta sqrt sin Delta 等一律禁止). "
-        "{\"推导\":[{\"步骤\":1,\"类型\":\"假设|定义|推导|结论\",\"内容\":\"...\"}至少5步], "
-        "\"验证\":{\"is_valid\":true,\"说明\":\"...\"},\"confidence\":0.0}"
+        "{\\\"推导\\\":[{\\\"步骤\\\":1,\\\"类型\\\":\\\"假设|定义|推导|结论\\\",\\\"内容\\\":\\\"...\\\"}至少5步], "
+        "\\\"验证\\\":{\\\"is_valid\\\":true,\\\"说明\\\":\\\"...\\\"},\\\"confidence\\\":0.0}"
     )
     payload = {
         "model":"qwen2.5:7b",
@@ -921,7 +921,7 @@ rows = conn.execute("SELECT chain_id, subject, error_concept FROM mt_error_think
 if rows:
     for cid, subj, q in rows:
         try:
-            payload = {"model":"qwen2.5:7b","prompt":f"问题:{q}\n为什么错?思维卡在哪?如何纠正?输出结构化JSON","stream":False,"options":{"temperature":0.3}}
+            payload = {"model":"qwen2.5:7b","prompt":f"问题:{q}\\n为什么错?思维卡在哪?如何纠正?输出结构化JSON","stream":False,"options":{"temperature":0.3}}
             req = urllib.request.Request("http://127.0.0.1:11434/api/generate", data=json.dumps(payload).encode(), headers={"Content-Type":"application/json"})
             with urllib.request.urlopen(req, timeout=90) as resp: chain = json.loads(resp.read()).get("response","")
             conn.execute("UPDATE mt_error_thinking_chain SET thinking_chain=?, ai_model='qwen2.5:7b' WHERE chain_id=?", (chain[:3000], cid))
@@ -2927,11 +2927,17 @@ DAEMON_SCRIPT_TEMPLATE = '''#!/usr/bin/env python3
 生成时间: {created_at}
 职责: {duty}
 """
-import os, sys, time, signal, sqlite3, json, glob, subprocess
+import os, sys, time, signal, sqlite3, json, glob, subprocess, random, re, logging, urllib.request
 from datetime import datetime
 
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 ENGINE_DIR = os.path.join(_PROJECT_ROOT, "flask-app", "ai_engines")
+# 🔧 flow_andromeda_selfheal_20261021: daemon 以 cwd=_runtime/auto_daemons 运行,
+#    缺 flask-app 在 sys.path → `from engines.xxx` 持续 "No module named 'engines'".
+#    必须在模板里注入 (生成器每轮重写 daemon 文件, 单改实例会被覆盖).
+for _p in (os.path.join(_PROJECT_ROOT, "flask-app"), ENGINE_DIR):
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
 # 🔧 2026-10-16 修复: DB 解析 env 优先 + 补 PROD 真实路径候选 (旧模板只找 Database/app.db, PROD 树真实库在 flask-app/database/)
 APP_DB = os.environ.get('MTSCOS_DB_PATH', '') or os.environ.get('APP_DB', '')
 if not APP_DB:
@@ -3227,6 +3233,13 @@ def _start_subprocess(process_name: str, script_path: str) -> Optional[int]:
     _proc_env = os.environ.copy()
     _proc_env['APP_DB'] = APP_DB
     _proc_env['MTSCOS_DB_PATH'] = APP_DB
+    # 🔧 flow_andromeda_selfheal_20261021: daemon 以 cwd=_runtime/auto_daemons 启动,
+    # 但 sys_consciousness/sys_gray_release_progress/sys_auto_approval/sys_andromeda_auto_evolution
+    # 内部 `from engines.xxx import ...` → 必须把 flask-app 注入 PYTHONPATH, 否则
+    # 持续报 "No module named 'engines'" (实测 2668/2617/1639/336 次失败)
+    _fa_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    _old_pp = _proc_env.get('PYTHONPATH', '')
+    _proc_env['PYTHONPATH'] = _fa_root + (os.pathsep + _old_pp if _old_pp else '')
 
     try:
         with open(log_file, "a") as lf:
