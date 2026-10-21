@@ -196,6 +196,53 @@ def masked_phone(db_path: str, user_id) -> str:
     return mask(load_phone(db_path, user_id))
 
 
+PASSWORD_TABLE = "mt_user_password_vault"
+
+
+def migrate_users_password(db_path: str) -> int:
+    """存量迁移: users.password/password_hash/password_hash_enc 哈希 → mt_user_password_vault.
+    (flow_password_vault_20261021 — password 三列存的本身是哈希, 金库存其 Fernet 密文)
+    零丢失红线: 逐行「金库写入+回读对账」全部通过后才清该行原列;
+    任一行失败则该行原列保留 (走旧读取路径, 保证可登录)。"""
+    ensure_schema(db_path, PASSWORD_TABLE)
+    c = sqlite3.connect(db_path, timeout=30)
+    n = 0
+    try:
+        cols = [x[1] for x in c.execute("PRAGMA table_info(users)")]
+        sel = [x for x in ("id", "password", "password_hash", "password_hash_enc") if x in cols]
+        if "id" not in sel:
+            print("[migrate-pw] users 表无 id 列, 跳过")
+            return 0
+        rows = c.execute(f"SELECT {','.join(sel)} FROM users").fetchall()
+        # 阶段一: 全部入金库 + 回读对账 (外层连接保持只读, 避免写锁互锁)
+        clear_rows = []
+        for row in rows:
+            d = dict(zip(sel, row))
+            uid = d.get("id")
+            canonical = (d.get("password") or d.get("password_hash")
+                         or d.get("password_hash_enc") or "").strip()
+            if not canonical or canonical.startswith("pv1:"):
+                continue  # 空值或已收口
+            if store_field(db_path, PASSWORD_TABLE, uid, canonical) and \
+                    load_field(db_path, PASSWORD_TABLE, uid) == canonical:
+                clear_rows.append(uid)
+            else:
+                print(f"[migrate-pw] uid={uid} 金库回读对账失败, 原列保留 (零丢失)")
+        # 阶段二: 对账通过的行才清原列 (无 UNIQUE 约束, 直接置空串)
+        clear_sets = ",".join(f"{x}=''" for x in
+                              ("password", "password_hash", "password_hash_enc") if x in cols)
+        for uid in clear_rows:
+            c.execute(f"UPDATE users SET {clear_sets} WHERE id=?", (uid,))
+        c.commit()
+        n = len(clear_rows)
+        print(f"[migrate-pw] users.password三列 → {PASSWORD_TABLE}: 迁移 {n}/{len(rows)} 条, 已清列且对账通过")
+    except Exception as _e:
+        print(f"[migrate-pw] err: {_e}")
+    finally:
+        c.close()
+    return n
+
+
 def selftest() -> int:
     """自检: 加解密一致性 + 指纹稳定 + 脱敏 + 密文不含明文。"""
     import tempfile
