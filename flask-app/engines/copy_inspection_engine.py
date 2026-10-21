@@ -8,6 +8,7 @@ CHMS-06: 文案合规巡检（缺失/重复/占位/硬编码检测）
 from __future__ import annotations
 import os
 import re
+import sys
 import sqlite3
 import json
 from typing import Dict, Any, List
@@ -188,6 +189,31 @@ class CopyInspectionEngine:
                     (finding_type, json.dumps(findings, ensure_ascii=False),
                      severity if findings else 'INFO', len(findings))
                 )
+            # P1 巡检语义化 (flow_p1_wave_20261021): 发现项附脑库历史相似解法 top-2 (零token, fail-open)
+            if all_findings:
+                try:
+                    hints = []
+                    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+                    from ai_brain_vector_engine import search_brain
+                    for f in all_findings[:3]:
+                        desc = (f.get('message') or f.get('description') or f.get('file') or str(f))[:60]
+                        try:
+                            so = search_brain(f'文案巡检 {desc}', top_k=2)
+                            hints.append({'finding': desc, 'matches': [
+                                {'title': (r.get('title') or '')[:50],
+                                 'preview': (r.get('content_preview') or '')[:100],
+                                 'score': round(float(r.get('score') or 0), 3)}
+                                for r in (so.get('results') or [])]})
+                        except Exception:
+                            continue
+                    if hints:
+                        cur.execute(
+                            """INSERT INTO mt_copy_inspection_report
+                               (inspection_type, findings_json, severity, total_findings)
+                               VALUES ('SEMANTIC_HINTS', ?, 'INFO', ?)""",
+                            (json.dumps(hints, ensure_ascii=False), len(hints)))
+                except Exception:
+                    pass  # fail-open: 语义增强不阻塞落库
             conn.commit()
             conn.close()
         except Exception:

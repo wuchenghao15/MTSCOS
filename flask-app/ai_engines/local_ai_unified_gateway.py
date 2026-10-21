@@ -10,7 +10,7 @@ Trae 优先离线编译代码、主力推理、思考助理的统一入口
   3. 本地模板匹配 — 最终兜底
 
 支持场景:
-  - chat      : 对话/思考助理 (自动注入脑库语义检索top-k知识, MTSCOS_BRAIN_RAG=0 关闭)
+  - chat      : 对话/思考助理 (chat/think/code 全出口自动注入脑库语义检索top-k知识, MTSCOS_BRAIN_RAG=0 关闭)
   - analyze   : 代码分析(语法/编译错误/优化建议)
   - think     : 思考助理(推理/决策/方案)
   - compile   : 离线编译辅助(代码检查/错误定位)
@@ -667,7 +667,13 @@ def code(prompt: str, system: str = "", flow_id: Optional[str] = None) -> Dict[s
                   "输出代码要求: 1.完整可运行 2.注释清晰 3.遵循PEP8/ESLint规范 "
                   "4.优先给出代码,简短说明即可。")
     system = _with_rules(system)  # 编码铁律 + MTSCOS项目硬规则, 不可豁免
+    # P1 聊天RAG全量下沉 (flow_p1_wave_20261021): code 出口注入脑库编码知识锚点
+    rag_ctx, rag_meta = _brain_rag_context(prompt)
+    if rag_ctx:
+        system = system + "\n\n" + rag_ctx
     result = _route_chat(prompt, system, flow_id, use_coder=True)
+    if rag_meta:
+        result["brain_rag"] = rag_meta
     result["kind"] = "code"
     return result
 
@@ -2584,7 +2590,13 @@ def think(question: str, context: str = "", flow_id: Optional[str] = None) -> Di
     system = ("你是MTSCOS思考助理,擅长深度推理和方案设计。"
               "请结构化输出: 1.问题分析 2.关键要素 3.推理过程 4.结论/方案")
     prompt = f"问题: {question}\n上下文: {context}\n\n请深度思考并给出方案:"
+    # P1 聊天RAG全量下沉 (flow_p1_wave_20261021): think 出口同样注入脑库知识锚点
+    rag_ctx, rag_meta = _brain_rag_context(question)
+    if rag_ctx:
+        system = system + "\n\n" + rag_ctx
     result = _route_chat(prompt, system, flow_id)
+    if rag_meta:
+        result["brain_rag"] = rag_meta
     result["kind"] = "think"
     return result
 
