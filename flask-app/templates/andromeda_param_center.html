@@ -1,0 +1,221 @@
+{% extends "base_unified.html" %}
+
+{% block title %}仙女座参数中心 · MTSCOS AI{% endblock %}
+
+{% block extra_head %}
+<style>
+  :root { --bg:#05060d; --bg2:#0a0d1a; --cyan:#00f0ff; --violet:#a78bfa; --gold:#fbbf24;
+          --txt:#e8ecf8; --muted:#8892a8; --red:#ef4444; --ok:#22c55e; --line:rgba(255,255,255,0.06); }
+  .pc-wrap { max-width: 1280px; margin: 0 auto; padding: 24px 32px 90px; }
+  .pc-stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; margin-bottom:20px; }
+  .pc-stat { background:var(--bg2); border:1px solid var(--line); border-radius:10px; padding:14px 16px; }
+  .pc-stat b { display:block; font-size:1.5rem; color:var(--cyan); font-variant-numeric:tabular-nums; }
+  .pc-stat span { font-size:0.72rem; color:var(--muted); letter-spacing:1px; }
+  .pc-bar { display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap; align-items:center; }
+  .pc-bar select, .pc-bar input { background:#000; border:1px solid rgba(0,240,255,0.25); border-radius:8px;
+      color:var(--txt); padding:8px 12px; font-family:inherit; font-size:0.8rem; outline:none; }
+  .pc-bar button { background:linear-gradient(135deg,var(--cyan),#0891b2); border:none; border-radius:8px;
+      color:#000; padding:8px 18px; font-weight:700; cursor:pointer; font-family:inherit; }
+  .pc-bar button.ghost { background:transparent; color:var(--violet); border:1px solid rgba(167,139,250,0.4); }
+  table { width:100%; border-collapse:collapse; font-size:0.78rem; }
+  th { text-align:left; color:var(--muted); font-weight:500; padding:8px 10px; border-bottom:1px solid var(--line);
+       letter-spacing:1px; position:sticky; top:0; background:var(--bg2); }
+  td { padding:8px 10px; border-bottom:1px solid var(--line); color:var(--txt); word-break:break-all; }
+  tr:hover td { background:rgba(0,240,255,0.03); }
+  .tag { display:inline-block; padding:1px 8px; border-radius:999px; border:1px solid var(--line);
+         font-size:0.65rem; color:var(--muted); margin-right:4px; }
+  .tag.secret { color:var(--gold); border-color:rgba(251,191,36,0.4); }
+  .tag.inactive { color:var(--red); border-color:rgba(239,68,68,0.4); }
+  .domain-chip { cursor:pointer; }
+  .domain-chip.on { color:var(--cyan); border-color:var(--cyan); }
+  .pc-edit { position:fixed; inset:0; background:rgba(0,0,0,0.7); display:none; align-items:center;
+             justify-content:center; z-index:10000; }
+  .pc-edit.open { display:flex; }
+  .pc-edit-box { background:var(--bg2); border:1px solid rgba(0,240,255,0.25); border-radius:12px;
+                 padding:22px; width:min(520px,92vw); }
+  .pc-edit-box h3 { margin:0 0 14px; color:var(--cyan); font-size:0.95rem; }
+  .pc-edit-box label { display:block; font-size:0.7rem; color:var(--muted); margin:10px 0 4px; }
+  .pc-edit-box input, .pc-edit-box select, .pc-edit-box textarea { width:100%; background:#000;
+      border:1px solid rgba(0,240,255,0.25); border-radius:8px; color:var(--txt); padding:8px 10px;
+      font-family:inherit; font-size:0.8rem; outline:none; box-sizing:border-box; }
+  .pc-edit-actions { display:flex; gap:10px; margin-top:16px; justify-content:flex-end; }
+  .pc-scan { font-size:0.72rem; color:var(--muted); margin-top:6px; }
+  .pc-scan b.warn { color:var(--gold); } .pc-scan b.ok { color:var(--ok); }
+</style>
+{% endblock %}
+
+{% block page_title %}仙女座参数中心{% endblock %}
+
+{% block content %}
+<script>window.IS_SA = {{ 'true' if is_sa else 'false' }};</script>
+<div class="pc-wrap">
+  <div class="andromeda-crumb-space"></div>
+  <h1 style="margin:0 0 4px;font-size:1.3rem;background:linear-gradient(135deg,var(--cyan),var(--violet));-webkit-background-clip:text;-webkit-text-fill-color:transparent;">⚙️ 仙女座参数中心</h1>
+  <div style="font-size:0.72rem;color:var(--muted);margin-bottom:18px;">
+    flow_andromeda_param_20261021 · MT_RULE_PARAM 统一参数体系 · 告别 20 张散表碎片化 · 查询全员 / 修改仅 SA · 全操作审计留痕
+  </div>
+
+  <div class="pc-stats" id="pcStats"></div>
+
+  <div class="pc-bar">
+    <span style="font-size:0.72rem;color:var(--muted);">参数域:</span>
+    <span id="domainChips"></span>
+    <input id="searchKey" placeholder="搜索参数键..." style="width:200px;">
+    <button onclick="loadList()">筛选</button>
+    <button class="ghost" onclick="doScan()">🩺 健康巡检</button>
+    <button class="ghost" onclick="openEdit(null)">＋ 新增参数 (SA)</button>
+    <button class="ghost" onclick="loadChangelog()">📜 审计链</button>
+  </div>
+  <div class="pc-scan" id="scanInfo">点击「健康巡检」扫描非法JSON/空值/越域/类型违例…</div>
+
+  <div style="background:var(--bg2);border:1px solid var(--line);border-radius:10px;overflow:auto;max-height:52vh;">
+    <table id="pcTable">
+      <thead><tr><th>参数键</th><th>值</th><th>类型</th><th>作用域</th><th>来源</th><th>更新</th><th>操作</th></tr></thead>
+      <tbody><tr><td colspan="7" style="color:var(--muted);">加载中…</td></tr></tbody>
+    </table>
+  </div>
+
+  <div id="changelogBox" style="display:none;margin-top:16px;background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:14px;max-height:30vh;overflow:auto;">
+    <h3 style="margin:0 0 8px;font-size:0.85rem;color:var(--violet);">📜 变更审计链 (规范§6)</h3>
+    <div id="changelogBody" style="font-size:0.72rem;color:var(--muted);"></div>
+  </div>
+</div>
+
+<div class="pc-edit" id="editMask">
+  <div class="pc-edit-box">
+    <h3 id="editTitle">参数编辑</h3>
+    <label>参数键 (规范§2.4: 域.模块.参数名)</label>
+    <input id="eKey" placeholder="如 ai.model.default_model">
+    <label>参数值 (JSON 序列化, 规范§3.3)</label>
+    <textarea id="eValue" rows="3" placeholder='"qwen2.5:7b" 或 300 或 true 或 {"a":1}'></textarea>
+    <label>数据类型</label>
+    <select id="eType"><option>string</option><option>integer</option><option>float</option><option>boolean</option><option>json</option><option>list</option><option>datetime</option></select>
+    <label>作用域</label>
+    <select id="eScope"><option>global</option><option>system</option><option>user</option><option>session</option></select>
+    <label>描述</label>
+    <input id="eDesc" placeholder="参数用途说明">
+    <label style="display:flex;align-items:center;gap:6px;"><input type="checkbox" id="eSecret" style="width:auto;"> 机密参数 (值脱敏显示)</label>
+    <div class="pc-edit-actions">
+      <button class="ghost" onclick="closeEdit()">取消</button>
+      <button onclick="saveEdit()">保存</button>
+      <button class="ghost" id="delBtn" onclick="delParam()" style="color:var(--red);border-color:rgba(239,68,68,0.4);">删除</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<!-- 仙女座统一导航 · 共享组件 -->
+<script src="/static/js/andromeda_nav.js"></script>
+<script>
+const DOMAINS = ['system','security','database','ai','exam','user','notification','backup','monitor','cache','logging'];
+let curDomain = '';
+function esc(s){const d=document.createElement('div');d.textContent=s==null?'':String(s);return d.innerHTML;}
+
+async function loadStats(){
+  try{
+    const j = await (await fetch('/andromeda/api/param/stats',{credentials:'same-origin'})).json();
+    const d = j.data||{};
+    const missing = (d.missing_domains||[]);
+    document.getElementById('pcStats').innerHTML = `
+      <div class="pc-stat"><b>${d.total||0}</b><span>登记参数</span></div>
+      <div class="pc-stat"><b>${Object.keys(d.by_domain||{}).length}/11</b><span>覆盖参数域</span></div>
+      <div class="pc-stat"><b>${d.secret_count||0}</b><span>机密参数(脱敏)</span></div>
+      <div class="pc-stat"><b>${d.change_log_total||0}</b><span>变更审计条数</span></div>
+      <div class="pc-stat"><b style="color:${missing.length?'var(--gold)':'var(--ok)'}">${missing.length?missing.join(','):'全覆盖'}</b><span>未覆盖域</span></div>`;
+    document.getElementById('domainChips').innerHTML =
+      '<span class="tag domain-chip on" onclick="pickDomain(\'\')">全部</span>' +
+      DOMAINS.map(dm=>`<span class="tag domain-chip" data-d="${dm}" onclick="pickDomain('${dm}')">${dm}</span>`).join('');
+  }catch(e){ document.getElementById('pcStats').innerHTML = `<div class="pc-stat"><b>—</b><span>加载失败: ${esc(e.message)}</span></div>`; }
+}
+function pickDomain(d){
+  curDomain = d;
+  document.querySelectorAll('.domain-chip').forEach(c=>c.classList.toggle('on', c.dataset.d===d || (!d && !c.dataset.d)));
+  loadList();
+}
+async function loadList(){
+  const q = document.getElementById('searchKey').value.trim();
+  const url = '/andromeda/api/param/list' + (curDomain?`?domain=${curDomain}`:'');
+  try{
+    const j = await (await fetch(url,{credentials:'same-origin'})).json();
+    let rows = j.data||[];
+    if(q) rows = rows.filter(r=>r.param_key.includes(q));
+    const tb = document.querySelector('#pcTable tbody');
+    tb.innerHTML = rows.length ? rows.map(r=>`
+      <tr>
+        <td style="color:var(--cyan);">${esc(r.param_key)}</td>
+        <td>${esc(r.is_secret?'******':JSON.stringify(r.value_parsed))}</td>
+        <td><span class="tag">${esc(r.data_type)}</span></td>
+        <td><span class="tag">${esc(r.scope)}</span>${r.is_secret?'<span class="tag secret">机密</span>':''}${r.is_active?'':'<span class="tag inactive">停用</span>'}</td>
+        <td style="color:var(--muted);">${esc(r.source)}</td>
+        <td style="color:var(--muted);">${esc((r.updated_at||'').slice(0,19))}</td>
+        <td><button class="ghost" style="padding:2px 10px;font-size:0.68rem;" onclick='openEdit(${JSON.stringify(r).replace(/'/g,"&#39;")})'>编辑</button></td>
+      </tr>`).join('') : '<tr><td colspan="7" style="color:var(--muted);">无参数 — 点击「＋新增参数」登记</td></tr>';
+  }catch(e){ alert('加载失败: '+e.message); }
+}
+function openEdit(r){
+  const isSA = window.IS_SA === true;
+  document.getElementById('editTitle').textContent = r ? '编辑: '+r.param_key : '新增参数';
+  document.getElementById('eKey').value = r ? r.param_key : '';
+  document.getElementById('eKey').readOnly = !!r;
+  document.getElementById('eValue').value = r ? JSON.stringify(r.value_parsed) : '';
+  document.getElementById('eType').value = r ? r.data_type : 'string';
+  document.getElementById('eScope').value = r ? r.scope : 'global';
+  document.getElementById('eDesc').value = r ? (r.description||'') : '';
+  document.getElementById('eSecret').checked = r ? !!r.is_secret : false;
+  document.getElementById('delBtn').style.display = r ? '' : 'none';
+  // 非SA只读查看 (服务端仍强制 403, 双保险)
+  ['eValue','eType','eScope','eDesc','eSecret'].forEach(id=>{
+    document.getElementById(id).disabled = !isSA;
+  });
+  document.getElementById('editMask').classList.add('open');
+}
+function closeEdit(){ document.getElementById('editMask').classList.remove('open'); }
+async function saveEdit(){
+  const body = {
+    param_key: document.getElementById('eKey').value.trim(),
+    value: document.getElementById('eValue').value,
+    data_type: document.getElementById('eType').value,
+    scope: document.getElementById('eScope').value,
+    description: document.getElementById('eDesc').value.trim(),
+    is_secret: document.getElementById('eSecret').checked ? 1 : 0,
+  };
+  if(!body.param_key){ alert('参数键必填'); return; }
+  const r = await fetch('/andromeda/api/param/set',{method:'POST',
+    headers:{'Content-Type':'application/json'}, credentials:'same-origin', body:JSON.stringify(body)});
+  const j = await r.json();
+  if(r.status===403){ alert(j.error||'仅超级管理员可修改'); return; }
+  if(j.success){ closeEdit(); loadList(); loadStats(); }
+  else alert('保存失败: '+(j.data&&j.data.error||j.error||''));
+}
+async function delParam(){
+  const key = document.getElementById('eKey').value.trim();
+  if(!confirm('确认删除参数 '+key+' ? (审计留痕)')) return;
+  const r = await fetch('/andromeda/api/param/delete',{method:'POST',
+    headers:{'Content-Type':'application/json'}, credentials:'same-origin', body:JSON.stringify({param_key:key})});
+  const j = await r.json();
+  if(r.status===403){ alert(j.error||'仅超级管理员可删除'); return; }
+  if(j.success){ closeEdit(); loadList(); loadStats(); }
+  else alert('删除失败: '+(j.data&&j.data.error||j.error||''));
+}
+async function doScan(){
+  document.getElementById('scanInfo').textContent = '巡检中…';
+  const j = await (await fetch('/andromeda/api/param/scan',{method:'POST',credentials:'same-origin'})).json();
+  const d = j.data||{};
+  document.getElementById('scanInfo').innerHTML =
+    `最近巡检 ${esc(d.scanned_at||'')} · 参数 ${d.total_params} · 发现 <b class="${d.total_findings?'warn':'ok'}">${d.total_findings}</b> 项 · 严重度 ${esc(d.severity||'')}` +
+    ((d.findings||[]).slice(0,5).map(f=>`<br>· [${esc(f.type)}] ${esc(f.param_key)} — ${esc(f.detail)}`).join(''));
+}
+async function loadChangelog(){
+  const box = document.getElementById('changelogBox');
+  if(box.style.display==='block'){ box.style.display='none'; return; }
+  const j = await (await fetch('/andromeda/api/param/changelog?limit=80',{credentials:'same-origin'})).json();
+  document.getElementById('changelogBody').innerHTML = (j.data||[]).map(c=>
+    `<div style="margin-bottom:4px;">${esc(c.created_at)} · <b style="color:var(--cyan);">${esc(c.param_key)}</b> ${esc(c.action)} · ${esc(c.operator)}${c.flow_id?' · '+esc(c.flow_id):''}</div>`).join('')
+    || '暂无变更记录';
+  box.style.display='block';
+}
+document.getElementById('searchKey').addEventListener('keydown',e=>{if(e.key==='Enter')loadList();});
+loadStats(); loadList();
+</script>
+{% endblock %}

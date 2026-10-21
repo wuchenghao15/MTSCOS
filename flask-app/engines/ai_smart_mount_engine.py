@@ -702,6 +702,20 @@ except Exception as e:
 """,
         "inspect_cycle": 900,
     },
+    # 🆕 flow_andromeda_param_20261021: 仙女座参数巡检 daemon (统一参数体系健康扫描)
+    {
+        "process_name": "sys_param_inspector",
+        "duty": "仙女座参数巡检 - 每900s扫描mt_param_registry非法JSON/空值/越域/类型违例+报告落库",
+        "work_body": """
+try:
+    from engines.ai_param_center_engine import scan as _param_scan
+    r = _param_scan()
+    _log(f"[param_inspector] ✅ params={r.get('total_params')} findings={r.get('total_findings')} severity={r.get('severity')}")
+except Exception as _e:
+    _log(f"[param_inspector] ❌ 巡检失败: {_e}")
+""",
+        "inspect_cycle": 900,
+    },
     # 🆕 v25.0: 仙女座智能审批 daemon (approvals_engine.py 单权威源)
     {
         "process_name": "sys_auto_approval",

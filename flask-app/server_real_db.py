@@ -2470,6 +2470,8 @@ _CSRF_EXEMPT_PREFIXES = [
     '/api/local-chat/',
     # 🆕 flow_andromeda_chat_20261021: AI人格聊天室 — 会话落库+脑库RAG (与 /api/local-chat/ 同理, 匿名可用仅聊天写入, CSRF 冗余)
     '/andromeda/api/persona_chat',
+    # 🆕 flow_andromeda_param_20261021: 仙女座参数中心 — 查询全员/修改仅SA权限装饰器兜底, CSRF 冗余
+    '/andromeda/api/param/',
     # §二/§四.5: 教育错题推理 + 大模型升级（daemon 也能调 + POST 无 CSRF token）
     '/api/edu/',
     '/api/model/',
