@@ -53,7 +53,8 @@ except Exception:
     _LOCK = threading.Lock()
 
     def _get_conn():
-        return sqlite3.connect(os.path.join(_BASE, 'app.db'))
+        # db 归正 (flow_bigdata_evolve2_20261021): 原 engines/app.db → 项目主库 database/app.db
+        return sqlite3.connect(os.path.join(os.path.dirname(_BASE), 'database', 'app.db'))
 
     def feed_brain(flow_id, kind, content):
         return {'status': 'success', 'code': 0, 'message': 'auto_implemented_by_gap_engine', 'gap_flow_id': 'autogap_c085e240_20260827_002'}

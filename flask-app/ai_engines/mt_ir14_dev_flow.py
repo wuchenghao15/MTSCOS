@@ -45,7 +45,8 @@ MT_ANOM_TABLE    = "mt_anomaly_feature_library"
 MT_VIOL_TABLE    = "mt_iron_rule_violations"
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
-APP_DB = os.path.join(ROOT, "app.db")
+# db 归正 (flow_bigdata_evolve2_20261021): 原 ai_engines/app.db 野库 → 项目主库 database/app.db (数据库唯一数据源铁律)
+APP_DB = os.path.join(os.path.dirname(ROOT), "database", "app.db")
 
 
 def _get_conn() -> sqlite3.Connection:

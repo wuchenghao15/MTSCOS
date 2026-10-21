@@ -46,11 +46,9 @@ from datetime import datetime
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # flask-app/
 AI_ENGINES_DIR = os.path.join(ROOT, "ai_engines")
 ENGINES_DIR = os.path.join(ROOT, "engines")
-APP_DB = os.path.join(AI_ENGINES_DIR, "app.db")
-# 🔧 仙女座 v5.0 fix: 统一指向 Database/app.db 主库 (与 smart_mount_engine 同库)
-_MAIN_DB = os.path.join(ROOT, "..", "Database", "app.db")
-if os.path.exists(_MAIN_DB):
-    APP_DB = _MAIN_DB
+# db 归正 (flow_bigdata_evolve2_20261021): 原 ai_engines/app.db 默认 + 项目根 Database(软链→Mac mini 旧16KB库)覆盖
+# → 统一项目主库 database/app.db (数据库唯一数据源铁律 + keepalive 教训: 根 Database 软链不得抢库)
+APP_DB = os.path.join(ROOT, "database", "app.db")
 RULES_DIR = os.path.join(ROOT, "..", ".trae", "rules")
 RUNTIME_DIR = os.path.join(ROOT, "..", "_runtime")
 LOG_DIR = os.path.join(RUNTIME_DIR, "logs")

@@ -39,7 +39,8 @@ from datetime import datetime
 from typing import Any, Dict, Optional
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 AI_ENGINES_DIR = os.path.join(ROOT, "ai_engines")
-APP_DB = os.path.join(ROOT, "..", "_runtime", "databases", "Database", "app.db")
+# db 归正 (flow_bigdata_evolve2_20261021): 原 _runtime/databases/Database/app.db (16KB 野库) → 项目主库 database/app.db
+APP_DB = os.path.join(ROOT, "database", "app.db")
 RUNTIME_DIR = os.path.join(ROOT, "..", "_runtime")
 LOG_DIR = os.path.join(RUNTIME_DIR, "logs")
 PID_DIR = os.path.join(RUNTIME_DIR, "pids")
