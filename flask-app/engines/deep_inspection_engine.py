@@ -49,7 +49,8 @@ except Exception:
     _LOCK = threading.Lock()
 
     def _get_conn():
-        return sqlite3.connect(os.path.join(_BASE, 'app.db'))
+        # db_path 归正 (flow_bigdata_evolve_20261021): 原 engines/app.db(错库) → 项目主库 database/app.db
+        return sqlite3.connect(os.path.join(_BASE, 'database', 'app.db'))
 
     def feed_brain(flow_id, kind, content):
         return {'status': 'success', 'code': 0, 'message': 'auto_implemented_by_gap_engine', 'gap_flow_id': 'autogap_777fcdab_20260827_002'}
@@ -962,6 +963,17 @@ class DeepInspectionEngine:
                     report_data['semantic_hints'] = hints
             except Exception:
                 pass  # fail-open: 语义增强不阻塞持久化主链路
+            # 引擎自治建表+schema自愈 (flow_bigdata_evolve_20261021): 大数据推演发现主库缺此表,
+            # 且 diagnose 引擎认知(content_json)与本引擎认知(content)不同 → 建 diagnose 全 schema + 补缺列, 双引擎兼容
+            cur.execute("""CREATE TABLE IF NOT EXISTS mt_super_admin_reports (
+                report_id TEXT PRIMARY KEY, flow_id TEXT, report_type TEXT, title TEXT, content_json TEXT,
+                severity TEXT, category TEXT, findings_json TEXT, recommendations_json TEXT, status TEXT,
+                created_by TEXT, created_at TEXT, updated_at TEXT, eigenflux_feedback_json TEXT,
+                fix_plan_json TEXT, ai_employees_assigned_json TEXT)""")
+            _cols = {r[1] for r in cur.execute('PRAGMA table_info(mt_super_admin_reports)').fetchall()}
+            for _c in ('content', 'operator'):
+                if _c not in _cols:
+                    cur.execute(f'ALTER TABLE mt_super_admin_reports ADD COLUMN {_c} TEXT')
             cur.execute('INSERT OR REPLACE INTO mt_super_admin_reports\n                (flow_id, report_type, title, content, operator, created_at)\n                VALUES(?,?,?,?,?,?)', (flow_id, 'DEEP_INSPECTION_REPORT', f'深度巡检报告-{self._report.report_id}', json.dumps(report_data, ensure_ascii=False), 'DeepInspection', now))
             stored += 1
             for item in self._items:
@@ -1035,15 +1047,29 @@ class DeepInspectionEngine:
         print(f"{'=' * 70}")
         return report
 if __name__ == '__main__':
-    engine = DeepInspectionEngine()
-    report = engine.run_full_inspection()
-    if report.items:
-        print('\n--- 问题详情(前20) ---')
-        for (i, item) in enumerate(report.items[:20], 1):
-            icon = {'resolved': '✓', 'fixed': '◐', 'failed': '✗', 'skipped': '○'}.get(item.lifecycle_status, '?')
-            print(f'  {i:2d}. {icon} [{item.category}] {item.file}:{item.line}')
-            print(f'      消息: {item.message[:70]}')
-            print(f'      AI: {item.assigned_expert}({item.assigned_team}) | 状态: {item.lifecycle_status}')
-            if item.fix_detail:
-                print(f'      修复: {item.fix_detail[:60]}')
-            print()
+    # --loop 支持 (flow_bigdata_evolve_20261021): andromeda_core 注册 `deep_inspection_engine.py --loop`
+    # 但原 __main__ 只单轮打印不认参 → 补常驻模式(600s), 单次模式保留
+    import time as _time
+    if '--loop' in __import__('sys').argv:
+        print('[sys_deep_inspection] loop 模式启动, 周期 600s', flush=True)
+        while True:
+            try:
+                _engine = DeepInspectionEngine()
+                _report = _engine.run_full_inspection()
+                print('[sys_deep_inspection] 发现=%d 修复=%d 解决=%d' % (_report.items_found, _report.items_fixed, _report.items_resolved), flush=True)
+            except Exception as _e:
+                print('[sys_deep_inspection] 轮次异常(fail-open):', _e, flush=True)
+            _time.sleep(600)
+    else:
+        engine = DeepInspectionEngine()
+        report = engine.run_full_inspection()
+        if report.items:
+            print('\n--- 问题详情(前20) ---')
+            for (i, item) in enumerate(report.items[:20], 1):
+                icon = {'resolved': '✓', 'fixed': '◐', 'failed': '✗', 'skipped': '○'}.get(item.lifecycle_status, '?')
+                print(f'  {i:2d}. {icon} [{item.category}] {item.file}:{item.line}')
+                print(f'      消息: {item.message[:70]}')
+                print(f'      AI: {item.assigned_expert}({item.assigned_team}) | 状态: {item.lifecycle_status}')
+                if item.fix_detail:
+                    print(f'      修复: {item.fix_detail[:60]}')
+                print()
