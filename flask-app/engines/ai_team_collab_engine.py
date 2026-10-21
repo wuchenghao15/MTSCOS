@@ -233,10 +233,14 @@ def backfill(limit: int = 30) -> list:
     """把任务大厅在办任务全部开频道"""
     conn = _db()
     try:
-        rows = [dict(r) for r in conn.execute(
-            "SELECT id,title,description,source FROM mt_lab_task_hall "
-            "WHERE status IN ('DISPATCHED','QUEUED','CLAIMED','IN_PROGRESS') "
-            "ORDER BY id DESC LIMIT ?", (limit,))]
+        try:
+            rows = [dict(r) for r in conn.execute(
+                "SELECT id,title,description,source FROM mt_lab_task_hall "
+                "WHERE status IN ('DISPATCHED','QUEUED','CLAIMED','IN_PROGRESS') "
+                "ORDER BY id DESC LIMIT ?", (limit,))]
+        except sqlite3.Error:
+            # 任务大厅表尚未建立 (新环境首次访问研中心页才会建), 不是错误
+            rows = []
     finally:
         conn.close()
     out = []
