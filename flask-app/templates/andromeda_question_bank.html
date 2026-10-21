@@ -111,6 +111,14 @@ tr:last-child td{border-bottom:none}
 <div class="sub">11 大星座{{ t('auto.andromeda_question_bank.x_605f569c', default='领域') }} · 实时扫描 question_bank + 独立学习表</div>
 
 <div id="report"></div>
+
+<div class="section-title">🧭 语义搜题 (脑库向量 · 零 token · flow_qbank_semantic_20261021)</div>
+<div style="display:flex;gap:8px;margin-bottom:8px">
+  <input id="semq" placeholder="🔍 语义查询: 函数单调性 / JLPT N3语法 / 牛顿第二定律 ..."
+         style="flex:1;background:var(--card);border:1px solid var(--bd);border-radius:8px;padding:10px 14px;color:var(--fg);font-size:14px">
+  <button onclick="semanticQbank()" id="sembtn" style="background:var(--ink-light);color:#fff;border:none;border-radius:8px;padding:10px 22px;font-weight:600;cursor:pointer">语义检索</button>
+</div>
+<div id="semres"></div>
 {% endblock %}
 
 {% block extra_scripts %}
@@ -124,6 +132,33 @@ fetch('/andromeda/question_bank/detect')
 
 function severityIcon(s){return {ok:'✅',warn:'⚠️',err:'❌'}[s]||'—'}
 function severityClass(s){return {ok:'ok',warn:'warn',err:'err'}[s]||''}
+
+// 语义搜题 (flow_qbank_semantic_20261021) — search_brain 泛化消费, 脑库 768 维余弦 top-k
+async function semanticQbank(){
+  const q = document.getElementById('semq').value.trim();
+  const box = document.getElementById('semres');
+  const btn = document.getElementById('sembtn');
+  if(!q){ box.innerHTML = '<div class="issue-item" style="border-left-color:var(--warn)">请输入语义查询词</div>'; return; }
+  btn.disabled = true; const old = btn.textContent; btn.textContent = '检索中…';
+  try {
+    const r = await fetch('/api/exam/question_banks/semantic_search?q='+encodeURIComponent(q)+'&top_k=8');
+    const j = await r.json();
+    const d = j.data || {};
+    if(!j.success || d.error){ box.innerHTML = '<div class="issue-item">语义检索暂不可用: '+(d.error||'未知')+'</div>'; return; }
+    if(!(d.results||[]).length){ box.innerHTML = '<div class="issue-item" style="border-left-color:var(--warn)">无语义命中</div>'; return; }
+    box.innerHTML = (d.ms ? `<div class="issue-item" style="border-left-color:var(--ok)">🧭 语义 top-${d.results.length} · 向量 ${d.vector_total||0} · embed ${d.ms.embed||'—'}ms · 排序 ${d.ms.rank||'—'}ms · 零 token</div>` : '') +
+      d.results.map(row => `<div class="issue-item" style="border-left-color:var(--ok)">
+        <strong>${(row.title||'').replace(/<[^>]+>/g,'')}</strong>
+        <span class="badge ok">${row.category||'通用'} · 余弦 ${row.score!=null?(row.score*100).toFixed(1)+'%':'—'}</span>
+        <div style="color:var(--muted);font-size:12px;margin-top:4px">${row.content_preview||'—'}</div>
+        <div class="code" style="margin-top:2px">${row.knowledge_id||''}</div>
+      </div>`).join('');
+  } catch(e) {
+    box.innerHTML = '<div class="issue-item">请求失败: '+e.message+'</div>';
+  } finally {
+    btn.disabled = false; btn.textContent = old;
+  }
+}
 
 function render(r){
   const sm = r.summary;
