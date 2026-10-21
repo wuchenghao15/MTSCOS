@@ -29,12 +29,23 @@ WAL 安全:
   - 同步写操作用短事务 (单表单批次)
   - 避免同时写同一 k_id (游标保证)
 """
-# [unused] import os, sys, time, json, socket, struct, threading, sqlite3, datetime, hashlib
+# 修复 (flow_andromeda_sync_20261021): 原 import 被整体注释为 [unused] → 模块 import 即 NameError(os未定义), 该引擎从未真正加载过
+import os
+import sys
+import time
+import json
+import socket
+import struct
+import threading
+import sqlite3
+import datetime
+import hashlib
 from pathlib import Path
 
 # ====== 常量 ======
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-DB_PATH = os.path.join(PROJECT_ROOT, 'engines', 'app.db')
+# db 归正 (flow_andromeda_sync_20261021): 原 engines/app.db 野库(860MB/95表) → 主库 database/app.db (数据库唯一数据源铁律)
+DB_PATH = os.path.join(PROJECT_ROOT, 'database', 'app.db')
 APP_DB_PATH = os.path.join(PROJECT_ROOT, 'database', 'app.db')
 BEACON_PORT = 54321          # UDP beacon 广播端口
 SYNC_PORT = 9999             # Mac mini TCP 同步端口 (主服务 8888)
