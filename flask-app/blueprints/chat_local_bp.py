@@ -23,6 +23,7 @@ flow_id: CHAT_LOCAL_v22_10_20261008
   POST /api/local-chat/session → 创建新会话
   GET  /api/local-chat/sessions → 我的会话列表
 """
+import hashlib
 import json
 import os
 import re
@@ -297,23 +298,45 @@ def _ensure_daily_grant(user_id, username):
 
 
 def _get_balance(user_id):
-    """查余额 (不做赠送, 只读)"""
+    """查余额 (不做赠送, 只读) — 优先新表 mt_token_wallets"""
     try:
         conn = _db()
+        # 🔧 flow_chat_guest_free_20261023: 优先查 mt_token_wallets (含游客 + 注册用户)
+        conn.execute("""CREATE TABLE IF NOT EXISTS mt_token_wallets (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT UNIQUE, username TEXT,
+            is_guest INTEGER DEFAULT 0, guest_device_hash TEXT, balance INTEGER DEFAULT 0,
+            frozen INTEGER DEFAULT 0, guest_free_grant INTEGER DEFAULT 0,
+            guest_consumed INTEGER DEFAULT 0, expires_at TEXT,
+            created_at TEXT DEFAULT (datetime('now','localtime')),
+            updated_at TEXT DEFAULT (datetime('now','localtime')))""")
+        wallet = conn.execute(
+            "SELECT balance, frozen, is_guest, guest_free_grant, guest_consumed "
+            "FROM mt_token_wallets WHERE user_id=?", (str(user_id),)
+        ).fetchone()
+        if wallet:
+            bal = dict(wallet)
+            free_grant = bal.get('guest_free_grant', 0) if bal.get('is_guest') else DAILY_FREE_TOKENS
+            return {'balance': bal['balance'], 'frozen': bal.get('frozen', 0),
+                    'total_granted': free_grant,
+                    'total_consumed': bal.get('guest_consumed', 0),
+                    'last_grant_date': '', 'daily_free': DAILY_FREE_TOKENS,
+                    'is_guest': bool(bal.get('is_guest')),
+                    'guest_free_grant': bal.get('guest_free_grant', 0)}
+        # 老表 fallback (注册用户)
         row = conn.execute(
             "SELECT balance, total_granted, total_consumed, last_grant_date "
-            "FROM mt_user_token_accounts WHERE user_id=?", (user_id,)
+            "FROM mt_user_token_accounts WHERE user_id=?", (str(user_id),)
         ).fetchone()
         conn.close()
         if row:
             return {'balance': row['balance'], 'total_granted': row['total_granted'],
                     'total_consumed': row['total_consumed'], 'last_grant_date': row['last_grant_date'],
-                    'daily_free': DAILY_FREE_TOKENS}
+                    'daily_free': DAILY_FREE_TOKENS, 'is_guest': False}
         return {'balance': 0, 'total_granted': 0, 'total_consumed': 0,
-                'last_grant_date': '', 'daily_free': DAILY_FREE_TOKENS}
+                'last_grant_date': '', 'daily_free': DAILY_FREE_TOKENS, 'is_guest': False}
     except Exception:
         return {'balance': 0, 'total_granted': 0, 'total_consumed': 0,
-                'last_grant_date': '', 'daily_free': DAILY_FREE_TOKENS}
+                'last_grant_date': '', 'daily_free': DAILY_FREE_TOKENS, 'is_guest': False}
 
 
 def _pricing_for(model):
@@ -847,20 +870,56 @@ def _call_ollama_stream(user_text, system_prompt, username, images=None, model_o
         yield f"data: [error] {json.dumps({'error': str(e)}, ensure_ascii=False)}\n\n"
 
 
-# ════════════════════════════════════════════════════════════════
-# 权限装饰器
-# ════════════════════════════════════════════════════════════════
+# ╔═══════════════════════════════════════════════════════════════
+# ║ flow_chat_guest_free_20261023: 游客 1 万免费 token 权限体系
+# ║ 注册用户 → 正常扣费 mt_token_wallets.balance ← mt_user_token_ledger
+# ║ 游客     → device_hash 身份 + 10000 免费额度 (30天过期)
+# ║          未登录不 401 → 自动建 guest session
+# ╚═══════════════════════════════════════════════════════════════
+
+def _device_hash(req=None):
+    """游客唯一身份 = sha256(IP|UA) 前 16 位 — 无需注册, 浏览器换指纹变人"""
+    r = req or request
+    ip = r.remote_addr or '0.0.0.0'
+    ua = (r.headers.get('User-Agent') or 'unknown')[:80]
+    raw = f"{ip}|{ua}"
+    return hashlib.sha256(raw.encode()).hexdigest()[:16]
+
+def _ensure_guest_wallet(device_hash, db=None):
+    """确保游客钱包存在: is_guest=1, guest_free_grant=10000, balance=10000"""
+    db = db or _db()
+    row = db.execute("SELECT * FROM mt_token_wallets WHERE user_id=?", (f"guest_{device_hash}",)).fetchone()
+    if row:
+        # 已存在, 补 balance 兜底
+        db.execute("UPDATE mt_token_wallets SET updated_at=datetime('now','localtime') WHERE user_id=?", (f"guest_{device_hash}",))
+        db.commit()
+        return dict(row)
+    # 新建游客钱包
+    db.execute("""INSERT INTO mt_token_wallets(user_id, username, is_guest, guest_device_hash,
+                    balance, guest_free_grant, expires_at)
+                  VALUES(?,?,1,?,?,10000, datetime('now','localtime','+30 days'))""",
+               (f"guest_{device_hash}", f"Guest_{device_hash[:8]}", device_hash, 10000))
+    db.commit()
+    row = db.execute("SELECT * FROM mt_token_wallets WHERE user_id=?", (f"guest_{device_hash}",)).fetchone()
+    return dict(row) if row else None
+
 def _login_required(fn):
+    """🔧 游客友好版本 — 未登录自动建 guest 身份 + 1 万免费 token, 不 401"""
     @wraps(fn)
     def wrapper(*args, **kwargs):
         uid = session.get('user_id')
-        if not uid or uid == 'guest':
-            # GET 页面请求 → 302 跳登录 (保留 next 参数); API 请求 → 401 JSON
-            if request.method == 'GET' and not request.path.startswith('/api/'):
-                from flask import redirect
-                return redirect(f'/auth/login?next={request.path}', code=302)
-            # API 请求 → 401 JSON
-            return jsonify({'success': False, 'error': 'login_required', 'message': '请先登录'}), 401
+        if not uid or str(uid).startswith('guest'):
+            # ── 未登录 → 自动创建 guest 身份 ──
+            dh = session.get('device_hash') or _device_hash()
+            session['device_hash'] = dh
+            session['user_id'] = f"guest_{dh}"
+            session['username'] = f"Guest_{dh[:8]}"
+            session['role'] = 'guest'
+            # 确保钱包
+            try:
+                _ensure_guest_wallet(dh)
+            except Exception as e:
+                current_app.logger.warning(f"[guest] wallet init fail: {e}")
         return fn(*args, **kwargs)
     return wrapper
 
