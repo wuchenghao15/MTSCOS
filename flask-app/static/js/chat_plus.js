@@ -178,12 +178,49 @@
           return '<div class="cp-row"><div class="cp-t">' + esc(it.title || it.session_id) + '</div>'
             + '<div class="cp-s">' + esc(it.role) + ' · ' + esc(it.created_at) + '</div>'
             + '<div class="cp-s">' + esc(it.snippet) + '</div>'
-            + '<button class="cp-btn" data-sid="' + esc(it.session_id) + '">打开消息</button></div>';
+            + '<button class="cp-btn" data-sid="' + esc(it.session_id) + '">打开消息</button>'
+            + '<button class="cp-btn" data-mid="' + esc(it.id) + '">看上下文</button></div>';
         }).join('');
         res.querySelectorAll('button[data-sid]').forEach(function (b) {
           b.onclick = function () { CUR = b.dataset.sid; switchTab('msg'); };
         });
+        res.querySelectorAll('button[data-mid]').forEach(function (b) {
+          b.onclick = function () { viewContext(b.dataset.mid, kw); };
+        });
       });
+    });
+  }
+
+  /* 命中消息上下文: 高亮关键词并标出目标消息 */
+  function viewContext(mid, kw) {
+    body.innerHTML = '<div class="cp-empty">定位消息 #' + esc(mid) + ' …</div>';
+    api('/api/local-chat/msg/context?mid=' + encodeURIComponent(mid) + '&span=4').then(function (d) {
+      if (!d.success) {
+        body.innerHTML = '<div class="cp-empty">' + esc(d.error || '无法定位') + '</div>'
+          + '<div style="text-align:center"><button class="cp-btn" id="cp-back">← 返回检索</button></div>';
+        var b = body.querySelector('#cp-back'); if (b) b.onclick = function () { switchTab('search'); };
+        return;
+      }
+      var rows = (d.messages || []).map(function (m) {
+        var html = richText(m.content || '');
+        if (kw) {
+          try {
+            var re = new RegExp('(' + kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
+            html = html.replace(re, '<mark style="background:#facc15;color:#111">$1</mark>');
+          } catch (e) { /* 忽略 */ }
+        }
+        var hit = Number(m.id) === Number(d.target_id);
+        return '<div class="cp-row" style="' + (hit ? 'background:rgba(79,140,255,.14);border-left:2px solid #4f8cff;padding-left:6px' : '') + '">'
+          + '<div class="cp-s">' + esc(m.role) + ' · ' + esc(m.created_at) + ' · #' + m.id + '</div>'
+          + '<div class="cp-t" style="white-space:normal">' + html + '</div></div>';
+      }).join('');
+      body.innerHTML = '<button class="cp-btn" id="cp-back" style="margin:0 0 8px 0">← 返回检索</button>'
+        + '<button class="cp-btn" id="cp-open">打开该会话</button>'
+        + '<div class="cp-s" style="margin:6px 0">' + esc(d.title || d.session_id) + '</div>' + rows;
+      body.querySelector('#cp-back').onclick = function () { switchTab('search'); };
+      body.querySelector('#cp-open').onclick = function () { CUR = d.session_id; switchTab('msg'); };
+      var hitEl = body.querySelector('mark');
+      if (hitEl && hitEl.scrollIntoView) hitEl.scrollIntoView({ block: 'center' });
     });
   }
 
