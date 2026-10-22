@@ -3067,6 +3067,14 @@ try:
 except Exception as _edu_err:
     print(f'[AI-EDU-ACADEMY] ⚠️ 教育中心模块加载失败: {_edu_err}')
 
+# ── 灾难恢复救援中心 Blueprint: /api/disaster-recovery/* (flow_disaster_recovery_20261022) ──
+try:
+    from blueprints.disaster_recovery_bp import dr_bp
+    app.register_blueprint(dr_bp)
+    print('[DISASTER-RECOVERY] ✅ 救援中心蓝图已注册 (center/recover/backup)')
+except Exception as _dr_err:
+    print(f'[DISASTER-RECOVERY] ⚠️ 救援中心加载失败: {_dr_err}')
+
 # ── 企业微信中枢 Blueprint: /api/wecom/* (flow_wecom_20261020) ──
 try:
     from blueprints.wecom_hub_bp import wecom_hub_bp
