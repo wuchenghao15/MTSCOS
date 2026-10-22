@@ -42,7 +42,9 @@
     + '.cp-jump:hover{color:#fff;background:rgba(79,140,255,.22)}'
     + '.cp-kv{display:flex;gap:8px;padding:3px 0;font-size:12px}'
     + '.cp-kv b{color:#8fa3c8;font-weight:400;min-width:58px}'
-    + '.cp-ev{padding:5px 0;border-bottom:1px dashed rgba(120,160,255,.12);font-size:11.5px}';
+    + '.cp-ev{padding:5px 0;border-bottom:1px dashed rgba(120,160,255,.12);font-size:11.5px}'
+    + '@media(max-width:520px){#cp-panel{width:calc(100vw - 16px);right:8px;bottom:70px;height:72vh;max-height:none}'
+    + '#cp-fab{right:14px;bottom:86px}}';
 
   var style = document.createElement('style');
   style.textContent = CSS;
@@ -72,7 +74,14 @@
   var CUR = null;
 
   function api(url, opt) {
-    return fetch(url, opt || {}).then(function (r) {
+    var o = opt || {};
+    // 小龙 App(WebView) 用 X-XL-Token 鉴权, 面板请求需带上, 否则 401
+    var o2 = Object.assign({}, o, { headers: Object.assign({}, o.headers || {}) });
+    try {
+      var tok = localStorage.getItem('xl_token');
+      if (tok) o2.headers['X-XL-Token'] = tok;
+    } catch (e) { /* 隐私模式忽略 */ }
+    return fetch(url, o2).then(function (r) {
       return r.json().catch(function () { return { success: false, error: 'bad_json' }; });
     });
   }
@@ -372,6 +381,7 @@
       body.innerHTML = '<button class="cp-btn" id="cp-back" style="margin:0 0 8px 0">← 返回消息</button>'
         + '<div class="cp-t" style="white-space:normal;font-size:14px;color:#c4b5fd">' + esc(d.name) + '</div>'
         + '<div class="cp-kv"><b>成员数</b><span>' + (t.member_count || (d.members || []).length) + '</span></div>'
+        + (d.center ? '<div class="cp-kv"><b>对口中心</b><span>' + jumpAnchor(esc(d.center), 'center', esc(d.center)) + '</span></div>' : '')
         + '<div style="margin:6px 0">' + keyw.map(function (k) {
           return '<span class="cp-chip">' + esc(k.trim()) + '</span>';
         }).join('') + '</div>'
