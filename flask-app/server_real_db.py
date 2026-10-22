@@ -3040,6 +3040,14 @@ try:
 except Exception as _ar_err:
     print(f'[ARCHIVE] ⚠️ 历史档案馆模块加载失败: {_ar_err}')
 
+# ── 仙女座 · 聊天系统补全 Blueprint: /api/local-chat/* 增强 (flow_chat_complete_20261022) ──
+try:
+    from blueprints.andromeda_chat_bp import chat_plus_bp
+    app.register_blueprint(chat_plus_bp)
+    print('[CHAT-PLUS] ✅ 聊天增强 (检索/编辑/删除/反馈/归档/未读/导出/@天团派单) 已注册')
+except Exception as _cp_err:
+    print(f'[CHAT-PLUS] ⚠️ 聊天增强模块加载失败: {_cp_err}')
+
 # ── AI 教育中心 + 考试院 Blueprint: /api/ai-edu/* (flow_edu_20261020) ──
 try:
     from blueprints.ai_edu_academy_bp import ai_edu_academy_bp
