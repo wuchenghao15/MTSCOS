@@ -243,8 +243,8 @@
                     <span style="font-size:10px;color:${t.status==='DISPATCHED'?'#059669':t.status==='QUEUED'?'#d97706':t.status==='DELIVERED'?'#2563eb':'#6b7280'}">[${t.status}]</span>
                     ${t.approval_status==='PENDING'?'<span style="font-size:10px;color:#dc2626">待审批</span>':''}
                     <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.title}</span>
-                    <a href="/andromeda/eigenflux_council?team=${encodeURIComponent(t.center_name||'')}" target="_blank"
-                       style="font-size:11px;color:#2563eb;text-decoration:none" title="跳转到 AI 天团矩阵">${t.center_name||'待分配'}</a>
+                    <a href="/local-chat?center=${encodeURIComponent(t.center_name||'')}" target="_blank"
+                       style="font-size:11px;color:#2563eb;text-decoration:none" title="在聊天增强面板查看该中心任务">${t.center_name||'待分配'}</a>
                     <span style="font-size:10px;color:#64748b">${t.claim_owner||''}</span>
                     ${t.approval_status==='PENDING' ? btn('✅通过',`hallApprove(${t.id},'approve',this)`,'#059669')+btn('❌驳回',`hallApprove(${t.id},'reject',this)`,'#dc2626') : ''}
                     ${(t.status==='QUEUED'||t.status==='DISPATCHED') ? btn('↩撤回',`hallCancel(${t.id},this)`,'#6b7280') : ''}

@@ -477,9 +477,11 @@ def _jump_href(kind: str, key: str) -> str:
     if kind == 'task':
         return '/admin/center#hall-section'
     if kind == 'team':
-        return '/andromeda/eigenflux_council?team=' + quote(key)
+        return '/local-chat?team=' + quote(key)
+    if kind == 'center':
+        return '/local-chat?center=' + quote(key)
     if kind == 'session':
-        return '/local-chat?session=' + quote(key)
+        return '/local-chat?sid=' + quote(key)
     return '/'
 
 
@@ -536,6 +538,88 @@ def chat_jump_resolve():
                         'href': _jump_href('session', key)})
     finally:
         conn.close()
+
+
+@chat_plus_bp.route('/api/local-chat/jump/center', methods=['GET'])
+@_login_required
+def chat_jump_center():
+    """任务中心详情: 各状态任务数 + 近期任务 (任务大厅中心名可点击进入)"""
+    name = (request.args.get('name') or '').strip()
+    if not name:
+        return jsonify({'success': False, 'error': 'name 不能为空'}), 400
+    _ensure()
+    conn = _db()
+    try:
+        center = None
+        try:
+            for r in conn.execute('SELECT id,name FROM mt_lab_centers'):
+                if r['name'] == name or name in r['name'] or r['name'] in name:
+                    center = dict(r)
+                    break
+        except sqlite3.Error:
+            pass
+        if not center:
+            return jsonify({'success': False, 'error': '未找到任务中心: ' + name}), 404
+        stats, tasks = {}, []
+        try:
+            for r in conn.execute('SELECT status,COUNT(*) c FROM mt_lab_task_hall'
+                                  ' WHERE center_id=? GROUP BY status', (center['id'],)):
+                stats[r['status']] = r['c']
+        except sqlite3.Error:
+            pass
+        try:
+            tasks = [dict(r) for r in conn.execute(
+                'SELECT id,hall_code,title,status,priority,created_at FROM mt_lab_task_hall'
+                ' WHERE center_id=? ORDER BY id DESC LIMIT 8', (center['id'],))]
+        except sqlite3.Error:
+            pass
+    finally:
+        conn.close()
+    return jsonify({'success': True, 'center': center, 'stats': stats, 'tasks': tasks,
+                    'total': sum(stats.values()), 'href': _jump_href('center', center['name'])})
+
+
+@chat_plus_bp.route('/api/local-chat/jump/team', methods=['GET'])
+@_login_required
+def chat_jump_team():
+    """天团详情: 名称/关键词/成员/近期承接任务 (供聊天面板内展示, 不跳空白页)"""
+    name = (request.args.get('name') or '').strip().lstrip('@')
+    if not name:
+        return jsonify({'success': False, 'error': 'name 不能为空'}), 400
+    _ensure()
+    conn = _db()
+    try:
+        meta, real = None, name
+        try:
+            for r in conn.execute('SELECT team_name,member_count,skill_keywords,color_tag'
+                                  ' FROM mt_team_registry'):
+                if r['team_name'] == name or name in r['team_name'] or r['team_name'] in name:
+                    meta, real = dict(r), r['team_name']
+                    break
+        except sqlite3.Error:
+            pass
+        members = []
+        try:
+            members = [dict(r) for r in conn.execute(
+                'SELECT member_name,skill_level,capabilities FROM mt_team_members'
+                ' WHERE team_name=? ORDER BY id LIMIT 40', (real,))]
+        except sqlite3.Error:
+            pass
+        tasks = []
+        try:
+            tasks = [dict(r) for r in conn.execute(
+                'SELECT id,hall_code,title,status,created_at FROM mt_lab_task_hall'
+                ' WHERE center_id IN (SELECT id FROM mt_lab_centers WHERE name=?)'
+                ' ORDER BY id DESC LIMIT 5', (real,))]
+        except sqlite3.Error:
+            pass
+    finally:
+        conn.close()
+    if not meta and not members:
+        return jsonify({'success': False, 'error': '未找到天团: ' + name}), 404
+    return jsonify({'success': True, 'team': meta or {'team_name': real}, 'name': real,
+                    'members': members, 'tasks': tasks,
+                    'href': _jump_href('team', real)})
 
 
 @chat_plus_bp.route('/api/local-chat/jump/task/<int:task_id>', methods=['GET'])
@@ -678,11 +762,12 @@ def chat_mention():
                             'dispatch': dispatch, 'dispatch_error': dispatch_err,
                             'href': _jump_href('task', str(task_id)),
                             'team_href': _jump_href('team', t['name'])})
-        # ① 系统消息: 任务号/天团名均为可点击跳转标记
+        # ① 系统消息: 任务号/中心均为可点击跳转标记 (@天团 由前端 linkify 自动识别)
         lines = []
         for c in created:
             seg = [f'@{c["team"]}', _jump(c['hall_code'], 'task', str(c['task_id'])), '→',
-                   _jump(c['center'] or '待分派', 'team', c['team']), f'[{c["status"]}]']
+                   (_jump(c['center'], 'center', c['center']) if c['center'] else '待分派'),
+                   f'[{c["status"]}]']
             if c.get('dispatch_error'):
                 seg.append('⚠️ 分派异常: ' + c['dispatch_error'])
             lines.append(' '.join(seg))
@@ -697,9 +782,10 @@ def chat_mention():
                     emp.append(e)
         ai_note = ('天团已接手: ' + ('、'.join(emp) if emp else '本机暂无空闲员工, 任务已入队等待认领')
                    + '。任务: ' + '；'.join(
-                       f'{_jump(c["hall_code"], "task", str(c["task_id"]))} → {c["center"] or "待分派"}'
+                       f'{_jump(c["hall_code"], "task", str(c["task_id"]))} → '
+                       + (_jump(c['center'], 'center', c['center']) if c['center'] else '待分派')
                        for c in created)
-                   + '。点击任务号可查看状态机轨迹。')
+                   + '。点击任务号看状态机轨迹, 点中心看该中心任务池。')
         conn.execute("INSERT INTO chat_messages(session_id,user_id,role,content,model) VALUES(?,?,?,?,?)",
                      (sid, 0, 'assistant', ai_note, 'andromeda'))
         conn.execute("UPDATE chat_sessions SET last_message=?, message_count=message_count+2,"

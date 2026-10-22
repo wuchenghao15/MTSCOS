@@ -313,15 +313,76 @@
 
   function openJump(kind, key) {
     if (kind === 'task') { showPanel(); viewTask(key); return; }
-    if (kind === 'team') {
-      api('/api/local-chat/jump/resolve?kind=team&key=' + encodeURIComponent(key)).then(function (d) {
-        window.open((d && d.href) || ('/andromeda/eigenflux_council?team=' + encodeURIComponent(key)), '_blank');
-      }).catch(function () {
-        window.open('/andromeda/eigenflux_council?team=' + encodeURIComponent(key), '_blank');
-      });
-      return;
-    }
-    if (kind === 'session') { location.href = '/local-chat?session=' + encodeURIComponent(key); }
+    if (kind === 'team') { showPanel(); viewTeam(key); return; }
+    if (kind === 'center') { showPanel(); viewCenter(key); return; }
+    if (kind === 'session') { location.href = '/local-chat?sid=' + encodeURIComponent(key); }
+  }
+
+  function viewCenter(name) {
+    body.innerHTML = '<div class="cp-empty">加载中心 ' + esc(name) + ' …</div>';
+    api('/api/local-chat/jump/center?name=' + encodeURIComponent(name)).then(function (d) {
+      if (!d.success) {
+        body.innerHTML = '<div class="cp-empty">' + esc(d.error || '未找到任务中心') + '</div>'
+          + '<div style="text-align:center"><button class="cp-btn" id="cp-back">← 返回消息</button></div>';
+        var b = body.querySelector('#cp-back'); if (b) b.onclick = function () { switchTab('msg'); };
+        return;
+      }
+      var st = d.stats || {};
+      var statHtml = Object.keys(st).map(function (k) {
+        return '<span class="cp-chip">' + esc(k) + ' ' + st[k] + '</span>';
+      }).join('') || '<span class="cp-empty">暂无任务</span>';
+      var tks = (d.tasks || []).map(function (k) {
+        return '<div class="cp-ev">' + jumpAnchor(esc(k.hall_code || ('#' + k.id)), 'task', k.id)
+          + ' ' + esc(k.title || '') + ' <span style="color:#8fa3c8">[' + esc(k.status || '') + ']</span></div>';
+      }).join('') || '<div class="cp-empty">暂无任务</div>';
+      body.innerHTML = '<button class="cp-btn" id="cp-back" style="margin:0 0 8px 0">← 返回消息</button>'
+        + '<div class="cp-t" style="white-space:normal;font-size:14px;color:#7dd3fc">'
+        + esc((d.center || {}).name || name) + '</div>'
+        + '<div class="cp-kv"><b>任务总数</b><span>' + (d.total || 0) + '</span></div>'
+        + '<div style="margin:6px 0">' + statHtml + '</div>'
+        + '<div style="margin:8px 0"><button class="cp-btn" id="cp-goto-hall">任务大厅</button></div>'
+        + '<div class="cp-s" style="margin-top:6px">近期任务</div>' + tks;
+      body.querySelector('#cp-back').onclick = function () { switchTab('msg'); };
+      body.querySelector('#cp-goto-hall').onclick = function () {
+        window.open('/admin/center#hall-section', '_blank');
+      };
+    });
+  }
+
+  function viewTeam(name) {
+    body.innerHTML = '<div class="cp-empty">加载天团 ' + esc(name) + ' …</div>';
+    api('/api/local-chat/jump/team?name=' + encodeURIComponent(name)).then(function (d) {
+      if (!d.success) {
+        body.innerHTML = '<div class="cp-empty">' + esc(d.error || '未找到天团') + '</div>'
+          + '<div style="text-align:center"><button class="cp-btn" id="cp-back">← 返回消息</button></div>';
+        var b = body.querySelector('#cp-back'); if (b) b.onclick = function () { switchTab('msg'); };
+        return;
+      }
+      var t = d.team || {}, keyw = String(t.skill_keywords || '').split(',').filter(Boolean).slice(0, 12);
+      var mem = (d.members || []).map(function (m) {
+        return '<div class="cp-ev"><b>' + esc(m.member_name || '-') + '</b>'
+          + (m.skill_level ? ' · Lv.' + esc(m.skill_level) : '')
+          + (m.capabilities ? '<div style="color:#8fa3c8">' + esc(String(m.capabilities).slice(0, 80)) + '</div>' : '')
+          + '</div>';
+      }).join('') || '<div class="cp-empty">该天团暂无成员记录</div>';
+      var tks = (d.tasks || []).map(function (k) {
+        return '<div class="cp-ev">' + jumpAnchor(esc(k.hall_code || ('#' + k.id)), 'task', k.id)
+          + ' ' + esc(k.title || '') + ' <span style="color:#8fa3c8">[' + esc(k.status || '') + ']</span></div>';
+      }).join('') || '<div class="cp-empty">暂无大厅任务</div>';
+      body.innerHTML = '<button class="cp-btn" id="cp-back" style="margin:0 0 8px 0">← 返回消息</button>'
+        + '<div class="cp-t" style="white-space:normal;font-size:14px;color:#c4b5fd">' + esc(d.name) + '</div>'
+        + '<div class="cp-kv"><b>成员数</b><span>' + (t.member_count || (d.members || []).length) + '</span></div>'
+        + '<div style="margin:6px 0">' + keyw.map(function (k) {
+          return '<span class="cp-chip">' + esc(k.trim()) + '</span>';
+        }).join('') + '</div>'
+        + '<div style="margin:8px 0"><button class="cp-btn" id="cp-ask-team">@该天团 派单</button></div>'
+        + '<div class="cp-s" style="margin-top:6px">成员</div>' + mem
+        + '<div class="cp-s" style="margin-top:8px">近期承接</div>' + tks;
+      body.querySelector('#cp-back').onclick = function () { switchTab('msg'); };
+      body.querySelector('#cp-ask-team').onclick = function () {
+        toast(insertText('@' + d.name + ' ') ? '已插入 @' + d.name : '请手动输入 @' + d.name);
+      };
+    });
   }
 
   function viewTask(key) {
@@ -394,8 +455,20 @@
   window.ChatPlus = {
     richText: richText,
     openJump: openJump,
-    openTask: function (key) { showPanel(); viewTask(key); }
+    openTask: function (key) { showPanel(); viewTask(key); },
+    openTeam: function (name) { showPanel(); viewTeam(name); }
   };
+
+  // 深链: /local-chat?task=TH-xxxx / ?team=天团名 (任务大厅/导出链接直达)
+  (function deepLink() {
+    try {
+      var q = new URLSearchParams(location.search);
+      var tk = q.get('task') || q.get('hall'), tm = q.get('team'), ct = q.get('center');
+      if (tk) { showPanel(); viewTask(tk); }
+      else if (tm) { showPanel(); viewTeam(tm); }
+      else if (ct) { showPanel(); viewCenter(ct); }
+    } catch (e) { /* 老浏览器忽略 */ }
+  })();
 
   refreshUnread();
   setInterval(refreshUnread, 60000);
