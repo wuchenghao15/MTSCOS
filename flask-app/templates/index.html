@@ -167,6 +167,20 @@ body .uni-main { margin-left: 0 !important; width: 100% !important; }
 }
 .mts-login .register a:hover { text-decoration: underline; }
 
+/* ── 公网入口: 小龙 (移动端聊天) / 网页聊天面板 ── */
+.mts-login .app-entry { display:flex; gap:8px; margin-top:12px; }
+.mts-login .app-entry a {
+    flex:1; text-align:center; font-size:11px; font-weight:600; text-decoration:none;
+    padding:7px 6px; border-radius:10px; border:1px solid rgba(11,31,58,.10);
+    background:rgba(11,31,58,.03); color:var(--mtscos-text-secondary,#6b7a8f);
+    transition:all .18s ease;
+}
+.mts-login .app-entry a:hover {
+    color:#0B1F3A; border-color:rgba(155,89,182,.38);
+    background:rgba(155,89,182,.07); transform:translateY(-1px);
+}
+.mts-login .app-entry a i { margin-right:4px; color:#9B59B6; }
+
 /* ── 仙女座状态徽章 (极简, 不破坏骨架) ── */
 .mts-status { display:flex; align-items:center; gap:8px; }
 .mts-status .dot {
@@ -829,6 +843,15 @@ body {
             </button>
             <div class="msg" id="bizLoginMsgMain"></div>
             <div class="register" data-andromeda-reveal><i class="fas fa-user-plus"></i> 没有账号？<a href="{{ url_for('auth.register') }}">立即注册 →</a></div>
+            <!-- 公网入口: 小龙 App (移动端聊天, mini 节点) + 网页聊天增强面板 -->
+            <div class="app-entry" data-andromeda-reveal>
+                <a href="/xiaolong" title="小龙 · 移动端聊天 App (注册后仅开通聊天, 其他功能需在网页端申请)">
+                    <i class="fas fa-comment-dots"></i>小龙 App
+                </a>
+                <a href="/local-chat" title="网页聊天 · 仙女座发散思维引擎">
+                    <i class="fas fa-comments"></i>网页聊天
+                </a>
+            </div>
             <!-- 仙女座 + 冰山双品牌底部 -->
             <div class="mts-brand-foot">
                 <span>ANDROMEDA</span> × ICEBERG · SYSTEM {{ version }}
