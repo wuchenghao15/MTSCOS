@@ -150,10 +150,17 @@
   .sess-tag:hover{color:var(--mtscos-primary-base);border-color:var(--mtscos-primary-base);opacity:1}
   .tag-chip{display:inline-block;padding:1px 6px;border-radius:8px;font-size:9px;background:rgba(168,85,247,.15);color:#c4b5fd;border:1px solid rgba(168,85,247,.3);margin-right:4px}
   .session-item.is-pinned{border-color:rgba(251,191,36,.35);background:rgba(251,191,36,.05)}
-  .room-badge{color:#6ee7b7;font-size:10px;margin-right:4px}
-  .side-row{flex-shrink:0;display:flex;gap:8px;margin:0 12px 10px}
-  .side-btn{flex:1;padding:8px 4px;background:var(--panel);border:1px solid var(--line);border-radius:12px;color:var(--text-dim);cursor:pointer;font-size:12px;transition:all .15s}
-  .side-btn:hover{color:var(--mtscos-primary-base);border-color:var(--mtscos-primary-base);background:rgba(6,182,212,.08)}
+  /* flow_chat_upgrade5_20261022: 会话未读徽标 + 加载更早 */
+  .sess-unread{display:inline-block;min-width:16px;height:16px;line-height:16px;border-radius:8px;
+    background:#ef4444;color:#fff;font-size:10px;text-align:center;padding:0 4px;margin-left:5px;vertical-align:1px}
+  .load-older{text-align:center;margin:4px 0 10px}
+  .load-older button{border:1px solid rgba(120,160,255,.35);background:rgba(79,140,255,.10);
+    color:#9bb6ff;border-radius:9px;font-size:11.5px;padding:4px 12px;cursor:pointer}
+  .load-older button:hover{background:rgba(79,140,255,.2);color:#fff}
+  /* flow_chat_multi_ai_20261022: 多人AI同时聊 */
+  .hdr-btn.on{color:#c4b5fd;border-color:#8b5cf6;background:rgba(139,92,246,.16)}
+  .msg.multi .msg-bubble{border-left:3px solid rgba(139,92,246,.7)}
+  .multi-peers{font-size:10px;color:#c4b5fd;margin-top:4px}
 
   .quick-cmds{flex-shrink:0;display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
   .qcmd{border:1px solid var(--line);background:rgba(6,182,212,.06);color:var(--text-dim);border-radius:20px;cursor:pointer;font-size:11px;padding:3px 11px;transition:all .15s}
@@ -187,11 +194,7 @@
     </div>
     
     <button class="new-session" onclick="newSession()">✨ 新建对话</button>
-    <div class="side-row">
-      <button class="side-btn" onclick="createRoom()" title="创建群聊房间, 生成 6 位加入码">🏠 建房</button>
-      <button class="side-btn" onclick="joinRoom()" title="凭加入码加入房间">🔗 加入</button>
-    </div>
-    
+
     <div class="session-list" id="sessionList">
       <div class="empty" id="noSessions">加载会话中...</div>
     </div>
@@ -216,6 +219,7 @@
         <span id="inflBadge" title="点击查看本会话拐点" onclick="showInflections()">📊 0拐点</span>
         <a class="hdr-btn" id="statsBtn" title="拐点全局统计" href="/inflection-stats" {% if embed %}target="_blank"{% endif %} style="text-decoration:none;display:inline-flex;align-items:center">📈</a>
         <button class="hdr-btn" id="schedBtn" title="我的日程 (/日程 创建)" onclick="showSchedules()">📅</button>
+        <button class="hdr-btn" id="multiBtn" title="多人AI同时聊: 多位仙女座AI并发作答 (点按切换 关闭/1轮/2轮磋商)" onclick="toggleMultiAi()">👥 多人AI</button>
         <button class="hdr-btn" id="exportBtn" title="导出为 Markdown" onclick="exportSession()">⬇️</button>
       </div>
     </div>
@@ -255,9 +259,9 @@ let currentAbort = null;   // flow_chat_enhance_20261019: 停止生成
 // flow_chat_all7_20261019: 全量增强状态
 let pageCtx = '';            // F4 页面上下文 (widget postMessage 注入)
 let pendingImage = null;     // F5 待发送图片 (dataURL)
-let currentIsRoom = false;   // F6 当前会话是否群聊房间
-let roomTimer = null;        // F6 房间轮询 timer
-let lastMsgCount = 0;        // F6 轮询去重
+let firstMsgId = 0;          // flow_chat_upgrade5_20261022: 历史分页游标 (最早一条 id)
+let hasMoreOlder = false;    // 是否还有更早消息可加载
+let multiAiMode = 0;         // flow_chat_multi_ai_20261022: 0=关闭 1=1轮 2=2轮磋商
 
 const $ = id => document.getElementById(id);
 const API = '/api/local-chat';
@@ -292,7 +296,6 @@ async function loadSessions(){
     const r = await fetch(`${API}/sessions`);
     const d = await r.json();
     if(!d.success) return;
-    window.__sessionsCache = d.sessions;   // F6: selectSession 判断 is_room 用
     const list = $('sessionList');
     list.innerHTML = '';
     if(!d.sessions.length){
@@ -303,9 +306,8 @@ async function loadSessions(){
       const el = document.createElement('div');
       el.className = 'session-item' + (s.session_id === currentSessionId ? ' active' : '') + (s.pinned ? ' is-pinned' : '');
       const tagChips = (s.tags || '').split(',').filter(t=>t.trim()).map(t=>`<span class="tag-chip">${escapeHtml(t.trim())}</span>`).join('');
-      const roomMark = s.is_room ? '<span class="room-badge">🏠</span>' : '';
       el.innerHTML = `
-        <div class="session-title">${s.pinned ? '📌 ' : ''}${roomMark}${escapeHtml(s.title || '未命名')}</div>
+        <div class="session-title">${s.pinned ? '📌 ' : ''}${escapeHtml(s.title || '未命名')}${s.unread ? `<span class="sess-unread">${s.unread > 99 ? '99+' : s.unread}</span>` : ''}</div>
         <div class="session-last">${escapeHtml(s.last_message || '（空对话）')}</div>
         <div class="session-meta"><span>💬 ${s.message_count}</span><span>${s.updated_at || ''}</span>${tagChips}<button class="sess-pin ${s.pinned?'on':''}" title="置顶/取消置顶">📌</button><button class="sess-tag" title="编辑标签">🏷</button><button class="sess-del" title="删除会话">🗑</button></div>
       `;
@@ -320,7 +322,6 @@ async function loadSessions(){
 
 async function newSession(){
   if(isStreaming) return;
-  stopRoomPoll();   // 新对话非房间
   const r = await fetch(`${API}/session`, {method:'POST', headers:{'Content-Type':'application/json'}});
   const d = await r.json();
   if(d.success){
@@ -338,48 +339,67 @@ async function newSession(){
 async function selectSession(sid){
   if(isStreaming) return;
   currentSessionId = sid;
-  stopRoomPoll();
-  const r = await fetch(`${API}/history?session_id=${sid}`);
+  // flow_chat_upgrade5_20261022: 首屏只取最近 60 条, 更早的按需加载
+  const r = await fetch(`${API}/history?session_id=${sid}&limit=60`);
   const d = await r.json();
   if(!d.success) return;
 
-  $('messages').innerHTML = '';
-  lastMsgCount = d.messages.length;
-  for(const m of d.messages){
-    const w = appendMessage(m.role, m.content, false);
-    if(m.role !== 'user') appendSparks(w);   // flow_diverge_v2: 历史AI消息也带追问
-  }
+  firstMsgId = d.min_id || 0;
+  hasMoreOlder = !!d.has_more;
+  renderHistory(d.messages, hasMoreOlder);
   refreshInflCount();
-  // 群聊房间: 标记 + 启动轮询同步 (flow_chat_all7_20261019)
-  currentIsRoom = !!(window.__sessionsCache || []).find(s => s.session_id === sid && s.is_room);
-  if(currentIsRoom) startRoomPoll();
   // 标题从列表取
   document.querySelectorAll('.session-item').forEach(el=>el.classList.remove('active'));
   event?.currentTarget?.classList?.add('active');
+  markSessionRead(sid);
 }
 
-// ═══ F6 群聊房间: 轮询同步成员新消息 (非流式期间每 4s) ═══
-function startRoomPoll(){
-  stopRoomPoll();
-  roomTimer = setInterval(async ()=>{
-    if(isStreaming || !currentSessionId || !currentIsRoom) return;
-    try{
-      const r = await fetch(`${API}/history?session_id=${currentSessionId}`);
-      const d = await r.json();
-      if(!d.success) return;
-      if(d.messages.length === lastMsgCount) return;
-      lastMsgCount = d.messages.length;
-      $('messages').innerHTML = '';
-      for(const m of d.messages){
-        const w = appendMessage(m.role, m.content, false);
-        if(m.role !== 'user') appendSparks(w);
-      }
-    }catch(_){}
-  }, 4000);
+// 渲染一批历史消息; more=true 时顶部给出「加载更早」
+function renderHistory(msgs, more){
+  $('messages').innerHTML = '';
+  if(more) $('messages').appendChild(olderBar());
+  for(const m of msgs){
+    const w = appendMessage(m.role, m.content, false);
+    if(m.role !== 'user') appendSparks(w);   // flow_diverge_v2: 历史AI消息也带追问
+  }
+  scrollBottom();
 }
-function stopRoomPoll(){
-  if(roomTimer){ clearInterval(roomTimer); roomTimer = null; }
-  currentIsRoom = false;
+
+function olderBar(){
+  const wrap = document.createElement('div');
+  wrap.className = 'load-older';
+  const btn = document.createElement('button');
+  btn.textContent = '↑ 加载更早消息';
+  btn.onclick = () => loadOlderMessages();
+  wrap.appendChild(btn);
+  return wrap;
+}
+
+async function loadOlderMessages(){
+  if(!firstMsgId || isStreaming) return;
+  const box = $('messages');
+  const prevH = box.scrollHeight, prevTop = box.scrollTop;
+  const r = await fetch(`${API}/history?session_id=${currentSessionId}&limit=60&before_id=${firstMsgId}`);
+  const d = await r.json();
+  if(!d.success || !d.messages.length) return;
+  firstMsgId = d.min_id || firstMsgId;
+  hasMoreOlder = !!d.has_more;
+  const anchor = box.querySelector('.load-older');
+  for(const m of d.messages){
+    const w = appendMessage(m.role, m.content, false);
+    if(m.role !== 'user') appendSparks(w);
+    box.insertBefore(w, anchor);
+  }
+  if(!hasMoreOlder && anchor) anchor.remove();
+  box.scrollTop = prevTop + (box.scrollHeight - prevH);   // 保持阅读位置不跳动
+}
+
+// 打开会话即标记已读, 刷新侧栏未读徽标
+async function markSessionRead(sid){
+  try{
+    await fetch(`${API}/session/${sid}/read`, {method:'POST', headers:{'Content-Type':'application/json'}, body:'{}'});
+    loadSessions();
+  }catch(_){}
 }
 
 // ═══ 发送消息 (SSE 流式) ═══
@@ -397,6 +417,65 @@ function bindEnter(){
   });
 }
 
+// ═══ flow_chat_multi_ai_20261022: 多人 AI 同时聊 ═══
+function toggleMultiAi(){
+  multiAiMode = (multiAiMode + 1) % 3;
+  const b = $('multiBtn');
+  b.classList.toggle('on', multiAiMode > 0);
+  b.textContent = multiAiMode === 0 ? '👥 多人AI'
+    : (multiAiMode === 1 ? '👥 多人AI·1轮' : '👥 多人AI·2轮磋商');
+  b.title = multiAiMode === 0
+    ? '多人AI同时聊: 多位仙女座AI并发作答 (点按切换 关闭/1轮/2轮磋商)'
+    : (multiAiMode === 1
+      ? '已开启: 一条需求 → 多位AI同时作答 → 总控收敛 (再点=2轮磋商)'
+      : '已开启: 多位AI先各答, 再互相补充收敛 (再点=关闭)');
+}
+
+async function sendMultiAi(text, rounds){
+  if(!currentSessionId){ await newSession(); }
+  isStreaming = true;
+  $('input').disabled = true;
+  $('sendBtn').disabled = true;
+  appendMessage('user', text, true);
+  $('input').value = '';
+  $('input').style.height = 'auto';
+
+  const ph = appendMessage('assistant', '', true, '👥 多人AI协同');
+  const phEl = ph.querySelector('.msg-content');
+  phEl.innerHTML = '<div class="thinking"><span></span><span></span><span></span></div>'
+    + '<div class="multi-peers">多位仙女座 AI 正在同时思考…'
+    + (rounds > 1 ? ' (2 轮磋商, 耗时更长)' : '') + '</div>';
+  try{
+    const r = await fetch(`${API}/multi-ai`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({session_id: currentSessionId, message: text, rounds: rounds})
+    });
+    const d = await r.json();
+    ph.remove();
+    if(!d.success || !(d.messages || []).length){
+      appendMessage('assistant', '❌ ' + (d.error || '本次没有 AI 成功作答, 请稍后重试'), true, '👥 多人AI协同');
+      return;
+    }
+    for(const m of d.messages){
+      const w = appendMessage('assistant', (m.content || '').replace(/^【[^】]+】\n?/, ''), true, m.name);
+      w.classList.add('multi');
+      appendSparks(w);
+    }
+    refreshInflCount();
+    loadSessions();
+    markSessionRead(currentSessionId);
+  }catch(e){
+    if(ph.parentNode) ph.remove();
+    appendMessage('assistant', '❌ 多人AI请求失败: ' + e.message, true, '👥 多人AI协同');
+  }finally{
+    isStreaming = false;
+    $('sendBtn').disabled = false;
+    $('input').disabled = false;
+    $('input').focus();
+  }
+}
+
 async function send(){
   const input = $('input');
   const text = input.value.trim();
@@ -406,6 +485,12 @@ async function send(){
   if(text.startsWith('/日程')){
     if(!currentSessionId){ await newSession(); }
     await sendScheduleCommand(text);
+    return;
+  }
+
+  // flow_chat_multi_ai_20261022: 多人AI模式 → 多位AI并发作答
+  if(multiAiMode > 0){
+    await sendMultiAi(text, multiAiMode);
     return;
   }
 
@@ -702,7 +787,7 @@ async function showInflections(){
 }
 
 // ═══ 消息渲染 ═══
-function appendMessage(role, content, isNew){
+function appendMessage(role, content, isNew, label){
   const wrap = document.createElement('div');
   wrap.className = 'msg ' + (role === 'user' ? 'user' : 'ai');
   const ttsBtn = role === 'user' ? '' : '<button class="tts-btn" title="朗读本条回复" data-raw="">🔊</button>';
@@ -715,7 +800,7 @@ function appendMessage(role, content, isNew){
       <div class="msg-content">${contentHtml}</div>
     </div>
     <div class="msg-meta">
-      <span>${role === 'user' ? '👤 我' : '🧠 仙女座 AI'}</span>
+      <span>${role === 'user' ? '👤 我' : escapeHtml(label || '🧠 仙女座 AI')}</span>
       <span>${new Date().toLocaleTimeString()}</span>
       ${ttsBtn}
       <button class="msg-copy" title="复制" data-raw="${escapeHtml(content)}">⧉</button>
@@ -933,41 +1018,6 @@ function editTags(sid, cur){
     if(d.success) loadSessions();
     else alert('标签保存失败: ' + (d.error || ''));
   }).catch(()=>{});
-}
-
-// ── F6 群聊房间 ──
-async function createRoom(){
-  if(isStreaming) return;
-  const t = prompt('房间名称:', '');
-  if(t === null) return;
-  const r = await fetch(`${API}/room`, {
-    method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({title: t.trim()})
-  });
-  const d = await r.json();
-  if(!d.success){ alert('建房失败: ' + (d.error || '')); return; }
-  alert(`🏠 房间已创建!\n\n加入码: ${d.room_code}\n\n把加入码告诉其他用户, 对方点「🔗 加入」即可进入群聊。`);
-  currentSessionId = d.session_id;
-  $('chatTitle').textContent = `🏠 ${d.title}`;
-  $('messages').innerHTML = '<div class="empty">🏠 群聊房间已就绪 — 成员加入后消息实时同步 (4s 轮询)</div>';
-  $('input').disabled = false; $('sendBtn').disabled = false;
-  loadSessions();
-  currentIsRoom = true;
-  startRoomPoll();
-  $('input').focus();
-}
-async function joinRoom(){
-  if(isStreaming) return;
-  const code = prompt('输入 6 位房间加入码:', '');
-  if(!code) return;
-  const r = await fetch(`${API}/room/join`, {
-    method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({code: code.trim()})
-  });
-  const d = await r.json();
-  if(!d.success){ alert(d.message || '加入失败: ' + (d.error || '')); return; }
-  loadSessions();
-  selectSession(d.session_id);
 }
 
 // ── F7 日程助手 ──

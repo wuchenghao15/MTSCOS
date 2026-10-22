@@ -231,7 +231,11 @@
       var rows = d.sessions || [];
       if (!rows.length) { body.innerHTML = '<div class="cp-empty">暂无会话</div>'; return; }
       body.innerHTML = rows.map(function (s) {
-        return '<div class="cp-row"><div class="cp-t">' + esc(s.title || s.session_id) + '</div>'
+        var badge = (s.unread ? '<span style="display:inline-block;min-width:16px;height:16px;line-height:16px;'
+          + 'border-radius:8px;background:#ef4444;color:#fff;font-size:10px;text-align:center;'
+          + 'padding:0 4px;margin-right:6px">' + (s.unread > 99 ? '99+' : s.unread) + '</span>' : '');
+        return '<div class="cp-row"><div class="cp-t">' + badge
+          + esc(s.title || s.session_id) + '</div>'
           + '<div class="cp-s">' + esc(s.session_id) + ' · ' + (s.message_count || 0) + ' 条</div>'
           + '<div style="margin-top:4px">'
           + '<button class="cp-btn" data-act="open" data-sid="' + esc(s.session_id) + '">消息</button>'
@@ -341,7 +345,18 @@
         if (!CUR) { toast('请先在「会话」里选一个会话'); return; }
         post('/api/local-chat/mention', { session_id: CUR, text: txt }).then(function (r) {
           var out = body.querySelector('#cp-dres');
-          if (!r.success) { out.textContent = r.error || '派单失败'; return; }
+          if (!r.success) {
+            // TH-20261022-0004: 仅聊天账号能力边界 — 给出开通引导而非裸失败
+            if (r.code === 'CHAT_ONLY') {
+              out.innerHTML = '<div style="color:#fbbf24;margin-bottom:4px">🔒 当前为「仅聊天」账号, 暂无派单权限</div>'
+                + '<div class="cp-s">小龙端注册的账号默认只能聊天。请到网页端冰山首页登录后申请开通:</div>'
+                + '<a class="cp-btn ok" href="/xiaolong/apply" target="_blank">前往申请开通 →</a>'
+                + '<a class="cp-btn" href="/" target="_blank">冰山首页</a>';
+            } else {
+              out.textContent = r.error || '派单失败';
+            }
+            return;
+          }
           out.innerHTML = r.created.map(function (c) {
             return '<div>' + jumpAnchor(esc(c.hall_code), 'task', c.task_id) + ' @'
               + jumpAnchor(esc(c.team), 'team', esc(c.team)) + ' → '

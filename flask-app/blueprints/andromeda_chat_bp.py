@@ -18,7 +18,7 @@
   ⑪ AI 跳转解析         GET    /api/local-chat/jump/resolve     (任务号/天团/会话 → 目标)
   ⑫ 任务跳转详情        GET    /api/local-chat/jump/task/<id>   (面板内展示任务轨迹)
 
-权限: 本人 / SA / 群聊房间成员; 编辑仅限本人 user 消息; 删除仅本人或 SA。
+权限: 本人 / SA; 编辑仅限本人 user 消息; 删除仅本人或 SA。
 所有写操作落 chat_actions + 关键操作投喂 AI 脑库 (失败不影响主流程)。
 """
 from __future__ import annotations
@@ -34,8 +34,30 @@ from flask import Blueprint, Response, jsonify, request, session
 FLOW_ID = 'flow_chat_complete_20261022'
 
 _FA = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DB_PATH = (os.environ.get('MTSCOS_DB_PATH')
-           or os.path.join(_FA, 'database', 'app.db'))
+
+
+def _resolve_db_path() -> str:
+    """与 chat_local_bp 共用同一套 DB 解析 (单一数据源)
+    v25.4: 此前这里回落到 flask-app/database/app.db, 而 chat_local_bp 强制走
+    ~/MTSCOS_PROD/flask-app/database/app.db → 两个聊天蓝图读写不同库,
+    表现为「聊天页有消息但增强面板搜不到」和 multi-ai 403 forbidden。
+    统一优先取 chat_local_bp._DB_PATH, 保证同一进程内同一库。"""
+    try:
+        from blueprints.chat_local_bp import _DB_PATH as _p
+        if _p and os.path.exists(_p):
+            return _p
+    except Exception:
+        pass
+    env = os.environ.get('APP_DB') or os.environ.get('MTSCOS_DB_PATH')
+    if env and os.path.exists(env):
+        return env
+    _prod = os.path.expanduser('~/MTSCOS_PROD/flask-app/database/app.db')
+    if os.path.exists(_prod) and os.path.getsize(_prod) > 1e8:
+        return _prod
+    return os.path.join(_FA, 'database', 'app.db')
+
+
+DB_PATH = _resolve_db_path()
 
 chat_plus_bp = Blueprint('andromeda_chat_plus_bp', __name__)
 
@@ -167,12 +189,6 @@ def _visible_session(conn, sid: str, u: dict) -> sqlite3.Row | None:
         return None
     if _is_sa(u) or str(row['user_id']) == u['user_id']:
         return row
-    cols = {r[1] for r in conn.execute('PRAGMA table_info(chat_sessions)')}
-    if 'is_room' in cols and row['is_room']:
-        m = conn.execute('SELECT 1 FROM mt_chat_room_members WHERE session_id=? AND user_id=?',
-                         (sid, u['user_id'])).fetchone()
-        if m:
-            return row
     return None
 
 
@@ -216,11 +232,10 @@ def chat_search():
         rows = conn.execute(
             "SELECT m.id, m.session_id, m.role, m.content, m.created_at, s.title "
             "FROM chat_messages m JOIN chat_sessions s ON s.session_id=m.session_id "
-            "WHERE (s.user_id=? OR s.session_id IN "
-            "       (SELECT session_id FROM mt_chat_room_members WHERE user_id=?)) "
+            "WHERE s.user_id=? "
             "  AND COALESCE(m.deleted,0)=0 AND m.content LIKE ? "
             "ORDER BY m.id DESC LIMIT ?",
-            (u['user_id'], u['user_id'], f'%{q}%', limit)).fetchall()
+            (u['user_id'], f'%{q}%', limit)).fetchall()
         items = []
         for r in rows:
             content = r['content'] or ''
@@ -437,10 +452,9 @@ def chat_unread():
             "   AND m.id > COALESCE((SELECT last_read_id FROM chat_read_state r"
             "                        WHERE r.session_id=s.session_id AND r.user_id=?),0)) unread,"
             " (SELECT max(id) FROM chat_messages m WHERE m.session_id=s.session_id) max_id "
-            "FROM chat_sessions s WHERE s.user_id=? OR s.session_id IN "
-            " (SELECT session_id FROM mt_chat_room_members WHERE user_id=?) "
+            "FROM chat_sessions s WHERE s.user_id=? "
             "ORDER BY unread DESC, s.updated_at DESC LIMIT 50",
-            (u['user_id'], u['user_id'], u['user_id'])).fetchall()
+            (u['user_id'], u['user_id'])).fetchall()
         items = [dict(r) for r in sess]
         return jsonify({'success': True, 'total': sum(i['unread'] for i in items), 'sessions': items})
     finally:
@@ -774,7 +788,181 @@ def chat_plus_meta():
         conn.close()
     return jsonify({'success': True, 'features': [
         'search', 'msg_edit', 'msg_delete', 'feedback', 'session_archive',
-        'unread', 'mark_read', 'export', 'mention_dispatch', 'jump'], 'teams': teams})
+        'unread', 'mark_read', 'export', 'mention_dispatch', 'jump', 'multi_ai'], 'teams': teams})
+
+
+# ─────────────────── ⑨' 多人 AI 同时聊天 ───────────────────
+# flow_chat_multi_ai_20261022: 同一条需求由多位仙女座 AI 并发作答,
+# 各自从职责视角给结论, 最后由总控收敛。全部本地推理, 零云端 token。
+_MULTI_AI_DEFAULT_PERSONAS = (
+    ('🧭 需求拆解', '澄清用户真正要解决的问题、约束与验收标准, 指出被忽略的关键点。'),
+    ('🛠️ 方案设计', '给出可执行的步骤/代码/配置, 优先复用现有系统能力, 标明落地位置。'),
+    ('🛡️ 风险审查', '从安全、合规、稳定性、成本角度审查, 列出风险与规避措施。'),
+)
+
+
+def _multi_ai_short(raw: str) -> str:
+    return re.sub(r'^[^0-9A-Za-z\u4e00-\u9fa5]+', '', raw or '').strip()
+
+
+def _multi_ai_pick(conn, text: str, requested) -> tuple:
+    """返回 (personas, all_team_names)。personas: [{name, brief}]"""
+    teams = _teams(conn)
+    names = [t['name'] for t in teams]
+    kw = {t['name']: (t['keywords'] or '从本天团职责出发解决用户问题') for t in teams}
+    picked = []
+    if requested:
+        for raw in requested[:4]:
+            raw = str(raw or '').strip()
+            if not raw:
+                continue
+            for n in names:
+                if raw == n or raw in n or _multi_ai_short(n) == _multi_ai_short(raw):
+                    if n not in picked:
+                        picked.append(n)
+                    break
+    else:
+        found = _MENTION_RE.findall(text or '')
+        for n in names:
+            short = _multi_ai_short(n)
+            if ('@' + short) in (text or '') or any(
+                    x == short or x in short or short in x for x in found):
+                if n not in picked:
+                    picked.append(n)
+    if picked:
+        return [{'name': n, 'brief': kw.get(n, '')} for n in picked[:4]], names
+    return [{'name': n, 'brief': b} for n, b in _MULTI_AI_DEFAULT_PERSONAS], names
+
+
+def _multi_ai_ask(persona: dict, prompt: str, system: str) -> dict:
+    """单个 AI 本地推理 (并发调用, 不写库)"""
+    try:
+        from ai_engines.local_ai_unified_gateway import chat as _lg_chat
+        r = _lg_chat(prompt, system, flow_id='flow_chat_multi_ai_20261022')
+        return {'name': persona['name'], 'ok': bool(r.get('success')),
+                'content': (r.get('response') or '').strip(),
+                'model': r.get('model') or 'local', 'route': r.get('route') or '',
+                'error': (r.get('error') or '')[:200]}
+    except Exception as e:      # 单点失败不影响其他 AI
+        return {'name': persona['name'], 'ok': False, 'content': '',
+                'model': 'local', 'route': '', 'error': str(e)[:200]}
+
+
+@chat_plus_bp.route('/api/local-chat/multi-ai', methods=['POST'])
+@_login_required
+def chat_multi_ai():
+    """多人 AI 同时聊: 一条需求 → N 位 AI 并发作答 → 总控收敛 (可选多轮)"""
+    u = _u()
+    data = request.get_json(silent=True) or {}
+    sid = (data.get('session_id') or '').strip()
+    text = (data.get('message') or '').strip()
+    if not sid or not text:
+        return jsonify({'success': False, 'error': '需 session_id + message'}), 400
+    try:
+        rounds = min(max(int(data.get('rounds') or 1), 1), 2)
+    except (TypeError, ValueError):
+        rounds = 1
+    _ensure()
+    conn = _db()
+    try:
+        if not _visible_session(conn, sid, u):
+            return jsonify({'success': False, 'error': 'forbidden'}), 403
+        personas, all_names = _multi_ai_pick(conn, text, data.get('teams'))
+        hist_rows = conn.execute(
+            "SELECT role, content FROM chat_messages WHERE session_id=?"
+            " AND COALESCE(deleted,0)=0 AND role IN ('user','assistant')"
+            " ORDER BY id DESC LIMIT 10", (sid,)).fetchall()
+        hist = '\n'.join(
+            f"{'用户' if r['role'] == 'user' else 'AI'}: {(r['content'] or '')[:600]}"
+            for r in reversed(hist_rows))
+        conn.execute("INSERT INTO chat_messages(session_id,user_id,role,content,model)"
+                     " VALUES(?,?,?,?,?)", (sid, u['user_id'], 'user', text, 'multi-ai-user'))
+        conn.execute("INSERT INTO chat_messages(session_id,user_id,role,content,model)"
+                     " VALUES(?,?,?,?,?)",
+                     (sid, 0, 'system',
+                      '【多人AI协同】' + str(len(personas)) + ' 位 AI 同时应答: '
+                      + '、'.join(p['name'] for p in personas), 'andromeda'))
+        conn.commit()
+    finally:
+        conn.close()
+
+    from concurrent.futures import ThreadPoolExecutor
+    base_prompt = (f"对话上下文:\n{hist}\n\n用户最新需求:\n{text}\n\n"
+                   "请独立作答, 不要复述问题, 不要与其他 AI 重复。")
+    results, replies = [], []
+    _round = 1
+    while _round <= rounds:
+        jobs = []
+        for p in personas:
+            peer_ctx = ''
+            if _round == 2 and replies:
+                peer_ctx = ('\n\n本轮其他 AI 已给出:\n'
+                            + '\n'.join(f"〔{r['name']}〕{r['content'][:400]}" for r in replies)
+                            + '\n请补充、纠正或收敛, 不要重复他人, 120-200字。')
+            system = (f"你是仙女座 AI 天团中的「{p['name']}」。职责: {p['brief']}\n"
+                      "当前有多位 AI 同时在线协同, 用户同一条需求由多人同时作答。\n"
+                      "要求: 从你的职责视角给出可执行结论, 不寒暄; 200-350字; 用 Markdown 要点。"
+                      + peer_ctx)
+            jobs.append((p, base_prompt, system))
+        with ThreadPoolExecutor(max_workers=len(jobs)) as pool:
+            out = list(pool.map(lambda j: _multi_ai_ask(j[0], j[1], j[2]), jobs))
+        replies = [r for r in out if r['ok'] and r['content']] or out
+        results.append({'_round': _round, 'items': replies})
+        _round += 1
+
+    # 总控收敛: 汇总本轮全部 AI 观点
+    synth = None
+    merged = [r for r in (results[-1]['items'] if results else []) if r.get('content')]
+    if merged:
+        ctx = '\n'.join(f"〔{r['name']}〕{r['content'][:600]}" for r in merged)
+        synth = _multi_ai_ask(
+            {'name': '🧠 仙女座总控', 'brief': '汇总多位 AI 的结论'},
+            f"用户需求:\n{text}\n\n多位 AI 的答复:\n{ctx}\n\n"
+            "请给出统一结论: ① 最终建议 ② 下一步动作(可执行) ③ 需要用户确认的点。150-250字。",
+            "你是仙女座总控。只做收敛与决策, 不复述各自细节, 输出可执行结论。")
+        if not synth.get('ok') or not synth.get('content'):
+            synth = None
+
+    # 统一落库 (单连接顺序写, 避免并发锁)
+    saved = []
+    conn = _db()
+    try:
+        for r in merged:
+            content = f"【{r['name']}】\n{r['content']}"
+            cur = conn.execute(
+                "INSERT INTO chat_messages(session_id,user_id,role,content,model) VALUES(?,?,?,?,?)",
+                (sid, 0, 'assistant', content, ('andromeda:' + r['name'])[:40]))
+            saved.append({'id': cur.lastrowid, 'name': r['name'], 'content': content,
+                          'model': r['model'], 'route': r['route']})
+        synth_row = None
+        if synth:
+            content = f"【{synth['name']}】\n{synth['content']}"
+            cur = conn.execute(
+                "INSERT INTO chat_messages(session_id,user_id,role,content,model) VALUES(?,?,?,?,?)",
+                (sid, 0, 'assistant', content, 'andromeda:synthesis'))
+            synth_row = {'id': cur.lastrowid, 'name': synth['name'],
+                         'content': content, 'model': synth['model']}
+            saved.append(synth_row)
+        last = (synth or merged[-1]) if (synth or merged) else {'content': text}
+        conn.execute("UPDATE chat_sessions SET last_message=?, message_count=message_count+?,"
+                     " updated_at=datetime('now','localtime') WHERE session_id=?",
+                     (('【多人AI】' + (last.get('content') or '')[:180]),
+                      len(saved) + 2, sid))
+        _action(conn, sid, u['user_id'], 'multi_ai',
+                {'personas': [p['name'] for p in personas], 'rounds': rounds,
+                 'saved': len(saved)})
+        conn.commit()
+    finally:
+        conn.close()
+    _feed('chat_multi_ai', 'chat_multi_ai',
+          f"{u['username']} 在 {sid} 召集 {len(personas)} 位AI: "
+          + ','.join(p['name'] for p in personas) + f" | {text[:160]}", u['username'])
+    return jsonify({'success': True, 'rounds': rounds,
+                    'personas': [p['name'] for p in personas],
+                    'team_choices': all_names,
+                    'messages': saved,
+                    'synthesis': synth_row})
+
 
 
 @chat_plus_bp.route('/api/local-chat/mention', methods=['POST'])
