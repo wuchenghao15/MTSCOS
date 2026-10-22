@@ -202,15 +202,15 @@
     <div class="user-bar">
       <div class="avatar" id="avatar">{{ (username or 'U')[0]|upper }}</div>
       <div class="user-info">
-        <div class="user-name" id="userName" style="color:#f8fafc">
+        <div class="user-name" id="userName" style="color:#1e293b">
           {{ username or '加载中...' }}
-          {% if is_guest %}<span style="background:rgba(6,182,212,.25);color:#67e8f9;font-size:10px;padding:2px 7px;border-radius:10px;margin-left:8px;font-weight:500;border:1px solid rgba(6,182,212,.3)">🧾 游客</span>{% endif %}
-          {% if is_sa %}<span style="background:linear-gradient(135deg,#06b6d4,#a855f7);color:#ffffff;font-size:10px;padding:2px 7px;border-radius:10px;margin-left:8px;font-weight:600">🛡️ SA</span>{% endif %}
+          {% if is_guest %}<span style="background:#ecfeff;color:#0e7490;font-size:10px;padding:2px 7px;border-radius:10px;margin-left:8px;font-weight:500;border:1px solid #a5f3fc">🧾 游客</span>{% endif %}
+          {% if is_sa %}<span style="background:linear-gradient(135deg,#0891b2,#7c3aed);color:#ffffff;font-size:10px;padding:2px 7px;border-radius:10px;margin-left:8px;font-weight:600">🛡️ SA</span>{% endif %}
         </div>
-        <div class="user-cog" id="userCog" style="color:#c4b5fd">
-          💰 <b id="userBalance" style="color:#67e8f9;font-weight:700">{{ token_balance | default(0) }}</b> tokens
-          {% if token_frozen %}<span style="color:#fbbf24">· ❄️ {{ token_frozen }} 预扣中</span>{% endif %}
-          {% if is_guest %}<span style="color:#86efac">· 🎁 {{ token_balance | default(0) }} 免费</span>{% endif %}
+        <div class="user-cog" id="userCog" style="color:#475569">
+          💰 <b id="userBalance" style="color:#0891b2;font-weight:700">{{ token_balance | default(0) }}</b> tokens
+          {% if token_frozen %}<span style="color:#b45309">· ❄️ {{ token_frozen }} 预扣中</span>{% endif %}
+          {% if is_guest %}<span style="color:#047857">· 🎁 {{ token_balance | default(0) }} 免费</span>{% endif %}
         </div>
       </div>
     </div>
