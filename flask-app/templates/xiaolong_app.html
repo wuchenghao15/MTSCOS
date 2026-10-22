@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#0b1020">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="小龙">
+<link rel="manifest" href="/xiaolong/manifest">
+<link rel="apple-touch-icon" href="/xiaolong/icon.svg">
+<title>小龙 · 仙女座聊天</title>
+<style>
+:root{
+  --bg:#0b1020; --bg2:#111a33; --panel:rgba(255,255,255,.055); --line:rgba(255,255,255,.10);
+  --txt:#eaf0ff; --sub:#8fa0c4; --brand:#4f8cff; --brand2:#8b5cf6;
+  --ok:#22c55e; --warn:#f59e0b; --err:#ef4444;
+  --safe-b:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0}
+body{
+  background:radial-gradient(1200px 600px at 15% -10%,#1b2a52 0%,transparent 60%),
+             radial-gradient(900px 500px at 90% 110%,#2a1b52 0%,transparent 55%), var(--bg);
+  color:var(--txt);font:15px/1.55 -apple-system,BlinkMacSystemFont,"PingFang SC","Helvetica Neue",sans-serif;
+  display:flex;flex-direction:column;overflow:hidden;
+}
+header{
+  position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:10px;
+  padding:calc(12px + env(safe-area-inset-top,0px)) 14px 12px;
+  background:linear-gradient(180deg,rgba(11,16,32,.96),rgba(11,16,32,.72));
+  backdrop-filter:blur(14px);border-bottom:1px solid var(--line);
+}
+.logo{width:34px;height:34px;border-radius:11px;flex:0 0 auto;
+  background:linear-gradient(135deg,var(--brand),var(--brand2));display:grid;place-items:center;font-weight:700;font-size:15px}
+.title{font-weight:650;letter-spacing:.2px}
+.meta{font-size:11px;color:var(--sub);margin-top:1px}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--err);display:inline-block;margin-right:5px;vertical-align:middle}
+.dot.on{background:var(--ok);box-shadow:0 0 9px var(--ok)}
+.spacer{flex:1}
+.icon-btn{width:36px;height:36px;border-radius:11px;border:1px solid var(--line);background:var(--panel);
+  color:var(--txt);font-size:16px;display:grid;place-items:center}
+#msgs{flex:1;overflow-y:auto;padding:14px 14px 6px;-webkit-overflow-scrolling:touch}
+.row{display:flex;margin-bottom:12px;gap:8px}
+.row.me{justify-content:flex-end}
+.bubble{max-width:82%;padding:10px 13px;border-radius:16px;white-space:pre-wrap;word-break:break-word;
+  background:var(--panel);border:1px solid var(--line);border-bottom-left-radius:6px}
+.row.me .bubble{background:linear-gradient(135deg,rgba(79,140,255,.95),rgba(139,92,246,.9));
+  border:none;border-bottom-left-radius:16px;border-bottom-right-radius:6px;color:#fff}
+.sys{align-self:center;font-size:12px;color:var(--sub);margin:8px 0;text-align:center;width:100%}
+.typing{display:inline-block;width:6px;height:15px;background:var(--brand);border-radius:2px;
+  animation:blink 1s steps(2) infinite;vertical-align:-2px;margin-left:2px}
+@keyframes blink{50%{opacity:0}}
+footer{
+  padding:10px 12px calc(10px + var(--safe-b));border-top:1px solid var(--line);
+  background:rgba(11,16,32,.86);backdrop-filter:blur(14px);display:flex;gap:8px;align-items:flex-end;
+}
+#input{flex:1;min-height:44px;max-height:132px;resize:none;padding:11px 13px;border-radius:14px;
+  border:1px solid var(--line);background:rgba(255,255,255,.06);color:var(--txt);font:inherit;outline:none}
+#input:focus{border-color:rgba(79,140,255,.55)}
+#send{width:46px;height:46px;border-radius:14px;border:none;color:#fff;font-size:17px;
+  background:linear-gradient(135deg,var(--brand),var(--brand2));flex:0 0 auto}
+#send:disabled{opacity:.45}
+.top-bar{display:flex;gap:8px;padding:0 14px 8px;overflow-x:auto}
+.chip{flex:0 0 auto;padding:6px 11px;border-radius:999px;border:1px solid var(--line);
+  background:var(--panel);color:var(--sub);font-size:12px}
+.chip.active{color:#fff;background:linear-gradient(135deg,rgba(79,140,255,.9),rgba(139,92,246,.85));border:none}
+.drawer{position:fixed;inset:0;z-index:40;display:none}
+.drawer.open{display:block}
+.mask{position:absolute;inset:0;background:rgba(0,0,0,.55)}
+.panel{position:absolute;top:0;right:0;bottom:0;width:82%;max-width:340px;padding:18px 14px;
+  background:#0e1730;border-left:1px solid var(--line);overflow-y:auto;
+  animation:slide .22s ease-out}
+@keyframes slide{from{transform:translateX(24px);opacity:.4}}
+.panel h3{margin:4px 0 12px;font-size:14px;color:var(--sub);font-weight:600}
+.sess{padding:10px 12px;border-radius:12px;border:1px solid var(--line);margin-bottom:8px;background:var(--panel)}
+.sess b{font-size:13.5px;font-weight:600}
+.sess small{display:block;color:var(--sub);font-size:11px;margin-top:3px}
+.sess.sel{border-color:rgba(79,140,255,.6)}
+.gate{padding:22px 18px;text-align:center;color:var(--sub);font-size:13.5px;line-height:2}
+.gate a{color:#fff;background:linear-gradient(135deg,var(--brand),var(--brand2));
+  padding:9px 18px;border-radius:12px;text-decoration:none;display:inline-block;margin-top:12px}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">龙</div>
+  <div>
+    <div class="title">小龙</div>
+    <div class="meta"><span id="dot" class="dot"></span><span id="state">连接中…</span></div>
+  </div>
+  <div class="spacer"></div>
+  <button class="icon-btn" id="newBtn" title="新会话">＋</button>
+  <button class="icon-btn" id="menuBtn" title="会话">☰</button>
+</header>
+
+<div class="top-bar" id="models">
+  <button class="chip active" data-model="qwen2.5-coder:14b">qwen2.5-coder:14b</button>
+  <button class="chip" data-model="qwen2.5:7b">qwen2.5:7b</button>
+  <button class="chip" data-model="deepseek-r1:8b">deepseek-r1:8b</button>
+</div>
+
+<div id="msgs"></div>
+
+<footer>
+  <textarea id="input" rows="1" placeholder="和小龙说点什么…"></textarea>
+  <button id="send">➤</button>
+</footer>
+
+<div class="drawer" id="drawer">
+  <div class="mask" id="mask"></div>
+  <div class="panel">
+    <h3>我的会话</h3>
+    <div id="sessList"></div>
+    <h3 style="margin-top:18px">设备授权</h3>
+    <div id="lic" class="sess"><b>检测中…</b><small>—</small></div>
+    <h3 style="margin-top:18px">服务器入口</h3>
+    <div id="eps"></div>
+  </div>
+</div>
+
+<script>
+const $=s=>document.querySelector(s);
+const msgs=$('#msgs'), input=$('#input'), sendBtn=$('#send');
+let SID='', MODEL='qwen2.5-coder:14b', CFG=null, DEVICE_ID='', busy=false;
+let TOKEN=localStorage.getItem('xl_token')||'';
+
+function devId(){
+  let d=localStorage.getItem('xl_device_id');
+  if(!d){ d='xl-'+Math.random().toString(36).slice(2)+Date.now().toString(36); localStorage.setItem('xl_device_id',d); }
+  return d;
+}
+function platform(){
+  const ua=navigator.userAgent;
+  if(/iPhone|iPad/i.test(ua)) return 'iOS';
+  if(/Android/i.test(ua)) return 'Android';
+  return 'Web';
+}
+function setState(ok, txt){
+  $('#dot').className='dot'+(ok?' on':'');
+  $('#state').textContent=txt;
+}
+function addRow(text, mine, sys){
+  const d=document.createElement('div');
+  if(sys){ d.className='sys'; d.textContent=text; }
+  else{ d.className='row'+(mine?' me':''); const b=document.createElement('div');
+        b.className='bubble'; b.textContent=text; d.appendChild(b); }
+  msgs.appendChild(d); msgs.scrollTop=msgs.scrollHeight; return d;
+}
+async function api(path, opt){
+  const o=Object.assign({}, opt||{});
+  o.headers=Object.assign({'Content-Type':'application/json'}, o.headers||{});
+  if(TOKEN) o.headers['X-XL-Token']=TOKEN;
+  const r=await fetch(path, o);
+  if(r.status===401){ showGate(); throw new Error('login_required'); }
+  if(r.status===403){
+    let m='该功能需在网页端冰山首页登录本账号申请开通';
+    try{ const j=await r.clone().json(); if(j.message) m=j.message; }catch(e){}
+    throw new Error(m);
+  }
+  return r;
+}
+async function boot(){
+  DEVICE_ID=devId();
+  try{
+    const r=await api('/api/xiaolong/bootstrap?device_id='+encodeURIComponent(DEVICE_ID));
+    CFG=await r.json();
+    setState(true, (CFG.license?'设备已授权 · ':'')+CFG.user.username);
+    renderEps(CFG.endpoints); renderLic(CFG.license);
+    if(!CFG.license){ await regDevice(); }
+    api('/api/local-chat/balance').catch(()=>{});   // 触发每日免费额度
+    await loadSessions();
+    heartbeat();
+  }catch(e){ if(e.message!=='login_required') setState(false,'离线'); }
+}
+async function regDevice(){
+  try{
+    const r=await api('/api/xiaolong/device/register',{method:'POST',
+      body:JSON.stringify({device_id:DEVICE_ID,platform:platform()})});
+    const j=await r.json(); renderLic(j.success?{status:'ACTIVE',username:j.user,bound_at:j.bound_at}:null);
+  }catch(e){}
+}
+function renderLic(l){
+  const el=$('#lic');
+  if(l&&l.status==='ACTIVE'){ el.innerHTML='<b>✅ 已授权</b><small>'+ (l.username||'') +' · '+ (l.bound_at||'') +'</small>'; }
+  else{ el.innerHTML='<b>⚠️ 未授权</b><small>点击重新绑定</small>'; }
+}
+function renderEps(list){
+  $('#eps').innerHTML=(list||[]).map(e=>'<div class="sess"><b>'+e.label+'</b><small>'+(e.base||'当前域名')+'</small></div>').join('');
+}
+async function loadSessions(){
+  try{
+    const r=await api('/api/local-chat/sessions');
+    const j=await r.json();
+    const rows=(j.sessions||[]);
+    $('#sessList').innerHTML=rows.length?rows.map(s=>
+      '<div class="sess'+(s.session_id===SID?' sel':'')+'" data-sid="'+s.session_id+'"><b>'+
+      (s.title||'未命名')+'</b><small>'+(s.message_count||0)+' 条 · '+(s.updated_at||'')+'</small></div>'
+    ).join(''):'<div class="sess"><b>暂无会话</b><small>发一条消息即自动创建</small></div>';
+    document.querySelectorAll('#sessList .sess[data-sid]').forEach(el=>{
+      el.onclick=()=>{ SID=el.dataset.sid; msgs.innerHTML=''; toggleDrawer(false); loadHistory(); };
+    });
+  }catch(e){}
+}
+async function loadHistory(){
+  if(!SID) return;
+  try{
+    const r=await api('/api/local-chat/history?session_id='+encodeURIComponent(SID));
+    const j=await r.json();
+    msgs.innerHTML='';
+    (j.messages||[]).forEach(m=>addRow(m.content||'', (m.role||'')==='user'));
+  }catch(e){}
+}
+function toggleDrawer(v){ $('#drawer').classList.toggle('open', v); }
+function showGate(){
+  setState(false,'未登录');
+  msgs.innerHTML=`<div class="gate">
+    <b style="color:#fff">登录小龙</b><br>
+    <input id="u" placeholder="用户名" style="width:80%;margin:10px 0 8px;padding:11px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:#eaf0ff;font:inherit;text-align:center">
+    <input id="p" type="password" placeholder="密码（注册至少 8 位）" style="width:80%;margin-bottom:14px;padding:11px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:#eaf0ff;font:inherit;text-align:center">
+    <button id="lg" style="margin:4px 5px 0">登录</button>
+    <button id="rg" style="margin:4px 5px 0;background:rgba(255,255,255,.12)">注册（仅聊天）</button>
+    <div id="gmsg" style="color:#fca5a5;font-size:12px;margin-top:10px"></div>
+  </div>`;
+  const doAuth=async(mode)=>{
+    const u=$('#u').value.trim(), p=$('#p').value;
+    const g=$('#gmsg'); g.textContent='';
+    if(!u||!p){ g.textContent='请填写用户名和密码'; return; }
+    try{
+      const r=await fetch('/api/xiaolong/'+(mode==='reg'?'register':'token'),{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({username:u,password:p,device_id:DEVICE_ID})});
+      const j=await r.json();
+      if(!j.success){ g.textContent=j.message||j.error||'失败'; return; }
+      TOKEN=j.token; localStorage.setItem('xl_token',TOKEN);
+      msgs.innerHTML=''; boot();
+    }catch(e){ g.textContent='网络异常'; }
+  };
+  $('#lg').onclick=()=>doAuth('login');
+  $('#rg').onclick=()=>doAuth('reg');
+}
+async function heartbeat(){
+  try{ await api('/api/xiaolong/heartbeat',{method:'POST',body:JSON.stringify({device_id:DEVICE_ID})}); }catch(e){}
+  setTimeout(heartbeat, 60000);
+}
+
+async function send(){
+  const text=input.value.trim();
+  if(!text||busy) return;
+  busy=true; sendBtn.disabled=true;
+  input.value=''; input.style.height='auto';
+  addRow(text,true);
+  const holder=addRow('', false); const bubble=holder.querySelector('.bubble');
+  bubble.innerHTML='<span class="typing"></span>';
+  let acc='';
+  try{
+    const r=await api('/api/local-chat/send',{method:'POST',body:JSON.stringify({
+      session_id:SID, message:text, model:MODEL, page_context:'小龙PWA'
+    })});
+    if(r.status===402){ bubble.textContent='Token 余额不足，请充值或联系管理员'; busy=false; sendBtn.disabled=false; return; }
+    if(!r.ok){ bubble.textContent='发送失败 ('+r.status+')'; busy=false; sendBtn.disabled=false; return; }
+    const reader=r.body.getReader(); const dec=new TextDecoder(); let buf='';
+    while(true){
+      const {done,value}=await reader.read();
+      if(done) break;
+      buf+=dec.decode(value,{stream:true});
+      const lines=buf.split('\n'); buf=lines.pop();
+      for(const ln of lines){
+        if(!ln.startsWith('data:')) continue;
+        const body=ln.slice(5).trim();
+        if(body==='[thinking]'){ bubble.innerHTML='<span class="typing"></span>'; continue; }
+        if(body.startsWith('[done]')){ bubble.textContent=acc||'(空回复)'; continue; }
+        if(body.startsWith('[error]')){ bubble.textContent='出错了：'+body.slice(7); continue; }
+        if(body.startsWith('[')) continue;
+        try{ const o=JSON.parse(body); if(o.token){ acc+=o.token; bubble.textContent=acc; msgs.scrollTop=msgs.scrollHeight; }
+              if(o.session_id) SID=o.session_id; }catch(e){}
+      }
+    }
+    if(!acc) bubble.textContent=bubble.textContent||'(空回复)';
+  }catch(e){ bubble.textContent='网络异常，请检查与 mini 的连接'; }
+  busy=false; sendBtn.disabled=false; loadSessions();
+}
+
+input.addEventListener('input',()=>{ input.style.height='auto'; input.style.height=Math.min(input.scrollHeight,132)+'px'; });
+input.addEventListener('keydown',e=>{ if(e.key==='Enter'&&!e.shiftKey&&!e.altKey){ e.preventDefault(); send(); } });
+sendBtn.onclick=send;
+$('#newBtn').onclick=()=>{ SID=''; msgs.innerHTML=''; toggleDrawer(false); addRow('新会话已开始',false,true); };
+$('#menuBtn').onclick=()=>toggleDrawer(true);
+$('#mask').onclick=()=>toggleDrawer(false);
+document.querySelectorAll('#models .chip').forEach(c=>c.onclick=()=>{
+  document.querySelectorAll('#models .chip').forEach(x=>x.classList.remove('active'));
+  c.classList.add('active'); MODEL=c.dataset.model;
+});
+if('serviceWorker' in navigator){ navigator.serviceWorker.register('/xiaolong/sw.js',{scope:'/'}).catch(()=>{}); }
+boot();
+</script>
+</body>
+</html>

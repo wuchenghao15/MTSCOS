@@ -2459,6 +2459,8 @@ _CSRF_EXEMPT_PATHS = [
 # 指纹认证API路径前缀（CSRF豁免：登录前需调用指纹硬件）
 _CSRF_EXEMPT_PREFIXES = [
     '/api/mobile/fingerprint/',
+    # v22.25.27: 🐉 小龙 App/小程序 — 无浏览器 cookie, 用 X-XL-Token 头鉴权, CSRF 冗余
+    '/api/xiaolong/',
     # v25.3: 📱 移动端主应用 (APK WebView 无跨域 cookie, 整个 /mobile/* 豁免)
     '/mobile/',
     '/iceberg/mobile',
@@ -3021,6 +3023,14 @@ try:
     print('[TEAM-COLLAB] ✅ /api/collab/* 跨团队协作总线已注册')
 except Exception as _collab_err:
     print(f'[TEAM-COLLAB] ⚠️ 协作总线模块加载失败: {_collab_err}')
+
+# ── 小龙 App Blueprint: /xiaolong + /api/xiaolong/* (flow_xiaolong_app_20261022) ──
+try:
+    from blueprints.xiaolong_app_bp import xiaolong_bp
+    app.register_blueprint(xiaolong_bp)
+    print('[XIAOLONG] ✅ 小龙 App (/xiaolong · 仙女座聊天专用 PWA) 已注册')
+except Exception as _xl_err:
+    print(f'[XIAOLONG] ⚠️ 小龙 App 模块加载失败: {_xl_err}')
 
 # ── AI 教育中心 + 考试院 Blueprint: /api/ai-edu/* (flow_edu_20261020) ──
 try:
@@ -3998,6 +4008,8 @@ _MT_HOTLINK_WHITELIST_PREFIXES = (
     '/andromeda/',
     # v22.10.20: 🧠 本地聊天 — 仙女座发散思维引擎页面
     '/local-chat', '/api/local-chat/',
+    # v22.25.27: 🐉 小龙 App (PWA/小程序 WebView 无 Referer, /xiaolong* 直达放行)
+    '/xiaolong', '/api/xiaolong/',
     # v22.10.22: 🎯 P1 核心独立页面 (用户可收藏/书签直达, 防盗链不拦截)
     '/exam_center', '/exam_system/', '/exam/',
     '/japanese_page', '/japanese/',

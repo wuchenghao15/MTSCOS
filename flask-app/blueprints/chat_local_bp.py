@@ -2062,10 +2062,17 @@ def list_sessions():
     u = _get_user()
     try:
         conn = _db()
+        # v22.25.27: 跨库列兼容 — 旧库缺 title_emoji/pinned/tags/is_room/room_code, 缺失列给默认值
+        _cols = {r[1] for r in conn.execute('PRAGMA table_info(chat_sessions)')}
+        _emoji = 's.title_emoji' if 'title_emoji' in _cols else "'' AS title_emoji"
+        _pinned = 'COALESCE(s.pinned,0)' if 'pinned' in _cols else '0'
+        _tags = "COALESCE(s.tags,'')" if 'tags' in _cols else "''"
+        _is_room = 'COALESCE(s.is_room,0)' if 'is_room' in _cols else '0'
+        _room = "COALESCE(s.room_code,'')" if 'room_code' in _cols else "''"
         rows = conn.execute(
-            "SELECT s.session_id, s.title, s.title_emoji, s.message_count, s.last_message, s.created_at, s.updated_at, "
-            "COALESCE(s.pinned,0) AS pinned, COALESCE(s.tags,'') AS tags, "
-            "COALESCE(s.is_room,0) AS is_room, COALESCE(s.room_code,'') AS room_code "
+            f"SELECT s.session_id, s.title, {_emoji}, s.message_count, s.last_message, s.created_at, s.updated_at, "
+            f"{_pinned} AS pinned, {_tags} AS tags, "
+            f"{_is_room} AS is_room, {_room} AS room_code "
             "FROM chat_sessions s "
             "WHERE s.user_id=? OR s.session_id IN (SELECT session_id FROM mt_chat_room_members WHERE user_id=?) "
             "ORDER BY pinned DESC, s.updated_at DESC LIMIT 50",
