@@ -239,11 +239,12 @@
                 `<div style="display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px dashed rgba(0,0,0,.06)"
                       title="${(t.description||'').replace(/"/g,'')} | 验收标准: ${(t.acceptance_criteria||'-').replace(/"/g,'')}">
                     <span style="font-size:10px;color:#7c3aed">${SRC[t.source]||t.source}</span>
-                    <span style="font-size:10px;color:#94a3b8">${t.hall_code||('#'+t.id)}</span>
+                    <span style="font-size:10px;color:#94a3b8;cursor:pointer" onclick="event.stopPropagation();hallDetail(${t.id})" title="点击查看任务轨迹">${t.hall_code||('#'+t.id)}</span>
                     <span style="font-size:10px;color:${t.status==='DISPATCHED'?'#059669':t.status==='QUEUED'?'#d97706':t.status==='DELIVERED'?'#2563eb':'#6b7280'}">[${t.status}]</span>
                     ${t.approval_status==='PENDING'?'<span style="font-size:10px;color:#dc2626">待审批</span>':''}
                     <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.title}</span>
-                    <span style="font-size:11px;color:#2563eb">${t.center_name||'待分配'}</span>
+                    <a href="/andromeda/eigenflux_council?team=${encodeURIComponent(t.center_name||'')}" target="_blank"
+                       style="font-size:11px;color:#2563eb;text-decoration:none" title="跳转到 AI 天团矩阵">${t.center_name||'待分配'}</a>
                     <span style="font-size:10px;color:#64748b">${t.claim_owner||''}</span>
                     ${t.approval_status==='PENDING' ? btn('✅通过',`hallApprove(${t.id},'approve',this)`,'#059669')+btn('❌驳回',`hallApprove(${t.id},'reject',this)`,'#dc2626') : ''}
                     ${(t.status==='QUEUED'||t.status==='DISPATCHED') ? btn('↩撤回',`hallCancel(${t.id},this)`,'#6b7280') : ''}
@@ -256,6 +257,14 @@
                 document.getElementById('hall-chips').textContent += extra + avg;
             }).catch(()=>{});
         }).catch(()=>{ document.getElementById('hall-board').textContent='⚠️ 大厅加载失败'; });
+    }
+    function hallDetail(id){
+        fetch('/api/local-chat/jump/task/'+id).then(r=>r.json()).then(d=>{
+            if(!d.success){ alert(d.error||'任务详情不可用'); return; }
+            const t=d.task||{};
+            const ev=(d.events||[]).map(e=>`  · ${e.event} ${e.actor||''} ${e.created_at||''}`).join('\n');
+            alert(`【${t.hall_code||('#'+t.id)}】${t.title||''}\n状态: ${t.status||'-'}  中心: ${d.center||'待分配'}\n优先级: ${t.priority||'-'}  发布人: ${t.publisher||'-'}\n验收: ${t.acceptance_criteria||'-'}\n\n轨迹:\n${ev||'  (暂无)'}`);
+        }).catch(()=>alert('任务详情加载失败'));
     }
     function hallPost(url, body){
         return fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body||{})}).then(r=>r.json());

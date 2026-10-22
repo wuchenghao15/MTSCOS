@@ -703,9 +703,13 @@ function appendMessage(role, content, isNew){
   const wrap = document.createElement('div');
   wrap.className = 'msg ' + (role === 'user' ? 'user' : 'ai');
   const ttsBtn = role === 'user' ? '' : '<button class="tts-btn" title="朗读本条回复" data-raw="">🔊</button>';
+  // AI 跳转: 任务号 TH-xxx / @天团 由 chat_plus.js 渲染为可点击链接
+  const contentHtml = (window.ChatPlus && window.ChatPlus.richText)
+    ? window.ChatPlus.richText(content || '')
+    : (content ? escapeHtml(content).replace(/\n/g,'<br>') : '');
   wrap.innerHTML = `
     <div class="msg-bubble">
-      <div class="msg-content">${content ? escapeHtml(content).replace(/\n/g,'<br>') : ''}</div>
+      <div class="msg-content">${contentHtml}</div>
     </div>
     <div class="msg-meta">
       <span>${role === 'user' ? '👤 我' : '🧠 仙女座 AI'}</span>
