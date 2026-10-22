@@ -1549,40 +1549,58 @@ def _heal_before_request():
 
 @chat_local_bp.route('/local-chat', methods=['GET'])
 def local_chat_page():
-    """聊天页面 — 游客先渲染登录引导; 登录后进入并触发每日 token 赠送
-
-    flow_chat_login_guide_20261022: 首次进入不再硬 302 登录页, 改引导页
-    flow_chat_embed_20261019: 支持 ?embed=1 紧凑模式
-    (全局助手 widget 内嵌 iframe 专用: 隐藏侧边栏, 适配抽屉面板)"""
+    """聊天页面 — 已登录正常进; 未登录自动建 guest wallet (10000 免费 token)
+    flow_chat_guest_free_20261023: 不再强制登录引导, 游客也能直接聊"""
     from flask import render_template
     _uid = session.get('user_id')
-    if not _uid or _uid == 'guest':
-        # 保留深链参数 (?task= / ?team= / ?center= / ?sid=), 登录后回到原位置
-        return _chat_login_guide(request.full_path.rstrip('?') or '/local-chat')
-    u = _get_user()
-    _ensure_daily_grant(u['user_id'], u['username'])  # 每日 10000 lazy 赠送
     embed = request.args.get('embed') == '1'
-    return render_template('local_chat.html', embed=embed)
+    if not _uid or str(_uid).startswith('guest'):
+        # 🔧 游客: 自动建 guest session + wallet (不跳引导页)
+        dh = session.get('device_hash') or _device_hash()
+        session['device_hash'] = dh
+        guest_uid = f"guest_{dh}"
+        session['user_id'] = guest_uid
+        session['username'] = f"Guest_{dh[:8]}"
+        session['role'] = 'guest'
+        _ensure_guest_wallet(dh)
+        bal = _get_balance(guest_uid)
+        return render_template('local_chat.html', embed=embed,
+            is_guest=True, username=f"Guest_{dh[:8]}",
+            token_balance=bal['balance'], token_frozen=bal.get('frozen', 0))
+    # 已登录
+    u = _get_user()
+    _ensure_daily_grant(u['user_id'], u['username'])
+    bal = _get_balance(u['user_id'])
+    return render_template('local_chat.html', embed=embed,
+        is_guest=False, username=u.get('username', '用户'),
+        token_balance=bal['balance'], token_frozen=bal.get('frozen', 0),
+        is_sa=_is_sa(u))
 
 
 @chat_local_bp.route('/ai', methods=['GET'])
 def ai_entry():
-    """🌐 mtos.site/ai — 公网聊天入口 (flow_login_guide_20261018 SA 指令)
-
-    未登录用户 → 聊天引导登录页 (登录后回跳 /ai):
-      - 未登录 guest → 引导页 (flow_chat_login_guide_20261022, 不再 302)
-      - SA (双密钥已插) → 自动认证 session 直达
-      - 已登录 → 正常渲染 + 每日 token 赠送"""
-    from flask import render_template, redirect
+    """🌐 mtos.site/ai — 公网聊天入口 (flow_chat_guest_free_20261023: 游客 1 万免费)"""
+    from flask import render_template
     uid = session.get('user_id')
-    if not uid or uid == 'guest':
-        # flow_chat_login_guide_20261022: 首次进入 → 聊天引导登录页 (不再硬跳通用登录页)
-        return _chat_login_guide('/ai')
-    # 已登录 (含双密钥自动认证的 SA session)
+    embed = request.args.get('embed') == '1'
+    if not uid or str(uid).startswith('guest'):
+        dh = session.get('device_hash') or _device_hash()
+        session['device_hash'] = dh
+        session['user_id'] = f"guest_{dh}"
+        session['username'] = f"Guest_{dh[:8]}"
+        session['role'] = 'guest'
+        _ensure_guest_wallet(dh)
+        bal = _get_balance(f"guest_{dh}")
+        return render_template('local_chat.html', embed=embed,
+            is_guest=True, username=f"Guest_{dh[:8]}",
+            token_balance=bal['balance'], token_frozen=bal.get('frozen', 0))
     u = _get_user()
     _ensure_daily_grant(u['user_id'], u['username'])
-    embed = request.args.get('embed') == '1'
-    return render_template('local_chat.html', embed=embed)
+    bal = _get_balance(u['user_id'])
+    return render_template('local_chat.html', embed=embed,
+        is_guest=False, username=u.get('username', '用户'),
+        token_balance=bal['balance'], token_frozen=bal.get('frozen', 0),
+        is_sa=_is_sa(u))
 
 
 @chat_local_bp.route('/ai/', methods=['GET'])
@@ -1787,28 +1805,38 @@ def update_session_title(sid):
 # ════════════════════════════════════════════════════════════════
 @chat_local_bp.route('/api/local-chat/widget-state', methods=['GET'])
 def widget_state():
-    """悬浮球预加载登录状态容器 (flow_chat_preload_20261019)
-
-    页面加载即调用: 一次请求返回登录态/用户名/token余额/最近会话/视觉模型就绪。
-    widget 据此渲染用户徽标、hover 预热 iframe、data-src 携带 sid 直达最近会话。
-    未登录返回 logged_in=False (匿名可调, 不作门禁)。"""
+    """悬浮球预加载登录状态容器 — 查 mt_token_wallets (含游客)"""
     try:
-        u = _get_user()
-        uid = (u or {}).get('user_id')
-        if not uid or uid == 'guest':
+        uid = session.get('user_id')
+        if not uid:
             return jsonify({'success': True, 'logged_in': False})
+        is_guest = str(uid).startswith('guest_')
+        username = session.get('username') or ('Guest' if is_guest else '用户')
         conn = _db()
-        bal = conn.execute(
-            "SELECT balance FROM mt_user_token_accounts WHERE user_id=?", (uid,)).fetchone()
+        # 🔧 flow_chat_guest_free_20261023: 优先 mt_token_wallets (含游客)
+        conn.execute("""CREATE TABLE IF NOT EXISTS mt_token_wallets (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT UNIQUE, username TEXT,
+            is_guest INTEGER DEFAULT 0, guest_device_hash TEXT, balance INTEGER DEFAULT 0,
+            frozen INTEGER DEFAULT 0, guest_free_grant INTEGER DEFAULT 0,
+            guest_consumed INTEGER DEFAULT 0, expires_at TEXT, created_at TEXT, updated_at TEXT)""")
+        bal_row = conn.execute(
+            "SELECT balance, frozen, is_guest, guest_free_grant FROM mt_token_wallets WHERE user_id=?",
+            (str(uid),)).fetchone()
+        balance = bal_row['balance'] if bal_row else 0
+        frozen = bal_row['frozen'] if bal_row else 0
+        wallet_is_guest = bool(bal_row['is_guest']) if bal_row else is_guest
         latest = conn.execute(
             "SELECT session_id, title FROM chat_sessions WHERE user_id=? "
-            "ORDER BY COALESCE(pinned,0) DESC, updated_at DESC LIMIT 1", (uid,)).fetchone()
+            "ORDER BY COALESCE(pinned,0) DESC, updated_at DESC LIMIT 1", (str(uid),)).fetchone()
         conn.close()
         return jsonify({
             'success': True, 'logged_in': True,
-            'username': (u or {}).get('username') or '用户',
-            'is_sa': _is_sa(u),
-            'token_balance': bal['balance'] if bal else 0,
+            'username': username,
+            'is_guest': wallet_is_guest,
+            'token_balance': balance,
+            'token_frozen': frozen,
+            'guest_free_grant': bal_row['guest_free_grant'] if bal_row else 0,
+            'is_sa': (not wallet_is_guest) and _is_sa({'username': username}),
             'latest_session_id': latest['session_id'] if latest else None,
             'latest_session_title': latest['title'] if latest else None,
             'vision_ready': _detect_vision_model() is not None,
