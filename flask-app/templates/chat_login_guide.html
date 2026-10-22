@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>登录 · 仙女座聊天 MTSCOS AI</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0}
+body{
+  font:15px/1.6 -apple-system,BlinkMacSystemFont,"PingFang SC","Helvetica Neue",sans-serif;
+  color:#e6edff;background:radial-gradient(1100px 560px at 12% -8%,#1b2a52 0%,transparent 58%),
+             radial-gradient(900px 520px at 92% 108%,#2a1b52 0%,transparent 55%),#0b1020;
+  display:flex;align-items:center;justify-content:center;padding:28px 16px;
+}
+.card{width:100%;max-width:430px;background:rgba(255,255,255,.055);border:1px solid rgba(120,160,255,.22);
+  border-radius:20px;padding:26px 24px 22px;box-shadow:0 22px 70px rgba(0,0,0,.5);backdrop-filter:blur(10px)}
+.head{display:flex;align-items:center;gap:11px;margin-bottom:6px}
+.orb{width:40px;height:40px;border-radius:13px;flex:0 0 auto;display:grid;place-items:center;
+  background:linear-gradient(135deg,#4f8cff,#8b5cf6);box-shadow:0 6px 22px rgba(79,140,255,.42)}
+.h-title{font-size:16px;font-weight:700;letter-spacing:.2px}
+.h-sub{font-size:11px;color:#8fa3c8;margin-top:1px}
+.steps{margin:16px 0 18px;padding:0;list-style:none;display:grid;gap:9px}
+.steps li{display:flex;gap:9px;font-size:12px;color:#b9c6e2;line-height:1.55}
+.steps li b{flex:0 0 18px;height:18px;border-radius:50%;background:rgba(79,140,255,.22);color:#9bb6ff;
+  font-size:10.5px;display:grid;place-items:center;margin-top:1px}
+label{display:block;font-size:11px;color:#8fa3c8;margin:0 0 5px 2px}
+.inp{position:relative;margin-bottom:12px}
+.inp i{position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:13px;color:#7f93b8}
+.inp input{width:100%;padding:11px 12px 11px 36px;border-radius:12px;border:1px solid rgba(120,160,255,.26);
+  background:rgba(255,255,255,.06);color:#e6edff;font:inherit;font-size:14px;outline:none}
+.inp input:focus{border-color:rgba(79,140,255,.62);background:rgba(79,140,255,.08)}
+.remember{display:flex;align-items:center;gap:6px;font-size:11.5px;color:#8fa3c8;margin:0 0 14px 2px}
+.btn{width:100%;padding:12px;border:0;border-radius:12px;cursor:pointer;font:inherit;font-size:14px;font-weight:650;
+  color:#fff;background:linear-gradient(135deg,#4f8cff,#8b5cf6);box-shadow:0 10px 28px rgba(79,140,255,.35)}
+.btn:disabled{opacity:.55;cursor:default}
+.msg{min-height:18px;font-size:11.5px;margin:9px 0 2px;text-align:center;color:#8fa3c8}
+.msg.error{color:#f87171}
+.msg.info{color:#34d399}
+.alt{display:flex;justify-content:space-between;align-items:center;margin-top:14px;padding-top:13px;
+  border-top:1px dashed rgba(120,160,255,.18);font-size:11.5px;color:#8fa3c8}
+.alt a{color:#9bb6ff;text-decoration:none}
+.alt a:hover{text-decoration:underline}
+.note{margin-top:13px;font-size:11px;line-height:1.6;color:#7f93b8;background:rgba(139,92,246,.09);
+  border:1px solid rgba(139,92,246,.24);border-radius:11px;padding:9px 11px}
+.note a{color:#c4b5fd;text-decoration:none}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="head">
+    <div class="orb">
+      <svg viewBox="0 0 32 32" width="22" height="22" xmlns="http://www.w3.org/2000/svg">
+        <polygon points="16,4 27,18 5,18" fill="#E0E7FF"/>
+        <polygon points="7,18 25,18 21,25 11,25" fill="#4338CA"/>
+        <polygon points="11,25 21,25 19,30 13,30" fill="#1E1B4B"/>
+      </svg>
+    </div>
+    <div>
+      <div class="h-title">登录 · 仙女座聊天</div>
+      <div class="h-sub">MTSCOS AI · Iceberg System</div>
+    </div>
+  </div>
+
+  <ol class="steps">
+    <li><b>1</b><span>用 MTSCOS 账号登录，登录后自动进入聊天工作台（含跨会话检索 / 天团派单 / 任务跳转）。</span></li>
+    <li><b>2</b><span>没有账号？先注册；在小龙端注册的账号默认<strong style="color:#f0abfc">仅可使用聊天</strong>。</span></li>
+    <li><b>3</b><span>需要题库 / 考试 / 后台等其他功能，请到网页端冰山首页登录后提交开通申请，由超级管理员审批。</span></li>
+  </ol>
+
+  <form id="guideLogin" onsubmit="return false;">
+    <label for="gu">用户名</label>
+    <div class="inp">
+      <i>👤</i>
+      <input id="gu" name="username" autocomplete="username" placeholder="请输入用户名" required>
+    </div>
+    <label for="gp">密码</label>
+    <div class="inp">
+      <i>🔒</i>
+      <input id="gp" name="password" type="password" autocomplete="current-password" placeholder="请输入密码" required>
+    </div>
+    <label class="remember"><input type="checkbox" id="gr"> 7 天内免登录</label>
+    <button class="btn" type="submit" id="gb">登 录 并 进 入 聊 天</button>
+    <div class="msg" id="gm"></div>
+  </form>
+
+  <div class="alt">
+    <span>没有账号？<a href="/auth/register?next=%2Flocal-chat">立即注册 →</a></span>
+    <a href="/">返回冰山首页</a>
+  </div>
+
+  <div class="note">
+    小龙移动端同样可用：<a href="/xiaolong">打开小龙 App</a> ·
+    能力开通说明见 <a href="/xiaolong/apply">权限申请</a>
+  </div>
+</div>
+
+<script>
+(function () {
+  var NEXT = {{ (next_url or '/local-chat') | tojson }};
+  var form = document.getElementById('guideLogin');
+  var msg = document.getElementById('gm');
+  var btn = document.getElementById('gb');
+  if (!form) return;
+  form.addEventListener('submit', function () {
+    var u = document.getElementById('gu').value.trim();
+    var p = document.getElementById('gp').value;
+    var r = document.getElementById('gr').checked;
+    if (!u || !p) { msg.textContent = '请输入用户名和密码'; msg.className = 'msg error'; return; }
+    btn.disabled = true;
+    msg.className = 'msg'; msg.textContent = '验证中…';
+    var body = 'username=' + encodeURIComponent(u) + '&password=' + encodeURIComponent(p)
+      + '&remember_me=' + (r ? '1' : '0') + '&next=' + encodeURIComponent(NEXT);
+    fetch('/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
+      body: body
+    }).then(function (res) { return res.json(); }).then(function (d) {
+      btn.disabled = false;
+      if (d && d.success) {
+        msg.className = 'msg info';
+        msg.textContent = '登录成功，正在进入聊天…';
+        setTimeout(function () { location.href = d.redirect || NEXT; }, 500);
+      } else {
+        msg.className = 'msg error';
+        msg.textContent = (d && (d.message || d.error)) || '登录失败，请检查账号密码';
+      }
+    }).catch(function () {
+      btn.disabled = false;
+      msg.className = 'msg error';
+      msg.textContent = '网络错误，请重试';
+    });
+  });
+})();
+</script>
+</body>
+</html>

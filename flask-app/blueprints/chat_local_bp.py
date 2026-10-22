@@ -925,6 +925,16 @@ def _get_user():
     }
 
 
+def _chat_login_guide(next_path: str):
+    """聊天系统首次进入引导页 (flow_chat_login_guide_20261022)
+
+    替代此前的硬 302: 首次访问 /local-chat、/ai 的游客先看到引导卡片 —
+    说明「登录后进入聊天 / 小龙账号仅可聊天 / 其他功能需网页端申请」三步,
+    并提供登录表单(登录成功回跳 next_path)、注册入口、开通申请入口。"""
+    from flask import render_template
+    return render_template('chat_login_guide.html', next_url=next_path)
+
+
 def _is_sa(u=None):
     """SA 豁免判定 (v25.5) — 三条件 OR:
     1. role == 'super_admin' (session 角色)
@@ -1400,13 +1410,17 @@ def _heal_before_request():
 # ════════════════════════════════════════════════════════════════
 
 @chat_local_bp.route('/local-chat', methods=['GET'])
-@_login_required
 def local_chat_page():
-    """聊天页面 — 仅登录用户可见; 进入即触发每日 token 赠送
+    """聊天页面 — 游客先渲染登录引导; 登录后进入并触发每日 token 赠送
 
+    flow_chat_login_guide_20261022: 首次进入不再硬 302 登录页, 改引导页
     flow_chat_embed_20261019: 支持 ?embed=1 紧凑模式
     (全局助手 widget 内嵌 iframe 专用: 隐藏侧边栏, 适配抽屉面板)"""
     from flask import render_template
+    _uid = session.get('user_id')
+    if not _uid or _uid == 'guest':
+        # 保留深链参数 (?task= / ?team= / ?center= / ?sid=), 登录后回到原位置
+        return _chat_login_guide(request.full_path.rstrip('?') or '/local-chat')
     u = _get_user()
     _ensure_daily_grant(u['user_id'], u['username'])  # 每日 10000 lazy 赠送
     embed = request.args.get('embed') == '1'
@@ -1417,16 +1431,15 @@ def local_chat_page():
 def ai_entry():
     """🌐 mtos.site/ai — 公网聊天入口 (flow_login_guide_20261018 SA 指令)
 
-    未登录用户 → 强制引导登录/注册 (302 /auth/login?next=/ai):
-      - 未登录 guest → 302 登录页 (登录后回跳 /ai)
+    未登录用户 → 聊天引导登录页 (登录后回跳 /ai):
+      - 未登录 guest → 引导页 (flow_chat_login_guide_20261022, 不再 302)
       - SA (双密钥已插) → 自动认证 session 直达
       - 已登录 → 正常渲染 + 每日 token 赠送"""
     from flask import render_template, redirect
     uid = session.get('user_id')
     if not uid or uid == 'guest':
-        # 未登录 → 强制引导登录/注册 (flow_login_guide_20261018 SA 指令:
-        # sim 后端不得给匿名访客豁免; SA 双密钥自动认证会在 middleware 层写入 uid)
-        return redirect('/auth/login?next=%2Fai', code=302)
+        # flow_chat_login_guide_20261022: 首次进入 → 聊天引导登录页 (不再硬跳通用登录页)
+        return _chat_login_guide('/ai')
     # 已登录 (含双密钥自动认证的 SA session)
     u = _get_user()
     _ensure_daily_grant(u['user_id'], u['username'])
