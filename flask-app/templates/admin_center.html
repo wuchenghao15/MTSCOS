@@ -209,6 +209,20 @@
             <button onclick="hallRunAuto(this)" style="border:1px solid #06b6d4;background:transparent;color:#06b6d4;border-radius:8px;font-size:11px;padding:5px 12px;cursor:pointer">⚡ 自动归集+分配</button>
             <button onclick="loadHall()" style="border:1px solid #d1d5db;background:transparent;color:#64748b;border-radius:8px;font-size:11px;padding:5px 12px;cursor:pointer">↻</button>
         </h3>
+        <div id="hall-publish" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
+            <input id="hp-title" placeholder="任务标题 (必填)" maxlength="120" style="flex:1;min-width:180px;padding:5px 8px;border:1px solid #d1d5db;border-radius:8px;font-size:12px">
+            <select id="hp-type" style="padding:5px 6px;border:1px solid #d1d5db;border-radius:8px;font-size:12px">
+                <option value="DEV">开发</option><option value="OPS">运维</option><option value="SECURITY">安全</option>
+                <option value="EDU">教研</option><option value="DOC">文档</option><option value="RESEARCH">研究</option><option value="OTHER" selected>其它</option>
+            </select>
+            <select id="hp-prio" style="padding:5px 6px;border:1px solid #d1d5db;border-radius:8px;font-size:12px">
+                <option value="NORMAL" selected>普通</option><option value="HIGH">高</option><option value="LOW">低</option>
+            </select>
+            <input id="hp-criteria" placeholder="验收标准" style="flex:1;min-width:140px;padding:5px 8px;border:1px solid #d1d5db;border-radius:8px;font-size:12px">
+            <input id="hp-desc" placeholder="描述" style="flex:1;min-width:140px;padding:5px 8px;border:1px solid #d1d5db;border-radius:8px;font-size:12px">
+            <button onclick="hallPublish(this)" style="border:1px solid #2563eb;background:transparent;color:#2563eb;border-radius:8px;font-size:11px;padding:5px 12px;cursor:pointer">🚀 发布任务</button>
+            <span id="hp-msg" style="font-size:11px;color:#059669"></span>
+        </div>
         <div id="hall-residents" style="font-size:11px;color:#7c3aed;margin-bottom:8px">入驻状态加载中…</div>
         <div id="hall-board" style="font-size:12px;color:#64748b">加载中…</div>
     </div>
@@ -218,16 +232,78 @@
             if(!d.ok) throw 0;
             const S=d.stats||{};
             document.getElementById('hall-chips').textContent =
-                `排队 ${S.QUEUED||0} · 已分配 ${S.DISPATCHED||0} · 完成 ${S.DONE||0}`;
+                `排队 ${S.QUEUED||0} · 待审批 ${d.pending_approval||0} · 已分配 ${S.DISPATCHED||0} · 执行中 ${(S.IN_PROGRESS||0)+(S.CLAIMED||0)} · 待验收 ${S.DELIVERED||0} · 完成 ${S.DONE||0} · 归档 ${d.archived||0}`;
             const SRC={derivation:'衍生',manual:'人工',daemon_repair:'修复','resident:rules_gov':'规则','resident:legal':'法务','resident:hr_center':'人事','resident:expert_team':'专家','resident:skill_dev':'Skill'};
+            const btn=(txt,fn,color)=>`<button onclick="event.stopPropagation();${fn}" style="border:1px solid ${color};background:transparent;color:${color};border-radius:6px;font-size:10px;padding:2px 7px;cursor:pointer">${txt}</button>`;
             document.getElementById('hall-board').innerHTML = d.tasks.length ? d.tasks.map(t=>
-                `<div style="display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px dashed rgba(0,0,0,.06)">
+                `<div style="display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px dashed rgba(0,0,0,.06)"
+                      title="${(t.description||'').replace(/"/g,'')} | 验收标准: ${(t.acceptance_criteria||'-').replace(/"/g,'')}">
                     <span style="font-size:10px;color:#7c3aed">${SRC[t.source]||t.source}</span>
-                    <span style="font-size:10px;color:${t.status==='DISPATCHED'?'#059669':t.status==='QUEUED'?'#d97706':'#6b7280'}">[${t.status}]</span>
+                    <span style="font-size:10px;color:#94a3b8">${t.hall_code||('#'+t.id)}</span>
+                    <span style="font-size:10px;color:${t.status==='DISPATCHED'?'#059669':t.status==='QUEUED'?'#d97706':t.status==='DELIVERED'?'#2563eb':'#6b7280'}">[${t.status}]</span>
+                    ${t.approval_status==='PENDING'?'<span style="font-size:10px;color:#dc2626">待审批</span>':''}
                     <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.title}</span>
                     <span style="font-size:11px;color:#2563eb">${t.center_name||'待分配'}</span>
+                    <span style="font-size:10px;color:#64748b">${t.claim_owner||''}</span>
+                    ${t.approval_status==='PENDING' ? btn('✅通过',`hallApprove(${t.id},'approve',this)`,'#059669')+btn('❌驳回',`hallApprove(${t.id},'reject',this)`,'#dc2626') : ''}
+                    ${(t.status==='QUEUED'||t.status==='DISPATCHED') ? btn('↩撤回',`hallCancel(${t.id},this)`,'#6b7280') : ''}
+                    ${(t.status==='DONE' && !t.archived_at) ? btn('📦归档',`hallArchive(${t.id},this)`,'#7c3aed') : ''}
                 </div>`).join('') : '大厅暂无任务';
+            fetch('/api/daemon-lab/hall/pipeline').then(r=>r.json()).then(p=>{
+                if(!p.ok) return;
+                const extra = (p.stuck||[]).length ? ` · ⚠️ 卡点 ${p.stuck.length}` : '';
+                const avg = p.avg_accept_hours ? ` · 平均验收 ${p.avg_accept_hours}h` : '';
+                document.getElementById('hall-chips').textContent += extra + avg;
+            }).catch(()=>{});
         }).catch(()=>{ document.getElementById('hall-board').textContent='⚠️ 大厅加载失败'; });
+    }
+    function hallPost(url, body){
+        return fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body||{})}).then(r=>r.json());
+    }
+    function hallPublish(btn){
+        const title=(document.getElementById('hp-title').value||'').trim();
+        if(!title){ alert('任务标题不能为空'); return; }
+        btn.disabled=true; btn.textContent='⏳ 发布中…';
+        hallPost('/api/daemon-lab/hall/submit',{
+            title, task_type:document.getElementById('hp-type').value,
+            priority:document.getElementById('hp-prio').value,
+            acceptance_criteria:document.getElementById('hp-criteria').value,
+            description:document.getElementById('hp-desc').value
+        }).then(d=>{
+            btn.disabled=false; btn.textContent='🚀 发布任务';
+            if(d.ok){
+                document.getElementById('hp-msg').textContent = d.message;
+                ['hp-title','hp-criteria','hp-desc'].forEach(i=>document.getElementById(i).value='');
+                loadHall();
+            } else alert('发布失败: '+(d.error||''));
+        }).catch(()=>{ btn.disabled=false; btn.textContent='🚀 发布任务'; });
+    }
+    function hallApprove(id,decision,btn){
+        const reason = decision==='reject' ? (prompt('驳回理由:')||'') : '';
+        if(decision==='reject' && !reason) return;
+        btn.disabled=true;
+        hallPost('/api/daemon-lab/hall/approve',{task_id:id,decision,reason}).then(d=>{
+            btn.disabled=false;
+            if(!d.ok) alert('审批失败: '+(d.error||''));
+            loadHall();
+        }).catch(()=>{ btn.disabled=false; });
+    }
+    function hallCancel(id,btn){
+        if(!confirm('确认撤回该任务?')) return;
+        btn.disabled=true;
+        hallPost('/api/daemon-lab/hall/cancel',{task_id:id,reason:'后台撤回'}).then(d=>{
+            btn.disabled=false;
+            if(!d.ok) alert('撤回失败: '+(d.error||''));
+            loadHall();
+        }).catch(()=>{ btn.disabled=false; });
+    }
+    function hallArchive(id,btn){
+        btn.disabled=true;
+        hallPost('/api/daemon-lab/hall/archive',{task_id:id}).then(d=>{
+            btn.disabled=false;
+            if(!d.ok) alert('归档失败: '+(d.error||''));
+            loadHall();
+        }).catch(()=>{ btn.disabled=false; });
     }
     function hallRunAuto(btn){
         btn.disabled=true; btn.textContent='⏳ 引擎运行中…';
