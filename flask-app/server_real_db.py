@@ -2461,6 +2461,8 @@ _CSRF_EXEMPT_PREFIXES = [
     '/api/mobile/fingerprint/',
     # v22.25.27: 🐉 小龙 App/小程序 — 无浏览器 cookie, 用 X-XL-Token 头鉴权, CSRF 冗余
     '/api/xiaolong/',
+    # v25.6: 🌌 仙女座 OpenAI 兼容层 — 外部 IDE 用 Bearer key 鉴权, 无 cookie/无 CSRF token
+    '/v1/',
     # v25.3: 📱 移动端主应用 (APK WebView 无跨域 cookie, 整个 /mobile/* 豁免)
     '/mobile/',
     '/iceberg/mobile',
@@ -3047,6 +3049,15 @@ try:
     print('[CHAT-PLUS] ✅ 聊天增强 (检索/编辑/删除/反馈/归档/未读/导出/@天团派单) 已注册')
 except Exception as _cp_err:
     print(f'[CHAT-PLUS] ⚠️ 聊天增强模块加载失败: {_cp_err}')
+
+# ── 仙女座 · OpenAI 兼容层: /v1/models, /v1/chat/completions, /v1/responses ──
+# flow_andromeda_openai_compat_20261022: 让 IDE「自定义模型」直接把仙女座当模型接入
+try:
+    from blueprints.andromeda_openai_bp import andromeda_openai_bp
+    app.register_blueprint(andromeda_openai_bp)
+    print('[ANDROMEDA-OPENAI] ✅ OpenAI 兼容层 (/v1/chat/completions, /v1/responses) 已注册')
+except Exception as _ao_err:
+    print(f'[ANDROMEDA-OPENAI] ⚠️ OpenAI 兼容层加载失败: {_ao_err}')
 
 # ── AI 教育中心 + 考试院 Blueprint: /api/ai-edu/* (flow_edu_20261020) ──
 try:
@@ -4044,6 +4055,8 @@ _MT_HOTLINK_WHITELIST_PREFIXES = (
     '/neural_array_page', '/neuralhub/',
     '/theme/', '/theme_schemes',
     '/api/security/',
+    # v25.6: 🌌 仙女座 OpenAI 兼容层 (IDE 自定义模型接入, 无 Referer 直达)
+    '/v1/',
     # flow_redblue_ui_20261018: 新中心页书签直达放行 (匿名 → 登录引导页, 不弹回主页)
     '/redblue', '/error-center', '/theme-layout', '/aurora', '/empower', '/admin_app',
 )
