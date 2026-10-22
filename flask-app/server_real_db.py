@@ -3032,6 +3032,14 @@ try:
 except Exception as _xl_err:
     print(f'[XIAOLONG] ⚠️ 小龙 App 模块加载失败: {_xl_err}')
 
+# ── 冰山历史档案馆 Blueprint: /andromeda/archive + /api/archive/* (flow_archive_20261022) ──
+try:
+    from blueprints.iceberg_archive_bp import archive_bp
+    app.register_blueprint(archive_bp)
+    print('[ARCHIVE] ✅ 冰山历史档案馆 (/andromeda/archive · 7类档案统一时间线) 已注册')
+except Exception as _ar_err:
+    print(f'[ARCHIVE] ⚠️ 历史档案馆模块加载失败: {_ar_err}')
+
 # ── AI 教育中心 + 考试院 Blueprint: /api/ai-edu/* (flow_edu_20261020) ──
 try:
     from blueprints.ai_edu_academy_bp import ai_edu_academy_bp
@@ -4010,6 +4018,8 @@ _MT_HOTLINK_WHITELIST_PREFIXES = (
     '/local-chat', '/api/local-chat/',
     # v22.25.27: 🐉 小龙 App (PWA/小程序 WebView 无 Referer, /xiaolong* 直达放行)
     '/xiaolong', '/api/xiaolong/',
+    # v22.25.29: 🗄️ 冰山历史档案馆 (页面走 /andromeda/ 前缀, API 单独放行)
+    '/api/archive/',
     # v22.10.22: 🎯 P1 核心独立页面 (用户可收藏/书签直达, 防盗链不拦截)
     '/exam_center', '/exam_system/', '/exam/',
     '/japanese_page', '/japanese/',
