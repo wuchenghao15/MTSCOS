@@ -4002,7 +4002,7 @@ _MT_HOTLINK_WHITELIST_PATHS = {
     '/', '/index', '/favicon.ico', '/robots.txt',
     # flow_mtos_site_seo_20261022: 公网入口元资源 (浏览器/爬虫/主屏幕 无 Referer 直达)
     '/manifest.json', '/apple-touch-icon.png', '/apple-touch-icon-precomposed.png',
-    '/sitemap.xml', '/health',
+    '/sitemap.xml', '/health', '/site-icon.svg',
     '/login', '/auth/login', '/auth/register', '/logout', '/forgot_password', '/register', '/auth/logout', '/auth/forgot_password',
     '/auth/session_health', '/auth/check_username',
     # 🔧 2026-10-06 SERVER 模式本机直进后台: /sa/dashboard 无 Referer 直达放行
@@ -4198,7 +4198,7 @@ def _mt_vikey_lock_check():
             '/api/health', '/favicon.ico',
             # flow_mtos_site_seo_20261022: 公网元资源不参与 VIKEY 门禁
             '/manifest.json', '/apple-touch-icon.png', '/apple-touch-icon-precomposed.png',
-            '/sitemap.xml', '/health',
+            '/sitemap.xml', '/health', '/site-icon.svg',
             '/api/system_version', '/api/system_logo',
             '/settings',
             '/local-chat',  # 🧠 本地聊天页 (仙女座发散思维引擎, 需登录后访问, 但先过 VIKEY)
@@ -11543,25 +11543,54 @@ _SITE_MANIFEST = {
     'theme_color': '#0b1020',
     'lang': 'zh-CN',
     'icons': [
+        {'src': '/site-icon.svg', 'sizes': 'any', 'type': 'image/svg+xml', 'purpose': 'any'},
         {'src': '/static/img/icon-192.png', 'sizes': '192x192', 'type': 'image/png', 'purpose': 'any maskable'},
         {'src': '/static/img/icon-512.png', 'sizes': '512x512', 'type': 'image/png', 'purpose': 'any maskable'},
     ],
 }
 
 
+_SITE_ICON_FALLBACK_SVG = (
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">'
+    '<rect width="32" height="32" rx="7" fill="#0B0A1E"/>'
+    '<polygon points="16,4 27,18 5,18" fill="#A5B4FC"/>'
+    '<polygon points="7,18 25,18 21,25 11,25" fill="#4338CA"/>'
+    '<polygon points="11,25 21,25 19,30 13,30" fill="#1E1B4B"/>'
+    '<circle cx="16" cy="2.5" r="1.3" fill="#FCD34D"/></svg>'
+)
+
+
+def _site_icon_response(name: str, mimetype: str):
+    """静态图标响应: 文件存在则原样下发; 缺失(如 mini 未同步 static/img)降级内联 SVG。
+    flask-app/static/* 被 .gitignore 排除, 各节点静态资源需单独下发, 故此处不能假设文件存在。"""
+    p = os.path.join(app.static_folder, 'img', name)
+    if os.path.isfile(p):
+        return send_file(p, mimetype=mimetype, max_age=604800)
+    return _mt_Response(_SITE_ICON_FALLBACK_SVG, mimetype='image/svg+xml',
+                        headers={'Cache-Control': 'public, max-age=604800'})
+
+
 @app.route('/favicon.ico')
 def _site_favicon():
     """浏览器默认请求根路径图标 — 此前 404 导致标签页裂图"""
-    return send_file(os.path.join(app.static_folder, 'img', 'favicon.ico'),
-                     mimetype='image/x-icon', max_age=604800)
+    return _site_icon_response('favicon.ico', 'image/x-icon')
 
 
 @app.route('/apple-touch-icon.png')
 @app.route('/apple-touch-icon-precomposed.png')
 def _site_apple_touch_icon():
     """iOS 添加到主屏幕图标"""
-    return send_file(os.path.join(app.static_folder, 'img', 'icon-192.png'),
-                     mimetype='image/png', max_age=604800)
+    return _site_icon_response('icon-192.png', 'image/png')
+
+
+@app.route('/site-icon.svg')
+def _site_icon_svg():
+    """站点图标矢量版 — manifest 兜底图标 (PNG 未下发到节点时仍可安装)"""
+    p = os.path.join(app.static_folder, 'img', 'favicon-iceberg.svg')
+    if os.path.isfile(p):
+        return send_file(p, mimetype='image/svg+xml', max_age=604800)
+    return _mt_Response(_SITE_ICON_FALLBACK_SVG, mimetype='image/svg+xml',
+                        headers={'Cache-Control': 'public, max-age=604800'})
 
 
 @app.route('/manifest.json')
