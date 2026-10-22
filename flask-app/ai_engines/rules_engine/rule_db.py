@@ -19,6 +19,9 @@ import sqlite3
 from datetime import datetime
 from typing import Optional
 
+# flow_remaining_db_unify_20261022: 统一 DB 权威源
+from core.db_path import get_db_path
+
 
 # Flask/演化权威库 (v23 修正: changelog 必须与 Flask/before_request/SA 页面读同一个库)
 # 本文件位于 flask-app/ai_engines/rules_engine/, 上溯三级到 flask-app
@@ -48,88 +51,9 @@ _LEGACY_PATHS = [
 ]
 
 
-def _resolve_db_path() -> str:
-    """权威优先 flask-app/database/app.db (Flask/演化同库), 再回退 mtscos.db/legacy, 最后 :memory:
-
-    历史教训: 旧版优先 _runtime/.../mtscos.db, 导致治理写入与 Flask 读取分叉到两个库。
-    """
-    if os.path.exists(_FLASK_DB):
-        return _FLASK_DB
-    if os.path.exists(_DB_PATH):
-        return _DB_PATH
-    for p in _LEGACY_PATHS:
-        if os.path.exists(p):
-            return p
-    return ":memory:"
-
-_DDL_STATEMENTS = [
-    """
-    CREATE TABLE IF NOT EXISTS mt_rule_changelog (
-        changelog_id          INTEGER PRIMARY KEY AUTOINCREMENT,
-        rule_id               TEXT NOT NULL,
-        from_version          TEXT,
-        to_version            TEXT,
-        change_type           TEXT,
-        change_summary        TEXT,
-        approved_by_7step     INTEGER NOT NULL DEFAULT 0,
-        sa_final_decision     TEXT,
-        sa_vikey_verified     INTEGER NOT NULL DEFAULT 0,
-        eigenflux_panel_json  TEXT,
-        admin_approvers_json  TEXT,
-        is_secret_withdrawn   INTEGER NOT NULL DEFAULT 0,
-        created_at            TEXT,
-        action                TEXT,
-        target_table          TEXT,
-        risk                  TEXT,
-        pre_check_passed      INTEGER DEFAULT 0,
-        execution_status      TEXT,
-        execution_result      TEXT,
-        execution_error       TEXT,
-        executed_at           TEXT,
-        pipeline_id           TEXT,
-        CONSTRAINT uk_rule_version UNIQUE (rule_id, to_version)
-    )
-    """,
-    "CREATE INDEX IF NOT EXISTS idx_rule_changelog_rule_id ON mt_rule_changelog(rule_id)",
-    "CREATE INDEX IF NOT EXISTS idx_rule_changelog_created ON mt_rule_changelog(created_at)",
-    """
-    CREATE TABLE IF NOT EXISTS mt_rule_violation_alert (
-        alert_id        INTEGER PRIMARY KEY AUTOINCREMENT,
-        viol_id         TEXT,
-        alert_type      TEXT,
-        alert_target    TEXT,
-        alert_status    TEXT,
-        alert_payload   TEXT,
-        alert_sent_at   TEXT,
-        created_at      TEXT,
-        violation_code  TEXT,
-        severity        TEXT,
-        description     TEXT,
-        evidence        TEXT
-    )
-    """,
-    "CREATE INDEX IF NOT EXISTS idx_rva_violation_code ON mt_rule_violation_alert(violation_code)",
-    "CREATE INDEX IF NOT EXISTS idx_rva_status ON mt_rule_violation_alert(alert_status)",
-    "CREATE INDEX IF NOT EXISTS idx_rva_created ON mt_rule_violation_alert(created_at)",
-    """
-    CREATE TABLE IF NOT EXISTS mt_rule_integrity_scan (
-        scan_id          INTEGER PRIMARY KEY AUTOINCREMENT,
-        scan_type        TEXT,
-        rule_id          TEXT,
-        total_checks     INTEGER NOT NULL,
-        passed           INTEGER NOT NULL,
-        failed           INTEGER NOT NULL,
-        score            REAL,
-        gap_items        TEXT,
-        recommendations  TEXT,
-        triggered_by     TEXT,
-        created_at       TEXT
-    )
-    """,
-    "CREATE INDEX IF NOT EXISTS idx_ris_rule_id ON mt_rule_integrity_scan(rule_id)",
-    "CREATE INDEX IF NOT EXISTS idx_ris_created ON mt_rule_integrity_scan(created_at)",
-]
-
+def _resolve_db_path():
+    """(flow_remaining_db_unify_20261022) 委托 core.db_path 统一权威源"""
+    return get_db_path('app.db')
 
 class RuleDB:
     """规则相关表的 DAO"""

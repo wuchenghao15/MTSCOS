@@ -15,6 +15,9 @@ import json as _json
 import datetime as _dt
 import sqlite3 as _sqlite3
 import os as _os
+
+# flow_remaining_db_unify_20261022: 统一 DB 权威源
+from core.db_path import get_db_path
 # [unused] import os as _os
 # [unused] import re as _re
 
@@ -24,31 +27,8 @@ _db_path = None
 
 
 def _resolve_db_path():
-    """纯文件系统找 app.db, 绝不 import server_real_db (避免触发 daemon 子进程 fork)"""
-    global _db_path
-    if _db_path:
-        return _db_path
-    # 优先走 i18n_engine (它独立, 不 import sdb)
-    try:
-        from engines.i18n_engine import _resolve_db_path as _ie_rdp
-        p = _ie_rdp()
-        if p and _os.path.isfile(p):
-            _db_path = p; return _db_path
-    except Exception:
-        pass
-    # 硬兜底: 3 个候选
-    here = _os.path.dirname(_os.path.abspath(__file__))
-    candidates = [
-        _os.path.join(here, '..', '_runtime', 'databases', 'Database', 'app.db'),
-        _os.path.join(here, '..', 'Database', 'app.db'),
-        _os.path.join(here, '..', '..', 'Database', 'app.db'),
-    ]
-    for c in candidates:
-        if _os.path.isfile(c):
-            _db_path = c; return _db_path
-    _db_path = 'Database/app.db'  # fallback
-    return _db_path
-
+    """(flow_remaining_db_unify_20261022) 委托 core.db_path 统一权威源"""
+    return get_db_path('app.db')
 
 def _get_conn():
     """WAL + busy_timeout 30s, 绝不触发 server_real_db import"""

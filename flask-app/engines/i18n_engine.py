@@ -17,36 +17,15 @@ import sqlite3 as _sqlite3
 # [unused] import re as _re
 import os as _os
 
+# flow_remaining_db_unify_20261022: 统一 DB 权威源
+from core.db_path import get_db_path
+
 DB_PATH = None  # 运行时由 _resolve_db_path 填充
 
 
 def _resolve_db_path():
-    """纯文件系统找 app.db — 绝不 import server_real_db (避免触发 daemon fork).
-    优先用 core.db_path.get_db_path (Flask 启动入口), 再 fallback 相对路径猜测."""
-    global DB_PATH
-    if DB_PATH:
-        return DB_PATH
-    # 1) 尝试复用 Flask core.db_path.get_db_path (最可靠)
-    try:
-        from core.db_path import get_db_path as _gdp
-        cand = _gdp('app.db')
-        if cand and _os.path.isfile(cand):
-            DB_PATH = cand; return cand
-    except Exception:
-        pass
-    # 2) fallback: 相对路径猜测
-    here = _os.path.dirname(_os.path.abspath(__file__))
-    for rel in [
-        '_runtime/databases/Database/app.db',
-        'Database/app.db',
-        '../Database/app.db',
-        '../../Database/app.db',
-    ]:
-        cand = _os.path.join(here, '..', rel)
-        if _os.path.isfile(cand):
-            DB_PATH = cand; return cand
-    return None
-
+    """(flow_remaining_db_unify_20261022) 委托 core.db_path 统一权威源"""
+    return get_db_path('app.db')
 
 def _get_conn():
     p = _resolve_db_path()

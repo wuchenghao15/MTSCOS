@@ -196,11 +196,16 @@ def get_db_path(db_name):
     # P1 修复 (2026-10-15): MTSCOS_DB_PATH 环境变量优先 — Flask 启动时已设 PROD DB 路径,
     # 但 OneDrive disk I/O 导致硬编码路径不可用, 需先读 env。
     base = os.path.basename(db_name) if db_name else 'app.db'
-    _env_db = os.environ.get('MTSCOS_DB_PATH', '')
+    _env_db = os.environ.get('MTSCOS_DB_PATH', '') or os.environ.get('APP_DB', '')
     if _env_db and os.path.exists(_env_db) and os.path.getsize(_env_db) > 0:
         # env 指向的文件 basename 匹配当前请求的 db_name 时才接管
         if os.path.basename(_env_db) == base:
             return _env_db
+    # v22.25.43 (flow_db_unify_chat_20261022): PROD 本地磁盘强制优先,
+    # 击败 core 扫描的 OneDrive 副本 (disk I/O error 根因)
+    _prod_app = os.path.expanduser('~/MTSCOS_PROD/flask-app/database/app.db')
+    if base == 'app.db' and os.path.exists(_prod_app) and os.path.getsize(_prod_app) > 1e8:
+        return _prod_app
     root = resolve_project_root()
     mapping = _get_mapping()
     if not base:
