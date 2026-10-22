@@ -31,34 +31,10 @@ import sys
 from datetime import datetime
 
 from flask import Blueprint, Response, jsonify, request, session
+from app.db import DB_PATH, connect as _db  # flow_db_unify_chat_20261022 单一权威入口
 
 FLOW_ID = 'flow_chat_complete_20261022'
 
-_FA = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
-
-def _resolve_db_path() -> str:
-    """与 chat_local_bp 共用同一套 DB 解析 (单一数据源)
-    v25.4: 此前这里回落到 flask-app/database/app.db, 而 chat_local_bp 强制走
-    ~/MTSCOS_PROD/flask-app/database/app.db → 两个聊天蓝图读写不同库,
-    表现为「聊天页有消息但增强面板搜不到」和 multi-ai 403 forbidden。
-    统一优先取 chat_local_bp._DB_PATH, 保证同一进程内同一库。"""
-    try:
-        from blueprints.chat_local_bp import _DB_PATH as _p
-        if _p and os.path.exists(_p):
-            return _p
-    except Exception:
-        pass
-    env = os.environ.get('APP_DB') or os.environ.get('MTSCOS_DB_PATH')
-    if env and os.path.exists(env):
-        return env
-    _prod = os.path.expanduser('~/MTSCOS_PROD/flask-app/database/app.db')
-    if os.path.exists(_prod) and os.path.getsize(_prod) > 1e8:
-        return _prod
-    return os.path.join(_FA, 'database', 'app.db')
-
-
-DB_PATH = _resolve_db_path()
 
 chat_plus_bp = Blueprint('andromeda_chat_plus_bp', __name__)
 
@@ -127,11 +103,7 @@ _TEAM_CENTER_SEED = {
 }
 
 
-def _db() -> sqlite3.Connection:
-    conn = sqlite3.connect(DB_PATH, timeout=15)
-    conn.execute('PRAGMA busy_timeout=15000')
-    conn.row_factory = sqlite3.Row
-    return conn
+# _db 已由 app.db.connect 别名提供 (见文件顶部导入)
 
 
 def _ensure() -> None:
