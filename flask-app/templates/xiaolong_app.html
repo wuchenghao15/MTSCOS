@@ -140,11 +140,16 @@ function setState(ok, txt){
   $('#dot').className='dot'+(ok?' on':'');
   $('#state').textContent=txt;
 }
+function renderBubble(el, txt){
+  // AI 跳转: 任务号/中心/@天团 渲染为可点击链接 (chat_plus.js)
+  if(window.ChatPlus && window.ChatPlus.richText){ el.innerHTML = window.ChatPlus.richText(txt); }
+  else { el.textContent = txt; }
+}
 function addRow(text, mine, sys){
   const d=document.createElement('div');
   if(sys){ d.className='sys'; d.textContent=text; }
   else{ d.className='row'+(mine?' me':''); const b=document.createElement('div');
-        b.className='bubble'; b.textContent=text; d.appendChild(b); }
+        b.className='bubble'; if(mine){ b.textContent=text; } else { renderBubble(b, text); } d.appendChild(b); }
   msgs.appendChild(d); msgs.scrollTop=msgs.scrollHeight; return d;
 }
 async function api(path, opt){
@@ -269,10 +274,10 @@ async function send(){
         if(!ln.startsWith('data:')) continue;
         const body=ln.slice(5).trim();
         if(body==='[thinking]'){ bubble.innerHTML='<span class="typing"></span>'; continue; }
-        if(body.startsWith('[done]')){ bubble.textContent=acc||'(空回复)'; continue; }
+        if(body.startsWith('[done]')){ renderBubble(bubble, acc||'(空回复)'); continue; }
         if(body.startsWith('[error]')){ bubble.textContent='出错了：'+body.slice(7); continue; }
         if(body.startsWith('[')) continue;
-        try{ const o=JSON.parse(body); if(o.token){ acc+=o.token; bubble.textContent=acc; msgs.scrollTop=msgs.scrollHeight; }
+        try{ const o=JSON.parse(body); if(o.token){ acc+=o.token; renderBubble(bubble, acc); msgs.scrollTop=msgs.scrollHeight; }
               if(o.session_id) SID=o.session_id; }catch(e){}
       }
     }
@@ -294,5 +299,6 @@ document.querySelectorAll('#models .chip').forEach(c=>c.onclick=()=>{
 if('serviceWorker' in navigator){ navigator.serviceWorker.register('/xiaolong/sw.js',{scope:'/'}).catch(()=>{}); }
 boot();
 </script>
+<script src="/static/js/chat_plus.js"></script>
 </body>
 </html>

@@ -78,6 +78,31 @@ DDL_MENTION = """CREATE TABLE IF NOT EXISTS chat_mention_log (
     created_at TEXT DEFAULT (datetime('now','localtime'))
 )"""
 
+# 天团 → 任务中心 映射 (库表驱动, 首次自动种子; 供天团详情统计真实承接任务)
+DDL_TEAM_CENTER = """CREATE TABLE IF NOT EXISTS mt_team_center_map (
+    team_name TEXT PRIMARY KEY,
+    center_name TEXT NOT NULL,
+    source TEXT DEFAULT 'seed',
+    updated_at TEXT DEFAULT (datetime('now','localtime'))
+)"""
+_TEAM_CENTER_SEED = {
+    '⚖️ 合规安全天团': '安全审计中心',
+    '⚙️ 后端工程天团': '开发流程中心',
+    '🎨 前端艺术天团': '前端设计中心',
+    '🎭 文化艺术天团': '专家团队中心',
+    '🎯 战略顾问天团': '专家团队中心',
+    '🏆 体育竞技天团': '专家团队中心',
+    '🏛️ 架构天团': '开发流程中心',
+    '💬 产品交互天团': '前端设计中心',
+    '📚 题库教育天团': '教育题库中心',
+    '🔧 运维修复天团': '部署运维中心',
+    '🗄️ DBA 天团': '数据研究中心',
+    '🤖 AI 引擎天团': 'AI 引擎中心',
+    '🧠 知识脑库天团': '数据研究中心',
+    '🧩 历史知识数字分身': '工作流研究中心',
+    '🧪 测试巡检天团': '开发流程中心',
+}
+
 
 def _db() -> sqlite3.Connection:
     conn = sqlite3.connect(DB_PATH, timeout=15)
@@ -91,6 +116,15 @@ def _ensure() -> None:
     try:
         conn.execute(DDL_READ)
         conn.execute(DDL_MENTION)
+        conn.execute(DDL_TEAM_CENTER)
+        try:
+            have_map = {r[0] for r in conn.execute('SELECT team_name FROM mt_team_center_map')}
+            for team, center in _TEAM_CENTER_SEED.items():
+                if team not in have_map:
+                    conn.execute('INSERT OR IGNORE INTO mt_team_center_map(team_name,center_name)'
+                                 ' VALUES(?,?)', (team, center))
+        except sqlite3.Error:
+            pass
         for table, cols in (('chat_messages', _MSG_COLS), ('chat_sessions', _SESS_COLS),
                             ('mt_lab_task_hall', _HALL_COLS)):
             have = {r[1] for r in conn.execute(f'PRAGMA table_info({table})')}
@@ -605,12 +639,18 @@ def chat_jump_team():
                 ' WHERE team_name=? ORDER BY id LIMIT 40', (real,))]
         except sqlite3.Error:
             pass
-        tasks = []
+        tasks, center = [], ''
+        try:
+            m = conn.execute('SELECT center_name FROM mt_team_center_map WHERE team_name=?',
+                             (real,)).fetchone()
+            center = (m['center_name'] if m else '') or ''
+        except sqlite3.Error:
+            pass
         try:
             tasks = [dict(r) for r in conn.execute(
                 'SELECT id,hall_code,title,status,created_at FROM mt_lab_task_hall'
                 ' WHERE center_id IN (SELECT id FROM mt_lab_centers WHERE name=?)'
-                ' ORDER BY id DESC LIMIT 5', (real,))]
+                ' ORDER BY id DESC LIMIT 5', (center or real,))]
         except sqlite3.Error:
             pass
     finally:
@@ -618,7 +658,7 @@ def chat_jump_team():
     if not meta and not members:
         return jsonify({'success': False, 'error': '未找到天团: ' + name}), 404
     return jsonify({'success': True, 'team': meta or {'team_name': real}, 'name': real,
-                    'members': members, 'tasks': tasks,
+                    'members': members, 'tasks': tasks, 'center': center,
                     'href': _jump_href('team', real)})
 
 
