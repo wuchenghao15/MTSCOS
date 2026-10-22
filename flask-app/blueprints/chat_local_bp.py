@@ -2205,25 +2205,33 @@ def list_sessions():
 @chat_local_bp.route('/api/local-chat/balance', methods=['GET'])
 @_login_required
 def token_balance():
-    """我的 token 余额 + 最近流水 (进入即触发每日赠送; SA 豁免显示)"""
-    u = _get_user()
-    sa_exempt = _is_sa(u)
-    if not sa_exempt:
-        grant = _ensure_daily_grant(u['user_id'], u['username'])
-    else:
-        grant = {'granted_today': False, 'balance': None}
-    bal = _get_balance(u['user_id'])
-    bal['granted_today'] = grant['granted_today']
+    """我的 token 余额 + 最近流水 — 游客/注册用户通用"""
+    uid = session.get('user_id', '')
+    is_guest = str(uid).startswith('guest')
+    username = session.get('username', 'Guest' if is_guest else '用户')
+    sa_exempt = False
+    # 注册用户才查 SA + 每日赠送
+    if not is_guest:
+        try:
+            u = _get_user()
+            sa_exempt = _is_sa(u)
+            if not sa_exempt:
+                _ensure_daily_grant(u['user_id'], u.get('username', '用户'))
+        except Exception:
+            pass
+    bal = _get_balance(uid)
+    bal['granted_today'] = False  # 游客不参与每日赠送
     bal['sa_exempt'] = sa_exempt
+    bal['is_guest'] = is_guest
     if sa_exempt:
         bal['message'] = 'SA 豁免模式: 不限用量, 不消耗 token'
-    # 最近 20 条流水
+    # 最近 20 条流水 (游客可能没有)
     try:
         conn = _db()
         rows = conn.execute(
             "SELECT change, type, session_id, detail, balance_after, created_at "
             "FROM mt_user_token_ledger WHERE user_id=? ORDER BY id DESC LIMIT 20",
-            (u['user_id'],)
+            (str(uid),)
         ).fetchall()
         conn.close()
         bal['ledger'] = [dict(r) for r in rows]
