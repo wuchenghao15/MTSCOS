@@ -44,15 +44,12 @@ from datetime import datetime, timedelta
 from functools import wraps
 
 from flask import Blueprint, jsonify, redirect, render_template, request, session
+from app.db import DB_PATH, connect as _db  # flow_db_unify_chat_20261022 单一权威入口
 
 FLOW_ID = 'flow_xiaolong_app_20261022'
 APP_NAME = '小龙'
 APP_SLUG = 'xiaolong'
-APP_VERSION = 'v22.25.27'
-
-_FA = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DB_PATH = (os.environ.get('MTSCOS_DB_PATH')
-           or os.path.join(_FA, 'database', 'app.db'))
+APP_VERSION = 'v22.25.42'  # flow_db_unify_chat: DB 统一
 
 # mini 统一入口: 外部一律走 Tailscale 100.106.220.96 (小龙 = mini 别名)
 MINI_TAILSCALE = os.environ.get('MTSCOS_MINI_TAILSCALE', 'http://100.106.220.96:8888')
@@ -124,11 +121,7 @@ DDL = """CREATE TABLE IF NOT EXISTS mt_app_device_license (
 )"""
 
 
-def _db() -> sqlite3.Connection:
-    conn = sqlite3.connect(DB_PATH, timeout=15)
-    conn.execute('PRAGMA busy_timeout=15000')
-    conn.row_factory = sqlite3.Row
-    return conn
+# _db 已由 app.db.connect 别名提供 (见文件顶部导入)
 
 
 def _init() -> None:

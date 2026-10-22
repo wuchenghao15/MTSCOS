@@ -20,10 +20,11 @@ from flask import Blueprint, jsonify, request
 
 from blueprints.chat_local_bp import _login_required, _get_user
 from blueprints.daemon_skill_lab_bp import _audit, _db as _lab_db, _APP_DIR
+from app.db import DB_PATH, connect as _db  # flow_db_unify_chat_20261022 单一权威入口
 
 wecom_hub_bp = Blueprint("wecom_hub_bp", __name__)
 
-MAIN_DB = os.path.join(_APP_DIR, "database", "app.db")
+# MAIN_DB 已废弃, 统一用 app.db.DB_PATH (上移到顶部导入)
 
 _DDL = [
     """CREATE TABLE IF NOT EXISTS mt_wecom_config (
@@ -69,10 +70,7 @@ _DDL = [
 ]
 
 
-def _db():
-    conn = sqlite3.connect(MAIN_DB, timeout=15)
-    conn.row_factory = sqlite3.Row
-    return conn
+# _db 已由 app.db.connect 别名提供 (见文件顶部导入)
 
 
 def _ensure_tables():

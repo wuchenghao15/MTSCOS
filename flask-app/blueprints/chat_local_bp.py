@@ -33,8 +33,7 @@ import uuid
 from datetime import datetime
 from functools import wraps
 from flask import Blueprint, Response, g, jsonify, request, session, stream_with_context
-
-# ── 加密: 奖励公式密钥 (AES-like XOR + HMAC 混淆, 与 node_role 绑定) ──
+from app.db import DB_PATH, connect as _db  # flow_db_unify_chat_20261022 单一权威入口
 _REWARD_KEY = os.environ.get('MTSCOS_REWARD_SEED', '[REDACTED]').encode()[:16]
 
 def _crypto_mask(raw_bytes, key=_REWARD_KEY):
@@ -61,53 +60,15 @@ def _reward_formula_snapshot():
     }, sort_keys=True).encode()
     return _crypto_mask(raw)
 
-# ── 路径解析 (v25.1: APP_DB env var first + multi-fallback for Mac mini) ──
-_BLUEPRINT_DIR = os.path.dirname(os.path.abspath(__file__))
-_FLASK_APP_DIR = os.path.dirname(_BLUEPRINT_DIR)
-_ROOT_DIR = os.path.dirname(_FLASK_APP_DIR)
-
-def _resolve_db_path():
-    """Resolve DB path: env var > PROD DB (本地磁盘, 权威源) > 其他候选
-    v25.4: PROD DB 强制优先 (OneDrive 路径 SQLite 经常 disk I/O error)"""
-    for env_key in ("APP_DB", "MTSCOS_DB_PATH"):
-        env = os.environ.get(env_key, "")
-        if env and os.path.exists(env):
-            return env
-    # 强制 PROD DB 优先 (权威源, 本地磁盘不受 OneDrive 影响)
-    _prod = os.path.expanduser("~/MTSCOS_PROD/flask-app/database/app.db")
-    if os.path.exists(_prod) and os.path.getsize(_prod) > 1e8:
-        return _prod
-    candidates = [
-        os.path.join(_FLASK_APP_DIR, "database", "app.db"),
-        os.path.join(_FLASK_APP_DIR, "engines", "app.db"),
-        os.path.join(_ROOT_DIR, "app.db"),
-        os.path.join(_FLASK_APP_DIR, "app.db"),
-    ]
-    for c in candidates:
-        if os.path.exists(c) and os.path.getsize(c) > 1e8:  # skip malformed 小库
-            return c
-    for c in candidates:
-        if os.path.exists(c):
-            return c
-    return candidates[0]
-
-_DB_PATH = _resolve_db_path()
-os.environ["APP_DB"] = _DB_PATH  # sync for other modules
-
-for _d in [_FLASK_APP_DIR, _ROOT_DIR]:
-    if _d not in sys.path:
-        sys.path.insert(0, _d)
+# ── 路径解析已上移到 app/db.py (flow_db_unify_chat_20261022) ──
+# DB_PATH / _db() 全部从 app.db 导入 (见文件顶部)
 
 chat_local_bp = Blueprint("chat_local_bp", __name__, template_folder=None)
 
 
 # ════════════════════════════════════════════════════════════════
-# 数据库层
+# 数据库层 (_db 已由 app.db.connect 别名)
 # ════════════════════════════════════════════════════════════════
-def _db():
-    conn = sqlite3.connect(_DB_PATH, timeout=15)
-    conn.row_factory = sqlite3.Row
-    return conn
 
 
 def _ensure_tables():
