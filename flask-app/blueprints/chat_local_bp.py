@@ -2444,8 +2444,8 @@ def send_message():
     if not user_text:
         return jsonify({'success': False, 'error': 'empty_message'}), 400
 
-    # ── 选择模型: 前端传 → 用前端; 否则读 OLLAMA_MODEL env; 再后备 coder ──
-    model = data.get('model') or os.environ.get('OLLAMA_MODEL') or 'qwen2.5:7b'
+    # ── 选择模型: 前端传 → 用前端; 否则读 OLLAMA_MODEL env; 再后备 qwen2.5:14b ──
+    model = data.get('model') or os.environ.get('OLLAMA_MODEL') or 'qwen2.5:14b'
 
     # ── flow_chat_all7_20261019: 多模态图片 + 页面上下文携带 ──
     image_data_url = (data.get('image') or '').strip()
