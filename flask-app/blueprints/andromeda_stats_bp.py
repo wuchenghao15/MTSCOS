@@ -13,7 +13,8 @@ from datetime import datetime
 
 from flask import Blueprint, jsonify, render_template, request
 
-from blueprints.chat_local_bp import _login_required, _resolve_db_path
+from blueprints.chat_local_bp import _login_required
+from app.db import DB_PATH, connect as _db  # flow_db_unify_chat: 改用单一入口
 
 andromeda_stats_bp = Blueprint('andromeda_stats', __name__)
 
@@ -245,7 +246,7 @@ def stats_page():
 @andromeda_stats_bp.route('/api/andromeda/stats/overview')
 @_login_required
 def stats_overview():
-    conn = sqlite3.connect(_resolve_db_path(), timeout=10)
+    conn = _db()
     try:
         return jsonify({"success": True, "data": _build_overview(conn)})
     finally:
@@ -266,7 +267,7 @@ def stats_events():
     except ValueError:
         offset = 0
 
-    conn = sqlite3.connect(_resolve_db_path(), timeout=10)
+    conn = _db()
     try:
         events = _collect_events(conn)
     finally:
@@ -291,7 +292,7 @@ def stats_dispatch():
     if not gap_id.startswith('gap_'):
         return jsonify({"success": False, "error": "invalid_gap_id"}), 400
 
-    conn = sqlite3.connect(_resolve_db_path(), timeout=10)
+    conn = _db()
     try:
         # 从缺口定义还原语义
         target = gap_id
