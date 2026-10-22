@@ -582,6 +582,137 @@ def _feed_brain(session_id, user_id, username, user_text, ai_text, inflection_po
             pass
 
 
+# ╔═══════════════════════════════════════════════════════════════
+# ║ flow_chat_guest_free_20261023: 异步关键词+拐点抽取 → 隐私保护
+# ║ 零 token, 本地词典 + TF-IDF 简化, 不调任何外部 LLM
+# ║ 落库 mt_brain_feed_keywords → 后续投喂 AI 脑库
+# ╚═══════════════════════════════════════════════════════════════
+
+# 领域关键词词典 (可热扩展)
+_DOMAIN_KEYWORDS = {
+    'tech': ['代码', '函数', '类', 'API', 'Flask', 'Python', 'SQL', '接口', 'bug', '错误',
+             '部署', 'Docker', '数据库', '路由', '蓝图', '线程', '异步', 'token', '模型'],
+    'education': ['学习', '考试', '题目', '学生', '老师', '课程', '作业', '分数', '知识点'],
+    'idea': ['灵感', '想法', '思路', '方案', '创意', '建议', '改进', '优化', '重构'],
+    'problem': ['问题', '错误', '失败', '崩溃', '报错', '解决', '调试', '排查', '根因'],
+    'ai': ['AI', '大模型', 'LLM', 'Ollama', '向量', 'RAG', 'embedding', '推理', 'token', '上下文'],
+}
+
+# 拐点触发词 (与 _detect_inflections 对齐)
+_INFLECTION_TRIGGERS = {
+    'diverge': ['如果', '假设', '想象', '倘若', '万一', '不妨', '试想'],
+    'breakthrough': ['原来如此', '恍然大悟', '灵光', '豁然开朗', '顿悟', '突破'],
+    'decision': ['决定', '选择', '定了', '就这么办', '不再', '换成', '改成'],
+    'contradiction': ['但是', '不过', '然而', '但实际上', '可是'],
+}
+
+# 停用词 (过滤)
+_STOPWORDS = set('的 了 是 在 我 有 和 就 不 人 都 一 一个 上 也 很 到 说 要 去 你 会 着 没有 看 好 自己 这 他 她 它 什么 怎么 为 吗 吧 呢 啊 哦 哈 嗯 呀 啦 嘛 哎 哟'.split())
+
+
+def _extract_and_save_keywords(session_id, user_id, user_text, ai_text, inflection_points=None):
+    """异步钩子: 消息落库后抽关键词+拐点 → mt_brain_feed_keywords → 后续投喂脑库
+    
+    零 token, 纯本地词典 + 高频 n-gram, 不调 LLM. 隐私友好.
+    幂等: 同一 session_id 不重复抽 (避免多线程重复写).
+    """
+    try:
+        conn = _db()
+        conn.execute("""CREATE TABLE IF NOT EXISTS mt_brain_feed_keywords (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, message_id TEXT, session_id TEXT,
+            user_id TEXT, keyword TEXT, weight REAL DEFAULT 1.0,
+            is_inflection INTEGER DEFAULT 0, category TEXT,
+            extracted_at TEXT DEFAULT (datetime('now','localtime')))""")
+        
+        # 幂等检查 — 同一 session 已抽过就跳过
+        existing = conn.execute(
+            "SELECT COUNT(1) FROM mt_brain_feed_keywords WHERE session_id=?",
+            (session_id or '',)
+        ).fetchone()[0]
+        if existing > 0:
+            conn.close()
+            return
+        
+        text = ((user_text or '') + ' ' + (ai_text or '')).strip()
+        if not text or len(text) < 4:
+            conn.close()
+            return
+
+        keywords_found = {}  # keyword → (weight, category, is_inflection)
+        
+        # ── 1) 领域词典匹配 ──
+        text_lower = text.lower()
+        for category, kws in _DOMAIN_KEYWORDS.items():
+            for kw in kws:
+                if kw.lower() in text_lower:
+                    keywords_found[kw] = (keywords_found.get(kw, (0, category, 0))[0] + 1.2, category, 0)
+        
+        # ── 2) 拐点触发词 (来自 _detect_inflections 结果 + 额外扫描) ──
+        if inflection_points:
+            for p in inflection_points:
+                trigger = p.get('trigger_text', '') if isinstance(p, dict) else ''
+                itype = p.get('inflection_type', 'inflection') if isinstance(p, dict) else 'inflection'
+                if trigger:
+                    keywords_found[trigger] = (0.9, itype, 1)
+        # 额外 decision 拐点 (用户说"定了" / "不再" / "改成")
+        for itype, triggers in _INFLECTION_TRIGGERS.items():
+            for trig in triggers:
+                if trig in text:
+                    keywords_found[trig] = (keywords_found.get(trig, (1.0, itype, 0))[0], itype, 1)
+        
+        # ── 3) 简易 n-gram (高频 2-3 字组合) ──
+        from collections import Counter
+        # 简单中文分词: 按标点切 → 2-gram sliding
+        import re as _re
+        clean = _re.sub(r'[^\w\u4e00-\u9fff]', ' ', text)
+        chars = [c for c in clean if c.strip() and c.strip() not in _STOPWORDS]
+        # 2-gram
+        bigrams = [''.join(chars[i:i+2]) for i in range(len(chars)-1) if ''.join(chars[i:i+2]).strip()]
+        trigrams = [''.join(chars[i:i+3]) for i in range(len(chars)-2) if ''.join(chars[i:i+3]).strip()]
+        freq = Counter(bigrams + trigrams)
+        for gram, cnt in freq.most_common(15):
+            if cnt >= 2 and len(gram) >= 2:
+                keywords_found[gram] = (keywords_found.get(gram, (0, 'ngram', 0))[0] + cnt * 0.3, 'ngram', 0)
+        
+        # ── 4) 写库 (取权重前 20) ──
+        sorted_kws = sorted(keywords_found.items(), key=lambda x: -x[1][0])[:20]
+        written = 0
+        for kw, (weight, category, is_inflection) in sorted_kws:
+            if not kw.strip(): continue
+            conn.execute(
+                "INSERT INTO mt_brain_feed_keywords(session_id,user_id,keyword,weight,is_inflection,category) VALUES(?,?,?,?,?,?)",
+                (session_id or '', str(user_id or ''), kw.strip(), round(weight, 2), is_inflection, category)
+            )
+            written += 1
+        
+        # 同步给 mt_ai_brain_feed_log (让 _feed_brain 的 fallback 能看到)
+        if written > 0:
+            try:
+                tables = [r[0] for r in conn.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name LIKE '%brain%feed%'"
+                ).fetchall()]
+                if tables:
+                    top_kw = ';'.join(k for k, _ in sorted_kws[:5])
+                    conn.execute(
+                        f"INSERT INTO {tables[0]}(source, content, inflections, quality, keywords_extracted) VALUES(?,?,?,?,?)",
+                        ('keyword_hook', f"[{user_id}] top5:{top_kw}, total:{written}",
+                         len([k for k,(_,_,inf) in sorted_kws if inf]), 0.7, written)
+                    )
+            except Exception:
+                pass
+        
+        conn.commit()
+        conn.close()
+        # 日志 (debug, 生产可关)
+        import logging
+        logging.getLogger(__name__).debug(
+            f"[KEYWORD-HOOK] session={session_id} user={user_id} → {written} keywords "
+            f"(inflections={sum(1 for _,(_,_,i) in sorted_kws if i)})"
+        )
+    except Exception:
+        pass
+
+
 # ════════════════════════════════════════════════════════════════
 # 上下文管理: 50MB 提示 / 128MB 自动压缩 + 脑库投喂
 # ════════════════════════════════════════════════════════════════
@@ -2374,6 +2505,9 @@ def send_message():
                 def do_brain():
                     nonlocal brain_fed
                     try:
+                        # 1) 关键词+拐点抽取 (零 token, 本地关键词词典)
+                        _extract_and_save_keywords(sid, u['user_id'], user_text, full_ai_text, inflections)
+                        # 2) 真正投喂 AI 脑库
                         _feed_brain(sid, u['user_id'], u['username'], user_text, full_ai_text, inflections)
                         brain_fed = True
                     except Exception:
