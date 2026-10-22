@@ -183,10 +183,14 @@ def _ensure_claim_tables():
         # ══ 接任务生命周期 (flow_hall_claim_opt_20261020) ══
         # 状态机: QUEUED --分配--> DISPATCHED --抢单--> CLAIMED --开工--> IN_PROGRESS
         #        --交付--> DELIVERED --验收--> DONE / REWORK(返工回 IN_PROGRESS) / 超时--> QUEUED(回收)
+        # flow_task_hall_20261022: 发布体系字段 (编号/发布人/类型/验收标准/期望时间/审批/归档/取消)
         for alter in ("claim_owner", "claim_owner_role", "claim_type", "claimed_at",
                       "started_at", "progress", "progress_note", "delivered_at",
                       "deliverable", "acceptor", "accepted_at", "deadline_at", "reject_reason",
-                      "updated_at"):
+                      "updated_at",
+                      "hall_code", "publisher", "publisher_role", "task_type",
+                      "acceptance_criteria", "expected_at", "approval_status",
+                      "approved_by", "approved_at", "archived_at", "cancel_reason"):
             cols = [r[1] for r in conn.execute("PRAGMA table_info(mt_lab_task_hall)").fetchall()]
             if alter not in cols:
                 conn.execute(f"ALTER TABLE mt_lab_task_hall ADD COLUMN {alter} TEXT")
@@ -351,7 +355,8 @@ def run_hall_auto():
     ingested = _hall_ingest()
     conn = _db()
     try:
-        queued = conn.execute("SELECT * FROM mt_lab_task_hall WHERE status='QUEUED' ORDER BY "
+        queued = conn.execute("SELECT * FROM mt_lab_task_hall WHERE status='QUEUED' "
+                              "AND COALESCE(approval_status,'APPROVED')!='PENDING' ORDER BY "
                               "CASE priority WHEN 'HIGH' THEN 0 ELSE 1 END, id").fetchall()
     finally:
         conn.close()
@@ -416,36 +421,326 @@ def hall_board():
         stats = {}
         for r in conn.execute("SELECT status, count(*) n FROM mt_lab_task_hall GROUP BY status"):
             stats[r["status"]] = r["n"]
+        pending_approval = conn.execute(
+            "SELECT count(*) FROM mt_lab_task_hall WHERE approval_status='PENDING'").fetchone()[0]
+        archived_n = conn.execute(
+            "SELECT count(*) FROM mt_lab_task_hall WHERE archived_at IS NOT NULL").fetchone()[0]
+        # flow_task_hall_20261022: 默认隐藏已归档; include_archived=1 可查全量
+        incl_arch = (request.args.get("include_archived") or "").lower() in ("1", "true", "yes")
+        where = "" if incl_arch else "WHERE h.archived_at IS NULL "
         tasks = [dict(r) for r in conn.execute(
             "SELECT h.*, c.name AS center_name FROM mt_lab_task_hall h "
-            "LEFT JOIN mt_lab_centers c ON c.id=h.center_id "
+            "LEFT JOIN mt_lab_centers c ON c.id=h.center_id " + where +
             "ORDER BY CASE h.status WHEN 'QUEUED' THEN 0 WHEN 'DISPATCHED' THEN 1 ELSE 2 END, "
-            "CASE h.priority WHEN 'HIGH' THEN 0 ELSE 1 END, h.id DESC LIMIT 40")]
-        return jsonify({"ok": True, "stats": stats, "tasks": tasks, "auto": auto})
+            "CASE h.priority WHEN 'HIGH' THEN 0 ELSE 1 END, h.id DESC LIMIT 60")]
+        columns = {k: [] for k in ("QUEUED", "DISPATCHED", "CLAIMED", "IN_PROGRESS",
+                                   "DELIVERED", "DONE", "CANCELLED")}
+        for t in tasks:
+            columns.setdefault(t["status"] or "QUEUED", []).append(t)
+        return jsonify({"ok": True, "stats": stats, "tasks": tasks, "columns": columns,
+                        "pending_approval": pending_approval, "archived": archived_n,
+                        "include_archived": incl_arch, "auto": auto})
     finally:
         conn.close()
+
+
+# ════════════════ 发布任务体系 (flow_task_hall_20261022) ════════════════
+# 闭环: 发布(PUBLISH) → 审批(APPROVE/REJECT) → 分派(DISPATCH) → 抢单(CLAIM)
+#       → 开工(START) → 进度(PROGRESS) → 交付(DELIVER) → 验收(ACCEPT/REWORK)
+#       → 归档(ARCHIVE) → 投喂脑库
+_TASK_TYPES = (("DEV", "开发"), ("OPS", "运维"), ("SECURITY", "安全"), ("EDU", "教研"),
+               ("DOC", "文档"), ("RESEARCH", "研究"), ("OTHER", "其它"))
+_TASK_TYPE_LABELS = dict(_TASK_TYPES)
+_HALL_APPROVAL_TYPES = {"SECURITY"}          # 敏感类型必须审批
+_HALL_APPROVAL_PRIORITIES = {"HIGH"}         # 高优先级必须审批
+_HALL_ADMIN_ROLES = ("admin", "super_admin")
+_HALL_CANCELABLE = ("QUEUED", "DISPATCHED")
+
+
+def _hall_next_code(conn) -> str:
+    """任务编号 TH-YYYYMMDD-#### (当日流水)"""
+    prefix = "TH-" + datetime.now().strftime("%Y%m%d") + "-"
+    n = conn.execute("SELECT count(*) FROM mt_lab_task_hall WHERE hall_code LIKE ?",
+                     (prefix + "%",)).fetchone()[0]
+    return f"{prefix}{int(n) + 1:04d}"
+
+
+def _hall_feed_brain(task, note: str) -> None:
+    """闭环沉淀: 归档/验收结果投喂 AI 脑库 (失败不影响主流程)"""
+    try:
+        conn = _db()
+        try:
+            conn.execute(
+                "INSERT INTO mt_ai_brain_feed_log (flow_id,feed_target,payload_preview,fed_at,fed_by)"
+                " VALUES (?,?,?,datetime('now','localtime'),?)",
+                ("flow_task_hall_20261022", "task_hall",
+                 f"[{task.get('hall_code') or task.get('id')}] {task.get('title')} | {note}"[:800],
+                 "hall_accept"))
+            conn.commit()
+        finally:
+            conn.close()
+    except sqlite3.Error:
+        pass
+
+
+def _hall_publish(data: dict, u: dict) -> dict:
+    """发布任务: 校验 → 编号/发布人/类型/验收标准落库 → 审批判定 → 通过则立即分派"""
+    title = (data.get("title") or "").strip()
+    if not title:
+        raise ValueError("任务标题不能为空")
+    ttype = (data.get("task_type") or "OTHER").strip().upper()
+    if ttype not in _TASK_TYPE_LABELS:
+        raise ValueError("task_type 须为 " + "/".join(k for k, _ in _TASK_TYPES))
+    priority = (data.get("priority") or "NORMAL").strip().upper()
+    if priority not in ("HIGH", "NORMAL", "LOW"):
+        raise ValueError("priority 须为 HIGH/NORMAL/LOW")
+    role = u.get("role") or "user"
+    need_approval = (priority in _HALL_APPROVAL_PRIORITIES
+                     or ttype in _HALL_APPROVAL_TYPES) and role not in _HALL_ADMIN_ROLES
+    approval = "PENDING" if need_approval else "APPROVED"
+
+    conn = _db()
+    try:
+        code = _hall_next_code(conn)
+        cur = conn.execute(
+            "INSERT INTO mt_lab_task_hall (title,description,source,source_id,priority,status,"
+            "hall_code,publisher,publisher_role,task_type,acceptance_criteria,expected_at,"
+            "approval_status,approved_by,approved_at,updated_at) "
+            "VALUES (?,?,?,?,?,'QUEUED',?,?,?,?,?,?,?,?,?,datetime('now','localtime'))",
+            (title[:120], (data.get("description") or "").strip()[:500], "manual", None,
+             priority, code, u.get("username") or "anonymous", role, ttype,
+             (data.get("acceptance_criteria") or "").strip()[:1000],
+             (data.get("expected_at") or "").strip()[:40], approval,
+             "" if need_approval else (u.get("username") or "system"),
+             None if need_approval else datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+        task_id = cur.lastrowid
+        conn.commit()
+        row = conn.execute("SELECT * FROM mt_lab_task_hall WHERE id=?", (task_id,)).fetchone()
+        task = dict(row) if row else {"id": task_id, "title": title}
+    finally:
+        conn.close()
+    _hall_task_event(task_id, "PUBLISH", u.get("username") or "anonymous", role,
+                     f"{code} {_TASK_TYPE_LABELS[ttype]} {priority} 审批={approval}")
+    _audit("hall", "HALL_PUBLISH", title[:80],
+           {"task_id": task_id, "hall_code": code, "task_type": ttype, "priority": priority,
+            "approval_status": approval, "acceptance_criteria": data.get("acceptance_criteria")})
+    dispatch = None
+    if approval == "APPROVED":
+        dispatch = _hall_dispatch_one(task)
+        _hall_task_event(task_id, "DISPATCH", "system", "system",
+                         f'自动分派 → {dispatch["center"]} ({"通过" if dispatch["status"] == "DISPATCHED" else "磋商未通过"})')
+    return {"task_id": task_id, "hall_code": code, "title": title,
+            "approval_status": approval, "need_approval": need_approval,
+            "dispatched": bool(dispatch and dispatch["status"] == "DISPATCHED"),
+            "dispatch": dispatch}
+
+
+@daemon_skill_lab_bp.route("/api/daemon-lab/hall/publish-meta")
+@_login_required
+def hall_publish_meta():
+    """发布端元数据: 可选任务类型/优先级/中心/审批规则"""
+    _ensure_claim_tables()
+    conn = _db()
+    try:
+        centers = [dict(r) for r in conn.execute(
+            "SELECT id,center_code,name,domain FROM mt_lab_centers ORDER BY id")]
+    finally:
+        conn.close()
+    return jsonify({"ok": True, "meta": {
+        "task_types": [{"code": k, "label": v} for k, v in _TASK_TYPES],
+        "priorities": [{"code": "HIGH", "label": "高"}, {"code": "NORMAL", "label": "普通"},
+                       {"code": "LOW", "label": "低"}],
+        "centers": centers,
+        "approval_rule": "SECURITY 类型或 HIGH 优先级需 admin/super_admin 审批后自动分派; 其余发布即分派",
+        "state_machine": "QUEUED→DISPATCHED→CLAIMED→IN_PROGRESS→DELIVERED→DONE→ARCHIVED"
+                         "(REWORK 回 IN_PROGRESS, 超时回 QUEUED, PENDING/CANCELLED 旁路)",
+    }})
 
 
 @daemon_skill_lab_bp.route("/api/daemon-lab/hall/submit", methods=["POST"])
 @_login_required
 def hall_submit():
-    data = request.get_json(silent=True) or {}
-    title = (data.get("title") or "").strip()
-    if not title:
-        return jsonify({"ok": False, "error": "任务标题不能为空"}), 400
+    """发布任务: 记录发布人/类型/验收标准/期望时间, 生成编号, 审批或即时分派"""
     _ensure_claim_tables()
+    u = _get_user()
+    try:
+        r = _hall_publish(request.get_json(silent=True) or {}, u)
+    except ValueError as e:
+        return jsonify({"ok": False, "error": str(e)}), 400
+    msg = (f'{r["hall_code"]} 已发布 → 已自动分派 {r["dispatch"]["center"]}'
+           if r["dispatched"] else
+           f'{r["hall_code"]} 已提交, 待管理员审批后分派' if r["need_approval"] else
+           f'{r["hall_code"]} 已入厅, 等待分派')
+    return jsonify({"ok": True, "message": msg, **r})
+
+
+@daemon_skill_lab_bp.route("/api/daemon-lab/hall/approve", methods=["POST"])
+@_login_required
+def hall_approve():
+    """发布审批: admin+ 审批 PENDING 任务 → 通过即分派 / 驳回即关闭"""
+    _ensure_claim_tables()
+    u = _get_user()
+    if u.get("role") not in _HALL_ADMIN_ROLES:
+        return jsonify({"ok": False, "error": "仅 admin/super_admin 可审批发布"}), 403
+    data = request.get_json(silent=True) or {}
+    task_id = data.get("task_id")
+    decision = (data.get("decision") or "approve").strip()
+    if decision not in ("approve", "reject"):
+        return jsonify({"ok": False, "error": "decision 须 approve/reject"}), 400
     conn = _db()
     try:
-        conn.execute("INSERT INTO mt_lab_task_hall (title,description,source,source_id,priority) VALUES (?,?,?,?,?)",
-                     (title[:120], (data.get("description") or "").strip()[:500],
-                      "manual", None, data.get("priority") or "NORMAL"))
+        t = conn.execute("SELECT * FROM mt_lab_task_hall WHERE id=?", (task_id,)).fetchone()
+    finally:
+        conn.close()
+    if not t:
+        return jsonify({"ok": False, "error": "任务不存在"}), 404
+    if (t["approval_status"] or "") != "PENDING":
+        return jsonify({"ok": False, "error": f'任务审批态为 {t["approval_status"] or "NONE"}, 非 PENDING'}), 409
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    if decision == "approve":
+        conn = _db()
+        try:
+            conn.execute("UPDATE mt_lab_task_hall SET approval_status='APPROVED', approved_by=?,"
+                         "approved_at=?, updated_at=datetime('now','localtime') WHERE id=?",
+                         (u.get("username"), now, task_id))
+            conn.commit()
+            row = conn.execute("SELECT * FROM mt_lab_task_hall WHERE id=?", (task_id,)).fetchone()
+        finally:
+            conn.close()
+        dispatch = _hall_dispatch_one(dict(row))
+        _hall_task_event(task_id, "APPROVE", u.get("username"), u.get("role"),
+                         f'审批通过 → 分派 {dispatch["center"]} ({dispatch["status"]})')
+        _audit("hall", "HALL_APPROVE", t["title"][:60], {"task_id": task_id, "dispatch": dispatch})
+        return jsonify({"ok": True, "approval_status": "APPROVED", "dispatch": dispatch,
+                        "message": f'{t["hall_code"] or task_id} 审批通过, 已分派 {dispatch["center"]}'})
+    reason = (data.get("reason") or "审批驳回").strip()[:300]
+    conn = _db()
+    try:
+        conn.execute("UPDATE mt_lab_task_hall SET approval_status='REJECTED', status='CANCELLED',"
+                     "approved_by=?, approved_at=?, cancel_reason=?,"
+                     "updated_at=datetime('now','localtime') WHERE id=?",
+                     (u.get("username"), now, reason, task_id))
         conn.commit()
     finally:
         conn.close()
-    # 审计 (flow_audit_20261020): 手动入厅入库入日志
-    _audit("hall", "HALL_SUBMIT", title[:80],
-           {"description": (data.get("description") or "")[:200], "priority": data.get("priority") or "NORMAL"})
-    return jsonify({"ok": True, "message": f"任务已入厅: {title[:40]}"})
+    _hall_task_event(task_id, "REJECT", u.get("username"), u.get("role"), reason)
+    _audit("hall", "HALL_REJECT", t["title"][:60], {"task_id": task_id, "reason": reason})
+    return jsonify({"ok": True, "approval_status": "REJECTED", "status": "CANCELLED"})
+
+
+@daemon_skill_lab_bp.route("/api/daemon-lab/hall/cancel", methods=["POST"])
+@_login_required
+def hall_cancel():
+    """撤回/关闭任务: 发布人本人或 admin+; 仅 QUEUED/DISPATCHED 可撤"""
+    _ensure_claim_tables()
+    u = _get_user()
+    data = request.get_json(silent=True) or {}
+    task_id = data.get("task_id")
+    reason = (data.get("reason") or "发布人撤回").strip()[:300]
+    conn = _db()
+    try:
+        t = conn.execute("SELECT status,publisher,title,hall_code FROM mt_lab_task_hall WHERE id=?",
+                         (task_id,)).fetchone()
+    finally:
+        conn.close()
+    if not t:
+        return jsonify({"ok": False, "error": "任务不存在"}), 404
+    if u.get("role") not in _HALL_ADMIN_ROLES and t["publisher"] != u.get("username"):
+        return jsonify({"ok": False, "error": "仅发布人本人或 admin 可撤回"}), 403
+    if t["status"] not in _HALL_CANCELABLE:
+        return jsonify({"ok": False, "error": f'状态 {t["status"]} 不可撤回 (仅 QUEUED/DISPATCHED)'}), 409
+    conn = _db()
+    try:
+        cur = conn.execute("UPDATE mt_lab_task_hall SET status='CANCELLED', cancel_reason=?,"
+                           "updated_at=datetime('now','localtime') WHERE id=? AND status IN ('QUEUED','DISPATCHED')",
+                           (reason, task_id))
+        conn.commit()
+        won = cur.rowcount == 1
+    finally:
+        conn.close()
+    if not won:
+        return jsonify({"ok": False, "error": "状态已变化, 请刷新"}), 409
+    _hall_task_event(task_id, "CANCEL", u.get("username"), u.get("role"), reason)
+    _audit("hall", "HALL_CANCEL", t["title"][:60], {"task_id": task_id, "reason": reason})
+    return jsonify({"ok": True, "status": "CANCELLED", "message": f'{t["hall_code"] or task_id} 已撤回'})
+
+
+@daemon_skill_lab_bp.route("/api/daemon-lab/hall/archive", methods=["POST"])
+@_login_required
+def hall_archive():
+    """归档: DONE 任务归档 + 投喂脑库; 单条 task_id 或批量 older_than_days"""
+    _ensure_claim_tables()
+    u = _get_user()
+    if u.get("role") not in _HALL_ADMIN_ROLES:
+        return jsonify({"ok": False, "error": "仅 admin/super_admin 可归档"}), 403
+    data = request.get_json(silent=True) or {}
+    task_id = data.get("task_id")
+    conn = _db()
+    try:
+        if task_id:
+            rows = conn.execute("SELECT * FROM mt_lab_task_hall WHERE id=? AND status='DONE'"
+                                " AND archived_at IS NULL", (task_id,)).fetchall()
+        else:
+            days = max(int(data.get("older_than_days", 0) or 0), 0)
+            rows = conn.execute(
+                "SELECT * FROM mt_lab_task_hall WHERE status='DONE' AND archived_at IS NULL"
+                " AND COALESCE(accepted_at,updated_at,created_at) < datetime('now','localtime',?)",
+                (f'-{days} days',)).fetchall()
+        archived = []
+        for r in rows:
+            cur = conn.execute("UPDATE mt_lab_task_hall SET archived_at=datetime('now','localtime'),"
+                               "updated_at=datetime('now','localtime') WHERE id=? AND archived_at IS NULL",
+                               (r["id"],))
+            if cur.rowcount == 1:
+                archived.append(dict(r))
+        conn.commit()
+    finally:
+        conn.close()
+    if task_id and not archived:
+        return jsonify({"ok": False, "error": "任务不存在或非 DONE/已归档"}), 409
+    for r in archived:
+        _hall_task_event(r["id"], "ARCHIVE", u.get("username"), u.get("role"), "验收完成归档")
+        _hall_feed_brain(r, f'归档 | 交付: {str(r.get("deliverable") or "")[:160]}')
+    _audit("hall", "HALL_ARCHIVE", f'{len(archived)} 条', {"ids": [r["id"] for r in archived]})
+    return jsonify({"ok": True, "archived": len(archived),
+                    "ids": [r["id"] for r in archived]})
+
+
+@daemon_skill_lab_bp.route("/api/daemon-lab/hall/pipeline")
+@_login_required
+def hall_pipeline():
+    """发布体系闭环漏斗: 各环节计数 + 卡点预警 + 平均验收时长"""
+    _ensure_claim_tables()
+    conn = _db()
+    try:
+        stats = {r["status"]: r["n"] for r in conn.execute(
+            "SELECT status,count(*) n FROM mt_lab_task_hall GROUP BY status")}
+        appr = {r["approval_status"] or "NONE": r["n"] for r in conn.execute(
+            "SELECT approval_status,count(*) n FROM mt_lab_task_hall GROUP BY approval_status")}
+        types = [dict(r) for r in conn.execute(
+            "SELECT COALESCE(task_type,'OTHER') task_type,count(*) n FROM mt_lab_task_hall"
+            " GROUP BY task_type ORDER BY n DESC")]
+        stuck = [dict(r) for r in conn.execute(
+            "SELECT id,hall_code,title,status,claim_owner,created_at,dispatched_at FROM mt_lab_task_hall"
+            " WHERE (approval_status='PENDING')"
+            "    OR (status='QUEUED' AND created_at < datetime('now','localtime','-24 hours'))"
+            "    OR (status='DISPATCHED' AND dispatched_at < datetime('now','localtime','-24 hours'))"
+            "    OR (status='DELIVERED' AND delivered_at < datetime('now','localtime','-24 hours'))"
+            " ORDER BY id LIMIT 20")]
+        avg = conn.execute(
+            "SELECT avg((julianday(accepted_at)-julianday(dispatched_at))*24) h"
+            " FROM mt_lab_task_hall WHERE accepted_at IS NOT NULL AND dispatched_at IS NOT NULL"
+        ).fetchone()[0]
+    finally:
+        conn.close()
+    funnel = [{"key": k, "label": v, "count": stats.get(k, 0)} for k, v in (
+        ("QUEUED", "待分派/待审批"), ("DISPATCHED", "待抢单"), ("CLAIMED", "待开工"),
+        ("IN_PROGRESS", "执行中"), ("DELIVERED", "待验收"), ("DONE", "已完成"),
+        ("ARCHIVED", "已归档"), ("CANCELLED", "已撤回/驳回"), ("FAILED", "失败"))]
+    return jsonify({"ok": True, "funnel": funnel, "stats": stats, "approval": appr,
+                    "types": types, "stuck": stuck,
+                    "avg_accept_hours": round(float(avg), 1) if avg else None})
+
 
 
 # ════════════════ 接任务生命周期 (flow_hall_claim_opt_20261020) ════════════════
@@ -708,12 +1003,17 @@ def hall_accept():
         # HR 人力账: 完成
         conn = _db()
         try:
-            for emp in conn.execute("SELECT employee_name, employee_code FROM mt_lab_assignments WHERE hall_task_id=?", (task_id,)):
-                conn.execute("INSERT INTO mt_lab_hr_log (employee_name, employee_code, role, hall_task_id, action, verdict) VALUES (?,?,?,?,?,?)",
-                             (emp["employee_name"], emp["employee_code"], "employee", task_id, "COMPLETE", "验收通过"))
+            try:
+                for emp in conn.execute("SELECT employee_names FROM mt_lab_assignments WHERE hall_task_id=?", (task_id,)):
+                    for nm in json.loads(emp["employee_names"] or "[]"):
+                        conn.execute("INSERT INTO mt_lab_hr_log (employee_name, role, hall_task_id, action, verdict) VALUES (?,?,?,?,?)",
+                                     (nm, "employee", task_id, "COMPLETE", "验收通过"))
+            except Exception:
+                pass
+            # flow_task_hall_20261022: 验收通过即归档 (闭环终点), 并沉淀脑库
+            conn.execute("UPDATE mt_lab_task_hall SET archived_at=datetime('now','localtime')"
+                         " WHERE id=? AND archived_at IS NULL", (task_id,))
             conn.commit()
-        except Exception:
-            pass
         finally:
             conn.close()
     else:
@@ -728,6 +1028,14 @@ def hall_accept():
     _hall_task_event(task_id, event, u.get("username"), u.get("role"), note)
     _audit("hall", "HALL_ACCEPT" if decision == "accept" else "HALL_REWORK",
            t["title"][:60], {"task_id": task_id, "decision": decision, "note": note})
+    if decision == "accept":
+        conn = _db()
+        try:
+            row = conn.execute("SELECT * FROM mt_lab_task_hall WHERE id=?", (task_id,)).fetchone()
+        finally:
+            conn.close()
+        if row:
+            _hall_feed_brain(dict(row), f"验收通过归档 | {note}")
     try:
         from blueprints.wecom_hub_bp import wecom_push
         wecom_push("hall", "✅ 任务验收通过" if decision == "accept" else "🔁 任务返工",
