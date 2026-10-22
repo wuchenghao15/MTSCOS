@@ -211,16 +211,6 @@ def _ensure_tables():
             updated_at TEXT DEFAULT (datetime('now','localtime'))
         );
 
-        /* ── 群聊房间成员 (flow_chat_all7_20261019) ── */
-        CREATE TABLE IF NOT EXISTS mt_chat_room_members (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            session_id TEXT NOT NULL,
-            user_id INTEGER NOT NULL,
-            username TEXT NOT NULL DEFAULT '',
-            joined_at TEXT DEFAULT (datetime('now','localtime')),
-            UNIQUE(session_id, user_id)
-        );
-
         /* ── 日程助手 (flow_chat_all7_20261019): /日程 命令落库 ── */
         CREATE TABLE IF NOT EXISTS mt_chat_schedule (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -235,7 +225,6 @@ def _ensure_tables():
         );
 
         CREATE INDEX IF NOT EXISTS idx_chat_sched_user ON mt_chat_schedule(user_id);
-        CREATE INDEX IF NOT EXISTS idx_chat_room_member ON mt_chat_room_members(user_id);
         """)
         conn.commit()
 
@@ -244,11 +233,9 @@ def _ensure_tables():
             ("ALTER TABLE mt_user_token_accounts ADD COLUMN total_preheld INTEGER NOT NULL DEFAULT 0", "total_preheld"),
             ("ALTER TABLE mt_user_token_accounts ADD COLUMN total_rewarded INTEGER NOT NULL DEFAULT 0", "total_rewarded"),
             ("ALTER TABLE mt_user_token_ledger ADD COLUMN model TEXT DEFAULT ''", "model"),
-            # flow_chat_all7_20261019: 置顶/标签/群聊房间
+            # flow_chat_all7_20261019: 置顶/标签
             ("ALTER TABLE chat_sessions ADD COLUMN pinned INTEGER DEFAULT 0", "pinned"),
             ("ALTER TABLE chat_sessions ADD COLUMN tags TEXT DEFAULT ''", "tags"),
-            ("ALTER TABLE chat_sessions ADD COLUMN is_room INTEGER DEFAULT 0", "is_room"),
-            ("ALTER TABLE chat_sessions ADD COLUMN room_code TEXT DEFAULT ''", "room_code"),
         ]:
             try: conn.execute(col_def[0]); conn.commit()
             except Exception: pass
@@ -1645,7 +1632,7 @@ def update_session_title(sid):
 
 
 # ════════════════════════════════════════════════════════════════
-# 置顶/标签 + 群聊房间 + 日程助手 (flow_chat_all7_20261019)
+# 置顶/标签 + 日程助手 (flow_chat_all7_20261019)
 # ════════════════════════════════════════════════════════════════
 @chat_local_bp.route('/api/local-chat/widget-state', methods=['GET'])
 def widget_state():
@@ -1716,82 +1703,6 @@ def set_session_tags(sid):
         conn.commit()
         conn.close()
         return jsonify({'success': True, 'tags': tags})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-
-@chat_local_bp.route('/api/local-chat/room', methods=['POST'])
-@_login_required
-def create_room():
-    """创建群聊房间: is_room=1 + 6位加入码, 创建者即房主"""
-    u = _get_user()
-    data = request.get_json(silent=True) or {}
-    title = (data.get('title') or '').strip() or f"{u['username']}的房间"
-    import random
-    sid = str(uuid.uuid4())
-    code = ''.join(random.choices('23456789ABCDEFGHJKMNPQRSTUVWXYZ', k=6))
-    now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    try:
-        conn = _db()
-        conn.execute(
-            "INSERT INTO chat_sessions(session_id,user_id,username,title,title_emoji,is_room,room_code,created_at,updated_at) "
-            "VALUES(?,?,?,?,?,?,?,?,?)",
-            (sid, u['user_id'], u['username'], title, '🏠', 1, code, now, now)
-        )
-        conn.commit()
-        conn.close()
-        _record_action(sid, u['user_id'], 'new_session', {'kind': 'room', 'code': code})
-        return jsonify({'success': True, 'session_id': sid, 'room_code': code, 'title': title})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-
-@chat_local_bp.route('/api/local-chat/room/join', methods=['POST'])
-@_login_required
-def join_room():
-    """凭 6 位加入码加入群聊房间"""
-    u = _get_user()
-    data = request.get_json(silent=True) or {}
-    code = (data.get('code') or '').strip().upper()
-    if not code:
-        return jsonify({'success': False, 'error': 'missing_code'}), 400
-    try:
-        conn = _db()
-        row = conn.execute(
-            "SELECT session_id, title FROM chat_sessions WHERE room_code=? AND COALESCE(is_room,0)=1",
-            (code,)).fetchone()
-        if not row:
-            conn.close()
-            return jsonify({'success': False, 'error': 'room_not_found', 'message': '加入码无效'}), 404
-        conn.execute("INSERT OR IGNORE INTO mt_chat_room_members(session_id,user_id,username) VALUES(?,?,?)",
-                     (row['session_id'], u['user_id'], u['username']))
-        conn.commit()
-        conn.close()
-        return jsonify({'success': True, 'session_id': row['session_id'], 'title': row['title']})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-
-@chat_local_bp.route('/api/local-chat/room/<sid>/members', methods=['GET'])
-@_login_required
-def room_members(sid):
-    """房间成员列表 (房主👑 + 成员)"""
-    u = _get_user()
-    try:
-        conn = _db()
-        room = conn.execute("SELECT user_id, username, title FROM chat_sessions WHERE session_id=? AND COALESCE(is_room,0)=1", (sid,)).fetchone()
-        if not room:
-            conn.close()
-            return jsonify({'success': False, 'error': 'not_a_room'}), 404
-        is_member = bool(conn.execute("SELECT 1 FROM mt_chat_room_members WHERE session_id=? AND user_id=?", (sid, u['user_id'])).fetchone())
-        if not (room['user_id'] == u['user_id'] or is_member or _is_sa(u)):
-            conn.close()
-            return jsonify({'success': False, 'error': 'forbidden'}), 403
-        rows = conn.execute("SELECT username, joined_at FROM mt_chat_room_members WHERE session_id=? ORDER BY id", (sid,)).fetchall()
-        conn.close()
-        members = [{'username': room['username'], 'owner': True, 'joined_at': ''}]
-        members += [{'username': r['username'], 'owner': False, 'joined_at': r['joined_at']} for r in rows]
-        return jsonify({'success': True, 'count': len(members), 'members': members})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
@@ -2071,25 +1982,40 @@ def personalized_sparks():
 @chat_local_bp.route('/api/local-chat/sessions', methods=['GET'])
 @_login_required
 def list_sessions():
-    """我的会话列表 (flow_chat_all7_20261019: 含群聊房间, 置顶优先)"""
+    """我的会话列表 (置顶优先)"""
     u = _get_user()
     try:
         conn = _db()
-        # v22.25.27: 跨库列兼容 — 旧库缺 title_emoji/pinned/tags/is_room/room_code, 缺失列给默认值
+        # v22.25.27: 跨库列兼容 — 旧库缺 title_emoji/pinned/tags, 缺失列给默认值
         _cols = {r[1] for r in conn.execute('PRAGMA table_info(chat_sessions)')}
         _emoji = 's.title_emoji' if 'title_emoji' in _cols else "'' AS title_emoji"
         _pinned = 'COALESCE(s.pinned,0)' if 'pinned' in _cols else '0'
         _tags = "COALESCE(s.tags,'')" if 'tags' in _cols else "''"
-        _is_room = 'COALESCE(s.is_room,0)' if 'is_room' in _cols else '0'
-        _room = "COALESCE(s.room_code,'')" if 'room_code' in _cols else "''"
+        # flow_chat_upgrade5_20261022: 会话级未读 (TH-20261022-0001)
+        # 依据 chat_read_state.last_read_id 统计「比我上次已读更新」的消息条数,
+        # 该表由 andromeda_chat_bp._ensure 懒建; 旧库未建时降级 unread=0 不报错。
+        _has_read = False
+        try:
+            _has_read = bool(conn.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='chat_read_state'").fetchone())
+        except sqlite3.Error:
+            _has_read = False
+        if _has_read:
+            _unread = (
+                "(SELECT COUNT(*) FROM chat_messages m WHERE m.session_id=s.session_id"
+                " AND COALESCE(m.deleted,0)=0 AND COALESCE(m.role,'')<>'system'"
+                " AND m.id > COALESCE((SELECT r.last_read_id FROM chat_read_state r"
+                "   WHERE r.session_id=s.session_id AND r.user_id=?),0))")
+        else:
+            _unread = '0'
         rows = conn.execute(
             f"SELECT s.session_id, s.title, {_emoji}, s.message_count, s.last_message, s.created_at, s.updated_at, "
             f"{_pinned} AS pinned, {_tags} AS tags, "
-            f"{_is_room} AS is_room, {_room} AS room_code "
+            f"{_unread} AS unread "
             "FROM chat_sessions s "
-            "WHERE s.user_id=? OR s.session_id IN (SELECT session_id FROM mt_chat_room_members WHERE user_id=?) "
+            "WHERE s.user_id=? "
             "ORDER BY pinned DESC, s.updated_at DESC LIMIT 50",
-            (u['user_id'], u['user_id'])
+            ((u['user_id'],) if _has_read else ()) + (u['user_id'],)
         ).fetchall()
         conn.close()
         return jsonify({'success': True, 'sessions': [dict(r) for r in rows]})
@@ -2200,28 +2126,59 @@ def get_history():
         return jsonify({'success': False, 'error': 'missing session_id'}), 400
     try:
         conn = _db()
-        # 权限检查: 本人 / SA / 群聊房间成员 (flow_chat_all7_20261019)
+        # 权限检查: 本人 / SA
         row = conn.execute(
-            "SELECT user_id, COALESCE(is_room,0) AS is_room FROM chat_sessions WHERE session_id=?", (sid,)
+            "SELECT user_id FROM chat_sessions WHERE session_id=?", (sid,)
         ).fetchone()
         if not row:
             conn.close()
             return jsonify({'success': False, 'error': 'forbidden'}), 403
-        is_member = False
-        if row['is_room']:
-            is_member = bool(conn.execute(
-                "SELECT 1 FROM mt_chat_room_members WHERE session_id=? AND user_id=?",
-                (sid, u['user_id'])).fetchone())
-        if not (row['user_id'] == u['user_id'] or _is_sa(u) or is_member):
+        if not (row['user_id'] == u['user_id'] or _is_sa(u)):
             conn.close()
             return jsonify({'success': False, 'error': 'forbidden'}), 403
-        msgs = conn.execute(
-            "SELECT role, content, reasoning, tokens, model, created_at "
-            "FROM chat_messages WHERE session_id=? ORDER BY id ASC",
-            (sid,)
-        ).fetchall()
+        # flow_chat_upgrade5_20261022: 历史分页 (TH-20261022-0002)
+        # limit: 取最近 N 条 (0/缺省 = 全量, 兼容旧前端)
+        # before_id: 加载更早 (游标向左);  after_id: 增量拉新 (断线补拉)
+        try:
+            limit = int(request.args.get('limit') or 0)
+        except (TypeError, ValueError):
+            limit = 0
+        limit = max(0, min(limit, 500))
+        try:
+            before_id = int(request.args.get('before_id') or 0)
+            after_id = int(request.args.get('after_id') or 0)
+        except (TypeError, ValueError):
+            before_id = after_id = 0
+        total = conn.execute("SELECT COUNT(*) FROM chat_messages WHERE session_id=?",
+                             (sid,)).fetchone()[0]
+        sql = ("SELECT id, role, content, reasoning, tokens, model, created_at "
+               "FROM chat_messages WHERE session_id=?")
+        params = [sid]
+        if before_id > 0:
+            sql += " AND id<?"
+            params.append(before_id)
+        if after_id > 0:
+            sql += " AND id>?"
+            params.append(after_id)
+        if limit:
+            rows = conn.execute(sql + " ORDER BY id DESC LIMIT ?", (*params, limit)).fetchall()
+            rows = list(reversed(rows))
+        else:
+            rows = conn.execute(sql + " ORDER BY id ASC", params).fetchall()
+        msgs = [dict(m) for m in rows]
+        min_id = msgs[0]['id'] if msgs else 0
+        max_id = msgs[-1]['id'] if msgs else 0
+        has_more = False
+        if limit and before_id > 0 and min_id:
+            has_more = bool(conn.execute(
+                "SELECT 1 FROM chat_messages WHERE session_id=? AND id<? LIMIT 1",
+                (sid, min_id)).fetchone())
+        elif limit and not before_id and not after_id and min_id:
+            # 首屏: 是否还有更早消息 (供「加载更早」按钮)
+            has_more = total > len(msgs)
         conn.close()
-        return jsonify({'success': True, 'messages': [dict(m) for m in msgs]})
+        return jsonify({'success': True, 'messages': msgs, 'total': total,
+                        'min_id': min_id, 'max_id': max_id, 'has_more': has_more})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
