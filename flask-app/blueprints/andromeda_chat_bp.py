@@ -236,6 +236,45 @@ def chat_search():
         conn.close()
 
 
+# ─────────────────── ②' 命中消息上下文 (搜索结果定位) ───────────────────
+@chat_plus_bp.route('/api/local-chat/msg/context', methods=['GET'])
+@_login_required
+def chat_msg_context():
+    """按 mid 返回前后若干条消息, 供检索结果直接定位到具体消息"""
+    u = _u()
+    try:
+        mid = int(request.args.get('mid', 0))
+        span = min(max(int(request.args.get('span', 4)), 1), 20)
+    except (TypeError, ValueError):
+        return jsonify({'success': False, 'error': 'mid/span 须为整数'}), 400
+    if mid <= 0:
+        return jsonify({'success': False, 'error': 'mid 不能为空'}), 400
+    conn = _db()
+    try:
+        t = conn.execute('SELECT id,session_id,role,content,created_at FROM chat_messages'
+                         ' WHERE id=? AND COALESCE(deleted,0)=0', (mid,)).fetchone()
+        if not t:
+            return jsonify({'success': False, 'error': '消息不存在或已删除'}), 404
+        if not _visible_session(conn, t['session_id'], u):
+            return jsonify({'success': False, 'error': '无权访问该会话'}), 403
+        rows = conn.execute(
+            'SELECT id,role,content,created_at FROM chat_messages'
+            ' WHERE session_id=? AND COALESCE(deleted,0)=0 AND id BETWEEN ? AND ?'
+            ' ORDER BY id', (t['session_id'], mid - span * 4, mid + span * 4)).fetchall()
+        title = ''
+        try:
+            s = conn.execute('SELECT title FROM chat_sessions WHERE session_id=?',
+                             (t['session_id'],)).fetchone()
+            title = (s['title'] if s else '') or ''
+        except sqlite3.Error:
+            pass
+        return jsonify({'success': True, 'session_id': t['session_id'], 'title': title,
+                        'target_id': mid,
+                        'messages': [dict(r) for r in rows]})
+    finally:
+        conn.close()
+
+
 # ────────────────────────── ② 编辑消息 ──────────────────────────
 @chat_plus_bp.route('/api/local-chat/msg/<int:mid>', methods=['PUT'])
 @_login_required
@@ -662,10 +701,28 @@ def chat_jump_team():
                     'href': _jump_href('team', real)})
 
 
+def _chat_only(u: dict) -> bool:
+    """小龙端注册的仅聊天账号: 未开通 full_access 时禁止派单等非聊天能力"""
+    if _is_sa(u):
+        return False
+    conn = _db()
+    try:
+        r = conn.execute('SELECT chat_only,full_access FROM mt_app_user_scope WHERE user_id=?',
+                         (u['user_id'],)).fetchone()
+    except sqlite3.Error:
+        r = None
+    finally:
+        conn.close()
+    if not r:
+        return False    # 非小龙账号 (网页端用户) 不受此限
+    return bool(r['chat_only']) and not bool(r['full_access'])
+
+
 @chat_plus_bp.route('/api/local-chat/jump/task/<int:task_id>', methods=['GET'])
 @_login_required
 def chat_jump_task(task_id: int):
     """任务跳转详情: 基础信息 + 状态机轨迹 (供聊天面板内展示)"""
+    u = _u()
     _ensure()
     conn = _db()
     try:
@@ -676,6 +733,16 @@ def chat_jump_task(task_id: int):
         if not t:
             return jsonify({'success': False, 'error': '任务不存在'}), 404
         task = dict(t)
+        if not _is_sa(u):
+            mine = bool(task.get('publisher') and task['publisher'] == u['username'])
+            if not mine:
+                try:
+                    mine = bool(conn.execute('SELECT 1 FROM chat_mention_log WHERE task_id=?'
+                                             ' AND user_id=?', (task_id, u['user_id'])).fetchone())
+                except sqlite3.Error:
+                    pass
+            if not mine:
+                return jsonify({'success': False, 'error': '无权查看该任务 (非发布人/非SA)'}), 403
         center = ''
         try:
             c = conn.execute('SELECT name FROM mt_lab_centers WHERE id=?',
@@ -715,6 +782,9 @@ def chat_plus_meta():
 def chat_mention():
     """把聊天里 @天团 的内容一键派成任务大厅任务, 并回帖系统消息"""
     u = _u()
+    if _chat_only(u):
+        return jsonify({'success': False, 'code': 'CHAT_ONLY',
+                        'error': '仅聊天账号无权派单, 请到网页端冰山首页申请开通权限'}), 403
     _ensure()
     data = request.get_json(silent=True) or {}
     sid = (data.get('session_id') or '').strip()
