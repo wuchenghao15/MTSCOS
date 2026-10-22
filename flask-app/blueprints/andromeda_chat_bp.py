@@ -27,6 +27,7 @@ import json
 import os
 import re
 import sqlite3
+import sys
 from datetime import datetime
 
 from flask import Blueprint, Response, jsonify, request, session
@@ -187,7 +188,7 @@ def _visible_session(conn, sid: str, u: dict) -> sqlite3.Row | None:
     row = conn.execute('SELECT * FROM chat_sessions WHERE session_id=?', (sid,)).fetchone()
     if not row:
         return None
-    if _is_sa(u) or str(row['user_id']) == u['user_id']:
+    if _is_sa(u) or str(row['user_id']) == str(u['user_id']):
         return row
     return None
 
@@ -863,6 +864,7 @@ def chat_multi_ai():
     except (TypeError, ValueError):
         rounds = 1
     _ensure()
+    # ① 先校验会话可见性 (无权直接 403, 不再预扣 → 避免 token 泄漏)
     conn = _db()
     try:
         if not _visible_session(conn, sid, u):
@@ -875,6 +877,32 @@ def chat_multi_ai():
         hist = '\n'.join(
             f"{'用户' if r['role'] == 'user' else 'AI'}: {(r['content'] or '')[:600]}"
             for r in reversed(hist_rows))
+    finally:
+        conn.close()
+    # ② 多人AI同样走 token 计费 (预扣 → 结算), SA 豁免; 依据落 mt_user_token_ledger
+    from blueprints.chat_local_bp import (_estimate_cost, _prehold, _finalize,
+                                          _is_sa, _ensure_daily_grant, DAILY_FREE_TOKENS)
+    _sa_exempt = _is_sa(u)
+    _prehold_result, _est_cost = None, 0
+    if not _sa_exempt:
+        _grant = _ensure_daily_grant(u['user_id'], u['username'])
+        _est = _estimate_cost('andromeda-multi',
+                              max(200, int(len(text) * 1.5) + 600),
+                              350 * max(1, len(data.get('teams') or []) or 3))
+        _est_cost = _est['total_cost']
+        if _grant['balance'] < _est_cost:
+            return jsonify({'success': False, 'error': 'tokens_insufficient',
+                            'message': f'余额 {_grant["balance"]} token, 多人AI预估需 {_est_cost} token',
+                            'balance': _grant['balance'], 'estimated_cost': _est_cost,
+                            'daily_free': DAILY_FREE_TOKENS}), 402
+        _prehold_result = _prehold(u['user_id'], sid, _est_cost, 'andromeda-multi')
+        if not _prehold_result.get('ok'):
+            return jsonify({'success': False, 'error': 'prehold_failed',
+                            'message': '并发竞争: 余额不足, 请重试',
+                            'balance': _prehold_result.get('balance', 0)}), 409
+    # ③ 预扣成功后再落用户消息 + 协同启动系统消息
+    conn = _db()
+    try:
         conn.execute("INSERT INTO chat_messages(session_id,user_id,role,content,model)"
                      " VALUES(?,?,?,?,?)", (sid, u['user_id'], 'user', text, 'multi-ai-user'))
         conn.execute("INSERT INTO chat_messages(session_id,user_id,role,content,model)"
@@ -957,11 +985,24 @@ def chat_multi_ai():
     _feed('chat_multi_ai', 'chat_multi_ai',
           f"{u['username']} 在 {sid} 召集 {len(personas)} 位AI: "
           + ','.join(p['name'] for p in personas) + f" | {text[:160]}", u['username'])
+    # 结算: 实扣真实用量 (字符/4 近似 token), 退还预扣差额; SA 豁免不落账
+    _balance_after = None
+    if not _sa_exempt and _prehold_result:
+        _out_chars = sum(len((r.get('content') or '')) for r in saved)
+        try:
+            _fin = _finalize(u['user_id'], sid, 'andromeda-multi',
+                             max(1, int(len(text) / 4)), max(1, int(_out_chars / 4)),
+                             _prehold_result, brain_fed=True)
+            _balance_after = (_fin or {}).get('balance')
+        except Exception as _fe:
+            sys.stderr.write(f'[MULTI-AI] finalize error: {_fe}\n')
     return jsonify({'success': True, 'rounds': rounds,
                     'personas': [p['name'] for p in personas],
                     'team_choices': all_names,
                     'messages': saved,
-                    'synthesis': synth_row})
+                    'synthesis': synth_row,
+                    'billing': {'charged': not _sa_exempt, 'estimate': _est_cost,
+                                'balance_after': _balance_after}})
 
 
 
