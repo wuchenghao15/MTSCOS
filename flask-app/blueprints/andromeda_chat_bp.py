@@ -13,8 +13,10 @@
   ⑥ 未读统计            GET    /api/local-chat/unread
   ⑦ 标记已读            POST   /api/local-chat/session/<sid>/read
   ⑧ 会话导出 md/json    GET    /api/local-chat/session/<sid>/export
-  ⑨ @天团 派单          POST   /api/local-chat/mention   (建任务大厅任务 + 分派 + 系统回帖)
+  ⑨ @天团 派单          POST   /api/local-chat/mention   (建任务大厅任务 + 分派 + 系统/AI 回帖)
   ⑩ 增强元数据          GET    /api/local-chat/plus/meta
+  ⑪ AI 跳转解析         GET    /api/local-chat/jump/resolve     (任务号/天团/会话 → 目标)
+  ⑫ 任务跳转详情        GET    /api/local-chat/jump/task/<id>   (面板内展示任务轨迹)
 
 权限: 本人 / SA / 群聊房间成员; 编辑仅限本人 user 消息; 删除仅本人或 SA。
 所有写操作落 chat_actions + 关键操作投喂 AI 脑库 (失败不影响主流程)。
@@ -45,6 +47,17 @@ _MSG_COLS = (
     ("feedback_note", "TEXT"),
 )
 _SESS_COLS = (("archived", "INTEGER DEFAULT 0"),)
+# @天团派单需要的任务大厅列 (旧库可能缺 hall_code 等)
+_HALL_COLS = (
+    ("hall_code", "TEXT"),
+    ("publisher", "TEXT"),
+    ("publisher_role", "TEXT"),
+    ("task_type", "TEXT"),
+    ("acceptance_criteria", "TEXT"),
+    ("approval_status", "TEXT DEFAULT 'APPROVED'"),
+    ("approved_by", "TEXT"),
+    ("approved_at", "TEXT"),
+)
 
 DDL_READ = """CREATE TABLE IF NOT EXISTS chat_read_state (
     session_id TEXT NOT NULL,
@@ -78,8 +91,11 @@ def _ensure() -> None:
     try:
         conn.execute(DDL_READ)
         conn.execute(DDL_MENTION)
-        for table, cols in (('chat_messages', _MSG_COLS), ('chat_sessions', _SESS_COLS)):
+        for table, cols in (('chat_messages', _MSG_COLS), ('chat_sessions', _SESS_COLS),
+                            ('mt_lab_task_hall', _HALL_COLS)):
             have = {r[1] for r in conn.execute(f'PRAGMA table_info({table})')}
+            if not have:
+                continue   # 表未建 (由 daemon_skill_lab_bp._ensure_claim_tables 负责)
             for name, ddl in cols:
                 if name not in have:
                     conn.execute(f'ALTER TABLE {table} ADD COLUMN {name} {ddl}')
@@ -418,7 +434,7 @@ def chat_export(sid: str):
     for m in msgs:
         lines.append(f'**{who.get(m["role"], m["role"])}** · {m["created_at"] or ""}')
         lines.append('')
-        lines.append(m['content'] or '')
+        lines.append(_md_links(m['content'] or ''))
         if m['reasoning']:
             lines.append('')
             lines.append('<details><summary>思考过程</summary>')
@@ -445,6 +461,117 @@ def _teams(conn) -> list:
         return []
 
 
+# ────────────────────── ⑪ AI 跳转 (消息内可点击链接) ──────────────────────
+_JUMP_RE = re.compile(r'\[\[jump\|([^|\]]{1,60})\|([a-z]+):([^\]\[]+)\]\]')
+
+
+def _jump(label, kind: str, key) -> str:
+    """生成跳转标记: 前端 linkify 成可点击链接, 导出 md 转 Markdown 链接"""
+    def safe(s):
+        return str(s).replace('|', ' ').replace('[', ' ').replace(']', ' ')
+    return f'[[jump|{safe(label)}|{kind}:{safe(key)}]]'
+
+
+def _jump_href(kind: str, key: str) -> str:
+    from urllib.parse import quote
+    if kind == 'task':
+        return '/admin/center#hall-section'
+    if kind == 'team':
+        return '/andromeda/eigenflux_council?team=' + quote(key)
+    if kind == 'session':
+        return '/local-chat?session=' + quote(key)
+    return '/'
+
+
+def _md_links(text: str) -> str:
+    """导出 md 时把 [[jump|标签|kind:key]] 还原为标准 Markdown 链接"""
+    return _JUMP_RE.sub(
+        lambda m: f'[{m.group(1)}]({_jump_href(m.group(2), m.group(3))})', text or '')
+
+
+@chat_plus_bp.route('/api/local-chat/jump/resolve', methods=['GET'])
+@_login_required
+def chat_jump_resolve():
+    """把消息里的任务号 / @天团 / 会话号解析成可跳转目标"""
+    kind = (request.args.get('kind') or '').strip()
+    key = (request.args.get('key') or '').strip()
+    if kind not in ('task', 'team', 'session') or not key:
+        return jsonify({'success': False, 'error': 'kind 须 task/team/session 且 key 非空'}), 400
+    u = _u()
+    _ensure()
+    conn = _db()
+    try:
+        if kind == 'task':
+            row = None
+            try:
+                if key.isdigit():
+                    row = conn.execute('SELECT * FROM mt_lab_task_hall WHERE id=?',
+                                       (int(key),)).fetchone()
+                if not row:
+                    row = conn.execute('SELECT * FROM mt_lab_task_hall WHERE hall_code=?',
+                                       (key,)).fetchone()
+            except sqlite3.Error:
+                row = None
+            if not row:
+                return jsonify({'success': False, 'error': '任务不存在或未同步到本机',
+                                'kind': kind, 'key': key}), 404
+            hall_code = row['hall_code'] if 'hall_code' in row.keys() else key
+            return jsonify({'success': True, 'kind': 'task', 'task_id': row['id'],
+                            'hall_code': hall_code,
+                            'title': row['title'] if 'title' in row.keys() else '',
+                            'href': _jump_href('task', str(row['id']))})
+        if kind == 'team':
+            name = key[1:] if key.startswith('@') else key
+            hit = None
+            for t in _teams(conn):
+                if t['name'] == name or name in t['name'] or t['name'] in name:
+                    hit = t
+                    break
+            real = (hit or {}).get('name') or name
+            return jsonify({'success': True, 'kind': 'team', 'name': real,
+                            'matched': bool(hit), 'href': _jump_href('team', real)})
+        if not _visible_session(conn, key, u):
+            return jsonify({'success': False, 'error': '无权访问该会话'}), 403
+        return jsonify({'success': True, 'kind': 'session', 'session_id': key,
+                        'href': _jump_href('session', key)})
+    finally:
+        conn.close()
+
+
+@chat_plus_bp.route('/api/local-chat/jump/task/<int:task_id>', methods=['GET'])
+@_login_required
+def chat_jump_task(task_id: int):
+    """任务跳转详情: 基础信息 + 状态机轨迹 (供聊天面板内展示)"""
+    _ensure()
+    conn = _db()
+    try:
+        try:
+            t = conn.execute('SELECT * FROM mt_lab_task_hall WHERE id=?', (task_id,)).fetchone()
+        except sqlite3.Error:
+            t = None
+        if not t:
+            return jsonify({'success': False, 'error': '任务不存在'}), 404
+        task = dict(t)
+        center = ''
+        try:
+            c = conn.execute('SELECT name FROM mt_lab_centers WHERE id=?',
+                             (task.get('center_id'),)).fetchone()
+            center = c['name'] if c else ''
+        except sqlite3.Error:
+            pass
+        events = []
+        try:
+            events = [dict(r) for r in conn.execute(
+                'SELECT event,actor,actor_role,note,created_at FROM mt_lab_task_events'
+                ' WHERE hall_task_id=? ORDER BY id DESC LIMIT 40', (task_id,))]
+        except sqlite3.Error:
+            pass
+    finally:
+        conn.close()
+    return jsonify({'success': True, 'task': task, 'center': center, 'events': events,
+                    'href': _jump_href('task', str(task_id))})
+
+
 @chat_plus_bp.route('/api/local-chat/plus/meta', methods=['GET'])
 @_login_required
 def chat_plus_meta():
@@ -456,7 +583,7 @@ def chat_plus_meta():
         conn.close()
     return jsonify({'success': True, 'features': [
         'search', 'msg_edit', 'msg_delete', 'feedback', 'session_archive',
-        'unread', 'mark_read', 'export', 'mention_dispatch'], 'teams': teams})
+        'unread', 'mark_read', 'export', 'mention_dispatch', 'jump'], 'teams': teams})
 
 
 @chat_plus_bp.route('/api/local-chat/mention', methods=['POST'])
@@ -478,16 +605,27 @@ def chat_mention():
     finally:
         conn.close()
     names = _MENTION_RE.findall(text)
-    if not names:
+    if not names and '@' not in text:
         return jsonify({'success': False, 'error': '未识别到 @天团, 例: @安全天团 排查登录异常'}), 400
     matched = []
-    for n in names:
-        for t in teams:
-            if t['name'] == n or n in t['name'] or t['name'] in n:
-                if t['name'] not in [m['name'] for m in matched]:
-                    matched.append(t)
+
+    def _short(raw):
+        """去掉天团名前的 emoji/符号, 便于 @合规安全天团 也能命中"""
+        return re.sub(r'^[^0-9A-Za-z\u4e00-\u9fa5]+', '', raw or '').strip()
+
+    for t in teams:
+        sname = _short(t['name'])
+        cands = [t['name'], sname] + ([sname.split(' ')[0]] if ' ' in sname else [])
+        for cand in cands:
+            if not cand:
+                continue
+            hit = ('@' + cand) in text or any(
+                n == cand or n in cand or cand in n for n in names)
+            if hit and t['name'] not in [m['name'] for m in matched]:
+                matched.append(t)
+                break
     if not matched:
-        return jsonify({'success': False, 'error': f'未匹配到天团: {", ".join(names)}',
+        return jsonify({'success': False, 'error': f'未匹配到天团: {", ".join(names) or text[:20]}',
                         'teams': [t['name'] for t in teams]}), 404
 
     try:
@@ -537,13 +675,35 @@ def chat_mention():
             created.append({'team': t['name'], 'task_id': task_id, 'hall_code': code,
                             'center': (dispatch or {}).get('center'),
                             'status': (dispatch or {}).get('status') or 'QUEUED',
-                            'dispatch_error': dispatch_err})
-        reply = '【仙女座介入】已为 ' + '、'.join(f'@{c["team"]}' for c in created) + \
-                ' 创建任务: ' + '; '.join(f'{c["hall_code"]} → {c["center"] or "待分派"}' for c in created)
+                            'dispatch': dispatch, 'dispatch_error': dispatch_err,
+                            'href': _jump_href('task', str(task_id)),
+                            'team_href': _jump_href('team', t['name'])})
+        # ① 系统消息: 任务号/天团名均为可点击跳转标记
+        lines = []
+        for c in created:
+            seg = [f'@{c["team"]}', _jump(c['hall_code'], 'task', str(c['task_id'])), '→',
+                   _jump(c['center'] or '待分派', 'team', c['team']), f'[{c["status"]}]']
+            if c.get('dispatch_error'):
+                seg.append('⚠️ 分派异常: ' + c['dispatch_error'])
+            lines.append(' '.join(seg))
+        reply = '【仙女座介入】已派单 ' + str(len(created)) + ' 条:\n' + '\n'.join(lines)
         conn.execute("INSERT INTO chat_messages(session_id,user_id,role,content,model) VALUES(?,?,?,?,?)",
                      (sid, 0, 'system', reply, 'andromeda'))
-        conn.execute("UPDATE chat_sessions SET last_message=?, message_count=message_count+1,"
-                     " updated_at=datetime('now','localtime') WHERE session_id=?", (reply[:200], sid))
+        # ② AI 消息: 天团实际承接结果 (员工/判定), 让用户看到 AI 真的接手了
+        emp = []
+        for c in created:
+            for e in ((c.get('dispatch') or {}).get('employees') or [])[:6]:
+                if e not in emp:
+                    emp.append(e)
+        ai_note = ('天团已接手: ' + ('、'.join(emp) if emp else '本机暂无空闲员工, 任务已入队等待认领')
+                   + '。任务: ' + '；'.join(
+                       f'{_jump(c["hall_code"], "task", str(c["task_id"]))} → {c["center"] or "待分派"}'
+                       for c in created)
+                   + '。点击任务号可查看状态机轨迹。')
+        conn.execute("INSERT INTO chat_messages(session_id,user_id,role,content,model) VALUES(?,?,?,?,?)",
+                     (sid, 0, 'assistant', ai_note, 'andromeda'))
+        conn.execute("UPDATE chat_sessions SET last_message=?, message_count=message_count+2,"
+                     " updated_at=datetime('now','localtime') WHERE session_id=?", (ai_note[:200], sid))
         _action(conn, sid, u['user_id'], 'mention', {'tasks': created})
         conn.commit()
     finally:

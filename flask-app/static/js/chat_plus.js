@@ -37,7 +37,12 @@
     + 'border-radius:9px;color:#e6edff;padding:7px 10px;font-size:12px;outline:none}'
     + '.cp-empty{color:#8fa3c8;text-align:center;padding:26px 0;font-size:12px}'
     + '.cp-chip{display:inline-block;border:1px solid rgba(139,92,246,.45);color:#c4b5fd;border-radius:999px;'
-    + 'padding:2px 9px;margin:3px 4px 0 0;font-size:11px;cursor:pointer}';
+    + 'padding:2px 9px;margin:3px 4px 0 0;font-size:11px;cursor:pointer}'
+    + '.cp-jump{color:#7dd3fc;text-decoration:none;border-bottom:1px dotted rgba(125,211,252,.6);cursor:pointer}'
+    + '.cp-jump:hover{color:#fff;background:rgba(79,140,255,.22)}'
+    + '.cp-kv{display:flex;gap:8px;padding:3px 0;font-size:12px}'
+    + '.cp-kv b{color:#8fa3c8;font-weight:400;min-width:58px}'
+    + '.cp-ev{padding:5px 0;border-bottom:1px dashed rgba(120,160,255,.12);font-size:11.5px}';
 
   var style = document.createElement('style');
   style.textContent = CSS;
@@ -82,6 +87,35 @@
     return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
       return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
     });
+  }
+
+  /* ── AI 跳转: 把 [[jump|标签|kind:key]] / TH-任务号 / @天团 变成可点击链接 ── */
+  var TOKEN_RE = /\[\[jump\|([^|\]]{1,60})\|([a-z]+):([^\]\[]+)\]\]/g;
+  function jumpAnchor(label, kind, key) {
+    return '<a class="cp-jump" href="#" data-jump-kind="' + kind + '" data-jump-key="'
+      + key + '" title="跳转: ' + kind + '">' + label + '</a>';
+  }
+  function linkifyBare(txt) {
+    txt = txt.replace(/(^|[^\w>])(TH-\d{8}-\d{4})/g, function (_, pre, code) {
+      return pre + jumpAnchor(code, 'task', code);
+    });
+    txt = txt.replace(/(^|[\s（(])(@[\u4e00-\u9fa5A-Za-z][\u4e00-\u9fa5A-Za-z0-9·_-]{1,19})/g,
+      function (_, pre, name) {
+        return pre + jumpAnchor(name, 'team', name.slice(1));
+      });
+    return txt;
+  }
+  function richText(raw) {
+    var s = esc(raw == null ? '' : raw);
+    var out = '', last = 0, m;
+    TOKEN_RE.lastIndex = 0;
+    while ((m = TOKEN_RE.exec(s)) !== null) {
+      out += linkifyBare(s.slice(last, m.index));
+      out += jumpAnchor(m[1], m[2], m[3]);
+      last = m.index + m[0].length;
+    }
+    out += linkifyBare(s.slice(last));
+    return out.replace(/\n/g, '<br>');
   }
   function inputBox() {
     return document.querySelector('textarea') || document.querySelector('input[type="text"]');
@@ -191,7 +225,7 @@
           return '<div class="cp-row">'
             + '<div class="cp-s">#' + m.id + ' ' + esc(m.role) + ' · ' + esc(m.created_at)
             + (m.edited_at ? ' · 已编辑' : '') + (m.feedback === 1 ? ' · 👍' : m.feedback === -1 ? ' · 👎' : '') + '</div>'
-            + '<div class="cp-t" style="white-space:normal">' + esc(String(m.content || '').slice(0, 200)) + '</div>'
+            + '<div class="cp-t" style="white-space:normal">' + richText(String(m.content || '').slice(0, 300)) + '</div>'
             + '<div style="margin-top:5px">'
             + '<button class="cp-btn" data-quote="' + esc(String(m.content || '').slice(0, 200)) + '">引用</button>'
             + (m.role === 'user' ? '<button class="cp-btn" data-edit="' + m.id + '">编辑</button>' : '')
@@ -263,12 +297,71 @@
           var out = body.querySelector('#cp-dres');
           if (!r.success) { out.textContent = r.error || '派单失败'; return; }
           out.innerHTML = r.created.map(function (c) {
-            return '<div>' + esc(c.hall_code) + ' @' + esc(c.team) + ' → ' + esc(c.center || '待分派')
-              + ' [' + esc(c.status) + ']</div>';
+            return '<div>' + jumpAnchor(esc(c.hall_code), 'task', c.task_id) + ' @'
+              + jumpAnchor(esc(c.team), 'team', esc(c.team)) + ' → '
+              + esc(c.center || '待分派') + ' [' + esc(c.status) + ']'
+              + (c.dispatch_error ? ' <span style="color:#f87171">⚠️' + esc(c.dispatch_error) + '</span>' : '')
+              + '</div>';
           }).join('');
           toast('已派单 ' + r.created.length + ' 条');
         });
       };
+    });
+  }
+
+  function showPanel() { panel.classList.add('show'); }
+
+  function openJump(kind, key) {
+    if (kind === 'task') { showPanel(); viewTask(key); return; }
+    if (kind === 'team') {
+      api('/api/local-chat/jump/resolve?kind=team&key=' + encodeURIComponent(key)).then(function (d) {
+        window.open((d && d.href) || ('/andromeda/eigenflux_council?team=' + encodeURIComponent(key)), '_blank');
+      }).catch(function () {
+        window.open('/andromeda/eigenflux_council?team=' + encodeURIComponent(key), '_blank');
+      });
+      return;
+    }
+    if (kind === 'session') { location.href = '/local-chat?session=' + encodeURIComponent(key); }
+  }
+
+  function viewTask(key) {
+    body.innerHTML = '<div class="cp-empty">解析任务 ' + esc(key) + ' …</div>';
+    api('/api/local-chat/jump/resolve?kind=task&key=' + encodeURIComponent(key)).then(function (d) {
+      if (!d.success) {
+        body.innerHTML = '<div class="cp-empty">' + esc(d.error || '任务未找到') + '</div>'
+          + '<div style="text-align:center"><button class="cp-btn" id="cp-back">← 返回</button></div>';
+        body.querySelector('#cp-back').onclick = function () { switchTab('msg'); };
+        return;
+      }
+      api('/api/local-chat/jump/task/' + d.task_id).then(function (t) {
+        if (!t.success) { body.innerHTML = '<div class="cp-empty">' + esc(t.error || '任务详情不可用') + '</div>'; return; }
+        var task = t.task || {};
+        var evs = (t.events || []).map(function (e) {
+          return '<div class="cp-ev"><b>' + esc(e.event) + '</b> · ' + esc(e.actor || '-')
+            + ' <span style="color:#8fa3c8">' + esc(e.created_at || '') + '</span>'
+            + (e.note ? '<div style="color:#8fa3c8">' + esc(e.note) + '</div>' : '') + '</div>';
+        }).join('') || '<div class="cp-empty">暂无轨迹</div>';
+        body.innerHTML = '<button class="cp-btn" id="cp-back" style="margin:0 0 8px 0">← 返回消息</button>'
+          + '<div class="cp-t" style="white-space:normal;font-size:13px">' + esc(task.title || '') + '</div>'
+          + '<div class="cp-kv"><b>任务号</b><span>' + jumpAnchor(esc(task.hall_code || String(d.task_id)), 'task', task.id) + '</span></div>'
+          + '<div class="cp-kv"><b>状态</b><span>' + esc(task.status || '-') + '</span></div>'
+          + '<div class="cp-kv"><b>中心</b><span>' + esc(t.center || '待分派') + '</span></div>'
+          + '<div class="cp-kv"><b>优先级</b><span>' + esc(task.priority || '-') + '</span></div>'
+          + '<div class="cp-kv"><b>发布人</b><span>' + esc(task.publisher || '-') + '</span></div>'
+          + '<div class="cp-kv"><b>验收</b><span>' + esc(task.acceptance_criteria || '-') + '</span></div>'
+          + '<div class="cp-kv"><b>创建</b><span>' + esc(task.created_at || '-') + '</span></div>'
+          + '<div style="margin:8px 0"><button class="cp-btn" id="cp-quote-task">引用任务号</button>'
+          + '<button class="cp-btn" id="cp-goto-hall">任务大厅</button></div>'
+          + '<div class="cp-s" style="margin-top:6px">状态机轨迹</div>' + evs;
+        body.querySelector('#cp-back').onclick = function () { switchTab('msg'); };
+        body.querySelector('#cp-quote-task').onclick = function () {
+          var code = task.hall_code || '';
+          toast(insertText(code + ' ') ? '已插入任务号' : '已复制任务号');
+        };
+        body.querySelector('#cp-goto-hall').onclick = function () {
+          window.open(t.href || '/admin/center#hall-section', '_blank');
+        };
+      });
     });
   }
 
@@ -289,6 +382,20 @@
     if (panel.classList.contains('show')) { switchTab(TAB); refreshUnread(); }
   };
   panel.querySelector('#cp-close').onclick = function () { panel.classList.remove('show'); };
+
+  // 全站委托: 聊天正文里的任务号 / @天团 也能点击跳转
+  document.addEventListener('click', function (e) {
+    var a = e.target && e.target.closest ? e.target.closest('.cp-jump') : null;
+    if (!a) return;
+    e.preventDefault();
+    openJump(a.getAttribute('data-jump-kind'), a.getAttribute('data-jump-key'));
+  });
+
+  window.ChatPlus = {
+    richText: richText,
+    openJump: openJump,
+    openTask: function (key) { showPanel(); viewTask(key); }
+  };
 
   refreshUnread();
   setInterval(refreshUnread, 60000);
