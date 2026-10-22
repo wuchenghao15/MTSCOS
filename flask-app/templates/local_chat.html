@@ -202,15 +202,15 @@
     <div class="user-bar">
       <div class="avatar" id="avatar">{{ (username or 'U')[0]|upper }}</div>
       <div class="user-info">
-        <div class="user-name" id="userName">
+        <div class="user-name" id="userName" style="color:#f8fafc">
           {{ username or '加载中...' }}
-          {% if is_guest %}<span style="background:rgba(248,250,252,.12);font-size:10px;padding:1px 6px;border-radius:8px;margin-left:6px;color:var(--text-dim)">🧾 游客</span>{% endif %}
-          {% if is_sa %}<span style="background:linear-gradient(135deg,#06b6d4,#a855f7);font-size:10px;padding:1px 6px;border-radius:8px;margin-left:6px">🛡️ SA</span>{% endif %}
+          {% if is_guest %}<span style="background:rgba(6,182,212,.25);color:#67e8f9;font-size:10px;padding:2px 7px;border-radius:10px;margin-left:8px;font-weight:500;border:1px solid rgba(6,182,212,.3)">🧾 游客</span>{% endif %}
+          {% if is_sa %}<span style="background:linear-gradient(135deg,#06b6d4,#a855f7);color:#ffffff;font-size:10px;padding:2px 7px;border-radius:10px;margin-left:8px;font-weight:600">🛡️ SA</span>{% endif %}
         </div>
-        <div class="user-cog" id="userCog">
-          💰 <b id="userBalance">{{ token_balance | default(0) }}</b> tokens
-          {% if token_frozen %}· ❄️ {{ token_frozen }} 预扣中{% endif %}
-          {% if is_guest %}· 🎁 {{ token_balance | default(0) }} 免费 (1万额度){% endif %}
+        <div class="user-cog" id="userCog" style="color:#c4b5fd">
+          💰 <b id="userBalance" style="color:#67e8f9;font-weight:700">{{ token_balance | default(0) }}</b> tokens
+          {% if token_frozen %}<span style="color:#fbbf24">· ❄️ {{ token_frozen }} 预扣中</span>{% endif %}
+          {% if is_guest %}<span style="color:#86efac">· 🎁 {{ token_balance | default(0) }} 免费</span>{% endif %}
         </div>
       </div>
     </div>
