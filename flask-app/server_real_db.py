@@ -2492,6 +2492,8 @@ _CSRF_EXEMPT_PREFIXES = [
     '/api/wqx/',
     # 🆕 v25.0: 角色蓝图 API — /role/<role>/api/* (role_registry.py 自动生成)
     '/role/',
+    # 🆕 flow_vault_bank_20261023: 金库管理银行 — 系统级资产转账/扣费, 已有 BEGIN IMMEDIATE + 审计兜底, CSRF 冗余
+    '/api/vault/',
     # 🆕 v25.0: 仙女座统一审批 API — daemon/内部调用 (approvals_routes.py)
     '/api/approvals/',
     # 🆕 v25.0: 仙女座灰度发布 API — daemon/内部调用 (gray_release_routes.py)
@@ -3074,6 +3076,13 @@ try:
     print('[DISASTER-RECOVERY] ✅ 救援中心蓝图已注册 (center/recover/backup)')
 except Exception as _dr_err:
     print(f'[DISASTER-RECOVERY] ⚠️ 救援中心加载失败: {_dr_err}')
+
+# ── 金库管理银行 Blueprint: /api/vault/* (flow_vault_bank_20261023) ──
+try:
+    from blueprints.vault_bp import register_vault_bp, vault_bp
+    register_vault_bp(app)
+except Exception as _vault_err:
+    print(f'[VAULT] ⚠️ 金库加载失败: {_vault_err}')
 
 # ── 企业微信中枢 Blueprint: /api/wecom/* (flow_wecom_20261020) ──
 try:
