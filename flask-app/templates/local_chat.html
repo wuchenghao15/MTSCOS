@@ -544,8 +544,11 @@ async function send(){
             const d = JSON.parse(payload);
             if(d.token){
               fullText += d.token;
-              // 逐步渲染 markdown 简化版
-              contentEl.innerHTML = detectInflectionTags(text, fullText) + escapeHtml(fullText).replace(/\n/g,'<br>');
+              // 逐步渲染: 流式过程中也支持任务号/@天团 可点击跳转
+              const bodyHtml = (window.ChatPlus && window.ChatPlus.richText)
+                ? window.ChatPlus.richText(fullText)
+                : escapeHtml(fullText).replace(/\n/g,'<br>');
+              contentEl.innerHTML = detectInflectionTags(text, fullText) + bodyHtml;
               scrollBottom();
             }
           }catch(_){}
