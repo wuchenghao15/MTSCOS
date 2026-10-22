@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>冰川历史档案馆 · MTSCOS</title>
+<style>
+  :root{
+    --bg:#070c1a; --panel:rgba(17,26,48,.82); --line:rgba(120,160,255,.18);
+    --text:#e6edff; --muted:#8fa3c8; --brand:#4f8cff; --brand2:#8b5cf6;
+    --ok:#10b981; --warn:#f59e0b; --bad:#ef4444;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:
+      radial-gradient(1200px 600px at 12% -10%, rgba(79,140,255,.18), transparent 60%),
+      radial-gradient(900px 500px at 92% 0%, rgba(139,92,246,.14), transparent 55%),
+      var(--bg);
+    color:var(--text);font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;min-height:100vh;padding:28px 34px 60px}
+  h1{font-size:22px;font-weight:700;letter-spacing:.5px}
+  .sub{color:var(--muted);font-size:12px;margin-top:6px}
+  .bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:20px 0 16px}
+  .chip{padding:6px 13px;border:1px solid var(--line);border-radius:999px;font-size:12px;color:var(--muted);
+    cursor:pointer;background:rgba(255,255,255,.02);transition:.18s}
+  .chip:hover{color:var(--text);border-color:rgba(120,160,255,.45)}
+  .chip.active{background:linear-gradient(135deg,rgba(79,140,255,.28),rgba(139,92,246,.26));
+    color:#fff;border-color:rgba(140,170,255,.6)}
+  .chip b{color:#fff;font-weight:600;margin-left:4px}
+  input{flex:1;min-width:220px;background:rgba(255,255,255,.04);border:1px solid var(--line);
+    border-radius:10px;color:var(--text);padding:9px 13px;font-size:13px;outline:none}
+  input:focus{border-color:rgba(120,160,255,.6)}
+  button{background:linear-gradient(135deg,var(--brand),var(--brand2));border:0;border-radius:10px;
+    color:#fff;padding:9px 16px;font-size:13px;cursor:pointer}
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:18px}
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+  .stat .k{font-size:11px;color:var(--muted)}
+  .stat .v{font-size:20px;font-weight:700;margin-top:4px}
+  .list{background:var(--panel);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+  .item{display:flex;gap:14px;padding:14px 18px;border-bottom:1px solid rgba(120,160,255,.1);cursor:pointer;transition:.16s}
+  .item:hover{background:rgba(79,140,255,.08)}
+  .item:last-child{border-bottom:0}
+  .date{width:112px;flex:none;color:var(--muted);font-size:11px;font-variant-numeric:tabular-nums}
+  .kind{flex:none;font-size:10px;padding:2px 9px;border-radius:999px;height:20px;line-height:16px;
+    border:1px solid rgba(120,160,255,.35);color:#9bb6ff}
+  .kind.version{border-color:rgba(16,185,129,.45);color:#34d399}
+  .kind.evolution{border-color:rgba(139,92,246,.45);color:#a78bfa}
+  .kind.task{border-color:rgba(245,158,11,.45);color:#fbbf24}
+  .kind.rule{border-color:rgba(239,68,68,.45);color:#f87171}
+  .kind.upgrade{border-color:rgba(79,140,255,.45);color:#60a5fa}
+  .kind.copy{border-color:rgba(148,163,184,.5);color:#cbd5e1}
+  .body{flex:1;min-width:0}
+  .t{font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .s{font-size:12px;color:var(--muted);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .d{font-size:12px;color:#b9c8e6;margin-top:5px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .more{display:block;margin:16px auto;padding:9px 26px;border-radius:10px;border:1px solid var(--line);
+    background:transparent;color:var(--muted);cursor:pointer;font-size:12px}
+  .empty{padding:44px;text-align:center;color:var(--muted);font-size:13px}
+  .modal{position:fixed;inset:0;background:rgba(4,8,18,.72);backdrop-filter:blur(6px);display:none;
+    align-items:center;justify-content:center;padding:24px;z-index:90}
+  .modal.show{display:flex}
+  .box{background:#0e1730;border:1px solid rgba(120,160,255,.3);border-radius:16px;max-width:820px;
+    width:100%;max-height:80vh;overflow:auto;padding:22px}
+  .box h3{font-size:16px;margin-bottom:10px}
+  .box pre{white-space:pre-wrap;word-break:break-word;font-size:12px;color:#c7d5f2;
+    font-family:ui-monospace,Menlo,monospace}
+  .close{float:right;cursor:pointer;color:var(--muted);font-size:18px}
+</style>
+</head>
+<body>
+<script src="/static/js/andromeda_nav.js"></script>
+<h1>🗄️ 冰川历史档案馆</h1>
+<div class="sub">跨库聚合 · 版本档案 / 演化阶段 / 开发流程 / 任务归档 / 规则变更 / 升级报告 / 文案存档 · {{ app_version }}</div>
+
+<div class="stats" id="stats"></div>
+
+<div class="bar">
+  <span class="chip active" data-kind="all">全部 <b id="c-all">0</b></span>
+  {% for k, label in kinds.items() %}
+  <span class="chip" data-kind="{{ k }}">{{ label }} <b id="c-{{ k }}">0</b></span>
+  {% endfor %}
+</div>
+<div class="bar">
+  <input id="q" placeholder="检索档案标题 / 摘要 / 编号…">
+  <button onclick="searchArchive()">检索</button>
+</div>
+
+<div class="list" id="list"><div class="empty">加载中…</div></div>
+<button class="more" id="more" style="display:none" onclick="loadMore()">加载更多</button>
+
+<div class="modal" id="modal" onclick="if(event.target===this)hideModal()">
+  <div class="box">
+    <span class="close" onclick="hideModal()">✕</span>
+    <h3 id="m-title">档案详情</h3>
+    <pre id="m-body"></pre>
+  </div>
+</div>
+
+<script>
+let KIND='all', PAGE=1, Q='';
+const SIZE=20;
+
+function esc(s){return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+
+fetch('/api/archive/overview').then(r=>r.json()).then(d=>{
+  if(!d.ok) return;
+  document.getElementById('c-all').textContent = d.total;
+  (d.kinds||[]).forEach(k=>{ const el=document.getElementById('c-'+k.kind); if(el) el.textContent=k.count; });
+  document.getElementById('stats').innerHTML = (d.kinds||[]).map(k=>
+    `<div class="stat"><div class="k">${k.label}</div><div class="v">${k.count}</div></div>`).join('')
+    + `<div class="stat"><div class="k">档案总量</div><div class="v">${d.total}</div></div>`;
+}).catch(()=>{});
+
+function render(items, append){
+  const box=document.getElementById('list');
+  if(!items.length){ if(!append) box.innerHTML='<div class="empty">暂无匹配档案</div>'; return; }
+  const html = items.map(it=>
+    `<div class="item" onclick="openDetail('${it.kind}','${esc(String(it.id)).replace(/'/g,'')}')">
+      <div class="date">${esc(it.date||'-')}</div>
+      <span class="kind ${it.kind}">${esc(it.kind_label||it.kind)}</span>
+      <div class="body">
+        <div class="t">${esc(it.title)}</div>
+        <div class="s">${esc(it.subtitle)}</div>
+        <div class="d">${esc(it.detail)}</div>
+      </div>
+    </div>`).join('');
+  if(append) box.insertAdjacentHTML('beforeend', html);
+  else box.innerHTML = html;
+}
+
+function load(reset){
+  if(reset){ PAGE=1; }
+  const url=`/api/archive/timeline?kind=${encodeURIComponent(KIND)}&page=${PAGE}&size=${SIZE}&q=${encodeURIComponent(Q)}`;
+  fetch(url).then(r=>r.json()).then(d=>{
+    if(!d.ok){ document.getElementById('list').innerHTML=`<div class="empty">${esc(d.error||'加载失败')}</div>`; return; }
+    render(d.items, PAGE>1);
+    document.getElementById('more').style.display = d.has_more ? 'block' : 'none';
+  }).catch(()=>{ document.getElementById('list').innerHTML='<div class="empty">⚠️ 档案馆加载失败</div>'; });
+}
+function loadMore(){ PAGE+=1; load(false); }
+function searchArchive(){ Q=document.getElementById('q').value.trim(); load(true); }
+document.getElementById('q').addEventListener('keydown', e=>{ if(e.key==='Enter') searchArchive(); });
+
+document.querySelectorAll('.chip').forEach(el=>{
+  el.onclick=()=>{
+    document.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
+    el.classList.add('active'); KIND=el.dataset.kind; load(true);
+  };
+});
+
+function openDetail(kind,id){
+  fetch(`/api/archive/detail?kind=${encodeURIComponent(kind)}&id=${encodeURIComponent(id)}`)
+    .then(r=>r.json()).then(d=>{
+      document.getElementById('m-title').textContent = d.ok ? (d.kind_label+' · '+id) : '档案详情';
+      document.getElementById('m-body').textContent = d.ok
+        ? Object.entries(d.record).map(([k,v])=>`${k}: ${v===null?'':v}`).join('\n')
+        : (d.error||'未找到') + (d.hint?`\n提示: ${d.hint}`:'');
+      document.getElementById('modal').classList.add('show');
+    }).catch(()=>{});
+}
+function hideModal(){ document.getElementById('modal').classList.remove('show'); }
+load(true);
+</script>
+</body>
+</html>
