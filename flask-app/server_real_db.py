@@ -3928,7 +3928,9 @@ def _mt_sys_container_session_loader():
         path = request.path or ''
         # 排除静态资源 / 心跳接口重复写
         if (path.startswith('/static/') or path.startswith('/assets/')
-                or path in ('/favicon.ico', '/robots.txt', '/api/health')
+                or path in ('/favicon.ico', '/robots.txt', '/api/health', '/manifest.json',
+                            '/apple-touch-icon.png', '/apple-touch-icon-precomposed.png',
+                            '/sitemap.xml', '/health')
                 or path.endswith(('.css', '.js', '.svg', '.png', '.jpg', '.jpeg', '.ico', '.map', '.woff2'))):
             return None
         sid_cookie = request.cookies.get(_MT_COOKIES['sid']['name']) or ''
@@ -3998,6 +4000,9 @@ def _mt_sys_container_session_loader():
 # 白名单：首页(/、/index)、auth、静态、健康检查、本站Referer；已登录用户全放行。
 _MT_HOTLINK_WHITELIST_PATHS = {
     '/', '/index', '/favicon.ico', '/robots.txt',
+    # flow_mtos_site_seo_20261022: 公网入口元资源 (浏览器/爬虫/主屏幕 无 Referer 直达)
+    '/manifest.json', '/apple-touch-icon.png', '/apple-touch-icon-precomposed.png',
+    '/sitemap.xml', '/health',
     '/login', '/auth/login', '/auth/register', '/logout', '/forgot_password', '/register', '/auth/logout', '/auth/forgot_password',
     '/auth/session_health', '/auth/check_username',
     # 🔧 2026-10-06 SERVER 模式本机直进后台: /sa/dashboard 无 Referer 直达放行
@@ -4191,6 +4196,9 @@ def _mt_vikey_lock_check():
             '/api/vikey/set_timeout', '/api/vikey/snapshot/save',
             '/api/vikey/snapshot/restore', '/api/vikey/snapshot/release',
             '/api/health', '/favicon.ico',
+            # flow_mtos_site_seo_20261022: 公网元资源不参与 VIKEY 门禁
+            '/manifest.json', '/apple-touch-icon.png', '/apple-touch-icon-precomposed.png',
+            '/sitemap.xml', '/health',
             '/api/system_version', '/api/system_logo',
             '/settings',
             '/local-chat',  # 🧠 本地聊天页 (仙女座发散思维引擎, 需登录后访问, 但先过 VIKEY)
@@ -4686,6 +4694,55 @@ def _mt_theme_and_i18n_global_injector(response):
             )
             data = _re_inj.sub(r'<body', link_html + '<body', data, count=1, flags=_re_inj.I)
             changed = True
+
+        # ========== D. SEO / PWA meta 注入 (flow_mtos_site_seo_20261022) ==========
+        # 公网 mtos.site 需要的最小元信息: 分享卡片(og/twitter) / 搜索引擎(description, canonical)
+        # / 添加到主屏幕(manifest, apple-touch-icon, theme-color)
+        # 幂等: 已含 MTSCOS SEO/PWA 标记 → 跳过; 页面已有同名 meta → 不重复注入
+        if has_head_end and 'MTSCOS SEO/PWA' not in data:
+            def _attr(s):
+                return (str(s).replace('&', '&amp;').replace('"', '&quot;')
+                        .replace('<', '&lt;').replace('>', '&gt;'))
+            _mt = _re_inj.search(r'<title[^>]*>(.*?)</title>', data, _re_inj.S | _re_inj.I)
+            _seo_title = (_mt.group(1).strip() if _mt else '') or '冰山 · MTSCOS AI'
+            _seo_host = (request.host or '').lower()
+            _seo_base = ('https://mtos.site' if _seo_host in _MT_HOTLINK_OWN_HOSTS
+                         else (request.url_root or '/').rstrip('/'))
+            _seo_url = _seo_base + (request.path or '/')
+            _seo_desc = ('冰山 · MTSCOS AI — 由 L0 IRON_RULE 12 步强制约束的 AI 协作系统：'
+                         '仙女座天团、AI 引擎集群、任务大厅、题库教育、本地零 token 推理与小龙聊天。')
+            _seo_img = _seo_base + '/static/img/icon-512.png'
+            _seo = ['\n    <!-- MTSCOS SEO/PWA meta auto-injected -->']
+            if 'name="description"' not in data:
+                _seo.append('    <meta name="description" content="' + _attr(_seo_desc) + '">')
+            if 'name="theme-color"' not in data:
+                _seo.append('    <meta name="theme-color" content="#0b1020">')
+            if 'rel="manifest"' not in data:
+                _seo.append('    <link rel="manifest" href="/manifest.json">')
+            if 'apple-touch-icon' not in data:
+                _seo.append('    <link rel="apple-touch-icon" href="/apple-touch-icon.png">')
+            if 'rel="canonical"' not in data:
+                _seo.append('    <link rel="canonical" href="' + _attr(_seo_url) + '">')
+            if 'property="og:title"' not in data:
+                _seo.append('    <meta property="og:title" content="' + _attr(_seo_title) + '">')
+            if 'property="og:description"' not in data:
+                _seo.append('    <meta property="og:description" content="' + _attr(_seo_desc) + '">')
+            if 'property="og:url"' not in data:
+                _seo.append('    <meta property="og:url" content="' + _attr(_seo_url) + '">')
+            if 'property="og:image"' not in data:
+                _seo.append('    <meta property="og:image" content="' + _attr(_seo_img) + '">')
+            if 'property="og:type"' not in data:
+                _seo.append('    <meta property="og:type" content="website">')
+            if 'property="og:site_name"' not in data:
+                _seo.append('    <meta property="og:site_name" content="MTSCOS AI · 冰山">')
+            if 'name="twitter:card"' not in data:
+                _seo.append('    <meta name="twitter:card" content="summary_large_image">')
+            data = data.replace('</head>', '\n'.join(_seo) + '\n</head>', 1)
+            changed = True
+            try:
+                response.headers['X-MT-SEO-Injected'] = '1'
+            except Exception:
+                pass
 
         # ========== 提交修改 ==========
         if changed:
@@ -11467,6 +11524,75 @@ def api_health_check():
         })
     except Exception as e:
         return jsonify({'success': False, 'status': 'degraded', 'error': str(e)}), 503
+
+
+# ═══════════════════════════════════════════════════════════════════
+# mtos.site 公网入口元资源 (flow_mtos_site_seo_20261022)
+#   补齐公网可用性缺口: /favicon.ico 404 / 无站点 manifest / sitemap 302 / /health 被门禁拦截
+#   全部为公开只读资源, 已同步进 _MT_HOTLINK_WHITELIST_PATHS + VIKEY bypass + Session 快路径
+# ═══════════════════════════════════════════════════════════════════
+_SITE_MANIFEST = {
+    'name': '冰山 · MTSCOS AI',
+    'short_name': '冰山',
+    'description': 'L0 IRON_RULE 12 步强制约束的 AI 协作系统：仙女座天团 · AI 引擎集群 · 任务大厅 · 题库教育 · 本地零 token 推理',
+    'start_url': '/',
+    'scope': '/',
+    'display': 'standalone',
+    'orientation': 'any',
+    'background_color': '#0b1020',
+    'theme_color': '#0b1020',
+    'lang': 'zh-CN',
+    'icons': [
+        {'src': '/static/img/icon-192.png', 'sizes': '192x192', 'type': 'image/png', 'purpose': 'any maskable'},
+        {'src': '/static/img/icon-512.png', 'sizes': '512x512', 'type': 'image/png', 'purpose': 'any maskable'},
+    ],
+}
+
+
+@app.route('/favicon.ico')
+def _site_favicon():
+    """浏览器默认请求根路径图标 — 此前 404 导致标签页裂图"""
+    return send_file(os.path.join(app.static_folder, 'img', 'favicon.ico'),
+                     mimetype='image/x-icon', max_age=604800)
+
+
+@app.route('/apple-touch-icon.png')
+@app.route('/apple-touch-icon-precomposed.png')
+def _site_apple_touch_icon():
+    """iOS 添加到主屏幕图标"""
+    return send_file(os.path.join(app.static_folder, 'img', 'icon-192.png'),
+                     mimetype='image/png', max_age=604800)
+
+
+@app.route('/manifest.json')
+def _site_manifest():
+    """站点级 PWA manifest (小龙 App 使用独立的 /xiaolong/manifest)"""
+    return _mt_Response(json.dumps(_SITE_MANIFEST, ensure_ascii=False),
+                        mimetype='application/manifest+json')
+
+
+@app.route('/sitemap.xml')
+def _site_sitemap():
+    """公开页面站点地图 — 此前落到登录重定向, 爬虫拿不到"""
+    _base = 'https://mtos.site'
+    _today = datetime.now().strftime('%Y-%m-%d')
+    _pages = [('/', '1.0', 'daily'), ('/index', '1.0', 'daily'),
+              ('/xiaolong', '0.8', 'weekly'),
+              ('/auth/login', '0.4', 'monthly'), ('/auth/register', '0.4', 'monthly')]
+    _items = ''.join(
+        f'  <url><loc>{_base}{p}</loc><lastmod>{_today}</lastmod>'
+        f'<changefreq>{cf}</changefreq><priority>{pr}</priority></url>\n'
+        for p, pr, cf in _pages)
+    _xml = ('<?xml version="1.0" encoding="UTF-8"?>\n'
+            '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+            + _items + '</urlset>\n')
+    return _mt_Response(_xml, mimetype='application/xml')
+
+
+@app.route('/health')
+def _site_health():
+    """公网探活别名 — Cloudflare / 外部监控直达 200 JSON"""
+    return api_health_check()
 
 
 @app.route('/api/hardware/dual-status', methods=['GET'])
