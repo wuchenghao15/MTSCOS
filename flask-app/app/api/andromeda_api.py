@@ -27,6 +27,9 @@ from typing import Optional
 
 from flask import Blueprint, jsonify, request, session
 
+# flow_remaining_db_unify_20261022: 统一 DB 权威源
+from core.db_path import get_db_path
+
 andromeda_bp = Blueprint("andromeda", __name__, url_prefix="/api/andromeda")
 
 # ─── 常量 ───
@@ -43,13 +46,9 @@ DAEMON_NAMES = ("sys_andromeda_autosync", "sys_andromeda_auto_evolution")
 _OLLAMA_PORTS = (11435, 11434, 11436)
 
 
-def _resolve_db_path() -> str:
-    """找到第一个存在的 app.db."""
-    for p in _DB_CANDIDATES:
-        if p.exists():
-            return str(p)
-    return str(_DB_CANDIDATES[0])
-
+def _resolve_db_path():
+    """(flow_remaining_db_unify_20261022) 委托 core.db_path 统一权威源"""
+    return get_db_path('app.db')
 
 # ════════════════════════════════════════════════════════════════
 #  内部工具

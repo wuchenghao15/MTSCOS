@@ -15,6 +15,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
+# flow_remaining_db_unify_20261022: 统一 DB 权威源
+from core.db_path import get_db_path
+
 # ── 路径常量 (和 andromeda_api.py 完全对齐, 防漂移) ──
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 # database/app.db 是 SSOT (单数据源), engines/app.db 旧迷你同步副本, 优先级先主库
@@ -36,12 +39,9 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
 
 
-def _resolve_db_path() -> str:
-    for p in _DB_CANDIDATES:
-        if p.exists():
-            return str(p)
-    return str(_DB_CANDIDATES[0])
-
+def _resolve_db_path():
+    """(flow_remaining_db_unify_20261022) 委托 core.db_path 统一权威源"""
+    return get_db_path('app.db')
 
 def _db_conn(timeout: int = 5) -> sqlite3.Connection:
     """统一 DB 连接 (WAL + busy_timeout). 调用方需 conn.close()."""
