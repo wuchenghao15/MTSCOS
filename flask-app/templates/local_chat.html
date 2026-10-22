@@ -276,26 +276,27 @@ const API = '/api/local-chat';
 
 // ═══ 初始化 ═══
 function init(){
-  // 用户名 / 头像
-  fetch('/api/auth/me').then(r=>r.json()).then(d=>{
-    if(d.username){
-      $('userName').textContent = d.username;
-      $('avatar').textContent = d.username[0].toUpperCase();
-    }
-  }).catch(()=>{
-    $('userName').textContent = '用户';
-  });
+  // 用户名 / 头像 — 游客跳过 auth/me (返回 404)
+  var existingName = $('userName').textContent;
+  var isGuest = (existingName || '').includes('Guest');
+  if(!isGuest){
+    fetch('/api/auth/me').then(r=>{ if(!r.ok) throw new Error(); return r.json(); }).then(d=>{
+      if(d && d.username){
+        $('userName').childNodes[0] && ($('userName').childNodes[0].nodeValue = d.username);
+        $('avatar').textContent = d.username[0].toUpperCase();
+      }
+    }).catch(()=>{ /* 保留服务端已渲染的 Guest_xxx / 用户名 */ });
+  }
 
   loadSessions();
-  // flow_chat_preload_20261019: widget 预填 sid → 打开面板直达最近(置顶优先)会话
   const urlSid = new URLSearchParams(location.search).get('sid');
   if(urlSid){ selectSession(urlSid); }
   initTokenBadge();
   bindEnter();
-  initQuickCmds();      // F3 快捷指令面板
-  initVoice();          // F1 语音输入能力探测
-  listenPageCtx();      // F4 页面上下文接收 (embed 模式)
-  $('chatTitle').addEventListener('dblclick', renameSession);   // flow_chat_enhance_20261019
+  initQuickCmds();
+  initVoice();
+  listenPageCtx();
+  $('chatTitle').addEventListener('dblclick', renameSession);
 }
 
 // ═══ 会话列表 ═══
