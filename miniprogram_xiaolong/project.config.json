@@ -1,0 +1,14 @@
+{
+  "appid": "touristappid",
+  "projectname": "xiaolong",
+  "compileType": "miniprogram",
+  "libVersion": "3.5.0",
+  "setting": {
+    "urlCheck": false,
+    "es6": true,
+    "enhance": true,
+    "postcss": true,
+    "minified": true
+  },
+  "description": "小龙 · 仙女座聊天专用小程序 (服务器统一 mini Tailscale 100.106.220.96)"
+}

@@ -1,0 +1,12 @@
+{
+  "pages": ["pages/chat/chat"],
+  "window": {
+    "navigationBarTitleText": "小龙",
+    "navigationBarBackgroundColor": "#0b1020",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#0b1020",
+    "backgroundTextStyle": "dark"
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}

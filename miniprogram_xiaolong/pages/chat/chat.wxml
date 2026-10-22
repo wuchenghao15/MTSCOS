@@ -1,0 +1,34 @@
+<view class="page">
+  <view class="hd">
+    <view class="logo">龙</view>
+    <view class="hd-txt">
+      <view class="t">小龙</view>
+      <view class="s">{{status}}</view>
+    </view>
+    <view class="badge" wx:if="{{logged}}" bindtap="openApply">申请开通</view>
+  </view>
+
+  <view class="login" wx:if="{{!logged}}">
+    <input class="ipt" placeholder="用户名" value="{{username}}" bindinput="onUserInput" />
+    <input class="ipt" password placeholder="密码（注册至少 8 位）" value="{{password}}" bindinput="onPassInput" />
+    <view class="btns">
+      <view class="btn" bindtap="doLogin">登录</view>
+      <view class="btn ghost" bindtap="doRegister">注册（仅聊天）</view>
+    </view>
+    <view class="tip">注册后仅开放聊天功能，其他功能需到网页端冰山首页登录本账号申请开通</view>
+    <view class="tip">服务器：{{server}}</view>
+  </view>
+
+  <scroll-view class="msgs" scroll-y wx:else scroll-into-view="{{bottomId}}">
+    <view wx:for="{{messages}}" wx:key="index" class="row {{item.role === 'user' ? 'me' : ''}}">
+      <view class="bubble">{{item.text || '…'}}</view>
+    </view>
+    <view id="bottom"></view>
+  </scroll-view>
+
+  <view class="ft" wx:if="{{logged}}">
+    <textarea class="ta" auto-height maxlength="2000" placeholder="和小龙说点什么…"
+      value="{{draft}}" bindinput="onDraft" confirm-type="send" bindconfirm="send" />
+    <view class="send {{sending ? 'dis' : ''}}" bindtap="send">➤</view>
+  </view>
+</view>
