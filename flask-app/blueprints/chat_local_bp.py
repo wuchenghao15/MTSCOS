@@ -249,25 +249,52 @@ DAILY_FREE_TOKENS = 10000
 
 
 def _ensure_daily_grant(user_id, username):
-    """每日 lazy 赠送: 账户不存在则建户+赠 10000; 今日未赠则再赠 10000。
+    """每日 lazy 赠送 + 余额查询 — 游客/注册用户分表
+    游客 → mt_token_wallets (TEXT user_id, 一次性 10000)
+    注册 → mt_user_token_accounts (INTEGER user_id, 每日赠送)
     返回 {'balance': int, 'granted_today': bool}"""
     today = datetime.now().strftime('%Y-%m-%d')
     conn = _db()
     try:
+        is_guest = str(user_id).startswith('guest')
+        if is_guest:
+            # ── 游客: 查 mt_token_wallets (TEXT user_id) ──
+            row = conn.execute(
+                "SELECT balance, guest_free_grant FROM mt_token_wallets WHERE user_id=?",
+                (user_id,)
+            ).fetchone()
+            if row is None:
+                # 首次 → 建钱包 + 赠 10000
+                dh = str(user_id).replace('guest_', '')[:16]
+                _ensure_guest_wallet(dh, conn=conn)
+                row = conn.execute(
+                    "SELECT balance FROM mt_token_wallets WHERE user_id=?", (user_id,)
+                ).fetchone()
+            bal = row['balance'] if row else 0
+            return {'balance': bal, 'granted_today': False}
+        # ── 注册用户: 查 mt_user_token_accounts (INTEGER user_id) ──
+        try:
+            uid_int = int(user_id)
+        except (ValueError, TypeError):
+            # 不是数字 user_id 也回退 wallets
+            row = conn.execute(
+                "SELECT balance FROM mt_token_wallets WHERE user_id=?", (str(user_id),)
+            ).fetchone()
+            return {'balance': row['balance'] if row else 0, 'granted_today': False}
         row = conn.execute(
             "SELECT balance, last_grant_date FROM mt_user_token_accounts WHERE user_id=?",
-            (user_id,)
+            (uid_int,)
         ).fetchone()
         if row is None:
             conn.execute(
                 "INSERT INTO mt_user_token_accounts(user_id,username,balance,last_grant_date,total_granted) "
                 "VALUES(?,?,?,?,?)",
-                (user_id, username or '', DAILY_FREE_TOKENS, today, DAILY_FREE_TOKENS)
+                (uid_int, username or '', DAILY_FREE_TOKENS, today, DAILY_FREE_TOKENS)
             )
             conn.execute(
                 "INSERT INTO mt_user_token_ledger(user_id,change,type,detail,balance_after) "
                 "VALUES(?,?,?,?,?)",
-                (user_id, DAILY_FREE_TOKENS, 'daily_grant',
+                (uid_int, DAILY_FREE_TOKENS, 'daily_grant',
                  json.dumps({'reason': 'new_account_daily', 'date': today}, ensure_ascii=False),
                  DAILY_FREE_TOKENS)
             )
@@ -278,12 +305,12 @@ def _ensure_daily_grant(user_id, username):
             conn.execute(
                 "UPDATE mt_user_token_accounts SET balance=?, last_grant_date=?, total_granted=total_granted+?, "
                 "updated_at=datetime('now','localtime') WHERE user_id=?",
-                (new_balance, today, DAILY_FREE_TOKENS, user_id)
+                (new_balance, today, DAILY_FREE_TOKENS, uid_int)
             )
             conn.execute(
                 "INSERT INTO mt_user_token_ledger(user_id,change,type,detail,balance_after) "
                 "VALUES(?,?,?,?,?)",
-                (user_id, DAILY_FREE_TOKENS, 'daily_grant',
+                (uid_int, DAILY_FREE_TOKENS, 'daily_grant',
                  json.dumps({'reason': 'daily_free', 'date': today}, ensure_ascii=False),
                  new_balance)
             )
@@ -292,6 +319,7 @@ def _ensure_daily_grant(user_id, username):
         return {'balance': row['balance'], 'granted_today': False}
     except Exception as e:
         sys.stderr.write(f"[CHAT-LOCAL] _ensure_daily_grant error: {e}\n")
+        return {'balance': 0, 'granted_today': False}
         return {'balance': 0, 'granted_today': False}
     finally:
         conn.close()
@@ -372,28 +400,49 @@ def _estimate_cost(model, prompt_tokens, completion_tokens):
 
 
 def _prehold(user_id, session_id, estimated_cost, model):
-    """原子预扣: UPDATE ... WHERE balance>=? 防并发穿透
+    """原子预扣: 游客→mt_token_wallets, 注册→mt_user_token_accounts
     返回 {'ok': bool, 'balance': int, 'held_id': ledger_id}"""
     conn = _db()
     try:
-        conn.execute("BEGIN IMMEDIATE")  # 写锁防并发
-        row = conn.execute(
-            "SELECT balance FROM mt_user_token_accounts WHERE user_id=?", (user_id,)
-        ).fetchone()
-        if row is None or row['balance'] < estimated_cost:
-            conn.rollback()
+        is_guest = str(user_id).startswith('guest')
+        conn.execute("BEGIN IMMEDIATE")
+        if is_guest:
+            row = conn.execute(
+                "SELECT balance, frozen FROM mt_token_wallets WHERE user_id=?", (user_id,)
+            ).fetchone()
             bal = row['balance'] if row else 0
-            return {'ok': False, 'balance': bal, 'held_id': None}
-        new_balance = row['balance'] - estimated_cost
-        conn.execute(
-            "UPDATE mt_user_token_accounts SET balance=?, total_preheld=total_preheld+?, "
-            "updated_at=datetime('now','localtime') WHERE user_id=?",
-            (new_balance, estimated_cost, user_id)
-        )
+            frozen = row['frozen'] if row else 0
+            available = bal - frozen
+            if row is None or available < estimated_cost:
+                conn.rollback()
+                return {'ok': False, 'balance': bal, 'held_id': None}
+            conn.execute(
+                "UPDATE mt_token_wallets SET frozen=frozen+?, updated_at=datetime('now','localtime') "
+                "WHERE user_id=?", (estimated_cost, user_id)
+            )
+        else:
+            row = conn.execute(
+                "SELECT balance, frozen FROM mt_user_token_accounts WHERE user_id=?", (user_id,)
+            ).fetchone()
+            if row is None:
+                conn.rollback()
+                return {'ok': False, 'balance': 0, 'held_id': None}
+            frozen = row['frozen'] if 'frozen' in row.keys() else 0
+            bal = row['balance']
+            if bal < estimated_cost:
+                conn.rollback()
+                return {'ok': False, 'balance': bal, 'held_id': None}
+            conn.execute(
+                "UPDATE mt_user_token_accounts SET balance=balance-?, frozen=frozen+?, "
+                "updated_at=datetime('now','localtime') WHERE user_id=?",
+                (estimated_cost, estimated_cost, user_id)
+            )
+        # ledger 记录 (user_id TEXT 现在兼容 guest_xxx)
+        new_balance = bal - estimated_cost
         cur = conn.execute(
             "INSERT INTO mt_user_token_ledger(user_id,change,type,session_id,model,detail,balance_after) "
             "VALUES(?,?,?,?,?,?,?)",
-            (user_id, -estimated_cost, 'prehold', session_id or '', model or '',
+            (str(user_id), -estimated_cost, 'prehold', session_id or '', model or '',
              json.dumps({'estimated': estimated_cost}, ensure_ascii=False), new_balance)
         )
         held_id = cur.lastrowid
@@ -410,25 +459,33 @@ def _prehold(user_id, session_id, estimated_cost, model):
 
 def _finalize(user_id, session_id, model, prompt_tokens, completion_tokens, prehold_result,
               inflections=None, brain_fed=False):
-    """三阶段结算: 实扣真实用量 + 退差 + 拐点/脑库奖励抵扣"""
+    """三阶段结算: 实扣真实用量 + 退差 + 拐点/脑库奖励
+    游客→mt_token_wallets (简单版), 注册→mt_user_token_accounts (完整版)"""
+    uid_str = str(user_id)
+    is_guest = uid_str.startswith('guest')
     conn = _db()
     try:
         conn.execute("BEGIN IMMEDIATE")
-
-        # 1) 先冲销预扣 (release)
         prehold_amount = (prehold_result or {}).get('held_amount', 0)
-        if prehold_amount > 0:
-            conn.execute(
-                "INSERT INTO mt_user_token_ledger(user_id,change,type,session_id,model,detail,balance_after) "
-                "VALUES(?,?,?,?,?,?,?)",
-                (user_id, prehold_amount, 'release', session_id or '', model or '',
-                 json.dumps({'reference_id': prehold_result.get('held_id')}, ensure_ascii=False), 0)
-            )
 
-        # 2) 实扣真实用量 (按模型定价)
+        # 2) 实扣真实用量
         cost = _estimate_cost(model, prompt_tokens, completion_tokens)
         real_cost = cost['total_cost']
-        if real_cost > 0:
+        if is_guest:
+            row = conn.execute(
+                "SELECT balance, frozen FROM mt_token_wallets WHERE user_id=?", (uid_str,)
+            ).fetchone()
+            if row is None:
+                conn.rollback()
+                return {'balance': 0, 'net_cost': 0, 'reward': 0, 'refund': prehold_amount}
+            actual_deduct = min(real_cost, row['balance'])
+            new_balance = row['balance'] - actual_deduct
+            # 释放 frozen + 更新 balance
+            conn.execute(
+                "UPDATE mt_token_wallets SET balance=?, frozen=MAX(0,frozen-?) WHERE user_id=?",
+                (new_balance, prehold_amount, uid_str)
+            )
+        else:
             row = conn.execute(
                 "SELECT balance FROM mt_user_token_accounts WHERE user_id=?", (user_id,)
             ).fetchone()
@@ -438,79 +495,81 @@ def _finalize(user_id, session_id, model, prompt_tokens, completion_tokens, preh
             actual_deduct = min(real_cost, row['balance'])
             new_balance = row['balance'] - actual_deduct
             conn.execute(
-                "UPDATE mt_user_token_accounts SET balance=?, total_consumed=total_consumed+?, "
-                "updated_at=datetime('now','localtime') WHERE user_id=?",
-                (new_balance, actual_deduct, user_id)
+                "UPDATE mt_user_token_accounts SET balance=?, frozen=MAX(0,frozen-?), "
+                "total_consumed=total_consumed+?, updated_at=datetime('now','localtime') WHERE user_id=?",
+                (new_balance, prehold_amount, actual_deduct, user_id)
             )
-            conn.execute(
-                "INSERT INTO mt_user_token_ledger(user_id,change,type,session_id,model,detail,balance_after) "
-                "VALUES(?,?,?,?,?,?,?)",
-                (user_id, -actual_deduct, 'consume', session_id or '', model or '',
-                 json.dumps({'prompt_tokens': prompt_tokens, 'completion_tokens': completion_tokens,
-                             'prompt_cost': cost['prompt_cost'], 'completion_cost': cost['completion_cost'],
-                             'model_weight': cost['pricing']['model_weight']}, ensure_ascii=False),
-                 new_balance)
-            )
-        else:
-            actual_deduct = 0
-            new_balance = conn.execute(
-                "SELECT balance FROM mt_user_token_accounts WHERE user_id=?", (user_id,)
-            ).fetchone()['balance']
+        # ledger
+        conn.execute(
+            "INSERT INTO mt_user_token_ledger(user_id,change,type,session_id,model,detail,balance_after) "
+            "VALUES(?,?,?,?,?,?,?)",
+            (uid_str, -actual_deduct, 'consume', session_id or '', model or '',
+             json.dumps({'prompt_tokens': prompt_tokens, 'completion_tokens': completion_tokens,
+                         'model_weight': cost['pricing']['model_weight']}, ensure_ascii=False),
+             new_balance)
+        )
 
         # 3) 退差 (预扣 - 实扣 = 多扣了退回去)
         refund = prehold_amount - actual_deduct
         if refund > 0:
             new_balance += refund
-            conn.execute(
-                "UPDATE mt_user_token_accounts SET balance=? WHERE user_id=?",
-                (new_balance, user_id)
-            )
+            if is_guest:
+                conn.execute(
+                    "UPDATE mt_token_wallets SET balance=balance+? WHERE user_id=?",
+                    (refund, uid_str)
+                )
+            else:
+                conn.execute(
+                    "UPDATE mt_user_token_accounts SET balance=balance+? WHERE user_id=?",
+                    (refund, user_id)
+                )
             conn.execute(
                 "INSERT INTO mt_user_token_ledger(user_id,change,type,session_id,model,detail,balance_after) "
                 "VALUES(?,?,?,?,?,?,?)",
-                (user_id, refund, 'release', session_id or '', model or '',
+                (uid_str, refund, 'release', session_id or '', model or '',
                  json.dumps({'reason': 'prehold_over_actual', 'prehold': prehold_amount, 'actual': actual_deduct},
                             ensure_ascii=False), new_balance)
             )
 
-        # 4) 制约平衡奖励 (v25.5): 拐点 + 脑库合并计算, 每日 200 封顶, 单次 15% 限制
-        balance_now = conn.execute(
-            "SELECT balance FROM mt_user_token_accounts WHERE user_id=?", (user_id,)
-        ).fetchone()['balance']
-        reward_info = _calc_reward(user_id, balance_now, inflections=inflections, brain_fed=brain_fed)
-        reward = reward_info.get('reward', 0)
+        # 4) 奖励 (游客简化: 不扣每日 200 封顶, 直接加余额)
+        reward = 0
+        if not is_guest:
+            balance_now = new_balance
+            reward_info = _calc_reward(user_id, balance_now, inflections=inflections, brain_fed=brain_fed)
+            reward = reward_info.get('reward', 0)
+        elif brain_fed or (inflections and len(inflections) > 0):
+            # 游客: 脑库投喂 + 拐点 → 5~20 token 奖励
+            reward = 10 + (5 if inflections else 0)
         if reward > 0:
             new_balance += reward
-            conn.execute(
-                "UPDATE mt_user_token_accounts SET balance=?, total_rewarded=total_rewarded+? WHERE user_id=?",
-                (new_balance, reward, user_id)
-            )
+            if is_guest:
+                conn.execute(
+                    "UPDATE mt_token_wallets SET balance=balance+? WHERE user_id=?",
+                    (reward, uid_str)
+                )
+            else:
+                conn.execute(
+                    "UPDATE mt_user_token_accounts SET balance=balance+?, total_rewarded=total_rewarded+? "
+                    "WHERE user_id=?", (reward, reward, user_id)
+                )
             conn.execute(
                 "INSERT INTO mt_user_token_ledger(user_id,change,type,session_id,model,detail,balance_after) "
                 "VALUES(?,?,?,?,?,?,?)",
-                (user_id, reward, 'reward', session_id or '', model or '',
-                 json.dumps({
-                     'breakdown': reward_info.get('breakdown', {}),
-                     'formula_hash': reward_info.get('formula_hash', ''),
-                     'capped': reward_info.get('capped', False),
-                     'cooldown': reward_info.get('cooldown', False),
-                     'daily_remaining': reward_info.get('daily_remaining', 0),
-                 }, ensure_ascii=False),
+                (uid_str, reward, 'reward', session_id or '', model or '',
+                 json.dumps({'inflections': inflections or [], 'brain_fed': brain_fed}, ensure_ascii=False),
                  new_balance)
             )
-        elif reward_info.get('cooldown'):
-            pass  # 冷却中, 跳过
-        elif reward_info.get('capped') and not brain_fed:
-            pass  # 封顶了, 跳过 (脑库奖励单独处理下)
 
         conn.commit()
-        return {'balance': new_balance, 'net_cost': actual_deduct, 'prehold': prehold_amount,
-                'refund': refund, 'reward': reward}
+        return {
+            'balance': new_balance, 'net_cost': actual_deduct,
+            'reward': reward, 'refund': refund
+        }
     except Exception as e:
         try: conn.rollback()
         except Exception: pass
         sys.stderr.write(f"[CHAT-LOCAL] _finalize error: {e}\n")
-        return {'balance': 0, 'net_cost': 0, 'reward': 0, 'refund': prehold_result.get('held_amount', 0) if prehold_result else 0}
+        return {'balance': 0, 'net_cost': 0, 'reward': 0, 'refund': 0}
     finally:
         conn.close()
 
