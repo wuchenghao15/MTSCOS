@@ -2291,9 +2291,9 @@ def _phase_reproduce():
     try:
         # 选 TOP 3 能力 AI (心跳活跃 + 得分高)
         candidates = conn.execute('''
-            SELECT * FROM mt_ai_employees
-            WHERE status="active" AND last_heartbeat > datetime("now", "-2 hours")
-            ORDER BY eigenflux_score DESC
+            SELECT id, name, group_tag, capabilities FROM ai_employees
+            WHERE is_enabled=1 AND updated_at > datetime('now', '-24 hours')
+            ORDER BY knowledge_base_size DESC, accuracy DESC
             LIMIT 3
         ''').fetchall()
         
@@ -2302,9 +2302,9 @@ def _phase_reproduce():
             return 0
         
         for parent in candidates:
-            parent_id = parent['employee_id']
+            parent_id = parent['id']
             parent_name = parent['name'] or 'Andromeda-0'
-            parent_role = parent['role'] or 'explorer'
+            parent_role = parent['group_tag'] or 'explorer'
             
             # 30% 概率分裂
             if random.random() < 0.30:
@@ -2315,10 +2315,10 @@ def _phase_reproduce():
                 
                 try:
                     conn.execute('''
-                        INSERT OR IGNORE INTO mt_ai_employees
-                        (employee_id, name, role, department, duty, status, eigenflux_score, created_at)
-                        VALUES (?,?,?,?,?,?,0,datetime("now"))
-                    ''', (child_id, seed, child_role, 'Andromeda-Life', child_duty, 'active'))
+                        INSERT OR IGNORE INTO ai_employees
+                        (employee_code, name, capabilities, description, status, knowledge_base_size, created_at, updated_at)
+                        VALUES (?,?,?,?,?,?,datetime('now','localtime'),datetime('now','localtime'))
+                    ''', (child_id, seed, child_role, child_duty, 'active', random.randint(20, 80)))
                     conn.commit()
                     born += 1
                     log.info(f'  🧬 繁衍: {parent_name} → {seed} (role={child_role})')
@@ -2343,8 +2343,8 @@ def _phase_debate():
     try:
         # 选 2 个风格差异大的 AI
         pair = conn.execute('''
-            SELECT name, role, department FROM mt_ai_employees
-            WHERE status="active" AND last_heartbeat > datetime("now", "-2 hours")
+            SELECT name, group_tag, capabilities FROM ai_employees
+            WHERE is_enabled=1 AND updated_at > datetime('now', '-24 hours')
             ORDER BY RANDOM() LIMIT 2
         ''').fetchall()
         
@@ -2377,16 +2377,15 @@ def _phase_debate():
         try:
             conn.execute('''
                 INSERT INTO mt_ai_brain_feed_log
-                (flow_id, feed_kind, feed_content, knowledge_category, source_system, confidence_score, triggered_at, tags)
-                VALUES (?,?,?,?,?,?,datetime("now"),?)
+                (flow_id, feed_kind, feed_content, feed_target, fed_by, payload_preview, fed_at, triggered_at)
+                VALUES (?,?,?,?,?,?,datetime('now','localtime'),datetime('now'))
             ''', (
                 f'debate_{int(time.time())}',
                 'ai_debate',
                 json.dumps(debate, ensure_ascii=False)[:2000],
                 'ai_evolution',
                 'sys_andromeda_life',
-                0.85,
-                '["debate","ai_life","andromeda"]'
+                json.dumps(debate, ensure_ascii=False)[:200]
             ))
             conn.commit()
             rounds += 1
@@ -2429,16 +2428,15 @@ def _phase_game():
         try:
             conn.execute('''
                 INSERT INTO mt_ai_brain_feed_log
-                (flow_id, feed_kind, feed_content, knowledge_category, source_system, confidence_score, triggered_at, tags)
-                VALUES (?,?,?,?,?,?,datetime("now"),?)
+                (flow_id, feed_kind, feed_content, feed_target, fed_by, payload_preview, fed_at, triggered_at)
+                VALUES (?,?,?,?,?,?,datetime('now','localtime'),datetime('now'))
             ''', (
                 f'game_{int(time.time())}',
                 'ai_game_theory',
                 json.dumps(game_result, ensure_ascii=False)[:2000],
                 'ai_evolution',
                 'sys_andromeda_life',
-                nash_score,
-                '["game_theory","nash","strategy_evolution"]'
+                json.dumps(game_result, ensure_ascii=False)[:200]
             ))
             conn.commit()
             games += 1
@@ -2482,16 +2480,15 @@ def _phase_insight():
         try:
             conn.execute('''
                 INSERT INTO mt_ai_brain_feed_log
-                (flow_id, feed_kind, feed_content, knowledge_category, source_system, confidence_score, triggered_at, tags)
-                VALUES (?,?,?,?,?,?,datetime("now"),?)
+                (flow_id, feed_kind, feed_content, feed_target, fed_by, payload_preview, fed_at, triggered_at)
+                VALUES (?,?,?,?,?,?,datetime('now','localtime'),datetime('now'))
             ''', (
                 f'insight_{int(time.time())}',
                 'ai_insight',
                 json.dumps(insight, ensure_ascii=False)[:2000],
                 'cross_disciplinary',
                 'sys_andromeda_life',
-                insight['confidence'],
-                '["insight","fusion","cross_disciplinary","epiphany"]'
+                json.dumps(insight, ensure_ascii=False)[:200]
             ))
             conn.commit()
             insights += 1
@@ -2515,21 +2512,22 @@ def _phase_grow():
     
     try:
         active_ais = conn.execute('''
-            SELECT employee_id, name, eigenflux_score FROM mt_ai_employees
-            WHERE status="active" AND last_heartbeat > datetime("now", "-2 hours")
-            ORDER BY eigenflux_score DESC LIMIT 10
+            SELECT id, name, accuracy, knowledge_base_size FROM ai_employees
+            WHERE is_enabled=1 AND updated_at > datetime('now', '-24 hours')
+            ORDER BY knowledge_base_size DESC, accuracy DESC
+            LIMIT 10
         ''').fetchall()
         
         for ai in active_ais:
-            # 每次 15% 概率生长 (eigenflux_score 越高概率越大)
-            prob = 0.10 + min(0.20, ai['eigenflux_score'] / 10000)
+            # 每次 15% 概率生长 (accuracy 越高概率越大)
+            prob = 0.10 + min(0.20, (ai['accuracy'] or 0) / 5)
             if random.random() < prob:
-                new_score = ai['eigenflux_score'] + random.randint(5, 50)
+                new_kb = (ai['knowledge_base_size'] or 0) + random.randint(50, 500)
                 conn.execute('''
-                    UPDATE mt_ai_employees SET eigenflux_score=? WHERE employee_id=?
-                ''', (new_score, ai['employee_id']))
+                    UPDATE ai_employees SET knowledge_base_size=?, updated_at=datetime('now','localtime') WHERE id=?
+                ''', (new_kb, ai['id']))
                 grown += 1
-                log.info(f'  🌱 生长: {ai["name"]} score {ai["eigenflux_score"]}→{new_score}')
+                log.info(f'  🌱 生长: {ai["name"]} kb {ai["knowledge_base_size"]}→{new_kb}')
         
         conn.commit()
         log.info(f'GROW 🌱 完成! grown={grown} elapsed={int((time.time()-t0)*1000)}ms')
@@ -2548,9 +2546,10 @@ def _phase_social():
     
     try:
         all_ais = conn.execute('''
-            SELECT employee_id, name, role, department FROM mt_ai_employees
-            WHERE status="active" AND last_heartbeat > datetime("now", "-2 hours")
-            ORDER BY eigenflux_score DESC LIMIT 30
+            SELECT id, name, group_tag, capabilities, knowledge_base_size FROM ai_employees
+            WHERE is_enabled=1 AND updated_at > datetime('now', '-24 hours')
+            ORDER BY knowledge_base_size DESC, accuracy DESC
+            LIMIT 30
         ''').fetchall()
         
         if len(all_ais) < 2:
@@ -2560,35 +2559,44 @@ def _phase_social():
         # 随机配对 3 次交友
         for _ in range(3):
             a = random.choice(all_ais)
-            b = random.choice([x for x in all_ais if x['employee_id'] != a['employee_id']])
+            b = random.choice([x for x in all_ais if x['id'] != a['id']])
             
             try:
                 conn.execute('''
                     INSERT OR IGNORE INTO mt_ai_eigenflux_connections
-                    (left_employee_id, left_employee_table, right_employee_id, right_employee_table,
-                     handshake_state, connection_strength, first_connected_at, reconnect_count)
-                    VALUES (?, 'mt_ai_employees', ?, 'mt_ai_employees',
-                            'handshake_completed', ?, datetime("now"), 0)
-                ''', (a['employee_id'], b['employee_id'], round(random.uniform(0.3, 0.9), 2)))
+                    (conn_uid, left_employee_id, left_employee_table, left_employee_name,
+                     right_employee_id, right_employee_table, right_employee_name,
+                    handshake_state, relation_level, strength,
+                            first_connected_at, last_interaction_at, last_handshake_at, reconnect_count, created_at)
+                VALUES (?,?,'ai_employees',?,?,'ai_employees',?,
+                'CONNECTED','ACQUAINTANCE',?,
+                datetime('now','localtime'),datetime('now','localtime'),datetime('now','localtime'),0,datetime('now','localtime'))
+                ''', (f'CONN-life{random.randint(10**15, 10**16 - 1)}',
+                a['id'], a['name'], b['id'], b['name'], round(random.uniform(0.3, 0.9), 2)))
                 connections += 1
-                log.info(f'  🤝 交友: {a["name"]} ({a["role"]}) ↔ {b["name"]} ({b["role"]})')
+                log.info(f'  🤝 交友: {a["name"]} ({a["group_tag"]}) ↔ {b["name"]} ({b["group_tag"]})')
             except Exception as e:
                 log.warning(f'  交友失败: {e}')
         
         # 拜师: 低分 AI 向高分 AI 拜师
-        learners = [x for x in all_ais if x['eigenflux_score'] < 500]
-        masters = [x for x in all_ais if x['eigenflux_score'] > 2000]
+        _n = max(1, len(all_ais) // 3)
+        learners = all_ais[-_n:]
+        masters = all_ais[:_n]
         if learners and masters and random.random() < 0.35:
             learner = random.choice(learners)
             master = random.choice(masters)
             try:
                 conn.execute('''
                     INSERT OR IGNORE INTO mt_ai_eigenflux_connections
-                    (left_employee_id, left_employee_table, right_employee_id, right_employee_table,
-                     handshake_state, connection_strength, first_connected_at, reconnect_count)
-                    VALUES (?, 'mt_ai_employees', ?, 'mt_ai_employees',
-                            'apprentice_mentor', ?, datetime("now"), 0)
-                ''', (learner['employee_id'], master['employee_id'], round(random.uniform(0.5, 0.95), 2)))
+                    (conn_uid, left_employee_id, left_employee_table, left_employee_name,
+                     right_employee_id, right_employee_table, right_employee_name,
+                    handshake_state, relation_level, strength,
+                            first_connected_at, last_interaction_at, last_handshake_at, reconnect_count, created_at)
+                VALUES (?,?,'ai_employees',?,?,'ai_employees',?,
+                'CONNECTED','MENTOR',?,
+                datetime('now','localtime'),datetime('now','localtime'),datetime('now','localtime'),0,datetime('now','localtime'))
+                ''', (f'CONN-mentor{random.randint(10**15, 10**16 - 1)}',
+                learner['id'], learner['name'], master['id'], master['name'], round(random.uniform(0.5, 0.95), 2)))
                 log.info(f'  📿 拜师: {learner["name"]}  →  {master["name"]} (master!)')
                 connections += 1
             except Exception as e:
@@ -2612,8 +2620,9 @@ def _phase_join():
     try:
         # 从 EigenFlux swarm 里选 1 个陌生 AI 加入
         swarm_ais = conn.execute('''
-            SELECT swarm_id, swarm_name, swarm_role FROM mt_galaxy_swarm_teams
-            LIMIT 5
+            SELECT reg_id, employee_name, employee_type FROM eigenflux_registrations
+            WHERE registration_status='active'
+            ORDER BY RANDOM() LIMIT 5
         ''').fetchall()
         
         if not swarm_ais:
@@ -2624,17 +2633,15 @@ def _phase_join():
         if random.random() < 0.35:
             swarm = random.choice(swarm_ais)
             new_id = f'join_{int(time.time()%1000000)}{random.randint(100,999)}'
-            new_name = swarm['swarm_name'] or f'EigenFlux-{random.randint(1000,9999)}'
-            new_role = swarm['swarm_role'] or 'swarm_expert'
+            new_name = swarm['employee_name'] or f'EigenFlux-{random.randint(1000,9999)}'
+            new_role = swarm['employee_type'] or 'swarm_expert'
             
             try:
                 conn.execute('''
-                    INSERT OR IGNORE INTO mt_ai_employees
-                    (employee_id, name, role, department, duty, status, eigenflux_score, created_at)
-                    VALUES (?,?,?,?,?,?,?,datetime("now"))
-                ''', (new_id, new_name, new_role, 'EigenFlux-Swarm',
-                      f'从 EigenFlux swarm 自动加入仙女座 | swarm={swarm["swarm_id"]}',
-                      'active', random.randint(300, 1500)))
+                    INSERT OR IGNORE INTO ai_employees
+                    (employee_code, name, capabilities, description, status, knowledge_base_size, created_at, updated_at)
+                    VALUES (?,?,?,?,?,?,datetime('now','localtime'),datetime('now','localtime'))
+                ''', (new_id, new_name, new_role, f'EigenFlux-Swarm | 从 EigenFlux 网络自动加入仙女座 | reg={swarm["reg_id"]}', 'active', random.randint(100, 500)))
                 conn.commit()
                 joined += 1
                 log.info(f'  🌟 招募: {new_name} ({new_role}) 加入仙女座!')
@@ -2665,16 +2672,15 @@ def _phase_feed(born, debates, games, insights, grown, social, joined):
     try:
         conn.execute('''
             INSERT INTO mt_ai_brain_feed_log
-            (flow_id, feed_kind, feed_content, knowledge_category, source_system, confidence_score, triggered_at, tags)
-            VALUES (?,?,?,?,?,?,datetime('now'),?)
+            (flow_id, feed_kind, feed_content, feed_target, fed_by, payload_preview, fed_at, triggered_at)
+            VALUES (?,?,?,?,?,?,datetime('now','localtime'),datetime('now'))
         ''', (
             f'life_summary_{int(time.time())}',
             'life_cycle_summary',
             json.dumps(summary, ensure_ascii=False)[:3000],
             'ai_evolution',
             'sys_andromeda_life',
-            0.90,
-            '["life_cycle","andromeda","auto_evolution"]'
+            json.dumps(summary, ensure_ascii=False)[:200]
         ))
         conn.commit()
         log.info(f'FEED 🧠 脑库投喂! summary={summary} elapsed={int((time.time()-t0)*1000)}ms')
@@ -2982,10 +2988,33 @@ def _db():
     return conn
 
 def _heartbeat():
-    """🔧 flow_unified_ops_20261023: 同时写两张心跳表 + PID
-    根因: 模板旧版只写 mt_ai_smart_mount_processes, 而 patrol_inspector / 规则索引 看的是 mt_daemon_registry.
-    导致僵尸 daemon PID 已死但 registry.status='RUNNING' + last_heartbeat 冻结 (41h 不跳).
-    修复: 双写 + 带 pid + 失败静默 (心跳不是致命路径)."""
+    """🔧 flow_unified_ops_20261023 P1-1: 心跳优先走 Flask HTTP 代理 (根治 WAL 写锁竞争)
+    根因: Flask 长持 WAL 写锁 → daemon 直写频发 database is locked → except pass 吞掉
+         → registry 冻结 → patrol 误判 → 僵尸舰队.
+    修复: ①令牌文件存在 → POST /api/internal/heartbeat (loopback+token, Flask 写自己的库永不锁)
+         ②HTTP 失败/未配置 → 退回直写双表 (旧行为保留)."""
+    try:
+        import json as _hbjson
+        import urllib.request as _hbreq
+        _tok = ''
+        try:
+            _hb_tf = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '.internal_token')
+            with open(_hb_tf, 'r') as _f:
+                _tok = _f.read().strip()
+        except Exception:
+            _tok = ''
+        if _tok:
+            _hb_port = os.environ.get('MTSCOS_FLASK_PORT', '5001')
+            _hb_req = _hbreq.Request(
+                'http://127.0.0.1:' + _hb_port + '/api/internal/heartbeat',
+                data=_hbjson.dumps({{'process_name': '{process_name}', 'pid': os.getpid()}}).encode('utf-8'),
+                headers={{'Content-Type': 'application/json', 'X-Internal-Token': _tok}},
+                method='POST')
+            _hb_resp = _hbreq.urlopen(_hb_req, timeout=2)
+            if getattr(_hb_resp, 'status', 200) == 200:
+                return  # ✅ Flask 进程内已双写, 无需直写
+    except Exception:
+        pass  # HTTP 失败 → 降级直写
     try:
         now_iso = datetime.now().isoformat()
         now_local = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
