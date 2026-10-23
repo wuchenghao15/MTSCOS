@@ -217,13 +217,14 @@ def _fetch_nvd_recent(cve_prefix="CVE-2025"):
 def _ingest_signal(conn, sig, force=False):
     """嗅探信号 → 灌 mt_threat_signals + mt_cve_watch"""
     cve_id = sig.get("external_id", "")
+    # 🆕 先算 matches (不管 existing, 否则 run_threat_scan 拿不到匹配结果)
+    matches = _match_stack(sig.get("title", "") + " " + sig.get("description", ""))
+    sig["matches"] = matches
+
     if not force and cve_id != "FETCH_FAILED":
         existing = conn.execute(
             "SELECT 1 FROM mt_threat_signals WHERE external_id=?", (cve_id,)).fetchone()
         if existing: return None
-
-    matches = _match_stack(sig.get("title", "") + " " + sig.get("description", ""))
-    sig["matches"] = matches
 
     cur = conn.execute(
         "INSERT INTO mt_threat_signals (source,external_id,title,description,cvss,severity,"
