@@ -2982,13 +2982,21 @@ def _db():
     return conn
 
 def _heartbeat():
-    """更新心跳到mt_ai_smart_mount_processes"""
+    """🔧 flow_unified_ops_20261023: 同时写两张心跳表 + PID
+    根因: 模板旧版只写 mt_ai_smart_mount_processes, 而 patrol_inspector / 规则索引 看的是 mt_daemon_registry.
+    导致僵尸 daemon PID 已死但 registry.status='RUNNING' + last_heartbeat 冻结 (41h 不跳).
+    修复: 双写 + 带 pid + 失败静默 (心跳不是致命路径)."""
     try:
+        now_iso = datetime.now().isoformat()
+        now_local = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         conn = _db()
         c = conn.cursor()
         c.execute(
             "UPDATE mt_ai_smart_mount_processes SET heartbeat_at=?, updated_at=?, current_state='RUNNING' WHERE process_name=?",
-            (datetime.now().isoformat(), datetime.now().isoformat(), "{process_name}"))
+            (now_iso, now_iso, "{process_name}"))
+        c.execute(
+            "UPDATE mt_daemon_registry SET last_heartbeat=datetime('now','localtime'), pid=?, status='RUNNING' WHERE process_name=?",
+            (os.getpid(), "{process_name}"))
         conn.commit()
         conn.close()
     except Exception:
