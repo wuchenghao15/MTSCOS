@@ -32,7 +32,9 @@ except Exception:
     import sqlite3, os
     def _db_connect():
         db = os.environ.get('APP_DB') or os.path.expanduser('~/MTSCOS_PROD/flask-app/database/app.db')
-        conn = sqlite3.connect(db, timeout=15)
+        conn = sqlite3.connect(db, timeout=30)
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA busy_timeout=30000")
         conn.execute('PRAGMA busy_timeout=30000')
         conn.execute('PRAGMA journal_mode=WAL')
         conn.row_factory = sqlite3.Row

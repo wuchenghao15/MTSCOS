@@ -54,8 +54,11 @@ _SENSITIVE_PATHS = [
 
 
 def _db():
-    conn = sqlite3.connect(os.environ.get("APP_DB") or os.path.join(_APP_DIR, "database", "app.db"))
+    conn = sqlite3.connect(os.environ.get("APP_DB") or os.path.join(_APP_DIR, "database", "app.db"), timeout=30)
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA busy_timeout=30000")
+    conn.execute("PRAGMA synchronous=NORMAL")
     return conn
 
 def _r2d(r):
@@ -155,13 +158,19 @@ def _fetch_nvd_recent(cve_prefix="CVE-2025"):
     import urllib.request as _ur
     signals = []
     try:
-        url = f"https://services.nvd.nist.gov/rest/json/cves/2.0?keywordSearch=PHP&resultsPerPage=20&pubStartDate=2024-01-01T00:00:00.000"
+        # 注意: pubStartDate 在 NVD API 2.0 上经常返回空 (服务端 bug),
+        # 所以不带日期参数, 客户端按 published >= 2024 过滤
+        url = f"https://services.nvd.nist.gov/rest/json/cves/2.0?keywordSearch=PHP&resultsPerPage=20"
         req = _ur.Request(url, headers={"User-Agent": "MTSCOS-ThreatIntel/1.0"})
         resp = _ur.urlopen(req, timeout=15)
         data = json.loads(resp.read().decode())
         for v in data.get("vulnerabilities", []):
             cve = v.get("cve", {})
             cve_id = cve.get("id", "")
+            # 🆕 客户端过滤: 只收 2024+ 近年 CVE (NVD pubStartDate 参数有 bug)
+            pub = cve.get("published", "")
+            if pub and pub[:4] < "2024":
+                continue
             desc = cve.get("descriptions", [{}])[0].get("value", "")
             metrics = cve.get("metrics", {})
             cvss = 0.0; severity = "UNKNOWN"
