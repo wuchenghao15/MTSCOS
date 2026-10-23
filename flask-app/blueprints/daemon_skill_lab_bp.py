@@ -3063,9 +3063,7 @@ def _spawn_new_teams_for_orphan_tasks(pre_spawn_all_domains=True):
                     (team_id, team_name, len(members), ",".join(d["capabilities"][:6]), d["color"]))
                 for i, m in enumerate(members):
                     mid = f"{team_id}_m{i}_{hashlib.md5(m['member_name'].encode()).hexdigest()[:6]}"
-                    conn.execute("INSERT OR REPLACE INTO mt_team_members
-                        (team_name, member_name, skill_level, source, capabilities, member_id)
-                        VALUES (?,?,?,?,?,?)",
+                    conn.execute("INSERT OR REPLACE INTO mt_team_members (team_name,member_name,skill_level,source,capabilities,member_id) VALUES (?,?,?,?,?,?)",
                         (team_name, m["member_name"], "EXPERT", "SPAWN_ENGINE",
                          d["capabilities"][i % len(d["capabilities"])], mid))
                 new_teams.append({"team_name": team_name, "domain": d["name"],
