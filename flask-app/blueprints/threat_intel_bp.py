@@ -54,7 +54,13 @@ _SENSITIVE_PATHS = [
 
 
 def _db():
-    return sqlite3.connect(os.environ.get("APP_DB") or os.path.join(_APP_DIR, "database", "app.db"))
+    conn = sqlite3.connect(os.environ.get("APP_DB") or os.path.join(_APP_DIR, "database", "app.db"))
+    conn.row_factory = sqlite3.Row
+    return conn
+
+def _r2d(r):
+    """sqlite3.Row → dict"""
+    return {k: r[k] for k in r.keys()}
 
 
 def _init_tables(conn):
@@ -419,7 +425,7 @@ def cve_watch():
     conn = _db(); _init_tables(conn)
     rows = conn.execute(
         "SELECT * FROM mt_cve_watch ORDER BY priority DESC, cvss DESC").fetchall()
-    return jsonify({"ok": True, "total": len(rows), "items": [dict(r) for r in rows]})
+    return jsonify({"ok": True, "total": len(rows), "items": [_r2d(r) for r in rows]})
 
 
 @threat_intel_bp.route("/api/threat-intel/signals", methods=["GET"])
@@ -428,7 +434,7 @@ def threat_signals():
     conn = _db(); _init_tables(conn)
     rows = conn.execute(
         "SELECT * FROM mt_threat_signals ORDER BY discovered_at DESC LIMIT 50").fetchall()
-    return jsonify({"ok": True, "total": len(rows), "items": [dict(r) for r in rows]})
+    return jsonify({"ok": True, "total": len(rows), "items": [_r2d(r) for r in rows]})
 
 
 @threat_intel_bp.route("/api/threat-intel/firewall", methods=["GET"])
@@ -437,7 +443,7 @@ def firewall_rules():
     conn = _db(); _init_tables(conn)
     rows = conn.execute(
         "SELECT * FROM mt_firewall_rules WHERE active=1 ORDER BY priority DESC").fetchall()
-    return jsonify({"ok": True, "total": len(rows), "rules": [dict(r) for r in rows]})
+    return jsonify({"ok": True, "total": len(rows), "rules": [_r2d(r) for r in rows]})
 
 
 @threat_intel_bp.route("/api/threat-intel/signatures", methods=["GET"])
@@ -446,7 +452,7 @@ def signature_db():
     conn = _db(); _init_tables(conn)
     rows = conn.execute(
         "SELECT * FROM mt_signature_db ORDER BY created_at DESC LIMIT 50").fetchall()
-    return jsonify({"ok": True, "total": len(rows), "items": [dict(r) for r in rows]})
+    return jsonify({"ok": True, "total": len(rows), "items": [_r2d(r) for r in rows]})
 
 
 @threat_intel_bp.route("/api/threat-intel/actions", methods=["GET"])
@@ -455,7 +461,7 @@ def security_actions():
     conn = _db(); _init_tables(conn)
     rows = conn.execute(
         "SELECT * FROM mt_security_actions ORDER BY created_at DESC LIMIT 100").fetchall()
-    return jsonify({"ok": True, "total": len(rows), "items": [dict(r) for r in rows]})
+    return jsonify({"ok": True, "total": len(rows), "items": [_r2d(r) for r in rows]})
 
 
 @threat_intel_bp.route("/api/threat-intel/feed", methods=["POST"])
