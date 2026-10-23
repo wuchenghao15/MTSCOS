@@ -3060,14 +3060,24 @@ def main_loop():
             f.write(str(os.getpid()))
     _heartbeat()
 
+    # 🐕 P0 防挂死看门狗 (flow_unified_ops_20261023): 工作段超 90s 强制中断, 防 SQLite WAL 锁挂死整个循环
+    import signal as _signal
+    _WORK_TIMEOUT_S = 90
+    def _work_timeout_handler(signum, frame):
+        raise TimeoutError("work cycle timeout " + str(_WORK_TIMEOUT_S) + "s (DB lock hang?)")
+    _signal.signal(_signal.SIGALRM, _work_timeout_handler)
+
     while _running:
         try:
+            _signal.alarm(_WORK_TIMEOUT_S)
             # === daemon (NOTE: use module-level APP_DB, not os.environ.get)工作循环 ===
 {work_body}
             _heartbeat()
+            _signal.alarm(0)
             # 🆕 v5.1 参数热生效: 每轮循环刷新 CYCLE — mt_params 改了不用重启 daemon
             CYCLE = _param(CYCLE_GROUP, CYCLE_KEY, CYCLE)
         except Exception as e:
+            _signal.alarm(0)
             _log(f"ERROR: {{e}}")
         time.sleep(CYCLE)
 
