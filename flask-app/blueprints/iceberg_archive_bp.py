@@ -58,7 +58,9 @@ def _rows(db: str, sql: str, args=()) -> list:
     if not db or not os.path.exists(db):
         return []
     try:
-        conn = sqlite3.connect(db, timeout=10)
+        conn = sqlite3.connect(db, timeout=30)
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA busy_timeout=30000")
         conn.row_factory = sqlite3.Row
         try:
             conn.execute('PRAGMA busy_timeout=8000')
