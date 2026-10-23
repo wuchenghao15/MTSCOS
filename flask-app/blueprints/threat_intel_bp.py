@@ -154,8 +154,8 @@ def _fetch_nvd_recent(cve_prefix="CVE-2025"):
     """从 NVD 拉最近 PHP 漏洞 (本地零 token, 用 urllib)"""
     import urllib.request as _ur
     try:
-        # 简单搜索: NVD API 2.0
-        url = f"https://services.nvd.nist.gov/rest/json/cves/2.0?keywordSearch=PHP&resultsPerPage=5"
+        # 精准搜索: NVD API 2.0 — 只拉 2024+ 近年漏洞 (避开 CVE-1999 噪音)
+        url = f"https://services.nvd.nist.gov/rest/json/cves/2.0?keywordSearch=PHP&resultsPerPage=20&pubStartDate=2024-01-01T00:00:00.000"
         req = _ur.Request(url, headers={"User-Agent": "MTSCOS-ThreatIntel/1.0"})
         resp = _ur.urlopen(req, timeout=15)
         data = json.loads(resp.read().decode())
@@ -407,6 +407,29 @@ def run_threat_scan():
         ],
         "flow_id": "flow_threat_intel_20261023",
     }
+
+
+def run_threat_daemon_loop(interval_sec=3600):
+    """
+    威胁嗅探守护循环 (全自动, 零人工):
+      - 每 interval_sec (默认 3600s = 1小时) 跑一次 run_threat_scan
+      - 跑完打印摘要, 继续等
+      - 任何异常不崩循环, 打印后继续
+    server_real_db.py async-init 段会启动此线程 (延迟 60s 让 Flask 先稳)
+    """
+    import time as _t
+    print(f'[THREAT-INTEL] 🛰️ threat-daemon 启动 — 每 {interval_sec}s 自动嗅探')
+    _t.sleep(60)  # 等 Flask 稳定
+    while True:
+        try:
+            t0 = _t.time()
+            r = run_threat_scan()
+            cost = int(_t.time() - t0)
+            print(f'[THREAT-INTEL] ✅ 自动嗅探 done ({cost}s) fetched={r["fetched"]} matched={r["matched"]} rules={r["rules"]} fed={r["fed"]} hall={r["hall"]}')
+        except Exception as e:
+            print(f'[THREAT-INTEL] ⚠️ threat-daemon 异常 (不崩循环): {e}')
+        # 等下一轮
+        _t.sleep(interval_sec)
 
 
 # ════════════════════════════════════════════════════════════════

@@ -3026,9 +3026,12 @@ except Exception as _lab_err:
 
 # ── 威胁情报 & 主动防御 Blueprint: /api/threat-intel/* (flow_threat_intel_20261023) ──
 try:
-    from blueprints.threat_intel_bp import threat_intel_bp
+    from blueprints.threat_intel_bp import threat_intel_bp, run_threat_daemon_loop
     app.register_blueprint(threat_intel_bp)
     print('[THREAT-INTEL] ✅ /api/threat-intel/* 威胁情报主动防御已注册')
+    # 🆕 全自动守护线程: 每 3600s (1h) 自动嗅探 → 筑墙 → 投喂 → 入厅 (零人工)
+    threading.Thread(target=run_threat_daemon_loop, args=(3600,), daemon=True, name='threat-intel-daemon').start()
+    print('[THREAT-INTEL] 🛰️ threat-daemon 守护线程已启动 — 每 1h 自动嗅探 (全自动)')
 except Exception as _ti_err:
     print(f'[THREAT-INTEL] ⚠️ 威胁情报模块加载失败: {_ti_err}')
 
