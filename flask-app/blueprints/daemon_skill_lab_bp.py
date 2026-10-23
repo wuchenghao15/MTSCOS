@@ -2267,3 +2267,529 @@ def gold_team_claim():
     finally:
         conn.close()
     return jsonify({"ok": True, "task_id": task_id, "claimed_by": GOLD_TEST_TEAM})
+
+
+# ════════════════════════════════════════════════════════════════
+# Phase 5: 前线巡检引擎 — 研究院主动下沉一线 (flow_frontline_patrol_20261023)
+# 定时 + 随机扫描 10 维度 → 发现缺口 → 自动入厅 → 金牌天团闭环
+# ════════════════════════════════════════════════════════════════
+
+import random as _rand
+import time as _time
+
+_FRONTLINE_SCAN_INTERVAL = 1800  # 30 分钟定时巡逻
+_RANDOM_PATROL_PROB = 0.15        # 每次定时有 15% 概率额外随机抽查
+
+
+def _frontline_patrol():
+    """
+    前线巡检 — 10 维度主动下沉扫描
+    返回: {"dimensions": int, "findings": int, "new_tasks": int, "report": [...]}
+    """
+    import socket
+    import subprocess
+    report = []
+    new_tasks = 0
+    conn = _db()
+    try:
+        # ── 维度 1: Flask 三端健康 ──
+        for label, host_port in [("开发机", ("127.0.0.1", 8888)), ("mini", ("127.0.0.1", 5001))]:
+            try:
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock.settimeout(2)
+                ok = sock.connect_ex(host_port) == 0
+                sock.close()
+                status = "OK" if ok else "DOWN"
+                report.append({"dim": f"{label} Flask", "status": status, "detail": f"{host_port[0]}:{host_port[1]}"})
+                if not ok:
+                    _ingest_patrol_task(conn, f"[{label} DOWN] Flask {host_port[0]}:{host_port[1]} 无响应",
+                                        f"前线巡检发现 {label} Flask 端口 {host_port[1]} 不通, 需金牌天团介入",
+                                        "flask_health", "HIGH")
+                    new_tasks += 1
+            except Exception as e:
+                report.append({"dim": f"{label} Flask", "status": "ERROR", "detail": str(e)})
+
+        # ── 维度 2: Ollama 本地推理 ──
+        try:
+            import urllib.request as _ur
+            host = os.environ.get("OLLAMA_HOST", "http://127.0.0.1:11434")
+            resp = _ur.urlopen(f"{host}/api/tags", timeout=3)
+            models = json.loads(resp.read().decode()).get("models", [])
+            report.append({"dim": "Ollama", "status": "OK", "detail": f"{len(models)} models: {[m['name'] for m in models[:3]]}"})
+            # 检查默认模型是否存在
+            default_model = os.environ.get("OLLAMA_MODEL", "qwen2.5:14b")
+            model_names = [m["name"] for m in models]
+            if default_model not in model_names:
+                _ingest_patrol_task(conn, f"[Ollama] 默认模型 {default_model} 未安装",
+                                    f"前线巡检发现 OLLAMA_MODEL={default_model} 不在 Ollama 已安装列表 {model_names}",
+                                    "ollama_model_missing", "HIGH")
+                new_tasks += 1
+        except Exception as e:
+            report.append({"dim": "Ollama", "status": "DOWN", "detail": str(e)[:80]})
+            _ingest_patrol_task(conn, "[Ollama DOWN] 本地推理引擎无响应",
+                                f"前线巡检 Ollama 连接失败: {e}", "ollama_down", "HIGH")
+            new_tasks += 1
+
+        # ── 维度 3: daemon 全量状态 ──
+        try:
+            daemon_rows = conn.execute(
+                "SELECT process_name, current_state FROM mt_daemon_registry").fetchall()
+            down = [dict(r) for r in daemon_rows if r["current_state"] in ("FAILED", "STOPPED")]
+            report.append({"dim": "Daemon", "status": f"OK({len(daemon_rows) - len(down)}/{len(daemon_rows)})",
+                          "detail": f"{len(down)} FAILED" if down else "全绿"})
+            for d in down:
+                existing = conn.execute(
+                    "SELECT 1 FROM mt_lab_task_hall WHERE source='frontline_patrol' AND source_id=? AND status!='DONE'",
+                    (f"daemon_{d['process_name']}",)).fetchone()
+                if not existing:
+                    _ingest_patrol_task(conn, f"[Daemon] {d['process_name']} 状态 {d['current_state']}",
+                                        f"前线巡检发现 daemon {d['process_name']} = {d['current_state']}, 需金牌天团巡检修复",
+                                        "daemon_failure", "HIGH",
+                                        source_id=f"daemon_{d['process_name']}")
+                    new_tasks += 1
+        except Exception as e:
+            report.append({"dim": "Daemon", "status": "ERROR", "detail": str(e)[:80]})
+
+        # ── 维度 4: DB integrity ──
+        try:
+            db_path = os.environ.get("APP_DB") or "database/app.db"
+            integrity = conn.execute("PRAGMA integrity_check").fetchone()[0]
+            wal_ok = True
+            try:
+                wal = conn.execute("PRAGMA wal_checkpoint(TRUNCATE)").fetchall()
+            except Exception:
+                wal_ok = False
+            report.append({"dim": "DB integrity", "status": "OK" if integrity == "ok" else integrity,
+                          "detail": f"WAL={'OK' if wal_ok else 'FAIL'}, path={os.path.basename(db_path)}"})
+            if integrity != "ok":
+                _ingest_patrol_task(conn, f"[DB] integrity_check = {integrity}",
+                                    f"前线巡检发现 DB 完整性异常: {integrity}, 需 DBA 介入",
+                                    "db_integrity", "HIGH")
+                new_tasks += 1
+        except Exception as e:
+            report.append({"dim": "DB integrity", "status": "ERROR", "detail": str(e)[:80]})
+
+        # ── 维度 5: 任务大厅积压 ──
+        try:
+            queued = conn.execute(
+                "SELECT COUNT(*) FROM mt_lab_task_hall WHERE status='QUEUED'").fetchone()[0]
+            dispatched = conn.execute(
+                "SELECT COUNT(*) FROM mt_lab_task_hall WHERE status='DISPATCHED'").fetchone()[0]
+            overdue = conn.execute(
+                "SELECT COUNT(*) FROM mt_lab_task_hall WHERE deadline_at IS NOT NULL AND status='DISPATCHED' AND datetime(deadline_at) < datetime('now')").fetchone()[0]
+            status = "OK" if queued < 5 else "BACKLOG"
+            report.append({"dim": "任务大厅", "status": status,
+                          "detail": f"QUEUED={queued}, DISPATCHED={dispatched}, OVERDUE={overdue}"})
+            if queued >= 5 or overdue > 0:
+                _ingest_patrol_task(conn, f"[任务大厅] 积压: QUEUED={queued}, OVERDUE={overdue}",
+                                    f"前线巡检发现任务大厅积压, 金牌天团自动认领清理",
+                                    "hall_backlog", "NORMAL")
+                new_tasks += 1
+        except Exception as e:
+            report.append({"dim": "任务大厅", "status": "ERROR", "detail": str(e)[:80]})
+
+        # ── 维度 6: Skill 覆盖率 ──
+        try:
+            total_daemon = conn.execute("SELECT COUNT(*) FROM mt_daemon_registry").fetchone()[0]
+            total_skill = conn.execute("SELECT COUNT(*) FROM mt_skill_registry").fetchone()[0]
+            # 查哪个 daemon 没有对应 skill
+            uncovered = conn.execute("""
+                SELECT d.process_name FROM mt_daemon_registry d
+                WHERE NOT EXISTS (SELECT 1 FROM mt_skill_registry s WHERE s.name LIKE '%' || d.process_name || '%' OR s.description LIKE '%' || d.process_name || '%')
+                LIMIT 3
+            """).fetchall()
+            cov = "OK" if total_skill >= total_daemon * 0.5 else "LOW"
+            report.append({"dim": "Skill 覆盖率", "status": cov,
+                          "detail": f"daemon={total_daemon}, skill={total_skill}, uncovered={[u[0] for u in uncovered]}"})
+            if uncovered:
+                _ingest_patrol_task(conn, f"[Skill] {len(uncovered)} 个 daemon 无对应 Skill",
+                                    f"前线巡检发现以下 daemon 无 skill 覆盖: {[u[0] for u in uncovered]}, 需 Skill 衍生",
+                                    "skill_gap", "NORMAL")
+                new_tasks += 1
+        except Exception as e:
+            report.append({"dim": "Skill 覆盖率", "status": "ERROR", "detail": str(e)[:80]})
+
+        # ── 维度 7: AI 员工空闲率 ──
+        try:
+            total_emp = conn.execute("SELECT COUNT(*) FROM ai_employees").fetchone()[0]
+            active = conn.execute("""
+                SELECT COUNT(*) FROM ai_employees WHERE last_heartbeat > datetime('now', '-10 minutes')
+            """).fetchone()[0]
+            idle = total_emp - active
+            idle_rate = idle / max(total_emp, 1)
+            report.append({"dim": "AI 员工", "status": "OK" if idle_rate < 0.7 else "IDLE",
+                          "detail": f"total={total_emp}, active={active}, idle_rate={idle_rate:.1%}"})
+            if idle_rate >= 0.7:
+                _ingest_patrol_task(conn, f"[AI 员工] 空闲率 {idle_rate:.1%}",
+                                    f"前线巡检发现 AI 员工空闲率过高 ({idle_rate:.1%}), 建议 HR 调度或新任务派发",
+                                    "hr_idle", "LOW")
+                new_tasks += 1
+        except Exception as e:
+            report.append({"dim": "AI 员工", "status": "ERROR", "detail": str(e)[:80]})
+
+        # ── 维度 8: 金库余额异常 ──
+        try:
+            wallet_count = conn.execute("SELECT COUNT(*) FROM mt_token_wallets").fetchone()[0]
+            # 查余额 < 0 或冻结异常
+            frozen_anomaly = conn.execute("""
+                SELECT COUNT(*) FROM mt_token_wallets WHERE frozen > balance AND balance > 0
+            """).fetchone()[0]
+            status = "OK" if frozen_anomaly == 0 else "ANOMALY"
+            report.append({"dim": "金库", "status": status,
+                          "detail": f"wallets={wallet_count}, frozen_anomaly={frozen_anomaly}"})
+            if frozen_anomaly > 0:
+                _ingest_patrol_task(conn, f"[金库] {frozen_anomaly} 个钱包 frozen > balance",
+                                    f"前线巡检发现 {frozen_anomaly} 个钱包冻结金额超过余额, 需 Vault 修复",
+                                    "vault_anomaly", "HIGH")
+                new_tasks += 1
+        except Exception as e:
+            report.append({"dim": "金库", "status": "ERROR", "detail": str(e)[:80]})
+
+        # ── 维度 9: Flask 路由 405/404 巡检 (本地 test_client) ──
+        try:
+            from server_real_db import app as _flask_app
+            bad_routes = []
+            quick_checks = ["/local-chat", "/ai", "/api/local-chat/sessions",
+                           "/api/local-chat/balance", "/api/vault/my",
+                           "/api/daemon-lab/test/gold-team/auto"]
+            with _flask_app.test_client() as tc:
+                for path in quick_checks:
+                    r = tc.get(path)
+                    if r.status_code in (404, 405, 500):
+                        bad_routes.append(f"{path}={r.status_code}")
+            status = "OK" if not bad_routes else f"BAD({len(bad_routes)})"
+            report.append({"dim": "路由巡检", "status": status,
+                          "detail": f"bad={bad_routes}" if bad_routes else f"所有 {len(quick_checks)} 路径正常"})
+            if bad_routes:
+                _ingest_patrol_task(conn, f"[路由] {len(bad_routes)} 个路径异常",
+                                    f"前线巡检发现路由异常: {bad_routes}",
+                                    "route_broken", "HIGH")
+                new_tasks += 1
+        except Exception as e:
+            report.append({"dim": "路由巡检", "status": "ERROR", "detail": str(e)[:80]})
+
+        # ── 维度 10: daemon 进程存活 (ps 扫描) ──
+        try:
+            result = subprocess.run(["pgrep", "-f", "modular_start"], capture_output=True, text=True, timeout=3)
+            pids = [p for p in result.stdout.strip().split("\n") if p]
+            report.append({"dim": "进程", "status": "OK" if pids else "DOWN",
+                          "detail": f"modular_start PIDs: {pids}"})
+            if not pids:
+                _ingest_patrol_task(conn, "[进程] modular_start 无存活",
+                                    "前线巡检发现 Flask 进程不存在, 需立即重启",
+                                    "process_down", "HIGH")
+                new_tasks += 1
+        except Exception as e:
+            report.append({"dim": "进程", "status": "ERROR", "detail": str(e)[:80]})
+
+        conn.commit()
+    finally:
+        conn.close()
+
+    return {
+        "ok": True, "dimensions": 10, "findings": sum(1 for r in report if r["status"] not in ("OK",)),
+        "new_tasks": new_tasks, "report": report,
+        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "next_patrol": f"~{_FRONTLINE_SCAN_INTERVAL}s",
+    }
+
+
+def _ingest_patrol_task(conn, title, description, source_sub, priority, source_id=None, patrol_team="🧪 专业测试30年金牌天团"):
+    """前线巡检 / 巡逻队发现 → 自动灌任务大厅 (source=frontline_patrol)"""
+    if source_id is None:
+        source_id = f"{source_sub}_{_int_now()}"
+    existing = conn.execute(
+        "SELECT 1 FROM mt_lab_task_hall WHERE source='frontline_patrol' AND source_id=? AND status!='DONE'",
+        (source_id,)).fetchone()
+    if existing:
+        return
+    conn.execute(
+        "INSERT INTO mt_lab_task_hall "
+        "(title, description, source, source_id, priority, status, task_type, "
+        "claim_owner, claim_owner_role, created_at) "
+        "VALUES (?,?,?,?,?,?,?,?,?,datetime('now','localtime'))",
+        (title, description, "frontline_patrol", source_id, priority, "QUEUED",
+         "OPS", patrol_team, "gold_qa_frontline"))
+
+
+def _int_now():
+    return int(_time.time())
+
+
+def _random_patrol_jitter():
+    """15% 概率随机抽查 — 避免可预测性"""
+    if _rand.random() > _RANDOM_PATROL_PROB:
+        return None
+    jitter_scans = [
+        lambda: _quick_ping("127.0.0.1", 11434, "Ollama"),
+        lambda: _check_random_daemon(),
+        lambda: _probe_random_route(),
+        lambda: _check_db_size(),
+    ]
+    scan = _rand.choice(jitter_scans)
+    try:
+        return scan()
+    except Exception as e:
+        return {"jitter": "error", "detail": str(e)[:60]}
+
+
+def _quick_ping(host, port, label):
+    import socket
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM); s.settimeout(2)
+    ok = s.connect_ex((host, port)) == 0; s.close()
+    return {"jitter": label, "status": "OK" if ok else "DOWN"}
+
+
+def _check_random_daemon():
+    conn = _db()
+    try:
+        rows = conn.execute("SELECT process_name, current_state FROM mt_daemon_registry").fetchall()
+        if not rows: return {"jitter": "daemon", "status": "empty"}
+        pick = _rand.choice(rows)
+        return {"jitter": "daemon", "process": pick["process_name"], "state": pick["current_state"]}
+    finally: conn.close()
+
+
+def _probe_random_route():
+    try:
+        from server_real_db import app as _flask_app
+        routes = ["/local-chat", "/ai", "/api/local-chat/sessions", "/api/local-chat/balance",
+                  "/api/vault/my", "/api/daemon-lab/test/gold-team/auto", "/api/collab/overview"]
+        pick = _rand.choice(routes)
+        with _flask_app.test_client() as tc:
+            r = tc.get(pick)
+        return {"jitter": "route", "path": pick, "status_code": r.status_code}
+    except Exception as e:
+        return {"jitter": "route", "error": str(e)[:60]}
+
+
+def _check_db_size():
+    import os
+    db = os.environ.get("APP_DB") or os.path.join(_APP_DIR, "database", "app.db")
+    try:
+        size_mb = os.path.getsize(db) / (1024 * 1024)
+        return {"jitter": "db_size", "size_mb": round(size_mb, 1), "status": "OK" if size_mb < 10000 else "LARGE"}
+    except Exception as e:
+        return {"jitter": "db_size", "error": str(e)[:60]}
+
+
+# ── 定时调度 daemon (每 30min 跑 + 15% 随机抽查) ──
+_frontline_last_run = 0.0
+
+
+def run_frontline_daemon_once():
+    """
+    定时入口 (可被 cron/MAINTENANCE 守护线程调用)
+    1. 定时巡逻 (30min 间隔)
+    2. 随机 jitter 抽查 (15% 概率)
+    3. 新发现自动入厅 → 金牌天团自动认领
+    """
+    global _frontline_last_run
+    now = _time.time()
+    result = {"patrol": None, "jitter": None, "status": "skipped"}
+
+    # 主巡逻
+    if now - _frontline_last_run >= _FRONTLINE_SCAN_INTERVAL:
+        result["patrol"] = _frontline_patrol()
+        _frontline_last_run = now
+        result["status"] = "patrol_done"
+        # 发现新任务 → 自动派发
+        if result["patrol"]["new_tasks"] > 0:
+            try:
+                run_test_gold_team_auto()
+                result["auto_dispatched"] = True
+            except Exception as e:
+                result["auto_dispatched_error"] = str(e)[:80]
+
+    # 随机 jitter
+    j = _random_patrol_jitter()
+    if j:
+        result["jitter"] = j
+        result["status"] = "patrol+_jitter" if result["patrol"] else "jitter_only"
+
+    return result
+
+
+# ── 新路由: 手动触发前线巡检 ──
+@daemon_skill_lab_bp.route("/api/daemon-lab/test/frontline-patrol", methods=["GET", "POST"])
+def frontline_patrol_api():
+    """手动触发前线巡检 + 返回巡检报告"""
+    pat = _frontline_patrol()
+    jit = _random_patrol_jitter()
+    # 自动派发新发现
+    auto_res = None
+    if pat["new_tasks"] > 0:
+        auto_res = run_test_gold_team_auto()
+    return jsonify({
+        "ok": True,
+        "frontline": pat,
+        "jitter": jit,
+        "auto_dispatch": auto_res,
+        "schedule": {
+            "interval_sec": _FRONTLINE_SCAN_INTERVAL,
+            "random_prob": _RANDOM_PATROL_PROB,
+            "next_run_est": f"~{_FRONTLINE_SCAN_INTERVAL}s",
+        },
+        "flow_id": "flow_frontline_patrol_20261023",
+        "研究院状态": "主动引擎 (非孤岛)",
+    })
+
+
+# ════════════════════════════════════════════════════════════════
+# Phase 6: AI HR 自动创建新天团引擎 (flow_auto_team_form_20261023)
+# 不依赖 SA, 极度挖潜 276 AI 员工 + 251 天团成员
+# ════════════════════════════════════════════════════════════════
+
+_ROLE_KEYWORDS = {
+    "QA_LEAD":       ["测试", "qa", "质量", "巡检", "自检", "integrity", "scan", "patrol"],
+    "SEC_TESTER":    ["安全", "security", "audit", "权限", "漏洞", "encrypt", "vikey", "防御"],
+    "PERF_TESTER":   ["性能", "perf", "压力", "压测", "latency", "throughput", "基准", "benchmark"],
+    "API_TESTER":    ["api", "接口", "blueprint", "flask", "route", "endpoint", "中间件"],
+    "UI_TESTER":     ["ui", "前端", "css", "html", "渲染", "布局", "审美", "ux", "设计"],
+    "AI_TESTER":     ["ai", "llm", "ollama", "agent", "脑库", "推理", "model", "神经网络", "rag"],
+    "DB_TESTER":     ["db", "数据库", "sqlite", "dba", "表", "column", "wal", "索引"],
+    "DEV_FIXER":     ["修复", "repair", "fix", "诊断", "debug", "fallback", "系统修复"],
+    "REVIEWER":      ["评审", "review", "验收", "质量", "仲裁"],
+    "ARCHITECT":     ["架构", "architecture", "模块化", "解耦", "骨架", "system engineering"],
+}
+_ROLE_LABELS = {
+    "QA_LEAD": "测试", "SEC_TESTER": "安全", "PERF_TESTER": "性能",
+    "API_TESTER": "接口", "UI_TESTER": "前端", "AI_TESTER": "AI",
+    "DB_TESTER": "数据库", "DEV_FIXER": "修复", "REVIEWER": "评审", "ARCHITECT": "架构",
+}
+
+
+def _auto_form_team_for_gap(gap_text, suggested_role=None, min_size=3, max_size=6):
+    """AI HR 根据缺口描述自动组队 — 极度挖潜"""
+    import hashlib
+    gap_lower = gap_text.lower()
+    if suggested_role:
+        needed_roles = [suggested_role]
+    else:
+        needed_roles = [r for r, kws in _ROLE_KEYWORDS.items() if any(kw.lower() in gap_lower for kw in kws)]
+        if not needed_roles:
+            needed_roles = ["QA_LEAD", "REVIEWER", "DEV_FIXER"]
+
+    conn = _db()
+    try:
+        conn.execute("""CREATE TABLE IF NOT EXISTS mt_team_members (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, team_name TEXT, member_name TEXT,
+            skill_level TEXT, source TEXT, capabilities TEXT, member_id TEXT, team_score_json TEXT,
+            assigned_at TEXT DEFAULT (datetime('now')))""")
+        conn.execute("""CREATE TABLE IF NOT EXISTS mt_team_registry (
+            team_id TEXT PRIMARY KEY, team_name TEXT UNIQUE, member_count INTEGER,
+            skill_keywords TEXT, color_tag TEXT, auto_formed_at TEXT DEFAULT (datetime('now')))""")
+
+        all_members = conn.execute(
+            "SELECT member_name, skill_level, source, capabilities FROM mt_team_members"
+        ).fetchall()
+        picked = {}; used_names = set()
+
+        for role in needed_roles:
+            role_kws = _ROLE_KEYWORDS.get(role, [])
+            scored = []
+            for m in all_members:
+                if m["member_name"] in used_names: continue
+                blob = ((m["capabilities"] or "") + " " + (m["source"] or "")).lower()
+                score = sum(3 for kw in role_kws if kw.lower() in blob)
+                lv = (m["skill_level"] or "").upper()
+                if any(lv.startswith(x) for x in ("CHIEF", "LEAD", "MASTER", "EXPERT", "LV3")): score += 2
+                elif lv.startswith("LV"): score += 1
+                if "金牌" in (m["source"] or ""): score -= 5
+                if score > 0: scored.append((score, dict(m)))
+            scored.sort(key=lambda x: -x[0])
+            take = 2 if len(needed_roles) <= 3 else 1
+            for _, m in scored[:take]:
+                picked.setdefault(role, []).append(m)
+                used_names.add(m["member_name"])
+
+        # 极度挖潜: 不够就随便拉 (不能让缺口没人管)
+        remaining = min_size - sum(len(v) for v in picked.values())
+        if remaining > 0:
+            pool = conn.execute(
+                "SELECT member_name, skill_level, source, capabilities FROM mt_team_members "
+                "WHERE member_name NOT IN ({}) LIMIT {}".format(
+                    ",".join("?" * max(len(used_names), 1)), min_size + 5),
+                list(used_names) or [""]).fetchall()
+            for m in pool:
+                if remaining <= 0: break
+                if m["member_name"] in used_names: continue
+                # 塞到第一个 needed_role
+                first_role = needed_roles[0] if needed_roles else "QA_LEAD"
+                picked.setdefault(first_role, []).append(dict(m))
+                used_names.add(m["member_name"]); remaining -= 1
+
+        # 汇总 + 注册
+        all_picked = []
+        for role, members in picked.items():
+            for m in members[:max_size - len(all_picked)]:
+                m2 = dict(m); m2["_assigned_role"] = role
+                all_picked.append(m2)
+
+        if not all_picked:
+            return {"ok": False, "error": "no candidates found"}
+
+        role_label = _ROLE_LABELS.get(needed_roles[0], "测试")
+        team_name = f"🤖 自动组队·{role_label}_{_int_now() % 10000:04d}"
+        team_id = f"auto_{hashlib.md5(team_name.encode()).hexdigest()[:10]}"
+
+        all_kws = list(set(kw for r in needed_roles for kw in _ROLE_KEYWORDS.get(r, [])))[:12]
+        conn.execute("INSERT OR REPLACE INTO mt_team_registry VALUES (?,?,?,?,?,datetime('now'))",
+                     (team_id, team_name, len(all_picked), ",".join(all_kws), "🤖"))
+        for i, m in enumerate(all_picked):
+            mid = f"{team_id}_m{i}_{hashlib.md5(m['member_name'].encode()).hexdigest()[:6]}"
+            conn.execute("INSERT OR REPLACE INTO mt_team_members (team_name,member_name,skill_level,source,capabilities,member_id) VALUES (?,?,?,?,?,?)",
+                         (team_name, m["member_name"], m["_assigned_role"], m.get("source", "🤖自动组队"),
+                          (m.get("capabilities") or "")[:200], mid))
+        conn.commit()
+
+        # HR 审计
+        try:
+            conn.execute("CREATE TABLE IF NOT EXISTS mt_lab_audit_log (center,action,subject,detail,created_at)")
+            conn.execute("INSERT INTO mt_lab_audit_log VALUES (?,?,?,?,datetime('now','localtime'))",
+                         ("hr_center", "AUTO_FORM_TEAM", team_id,
+                          json.dumps({"gap": gap_text[:100], "roles": needed_roles, "size": len(all_picked)},
+                                     ensure_ascii=False)))
+        except Exception: pass
+
+        return {
+            "ok": True, "team_id": team_id, "team_name": team_name,
+            "needed_roles": needed_roles, "members_count": len(all_picked),
+            "members": [{"name": m["member_name"], "role": m["_assigned_role"], "from": m.get("source", "")} for m in all_picked],
+            "coverage": f"{len(all_picked)}/{max_size}",
+        }
+    finally: conn.close()
+
+
+def run_auto_team_daemon():
+    """定时入口: 扫孤儿任务 → 自动组新天团 → 自动认领"""
+    conn = _db()
+    formed = []
+    try:
+        conn.execute("CREATE TABLE IF NOT EXISTS mt_lab_hr_log (employee_name, employee_code, role, hall_task_id, action, verdict)")
+        orphans = conn.execute("""
+            SELECT id, title, description FROM mt_lab_task_hall
+            WHERE status='QUEUED' AND (claim_owner IS NULL OR claim_owner='' OR claim_owner NOT LIKE '%金牌%')
+            ORDER BY id DESC LIMIT 5""").fetchall()
+        for t in orphans:
+            team = _auto_form_team_for_gap(f"{t['title']} {t['description'] or ''}")
+            if team["ok"]:
+                formed.append({"task_id": t["id"], "team": team["team_name"], "size": team["members_count"]})
+                conn.execute("UPDATE mt_lab_task_hall SET claim_owner=?, claim_owner_role='auto_team', claimed_at=datetime('now','localtime'), status='DISPATCHED' WHERE id=?",
+                             (team["team_name"], t["id"]))
+                for m in team["members"]:
+                    conn.execute("INSERT INTO mt_lab_hr_log (employee_name, role, hall_task_id, action, verdict) VALUES (?,?,?,?,?)",
+                                 (m["name"], m["role"], t["id"], "AUTO_FORM_CLAIM", team["team_name"]))
+        conn.commit()
+    finally: conn.close()
+    return {"ok": True, "orphan_scanned": len(formed), "teams_formed": len(formed), "details": formed, "engine": "auto_team_daemon"}
+
+
+@daemon_skill_lab_bp.route("/api/daemon-lab/test/auto-team", methods=["GET", "POST"])
+def auto_team_api():
+    """AI HR 自动组新天团 — 极度挖潜"""
+    data = request.get_json() if request.method == "POST" else {}
+    if data and (data.get("gap") or data.get("title")):
+        gap = f"{data.get('title','')} {data.get('description', data.get('gap',''))}"
+        return jsonify(_auto_form_team_for_gap(gap, data.get("role")))
+    return jsonify(run_auto_team_daemon())
