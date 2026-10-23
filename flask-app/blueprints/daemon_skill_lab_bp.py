@@ -2801,16 +2801,18 @@ def auto_team_api():
 
 def run_lab_daemon_loop():
     """
-    研发中心全自动守护循环 (4 个子任务, 不同频率):
+    研发中心全自动守护循环 (6 个子任务, 不同频率):
       - 每 15min: 前线巡检 run_frontline_daemon_once()    → 入任务大厅
       - 每 15min: 自动组队 run_auto_team_daemon()         → 认领孤儿任务
+      - 每 30min: 任务大厅驱动 run_hall_auto()             → QUEUED → DISPATCHED
+      - 每 30min: 任务回收 run_hall_recycle()              → OVERDUE 回收重派
       - 每 60min: 金牌天团 run_test_gold_team_auto()       → 研究院觉醒 + 派发
       - 每 24h:   Skill 衍生 run_skill_derive_all()       → 验收任务 → Skill 注册表
     server_real_db.py daemon-lab 注册后自动启动此线程
     """
     import time as _t
     _t.sleep(60)  # 等 Flask 稳定
-    print(f'[LAB-DAEMON] 🛰️ 研发中心全自动守护启动 — 15min 巡检/组队, 60min 天团, 24h Skill 衍生')
+    print(f'[LAB-DAEMON] 🛰️ 研发中心全自动守护启动 — 15min 巡检/组队, 30min 驱动/回收, 60min 天团, 24h Skill 衍生')
     loop_count = 0
     while True:
         loop_count += 1
@@ -2828,6 +2830,19 @@ def run_lab_daemon_loop():
                 print(f'[LAB-DAEMON] ✅ 自动组队 done teams={tr.get("teams_created",0)} claimed={tr.get("claimed",0)}')
             except Exception as e:
                 print(f'[LAB-DAEMON] ⚠️ 自动组队异常 (不崩): {e}')
+
+            # ── 每 30min (2 tick): 任务大厅自动驱动 + 回收 ──
+            if tick % 2 == 0:
+                try:
+                    hr = run_hall_auto()
+                    print(f'[LAB-DAEMON] ✅ 大厅驱动 done ingested={hr.get("ingested",0)} dispatched={hr.get("dispatched",0)}')
+                except Exception as e:
+                    print(f'[LAB-DAEMON] ⚠️ 大厅驱动异常 (不崩): {e}')
+                try:
+                    rc = run_hall_recycle()
+                    print(f'[LAB-DAEMON] ✅ 任务回收 done {rc}')
+                except Exception as e:
+                    print(f'[LAB-DAEMON] ⚠️ 任务回收异常 (不崩): {e}')
 
             # ── 每 60min (4 tick): 金牌天团自动派发 ──
             if tick % 4 == 0:
