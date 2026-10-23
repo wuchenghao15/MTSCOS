@@ -1920,3 +1920,350 @@ def lab_overview():
             "fresh": candidates, "persisted": persisted,
         },
     })
+
+
+# ════════════════════════════════════════════════════════════════
+# Phase 2: 研究院觉醒 — 自动组建测试团队 + 交付任务大厅
+# Phase 3: AI HR 智能匹配 — 没团队自动从 HR pool 拉人
+# Phase 4: Skill 自动衍生闭环 — 做完任务提炼成 skill
+# flow_test_gold_team_20261023
+# ════════════════════════════════════════════════════════════════
+
+GOLD_TEST_TEAM = "🧪 专业测试30年金牌天团"
+
+# ── 研究院觉醒触发源 ──
+_AWAKEN_TRIGGERS = [
+    # (触发源类型, 查询 SQL, 觉醒理由模板)
+    ("daemon_failure",
+     "SELECT id, process_name, current_state FROM mt_daemon_registry WHERE current_state IN ('FAILED','STOPPED')",
+     "Daemon {{process_name}} 状态 {{current_state}}, 需金牌天团介入专项测试"),
+    ("high_priority_task",
+     "SELECT id, title FROM mt_lab_task_hall WHERE priority='HIGH' AND status IN ('QUEUED','PENDING')",
+     "高优先级任务 #{{id}} {{title}} 待派发, 金牌天团自动请缨"),
+    ("no_team_match",
+     "SELECT id, title FROM mt_lab_task_hall WHERE status='QUEUED' AND id NOT IN (SELECT hall_task_id FROM mt_lab_assignments)",
+     "任务大厅有未分配任务, AI HR 自动组建测试团队认领"),
+    # flow_daemon_skill_lab 自动巡检: 建议队列 PROPOSED
+    ("suggestion_queue",
+     "SELECT id, subject, reason FROM mt_lab_suggestions WHERE status='PROPOSED' LIMIT 5",
+     "衍生建议 #{{id}} {{subject}} 需金牌天团评估"),
+]
+
+# 任务类型 → 需要的测试角色映射
+_TASK_TYPE_TO_TEST_ROLES = {
+    "security": ["SEC_QA", "AI_QA", "REVIEW_QA"],
+    "perf":     ["PERF_QA", "REL_QA", "CHIEF_QA"],
+    "api":      ["API_QA", "AUTO_QA", "REVIEW_QA"],
+    "ui":       ["UI_QA", "QA_EDU", "REVIEW_QA"],
+    "ai":       ["AI_QA", "AUTO_QA", "CHIEF_QA"],
+    "db":       ["PERF_QA", "REL_QA"],
+    "general":  ["AUTO_QA", "REVIEW_QA", "CHIEF_QA"],
+}
+
+
+def _match_task_type(text):
+    """从任务文本推断测试类型 (本地关键词匹配, 零 token)"""
+    t = text.lower()
+    if any(k in t for k in ["安全", "security", "vikey", "审计", "auth", "权限", "漏洞", "encrypt"]):
+        return "security"
+    if any(k in t for k in ["性能", "perf", "压力", "latency", "throughput", "cpu", "内存"]):
+        return "perf"
+    if any(k in t for k in ["api", "接口", "endpoint", "flask", "route", "blueprint"]):
+        return "api"
+    if any(k in t for k in ["ui", "前端", "页面", "css", "html", "渲染", "布局"]):
+        return "ui"
+    if any(k in t for k in ["ai", "llm", "ollama", "agent", "脑库", "推理", "model"]):
+        return "ai"
+    if any(k in t for k in ["db", "数据库", "sqlite", "dba", "表", "column", "wal"]):
+        return "db"
+    return "general"
+
+
+def _gold_team_roster(roles_needed=None):
+    """从金牌天团拉人, 按需要的角色过滤"""
+    conn = _db()
+    try:
+        if roles_needed:
+            placeholders = ",".join("?" * len(roles_needed))
+            rows = conn.execute(
+                f"SELECT member_name, skill_level, capabilities FROM mt_team_members "
+                f"WHERE team_name=? AND skill_level IN ({placeholders})",
+                (GOLD_TEST_TEAM, *roles_needed)).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT member_name, skill_level, capabilities FROM mt_team_members "
+                "WHERE team_name=?", (GOLD_TEST_TEAM,)).fetchall()
+        return [dict(r) for r in rows]
+    finally:
+        conn.close()
+
+
+def _auto_form_test_roster(task_text):
+    """Phase 3: AI HR 智能组建 — 没匹配到团队时自动从金牌天团拉人"""
+    test_type = _match_task_type(task_text)
+    roles_needed = _TASK_TYPE_TO_TEST_ROLES.get(test_type, ["AUTO_QA", "REVIEW_QA"])
+    # 先从金牌天团找
+    members = _gold_team_roster(roles_needed)
+    if not members:
+        # 金牌天团没有完全匹配 → 扩展到其他天团 (AI HR "挖人")
+        conn = _db()
+        try:
+            extra = conn.execute(
+                "SELECT member_name, skill_level, capabilities FROM mt_team_members "
+                "WHERE team_name IN ('🧪 测试巡检天团','⚖️ 合规安全天团','🏛️ 架构天团','🔧 运维修复天团') "
+                "AND team_name != ? LIMIT 3",
+                (GOLD_TEST_TEAM,)).fetchall()
+            members = [dict(r) for r in extra]
+        finally:
+            conn.close()
+    return {"members": members, "test_type": test_type, "roles_needed": roles_needed}
+
+
+# ── Phase 2: 研究院觉醒 daemon ──
+def run_test_gold_team_auto():
+    """
+    研究院觉醒入口 (可被 cron/daemon 调用)
+    1. 扫描 4 种触发源 → 生成本地测试任务
+    2. 金牌天团自动认领 → 交付任务大厅
+    3. AI HR 自动派发 → 没匹配自动组队
+    4. 任务完成 → 自动提炼 skill 并注册
+    """
+    awakening_events = []
+    conn = _db()
+    try:
+        conn.execute(_LAB_TABLE_SQL)
+        conn.execute(_ensure_claim_tables.__code__.co_consts[0] if hasattr(_ensure_claim_tables, '__code__') else "")
+    except Exception:
+        pass
+
+    ingested = 0
+    dispatched = 0
+    formed = 0
+
+    try:
+        for trigger_type, sql, reason_tpl in _AWAKEN_TRIGGERS:
+            try:
+                rows = conn.execute(sql).fetchall()
+            except sqlite3.Error:
+                continue
+            for r in rows:
+                rdict = dict(r)
+                # 生成觉醒理由
+                reason = reason_tpl
+                for k, v in rdict.items():
+                    reason = reason.replace("{{" + k + "}}", str(v))
+                # 检查是否已入厅
+                existing = conn.execute(
+                    "SELECT 1 FROM mt_lab_task_hall WHERE source=? AND source_id=?",
+                    (trigger_type, rdict.get("id"))).fetchone()
+                if existing:
+                    continue
+                # 自动生成测试任务
+                title = f"[🏆金牌测试] {rdict.get('subject') or rdict.get('title') or reason[:40]}"
+                conn.execute(
+                    "INSERT INTO mt_lab_task_hall (title,description,source,source_id,priority,status,task_type,claim_owner,claim_owner_role) "
+                    "VALUES (?,?,?,?,?,?,?,?,?)",
+                    (title, reason, trigger_type, rdict.get("id"),
+                     "HIGH" if trigger_type in ("daemon_failure", "high_priority_task") else "NORMAL",
+                     "QUEUED", "test", GOLD_TEST_TEAM, "gold_qa_team"))
+                ingested += 1
+                awakening_events.append({"trigger": trigger_type, "title": title})
+        conn.commit()
+    finally:
+        conn.close()
+
+    # 第二轮: 对 QUEUED 且 claim_owner=金牌天团 的任务自动派发
+    conn = _db()
+    try:
+        queued = conn.execute(
+            "SELECT id, title, description FROM mt_lab_task_hall "
+            "WHERE status='QUEUED' AND claim_owner=?",
+            (GOLD_TEST_TEAM,)).fetchall()
+        for t in queued:
+            task_text = f"{t['title']} {t['description'] or ''}"
+            formed_result = _auto_form_test_roster(task_text)
+            if formed_result["members"]:
+                formed += 1
+                verdict = f"🏆金牌天团自动组队: {len(formed_result['members'])}人, 类型={formed_result['test_type']}, 角色={formed_result['roles_needed']}"
+                conn.execute(
+                    "UPDATE mt_lab_task_hall SET status='DISPATCHED', verdict=?, dispatched_at=datetime('now','localtime') WHERE id=?",
+                    (verdict, t["id"]))
+                dispatched += 1
+                # HR 日志
+                for m in formed_result["members"]:
+                    conn.execute(
+                        "INSERT INTO mt_lab_hr_log (employee_name, role, hall_task_id, action, verdict) VALUES (?,?,?,?,?)",
+                        (m["member_name"], "gold_qa", t["id"], "GOLD_TEAM_CLAIM", verdict))
+        conn.commit()
+    finally:
+        conn.close()
+
+    return {
+        "ok": True, "trigger": "run_test_gold_team_auto",
+        "ingested": ingested, "dispatched": dispatched, "formed": formed,
+        "events": awakening_events[:20],
+        "gold_team": GOLD_TEST_TEAM,
+        "gold_size": len(_gold_team_roster()),
+    }
+
+
+# ── Phase 4: Skill 自动衍生闭环 ──
+def _auto_derive_skill_from_task(task_id):
+    """
+    任务完成后 → 自动提炼可复用 skill → 注册到 mt_skill_registry
+    触发条件: mt_lab_task_hall.acceptor IS NOT NULL (已验收)
+    """
+    conn = _db()
+    try:
+        task = conn.execute(
+            "SELECT id, title, description, verdict, status, deliverable, acceptor, accepted_at "
+            "FROM mt_lab_task_hall WHERE id=?", (task_id,)).fetchone()
+        if not task or not task["acceptor"]:
+            return {"ok": False, "reason": "task not accepted"}
+
+        # 从 verdict + deliverable 提取关键词 → skill 命名
+        title = task["title"]
+        verdict = task["verdict"] or ""
+        deliverable = task["deliverable"] or ""
+        text = f"{title} {verdict} {deliverable}"
+
+        # 推断 skill 分类 (复用 _match_task_type 逻辑 + 关键词)
+        skill_type_map = {
+            "security": ("SECURITY_TEST", "安全测试 Skill", "security_audit"),
+            "perf":     ("PERF_TEST", "性能测试 Skill", "performance"),
+            "api":      ("API_TEST", "接口测试 Skill", "api_contract"),
+            "ui":       ("UI_TEST", "UI测试 Skill", "ui_regression"),
+            "ai":       ("AI_TEST", "AI智能体测试 Skill", "llm_qa"),
+            "db":       ("DB_TEST", "数据库测试 Skill", "db_integrity"),
+            "general":  ("TEST_GENERAL", "通用测试 Skill", "qa_general"),
+        }
+        ttype = _match_task_type(text)
+        skill_id, skill_name, category = skill_type_map.get(ttype, skill_type_map["general"])
+
+        # 检查是否已存在 (去重)
+        existing = conn.execute(
+            "SELECT 1 FROM mt_skill_registry WHERE name=? OR skill_id=?",
+            (skill_name, f"{skill_id}_{task_id}")).fetchone()
+        if existing:
+            return {"ok": True, "skill_id": f"{skill_id}_{task_id}", "note": "already exists, skip"}
+
+        # 提炼 skill 描述 (从 verdict 提炼)
+        import hashlib
+        skill_hash = hashlib.md5(text.encode()).hexdigest()[:8]
+        full_skill_id = f"{skill_id}_{task_id}_{skill_hash}"
+        skill_desc = verdict[:200] if verdict else f"从任务 #{task_id} 自动衍生的 {skill_name}"
+        tags = json.dumps([ttype, "auto_derived", "gold_30y", f"task_{task_id}"], ensure_ascii=False)
+
+        conn.execute("""CREATE TABLE IF NOT EXISTS mt_skill_registry (
+            skill_id TEXT PRIMARY KEY, name TEXT, category TEXT, description TEXT,
+            level TEXT DEFAULT 'intermediate', icon TEXT, tags_json TEXT,
+            module_path TEXT, entry_func TEXT,
+            created_at TEXT DEFAULT (datetime('now','localtime')),
+            updated_at TEXT DEFAULT (datetime('now','localtime')))""")
+
+        conn.execute(
+            "INSERT INTO mt_skill_registry (skill_id, name, category, description, level, tags_json) "
+            "VALUES (?,?,?,?,?,?)",
+            (full_skill_id, skill_name, category, skill_desc, "intermediate", tags))
+
+        # 审计日志
+        conn.execute(
+            "INSERT INTO mt_lab_audit_log (center, action, subject, detail) VALUES (?,?,?,?)",
+            ("skill_dev", "AUTO_SKILL_DERIVED", full_skill_id,
+             json.dumps({"task_id": task_id, "source": "gold_30y_skill_derive", "ttype": ttype}, ensure_ascii=False)))
+        conn.commit()
+        return {"ok": True, "skill_id": full_skill_id, "skill_name": skill_name, "category": category}
+    finally:
+        conn.close()
+
+
+# ── 额外: 批量衍生所有已完成但未提炼 skill 的任务 ──
+def run_skill_derive_all():
+    """跑一遍所有已验收任务 → 批量衍生 skill"""
+    conn = _db()
+    derived = []
+    try:
+        accepted = conn.execute(
+            "SELECT id FROM mt_lab_task_hall WHERE acceptor IS NOT NULL AND status IN ('DONE','ACCEPTED') "
+            "ORDER BY accepted_at DESC LIMIT 20").fetchall()
+        for t in accepted:
+            res = _auto_derive_skill_from_task(t["id"])
+            if res.get("ok") and res.get("skill_id"):
+                derived.append(res["skill_name"])
+    finally:
+        conn.close()
+    return {"ok": True, "derived": derived, "count": len(derived)}
+
+
+# ── 新路由: 研究院觉醒触发入口 ──
+@daemon_skill_lab_bp.route("/api/daemon-lab/test/gold-team/auto", methods=["GET", "POST"])
+def gold_team_auto():
+    """手动触发整套闭环: 觉醒 → 组队 → 派发 → 提炼 skill"""
+    if request.method == "POST":
+        r = run_test_gold_team_auto()
+        # 顺便跑 skill 衍生
+        r["skill_derive"] = run_skill_derive_all()
+        return jsonify(r)
+    # GET: 返回金牌天团状态
+    members = _gold_team_roster()
+    return jsonify({
+        "ok": True, "team": GOLD_TEST_TEAM, "size": len(members),
+        "members": [{"name": m["member_name"], "role": m["skill_level"]} for m in members],
+        "roles_covered": sorted({m["skill_level"] for m in members}),
+        "api_trigger": "POST /api/daemon-lab/test/gold-team/auto",
+        "flow_id": "flow_test_gold_team_20261023",
+    })
+
+
+# ── 新路由: AI HR 临时组队 (没团队时用) ──
+@daemon_skill_lab_bp.route("/api/daemon-lab/test/form-roster", methods=["POST"])
+def form_test_roster():
+    """AI HR 根据任务描述智能组建测试团队"""
+    data = request.get_json() or {}
+    task_text = f"{data.get('title','')} {data.get('description','')}"
+    result = _auto_form_test_roster(task_text)
+    return jsonify({
+        "ok": True, "test_type": result["test_type"],
+        "roles_needed": result["roles_needed"],
+        "members": result["members"],
+        "ai_hr": "expert_team + hr_center",
+    })
+
+
+# ── 新路由: 手动触发 skill 衍生 ──
+@daemon_skill_lab_bp.route("/api/daemon-lab/test/derive-skill", methods=["POST"])
+def derive_skill():
+    data = request.get_json() or {}
+    task_id = data.get("task_id")
+    if task_id:
+        return jsonify(_auto_derive_skill_from_task(task_id))
+    return jsonify(run_skill_derive_all())
+
+
+# ── 新路由: 金牌天团认领任务 ──
+@daemon_skill_lab_bp.route("/api/daemon-lab/test/gold-team/claim", methods=["POST"])
+def gold_team_claim():
+    """金牌天团手动认领指定任务"""
+    data = request.get_json() or {}
+    task_id = data.get("task_id")
+    if not task_id:
+        return jsonify({"ok": False, "error": "task_id required"}), 400
+    conn = _db()
+    try:
+        conn.execute(
+            "UPDATE mt_lab_task_hall SET claim_owner=?, claim_owner_role='gold_qa_team', "
+            "claimed_at=datetime('now','localtime'), status=CASE WHEN status='QUEUED' THEN 'DISPATCHED' ELSE status END "
+            "WHERE id=?",
+            (GOLD_TEST_TEAM, task_id))
+        # AI HR 组队
+        task = conn.execute("SELECT title, description FROM mt_lab_task_hall WHERE id=?", (task_id,)).fetchone()
+        if task:
+            formed = _auto_form_test_roster(f"{task['title']} {task['description'] or ''}")
+            for m in formed["members"]:
+                conn.execute(
+                    "INSERT INTO mt_lab_hr_log (employee_name, role, hall_task_id, action, verdict) VALUES (?,?,?,?,?)",
+                    (m["member_name"], "gold_qa", task_id, "CLAIM", f"金牌天团认领→{formed['test_type']}"))
+        conn.commit()
+    finally:
+        conn.close()
+    return jsonify({"ok": True, "task_id": task_id, "claimed_by": GOLD_TEST_TEAM})

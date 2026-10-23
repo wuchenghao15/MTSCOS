@@ -2472,6 +2472,8 @@ _CSRF_EXEMPT_PREFIXES = [
     '/api/japanese/',
     # v22.10.20: 本地聊天 — 仙女座发散思维引擎 (已有 @_login_required, CSRF 冗余 + SSE 流式无法带 CSRF header)
     '/api/local-chat/',
+    # flow_test_gold_team_20261023: 研究院觉醒 + 金牌天团自动化 + Skill 衍生 (daemon/定时任务调用, 无 CSRF token)
+    '/api/daemon-lab/',
     # 🆕 flow_andromeda_chat_20261021: AI人格聊天室 — 会话落库+脑库RAG (与 /api/local-chat/ 同理, 匿名可用仅聊天写入, CSRF 冗余)
     '/andromeda/api/persona_chat',
     # 🆕 flow_andromeda_param_20261021: 仙女座参数中心 — 查询全员/修改仅SA权限装饰器兜底, CSRF 冗余
@@ -3898,7 +3900,7 @@ _MT_RISK_RULES = [
      lambda p, u: (not _mt_is_admin_user(u)) and _mt_is_user_fast(u['uid']),
      'high', 'throttle'),
     ('R-GUEST-API-WRITE', '访客越权写操作',
-     lambda p, u: (u['is_guest'] and request.method in ('POST', 'PUT', 'DELETE') and p.startswith('/api/') and not any(p.startswith(x) for x in ('/api/auth', '/api/theme', '/api/vikey', '/api/health', '/api/container', '/api/ai_engine/self_learning', '/api/ai/self_learning', '/api/layout_ai', '/api/chinese_dictation', '/api/ai/chinese_listening', '/api/history', '/api/arduino', '/api/approval', '/api/system/logo', '/api/client/init', '/api/client/verify_keys', '/api/mobile/fingerprint', '/api/console', '/api/i18n', '/api/neuralhub', '/api/ai/derive', '/api/edu', '/api/profile', '/api/model', '/api/crypto', '/api/ai/github-fusion/deep'))),
+     lambda p, u: (u['is_guest'] and request.method in ('POST', 'PUT', 'DELETE') and p.startswith('/api/') and not any(p.startswith(x) for x in ('/api/auth', '/api/theme', '/api/vikey', '/api/health', '/api/container', '/api/ai_engine/self_learning', '/api/ai/self_learning', '/api/layout_ai', '/api/chinese_dictation', '/api/ai/chinese_listening', '/api/history', '/api/arduino', '/api/approval', '/api/system/logo', '/api/client/init', '/api/client/verify_keys', '/api/mobile/fingerprint', '/api/console', '/api/i18n', '/api/neuralhub', '/api/ai/derive', '/api/edu', '/api/profile', '/api/model', '/api/crypto', '/api/ai/github-fusion/deep', '/api/daemon-lab'))),
      'high', 'block'),
     ('R-SESSION-STALE', 'Session 超过 24h 未刷新',
      lambda p, u: False,  # 在 before_request 中动态计算
