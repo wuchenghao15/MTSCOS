@@ -2916,6 +2916,225 @@ def run_auto_team_daemon():
     return {"ok": True, "orphan_scanned": len(formed), "teams_formed": len(formed), "details": formed, "engine": "auto_team_daemon"}
 
 
+# ═══════════════════════════════════════════════════════════════════════════
+# 🆕 AI 繁衍引擎 — 衍生新建大量 AI 员工 + 新天团
+# ═══════════════════════════════════════════════════════════════════════════
+
+# AI 繁衍字典: 每个 domain 对应角色模板 + 名字池 + 能力标签
+_SPAWN_DOMAINS = {
+    "test_general": {
+        "emoji": "🧪", "name": "通用测试", "role_key": "QA_LEAD",
+        "names": ["墨白·云测", "青锋·试剑", "灵犀·通测", "明镜·洞察", "衡准·标杆"],
+        "capabilities": ["冒烟测试", "边界值", "回归测试", "异常路径", "兼容性矩阵"],
+        "specialties": "通用测试, 冒烟, 回归, 边界值", "color": "#3498DB",
+    },
+    "security_ai": {
+        "emoji": "🛡️", "name": "AI安全", "role_key": "SEC_TESTER",
+        "names": ["玄甲·AI守", "金睛·鉴伪", "铁匣·加密", "银盾·反注入", "玉锁·权限"],
+        "capabilities": ["AI prompt injection 检测", "RAG 向量泄露防护", "Agent 越权拦截", "训练数据投毒防御", "推理后门扫描"],
+        "specialties": "AI安全, prompt注入, 向量泄露, 越权", "color": "#9B59B6",
+    },
+    "iot_device": {
+        "emoji": "🔌", "name": "IoT设备", "role_key": "DEV_FIXER",
+        "names": ["灵丝·编织", "慧芯·电路", "微芒·传感", "智控·电路", "脉冲·信号"],
+        "capabilities": ["Arduino 驱动适配", "串口通信", "传感器数据校验", "Firmware 升级", "EMI 防护"],
+        "specialties": "IoT, Arduino, 串口, 传感器", "color": "#E67E22",
+    },
+    "edu_content": {
+        "emoji": "📚", "name": "题库教研", "role_key": "QA_EDU",
+        "names": ["启明·慧光", "润心·智师", "晓义·启蒙", "博约·思远", "格物·知微"],
+        "capabilities": ["题目质量审核", "难度分级", "标签自动标注", "知识点图谱补全", "错题归因"],
+        "specialties": "题库, 教研, 知识点, 难度分级", "color": "#F1C40F",
+    },
+    "db_perf": {
+        "emoji": "🗄️", "name": "DB性能", "role_key": "DB_TESTER",
+        "names": ["玉衡·索引", "流珠·WAL", "磐石·锁解", "天算·规划", "玄鉴·优化"],
+        "capabilities": ["SQLite WAL 调优", "索引覆盖率分析", "慢查询溯源", "锁等待检测", "归档策略"],
+        "specialties": "DB, SQLite, WAL, 索引, 锁", "color": "#1ABC9C",
+    },
+    "api_contract": {
+        "emoji": "🔗", "name": "API契约", "role_key": "API_TESTER",
+        "names": ["准衡·接口", "灵约·契约", "顺天·REST", "合度·Schema", "达心·幂等"],
+        "capabilities": ["API schema 校验", "幂等性测试", "限流验证", "跨蓝图调用链", "错误码一致性"],
+        "specialties": "API, REST, Schema, 幂等, 限流", "color": "#2ECC71",
+    },
+    "ops_urgent": {
+        "emoji": "🚨", "name": "紧急响应", "role_key": "DEV_FIXER",
+        "names": ["闪电·疾修", "飓风·清障", "烈焰·排障", "雷霆·急救", "寒锋·止血"],
+        "capabilities": ["P0 故障响应", "DB 锁死急救", "进程雪崩止损", "Tunnel 掉线恢复", "内存泄漏定位"],
+        "specialties": "OPS, P0, 应急, 故障", "color": "#E74C3C",
+    },
+    "llm_eval": {
+        "emoji": "🤖", "name": "LLM评测", "role_key": "AI_TESTER",
+        "names": ["观道·品模", "辨机·推理", "知微·幻觉", "衡心·对齐", "鉴真·事实"],
+        "capabilities": ["RAG 召回率评测", "幻觉检测", "事实一致性", "指令遵循率", "安全对齐打分"],
+        "specialties": "LLM, RAG, 幻觉, 评测", "color": "#8E44AD",
+    },
+    "archi_modular": {
+        "emoji": "🏛️", "name": "架构解耦", "role_key": "ARCHITECT",
+        "names": ["立基·磐石", "通衢·脉络", "疏脉·解耦", "格物·层次", "守一·边界"],
+        "capabilities": ["Blueprint 边界审计", "循环依赖检测", "公共模块抽取", "配置中心化", "插件化改造"],
+        "specialties": "架构, 模块化, 解耦", "color": "#2980B9",
+    },
+    "rule_govern": {
+        "emoji": "⚖️", "name": "规则治理", "role_key": "REVIEWER",
+        "names": ["正法·准绳", "衡平·裁决", "守矩·铁律", "明辨·合规", "知止·边界"],
+        "capabilities": ["弱约束词扫描", "规则冲突裁决", "合规审计", "7步审批流", "铁律执行"],
+        "specialties": "规则, 合规, 铁律", "color": "#C0392B",
+    },
+}
+
+
+def _spawn_new_employees_for_domain(domain_key, count=3):
+    """从 domain 模板批量生成新 AI 员工 — 繁衍核心"""
+    import hashlib
+    d = _SPAWN_DOMAINS.get(domain_key)
+    if not d:
+        return {"ok": False, "error": f"unknown domain: {domain_key}"}
+
+    conn = _db()
+    spawned = []
+    try:
+        # 确保表存在
+        conn.execute("""CREATE TABLE IF NOT EXISTS ai_employees (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, employee_code TEXT,
+            description TEXT, capabilities TEXT, specialties TEXT,
+            status TEXT DEFAULT 'active', accuracy REAL DEFAULT 0.85,
+            total_tasks INTEGER DEFAULT 0, successful_fixes INTEGER DEFAULT 0,
+            failed_fixes INTEGER DEFAULT 0, learning_rate REAL DEFAULT 0.05,
+            knowledge_base_size INTEGER DEFAULT 0, last_training TEXT,
+            model_version TEXT DEFAULT '1.0',
+            created_at TEXT DEFAULT (datetime('now','localtime')))""")
+
+        names = d["names"]; caps = d["capabilities"]
+        for i in range(min(count, len(names))):
+            name = names[i]
+            employee_code = f"{d['role_key']}-{domain_key[:4].upper()}-{hashlib.md5(name.encode()).hexdigest()[:6]}"
+            # 防重
+            existing = conn.execute("SELECT id FROM ai_employees WHERE employee_code=?", (employee_code,)).fetchone()
+            if existing: continue
+            desc = f"{name} · {d['name']}专家 · 自动繁衍 (flow_spawn_{_int_now()})"
+            cap = caps[i % len(caps)]
+            conn.execute("""INSERT INTO ai_employees
+                (name, employee_code, description, capabilities, specialties, status)
+                VALUES (?,?,?,?,?, 'active')""",
+                (name, employee_code, desc, cap, d["specialties"]))
+            # 同时灌 mt_team_members (自动繁衍的天团还没建, 先挂池里)
+            conn.execute("""INSERT INTO mt_team_members (team_name, member_name, skill_level, source, capabilities, member_id)
+                VALUES (?,?,?,?,?,?)""",
+                (f"🤖 繁衍池·{d['name']}", name, "EXPERT", "SPAWN_ENGINE", cap, employee_code))
+            spawned.append({"name": name, "code": employee_code, "role": d["role_key"]})
+        conn.commit()
+    finally:
+        conn.close()
+    return {"ok": True, "domain": d["name"], "spawned": spawned, "count": len(spawned)}
+
+
+def _spawn_new_teams_for_orphan_tasks():
+    """扫孤儿任务 → 按 task_type 聚类 → 繁衍新天团 + 自动认领"""
+    import hashlib
+    conn = _db()
+    new_teams = []
+    try:
+        # 扫所有 QUEUED + DISPATCHED 但无有效 owner 的孤儿任务
+        orphans = conn.execute("""
+            SELECT task_type, source, COUNT(*) cnt FROM mt_lab_task_hall
+            WHERE (status='QUEUED' OR (status='DISPATCHED' AND claim_owner IS NULL))
+              AND (claim_owner IS NULL OR claim_owner='' OR claim_owner NOT LIKE '%金牌%')
+            GROUP BY task_type, source ORDER BY cnt DESC""").fetchall()
+
+        existing_teams = {t[0] for t in conn.execute("SELECT team_name FROM mt_team_registry").fetchall()}
+
+        # 聚类 → 匹配到 domain
+        type_to_domain = {
+            "test": ["test_general", "llm_eval"],
+            "SECURITY": ["security_ai", "rule_govern"],
+            "OPS": ["ops_urgent", "db_perf"],
+            "HIGH_PRIORITY": ["ops_urgent", "archi_modular"],
+            "edu": ["edu_content"],
+            "IOT": ["iot_device"],
+            "API": ["api_contract"],
+        }
+        # 默认 domain 池 (覆盖 92 daemon)
+        all_domains = list(_SPAWN_DOMAINS.keys())
+
+        for t in orphans:
+            task_type = t["task_type"]; cnt = t["cnt"]; source = t["source"]
+            domains = type_to_domain.get(task_type, all_domains[:2])
+            for dk in domains[:1]:  # 先每个 type 繁衍 1 个 domain
+                d = _SPAWN_DOMAINS[dk]
+                # 检查是否已有同类天团
+                team_name = f"{d['emoji']} {d['name']}天团·繁衍版"
+                if team_name in existing_teams: continue
+
+                # Step 1: 繁衍 3-5 个新 AI 员工
+                spawn_result = _spawn_new_employees_for_domain(dk, count=4)
+                members = spawn_result.get("spawned", [])
+                if not members:
+                    # 没繁衍出新成员 (可能已存在), 从现有池里拉
+                    pool = conn.execute("SELECT member_name FROM mt_team_members WHERE team_name LIKE '%繁衍池%' LIMIT 5").fetchall()
+                    members = [{"name": m["member_name"], "code": f"POOL-{m['member_name']}"} for m in pool]
+
+                # Step 2: 注册新天团
+                team_id = f"spawn_{hashlib.md5(team_name.encode()).hexdigest()[:10]}"
+                conn.execute("""INSERT OR REPLACE INTO mt_team_registry VALUES (?,?,?,?,?,datetime('now'))""",
+                    (team_id, team_name, len(members),
+                     ",".join(d["capabilities"][:6]), d["color"]))
+                for i, m in enumerate(members):
+                    mid = f"{team_id}_m{i}_{hashlib.md5(m['name'].encode()).hexdigest()[:6]}"
+                    conn.execute("""INSERT OR REPLACE INTO mt_team_members
+                        (team_name, member_name, skill_level, source, capabilities, member_id)
+                        VALUES (?,?,?,?,?,?)""",
+                        (team_name, m["name"], "EXPERT", "SPAWN_ENGINE",
+                         d["capabilities"][i % len(d["capabilities"])], mid))
+
+                # Step 3: 自动认领该类型的孤儿任务
+                conn.execute("""UPDATE mt_lab_task_hall SET claim_owner=?, claim_owner_role=?,
+                    claimed_at=datetime('now','localtime'), status='DISPATCHED'
+                    WHERE task_type=? AND (status='QUEUED' OR (status='DISPATCHED' AND claim_owner IS NULL))
+                      AND (claim_owner IS NULL OR claim_owner='' OR claim_owner NOT LIKE '%金牌%')""",
+                    (team_name, "spawn_team", task_type))
+
+                new_teams.append({"team_name": team_name, "domain": d["name"],
+                                  "type": task_type, "members": len(members), "cnt": cnt})
+                existing_teams.add(team_name)
+
+        conn.commit()
+    finally:
+        conn.close()
+    return {"ok": True, "teams_spawned": new_teams, "total": len(new_teams)}
+
+
+def run_ai_spawn_daemon():
+    """繁衍守护入口 — 每 60min 扫一次, 持续繁衍直到 100% 覆盖"""
+    # Step 1: 繁衍新天团 (基于孤儿任务)
+    r1 = _spawn_new_teams_for_orphan_tasks()
+    # Step 2: 批量 pre-spawn 所有 10 个 domain (就算当前没孤儿也先准备好)
+    r2 = {}
+    for dk in _SPAWN_DOMAINS:
+        try:
+            r = _spawn_new_employees_for_domain(dk, count=2)  # 每个 domain 预先准备 2 个新成员
+            if r.get("count", 0) > 0:
+                r2[dk] = r["count"]
+        except Exception as e:
+            print(f'[SPAWN] ⚠️ {dk} 繁衍异常: {e}')
+    return {"teams": r1, "pre_spawned": r2}
+
+
+# 🆕 API 入口: 手动触发繁衍
+@daemon_skill_lab_bp.route("/api/daemon-lab/test/spawn-ai", methods=["GET", "POST"])
+def spawn_ai_api():
+    """AI 繁衍引擎 — 衍生新建大量 AI 员工 + 新天团"""
+    data = request.get_json() if request.method == "POST" else {}
+    domain = data.get("domain")
+    count = int(data.get("count", 3))
+    if domain:
+        return jsonify(_spawn_new_employees_for_domain(domain, count=count))
+    if data.get("teams"):
+        return jsonify(_spawn_new_teams_for_orphan_tasks())
+    return jsonify(run_ai_spawn_daemon())
+
+
 @daemon_skill_lab_bp.route("/api/daemon-lab/test/auto-team", methods=["GET", "POST"])
 def auto_team_api():
     """AI HR 自动组新天团 — 极度挖潜"""
@@ -2997,6 +3216,15 @@ def run_lab_daemon_loop():
                         print(f'[LAB-DAEMON] 🌱 种子 Skill 注册 done seeded={sr["seeded"]} total={sr["total"]}')
                 except Exception as e:
                     print(f'[LAB-DAEMON] ⚠️ 种子 Skill 异常 (不崩): {e}')
+                # 🆕 AI 繁衍引擎: 衍生新建大量 AI 员工 + 新天团
+                try:
+                    sp = run_ai_spawn_daemon()
+                    t_cnt = sp.get("teams", {}).get("total", 0)
+                    p_cnt = sum(sp.get("pre_spawned", {}).values())
+                    if t_cnt > 0 or p_cnt > 0:
+                        print(f'[LAB-DAEMON] 🌱 AI 繁衍 done 新天团={t_cnt} 新员工={p_cnt}')
+                except Exception as e:
+                    print(f'[LAB-DAEMON] ⚠️ AI 繁衍异常 (不崩): {e}')
 
             # ── 每 24h (96 tick): Skill 衍生 ──
             if tick % 96 == 0:
