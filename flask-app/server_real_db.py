@@ -3038,6 +3038,16 @@ try:
 except Exception as _ti_err:
     print(f'[THREAT-INTEL] ⚠️ 威胁情报模块加载失败: {_ti_err}')
 
+# ── 考试院自动化 Blueprint: /exam-auto (flow_exam_auto_20261023) ──
+try:
+    from blueprints.exam_auto_daemon_bp import exam_auto_bp, run_exam_cycle
+    app.register_blueprint(exam_auto_bp)
+    print('[EXAM-AUTO] ✅ /exam-auto + /api/exam-auto/* 考试院已注册')
+except Exception as _ex_err:
+    print(f'[EXAM-AUTO] ⚠️ 考试院模块加载失败: {_ex_err}')
+except Exception as _ti_err:
+    print(f'[THREAT-INTEL] ⚠️ 威胁情报模块加载失败: {_ti_err}')
+
 # ── 跨团队协作总线 Blueprint: /api/collab/* (flow_team_collab_20261022) ──
 try:
     from blueprints.team_collab_bp import team_collab_bp
@@ -14592,3 +14602,12 @@ def _agg_realtime_stats():
             'eigenflux_online': 0, 'rule_integrity_pct': 0,
             'routing_table_count': 0, 'uptime_seconds': 0,
         }
+
+
+# ── 制法委员会 Blueprint: /rule-committee (flow_rule_committee_20261023) ──
+try:
+    from blueprints.rule_committee_bp import rule_committee_bp, run_committee_cycle
+    app.register_blueprint(rule_committee_bp)
+    print('[RULE-COMMITTEE] ✅ /rule-committee + /api/rule-committee/* 制法委员会已注册')
+except Exception as _rc_err:
+    print(f'[RULE-COMMITTEE] ⚠️ 制法委员会模块加载失败: {_rc_err}')
