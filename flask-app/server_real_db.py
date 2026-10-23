@@ -3018,9 +3018,12 @@ except Exception as _cl_err:
 
 # ── Daemon & Skill 研发中心 Blueprint: /daemon-skill-lab (flow_lab_20261020) ──
 try:
-    from blueprints.daemon_skill_lab_bp import daemon_skill_lab_bp
+    from blueprints.daemon_skill_lab_bp import daemon_skill_lab_bp, run_lab_daemon_loop
     app.register_blueprint(daemon_skill_lab_bp)
     print('[DAEMON-SKILL-LAB] ✅ /daemon-skill-lab + /api/daemon-lab/* 研发中心已注册')
+    # 🆕 全自动守护线程: 15min 巡检+组队, 60min 金牌天团, 24h Skill 衍生 (零人工)
+    threading.Thread(target=run_lab_daemon_loop, daemon=True, name='lab-daemon').start()
+    print('[LAB-DAEMON] 🛰️ lab-daemon 守护线程已启动 — 全自动巡检/组队/天团/Skill')
 except Exception as _lab_err:
     print(f'[DAEMON-SKILL-LAB] ⚠️ 研发中心模块加载失败: {_lab_err}')
 
