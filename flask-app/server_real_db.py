@@ -2476,6 +2476,9 @@ _CSRF_EXEMPT_PREFIXES = [
     '/api/daemon-lab/',
     # flow_threat_intel_20261023: 威胁情报主动防御 (嗅探 daemon + 手动触发)
     '/api/threat-intel/',
+    # 🆕 flow_unified_ops_20261023 P1-1: daemon 心跳 HTTP 代理 — 本机 daemon 无 cookie/CSRF,
+    #   端点自身做 loopback-only + X-Internal-Token 双重校验 (fail-closed), CSRF 冗余
+    '/api/internal/',
     # 🆕 flow_andromeda_chat_20261021: AI人格聊天室 — 会话落库+脑库RAG (与 /api/local-chat/ 同理, 匿名可用仅聊天写入, CSRF 冗余)
     '/andromeda/api/persona_chat',
     # 🆕 flow_andromeda_param_20261021: 仙女座参数中心 — 查询全员/修改仅SA权限装饰器兜底, CSRF 冗余
@@ -2621,6 +2624,69 @@ try:
     app.jinja_env.filters.setdefault('tojson', lambda v, **kw: _json_mod.dumps(v, ensure_ascii=False))
 except Exception:
     pass
+
+
+# ================================================================
+# 🆕 flow_unified_ops_20261023 P1-1: /api/internal/heartbeat — daemon 心跳 HTTP 代理
+# 根因: Flask 进程长持 WAL 写锁 → 外部 daemon 直写 DB 频发 database is locked
+#      → 心跳静默失败(except pass) → registry 冻结 → patrol 误判 → 僵尸舰队。
+# 原理: daemon → POST 本端点 → Flask 进程内写自己的 DB → 持锁方即写方, 永不 locked。
+# 安全: ①仅 loopback (127.0.0.1/::1)  ②X-Internal-Token 必须等于 _runtime/.internal_token
+#      (600 权限, 仅本机进程可读; 文件缺失 → fail-closed 403)  ③CSRF 豁免(上方) +
+#      防盗链 /api/ 前缀无 Referer 天然放行  ④幂等 UPDATE, 未知 process_name 不插入。
+# ================================================================
+_INTERNAL_TOKEN_PATH = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '_runtime', '.internal_token')
+_MT_INTERNAL_TOKEN_CACHE = {'v': None, 'at': 0.0}
+
+
+def _internal_token_expected():
+    """读心跳令牌文件 (缓存 300s); 文件不存在/读失败 → None (fail-closed)。"""
+    now = time.time()
+    if now - _MT_INTERNAL_TOKEN_CACHE['at'] > 300 or _MT_INTERNAL_TOKEN_CACHE['v'] is None:
+        _v = None
+        try:
+            with open(_INTERNAL_TOKEN_PATH, 'r') as _f:
+                _t = (_f.read() or '').strip()
+                _v = _t if _t else None
+        except Exception:
+            _v = None
+        _MT_INTERNAL_TOKEN_CACHE['v'] = _v
+        _MT_INTERNAL_TOKEN_CACHE['at'] = now
+    return _MT_INTERNAL_TOKEN_CACHE['v']
+
+
+@app.post('/api/internal/heartbeat')
+def api_internal_heartbeat():
+    """daemon 心跳代理: {process_name, pid} → 双表 UPDATE (registry + smart_mount)."""
+    if request.remote_addr not in ('127.0.0.1', '::1'):
+        return jsonify({'ok': False, 'error': 'loopback-only'}), 403
+    _tok = (request.headers.get('X-Internal-Token') or '').strip()
+    _expect = _internal_token_expected()
+    if not _expect or not _tok or _tok != _expect:
+        return jsonify({'ok': False, 'error': 'bad-token'}), 403
+    data = request.get_json(silent=True) or {}
+    name = str(data.get('process_name') or '').strip()[:64]
+    _pid = data.get('pid')
+    if not name or not str(_pid).isdigit():
+        return jsonify({'ok': False, 'error': 'bad-payload'}), 400
+    n1 = n2 = 0
+    try:
+        with _get_conn(APP_DB) as c:
+            cur = c.execute(
+                "UPDATE mt_daemon_registry SET last_heartbeat=datetime('now','localtime'), pid=?, status='RUNNING' WHERE process_name=?",
+                (int(_pid), name))
+            n1 = cur.rowcount
+            try:
+                cur2 = c.execute(
+                    "UPDATE mt_ai_smart_mount_processes SET heartbeat_at=datetime('now','localtime'), updated_at=datetime('now','localtime'), current_state='RUNNING', pid=? WHERE process_name=?",
+                    (int(_pid), name))
+                n2 = cur2.rowcount
+            except Exception:
+                n2 = -1
+        return jsonify({'ok': True, 'registry': n1, 'mount': n2})
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)[:120]}), 500
 
 
 # ================================================================
