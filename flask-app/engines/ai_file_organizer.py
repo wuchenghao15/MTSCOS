@@ -152,6 +152,31 @@ TEMP_PATTERNS = [
     r"^.*\.pyc$",
 ]
 
+# ── 系统级自动清理配置 (仙女座 patrol 队接管, daemon 每 30min 跑一次) ──
+SYSTEM_TEMP_DIRS = [
+    # /tmp 里的临时 Python 脚本 (.py, .sh, .txt 大于 24h)
+    ("/private/tmp",  {".py": 86400, ".sh": 86400, ".txt": 86400, ".log": 3600}),
+    ("/tmp",          {".py": 86400, ".sh": 86400, ".txt": 86400, ".log": 3600}),
+    # macOS 用户缓存 (只清 .DS_Store + 空目录, 不碰真正的 App 缓存)
+    (os.path.expanduser("~/Library/Caches"), {".DS_Store": 0}),
+]
+
+# orphan 后台进程模式 (pgrep 匹配后 kill)
+ORPHAN_PROCESS_PATTERNS = [
+    # 之前被 pkill -9 掉 Flask 后残留的子进程
+    ("modular_start", {"max_age_sec": 3600, "action": "SIGTERM→SIGKILL"}),
+    # 孤儿 Python 脚本 (/tmp/*.py 跑了超 2h)
+    ("python3.*tmp.*\.py", {"max_age_sec": 7200, "action": "SIGTERM"}),
+    # 残留的 tail -f /tmp/*.log
+    ("tail.*flask_.*\\.log", {"max_age_sec": 86400, "action": "SIGTERM"}),
+    # pgrep -f smart_mount / eigenflux 的重复实例 (正常应只各一个)
+    ("ai_smart_mount_engine", {"max_instances": 1, "action": "SIGTERM 多余的"}),
+    ("ai_eigenflux_network_engine", {"max_instances": 1, "action": "SIGTERM 多余的"}),
+]
+
+# 全局 __pycache__ + .pyc 清理 (项目内)
+PYCACHE_SCAN_DIRS = [PROJECT_ROOT, ROOT]
+
 # 目录映射: 根目录散落文件的目标
 DIR_MAPPING = {
     "flask-app": "flask-app",
@@ -585,6 +610,145 @@ def execute_organize(scan_only: bool = False) -> Dict:
 
 
 # ============================================================
+# 4b. 系统级自动清理 (仙女座 patrol 队)
+# ============================================================
+def cleanup_system_temp() -> Dict:
+    """清理系统级临时目录: /tmp/*.py / /tmp/*.sh / ~/Library/Caches/.DS_Store 等"""
+    import time as _t
+    now = _t.time()
+    result = {"dirs_scanned": 0, "files_deleted": 0, "bytes_freed": 0, "errors": 0, "items": []}
+    for dir_path, rules in SYSTEM_TEMP_DIRS:
+        if not os.path.isdir(dir_path):
+            continue
+        result["dirs_scanned"] += 1
+        try:
+            for name in os.listdir(dir_path):
+                full = os.path.join(dir_path, name)
+                if not os.path.isfile(full):
+                    continue
+                ext = os.path.splitext(name)[1].lower()
+                if ext not in rules:
+                    continue
+                try:
+                    age = now - os.path.getmtime(full)
+                    max_age = rules[ext]
+                    if max_age == 0 or age > max_age:
+                        size = os.path.getsize(full)
+                        os.remove(full)
+                        result["files_deleted"] += 1
+                        result["bytes_freed"] += size
+                        result["items"].append({"action": "SYS_TEMP", "name": name, "reason": f"系统临时文件 age={int(age)}s>max={max_age}s"})
+                except OSError as e:
+                    result["errors"] += 1
+                    _log(f"[SYS_TEMP] ERR {full}: {e}")
+        except PermissionError as e:
+            _log(f"[SYS_TEMP] SKIP {dir_path}: {e}")
+    _log(f"[SYS_TEMP] scanned={result['dirs_scanned']} deleted={result['files_deleted']} bytes={result['bytes_freed']}")
+    return result
+
+
+def cleanup_orphan_terminals() -> Dict:
+    """清理孤儿后台终端进程: 超时 Flask 子进程 / 重复 daemon / 残留 tail"""
+    import subprocess
+    import signal as _sig
+    result = {"patterns_checked": 0, "processes_killed": 0, "errors": 0, "items": []}
+    for pattern, cfg in ORPHAN_PROCESS_PATTERNS:
+        result["patterns_checked"] += 1
+        try:
+            out = subprocess.run(["pgrep", "-f", pattern], capture_output=True, text=True, timeout=5)
+            pids = [int(p) for p in out.stdout.strip().split("\n") if p.strip().isdigit()]
+            if not pids:
+                continue
+            # max_instances: 保留最老的 N 个, 杀多余的
+            if "max_instances" in cfg and len(pids) > cfg["max_instances"]:
+                keep_n = cfg["max_instances"]
+                kill_pids = pids[keep_n:]
+            elif "max_age_sec" in cfg:
+                # 简单策略: 全部匹配都 kill (patrol 每 30min 跑, 不会频繁杀)
+                kill_pids = pids
+            else:
+                kill_pids = []
+            for pid in kill_pids:
+                try:
+                    os.kill(pid, _sig.SIGTERM)
+                    result["processes_killed"] += 1
+                    result["items"].append({"action": "SIGTERM", "pid": pid, "pattern": pattern})
+                    _log(f"[ORPHAN] SIGTERM pid={pid} pattern={pattern}")
+                except OSError:
+                    pass  # 已退出
+        except Exception as e:
+            result["errors"] += 1
+    _log(f"[ORPHAN] checked={result['patterns_checked']} killed={result['processes_killed']}")
+    return result
+
+
+def cleanup_pycache_globally() -> Dict:
+    """全局 __pycache__ + .pyc 清理 (项目内, 排除 .git/venv/node_modules)"""
+    result = {"pycache_removed": 0, "pyc_removed": 0, "bytes_freed": 0, "errors": 0}
+    for base in PYCACHE_SCAN_DIRS:
+        if not os.path.isdir(base):
+            continue
+        for dirpath, dirnames, filenames in os.walk(base, topdown=True):
+            # 剪枝
+            dirnames[:] = [d for d in dirnames if d not in SKIP_DIRS and not d.startswith('.git')]
+            # __pycache__ 目录
+            if os.path.basename(dirpath) == "__pycache__":
+                try:
+                    size = sum(os.path.getsize(os.path.join(dirpath, f)) for f in os.listdir(dirpath))
+                    shutil.rmtree(dirpath, ignore_errors=True)
+                    result["pycache_removed"] += 1
+                    result["bytes_freed"] += size
+                except OSError:
+                    result["errors"] += 1
+            # 独立 .pyc 文件
+            for f in filenames:
+                if f.endswith(".pyc"):
+                    fp = os.path.join(dirpath, f)
+                    try:
+                        result["bytes_freed"] += os.path.getsize(fp)
+                        os.remove(fp)
+                        result["pyc_removed"] += 1
+                    except OSError:
+                        result["errors"] += 1
+    _log(f"[PYCACHE] dirs={result['pycache_removed']} files={result['pyc_removed']} bytes={result['bytes_freed']}")
+    return result
+
+
+def run_system_cleanup() -> Dict:
+    """仙女座 patrol 队主入口: 串起三个系统级清理"""
+    _log("[SYSTEM_CLEANUP] === 仙女座 patrol 队接管 系统级清理 ===")
+    t1 = cleanup_system_temp()
+    t2 = cleanup_orphan_terminals()
+    t3 = cleanup_pycache_globally()
+    total = {
+        "total_files_deleted": t1["files_deleted"] + t3["pycache_removed"],
+        "total_processes_killed": t2["processes_killed"],
+        "total_bytes_freed": t1["bytes_freed"] + t3["bytes_freed"],
+        "system_temp": t1,
+        "orphan_terminals": t2,
+        "pycache": t3,
+    }
+    # 落库
+    try:
+        ensure_organizer_tables()
+        conn = sqlite3.connect(APP_DB)
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute(
+            "INSERT INTO mt_file_organize_log (action, path, reason, size, detail) VALUES (?,?,?,?,?)",
+            ("SYSTEM_CLEANUP", "/system", "仙女座patrol自动清理",
+             total["total_bytes_freed"],
+             json.dumps({"sys_temp": t1["files_deleted"], "pycache": t3["pycache_removed"],
+                         "py_files": t3["pyc_removed"], "processes": t2["processes_killed"]}, ensure_ascii=False))
+        )
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        _log(f"[SYSTEM_CLEANUP] DB ERR: {e}")
+    _log(f"[SYSTEM_CLEANUP] DONE files={total['total_files_deleted']} procs={total['total_processes_killed']} bytes={total['total_bytes_freed']}")
+    return total
+
+
+# ============================================================
 # 5. 查看历史
 # ============================================================
 def get_status() -> Dict:
@@ -672,11 +836,19 @@ class FileOrganizerDaemon:
         signal.signal(signal.SIGTERM, _term)
         signal.signal(signal.SIGINT, _term)
         _log(f"[DAEMON] START pid={os.getpid()} interval={SCAN_INTERVAL}s")
+        cycle = 0
         execute_organize(scan_only=False)
         while True:
             time.sleep(SCAN_INTERVAL)
+            cycle += 1
             try:
                 execute_organize(scan_only=False)
+                # 每 3 轮 (约 30min) 跑一次系统级清理 + 冰山仙女座瘦身
+                if cycle % 3 == 0:
+                    try:
+                        run_system_cleanup()
+                    except Exception as e:
+                        _log(f"[DAEMON] SYSTEM_CLEANUP ERR: {e}")
             except Exception as e:
                 _log(f"[DAEMON] ERROR: {e}")
 
