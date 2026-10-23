@@ -26,6 +26,31 @@ if not os.environ.get('MTSCOS_DB_PATH'):
         if os.path.exists(_local_db):
             os.environ['MTSCOS_DB_PATH'] = _local_db
 import threading as _threading_flask
+
+# ===== flow_unified_ops_20261023 P1-2: 端口守卫 (单一拉起方) =====
+# mini 上有三个潜在拉起方: launchd com.mtscos.flask (KeepAlive) + cron keepalive + 手动启动.
+# 历史事故: pkill 重启 Flask 后 launchd 复活第二实例 → EADDRINUSE 崩溃循环.
+# 守卫: 端口已有健康服务 → 本实例立即安静退出 (在重模块导入之前执行, 零 DB 开销).
+if __name__ == '__main__':
+    _pg_port = 8888
+    for _pg_argv in sys.argv[1:]:
+        if _pg_argv.startswith("--port="):
+            try:
+                _pg_port = int(_pg_argv.split("=", 1)[1])
+            except ValueError:
+                pass
+            break
+    try:
+        import urllib.request as _pg_req
+        _pg_resp = _pg_req.urlopen(f'http://127.0.0.1:{_pg_port}/index', timeout=3)
+        if getattr(_pg_resp, 'status', 0) == 200:
+            sys.stderr.write(f'[PORT-GUARD] :{_pg_port} 已有健康 Flask 服务, 本实例退出 (单一拉起方守卫 P1-2)\n')
+            sys.exit(0)
+    except SystemExit:
+        raise
+    except Exception:
+        pass  # 端口不可达 → 正常启动
+
 _ORIGINAL_THREAD_INIT = _threading_flask.Thread.__init__
 _SKIP_KEYWORDS = (
     # 原守护线程
