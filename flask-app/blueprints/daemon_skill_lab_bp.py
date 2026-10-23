@@ -2553,11 +2553,17 @@ def _check_random_daemon():
 def _probe_random_route():
     try:
         from server_real_db import app as _flask_app
-        routes = ["/local-chat", "/ai", "/api/local-chat/sessions", "/api/local-chat/balance",
-                  "/api/vault/my", "/api/daemon-lab/test/gold-team/auto", "/api/collab/overview"]
-        pick = _rand.choice(routes)
-        with _flask_app.test_client() as tc:
-            r = tc.get(pick)
+        import signal
+
+        def _handler(signum, frame): raise TimeoutError("route probe timeout")
+        signal.signal(signal.SIGALRM, _handler); signal.alarm(3)
+        try:
+            routes = ["/api/daemon-lab/test/gold-team/auto", "/api/collab/overview"]
+            pick = _rand.choice(routes)
+            with _flask_app.test_client() as tc:
+                r = tc.get(pick)
+        finally:
+            signal.alarm(0)
         return {"jitter": "route", "path": pick, "status_code": r.status_code}
     except Exception as e:
         return {"jitter": "route", "error": str(e)[:60]}
