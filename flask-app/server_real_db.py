@@ -2474,6 +2474,8 @@ _CSRF_EXEMPT_PREFIXES = [
     '/api/local-chat/',
     # flow_test_gold_team_20261023: 研究院觉醒 + 金牌天团自动化 + Skill 衍生 (daemon/定时任务调用, 无 CSRF token)
     '/api/daemon-lab/',
+    # flow_threat_intel_20261023: 威胁情报主动防御 (嗅探 daemon + 手动触发)
+    '/api/threat-intel/',
     # 🆕 flow_andromeda_chat_20261021: AI人格聊天室 — 会话落库+脑库RAG (与 /api/local-chat/ 同理, 匿名可用仅聊天写入, CSRF 冗余)
     '/andromeda/api/persona_chat',
     # 🆕 flow_andromeda_param_20261021: 仙女座参数中心 — 查询全员/修改仅SA权限装饰器兜底, CSRF 冗余
@@ -3021,6 +3023,14 @@ try:
     print('[DAEMON-SKILL-LAB] ✅ /daemon-skill-lab + /api/daemon-lab/* 研发中心已注册')
 except Exception as _lab_err:
     print(f'[DAEMON-SKILL-LAB] ⚠️ 研发中心模块加载失败: {_lab_err}')
+
+# ── 威胁情报 & 主动防御 Blueprint: /api/threat-intel/* (flow_threat_intel_20261023) ──
+try:
+    from blueprints.threat_intel_bp import threat_intel_bp
+    app.register_blueprint(threat_intel_bp)
+    print('[THREAT-INTEL] ✅ /api/threat-intel/* 威胁情报主动防御已注册')
+except Exception as _ti_err:
+    print(f'[THREAT-INTEL] ⚠️ 威胁情报模块加载失败: {_ti_err}')
 
 # ── 跨团队协作总线 Blueprint: /api/collab/* (flow_team_collab_20261022) ──
 try:
@@ -3900,7 +3910,7 @@ _MT_RISK_RULES = [
      lambda p, u: (not _mt_is_admin_user(u)) and _mt_is_user_fast(u['uid']),
      'high', 'throttle'),
     ('R-GUEST-API-WRITE', '访客越权写操作',
-     lambda p, u: (u['is_guest'] and request.method in ('POST', 'PUT', 'DELETE') and p.startswith('/api/') and not any(p.startswith(x) for x in ('/api/auth', '/api/theme', '/api/vikey', '/api/health', '/api/container', '/api/ai_engine/self_learning', '/api/ai/self_learning', '/api/layout_ai', '/api/chinese_dictation', '/api/ai/chinese_listening', '/api/history', '/api/arduino', '/api/approval', '/api/system/logo', '/api/client/init', '/api/client/verify_keys', '/api/mobile/fingerprint', '/api/console', '/api/i18n', '/api/neuralhub', '/api/ai/derive', '/api/edu', '/api/profile', '/api/model', '/api/crypto', '/api/ai/github-fusion/deep', '/api/daemon-lab'))),
+     lambda p, u: (u['is_guest'] and request.method in ('POST', 'PUT', 'DELETE') and p.startswith('/api/') and not any(p.startswith(x) for x in ('/api/auth', '/api/theme', '/api/vikey', '/api/health', '/api/container', '/api/ai_engine/self_learning', '/api/ai/self_learning', '/api/layout_ai', '/api/chinese_dictation', '/api/ai/chinese_listening', '/api/history', '/api/arduino', '/api/approval', '/api/system/logo', '/api/client/init', '/api/client/verify_keys', '/api/mobile/fingerprint', '/api/console', '/api/i18n', '/api/neuralhub', '/api/ai/derive', '/api/edu', '/api/profile', '/api/model', '/api/crypto', '/api/ai/github-fusion/deep', '/api/daemon-lab', '/api/threat-intel'))),
      'high', 'block'),
     ('R-SESSION-STALE', 'Session 超过 24h 未刷新',
      lambda p, u: False,  # 在 before_request 中动态计算
