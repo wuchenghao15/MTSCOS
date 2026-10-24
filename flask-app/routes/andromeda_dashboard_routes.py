@@ -790,7 +790,8 @@ def api_persona_chat():
             {'role': 'system', 'content': system_prompt},
             {'role': 'user', 'content': question},
         ],
-        'stream': False, 'options': {'temperature': 0.7}
+        'stream': False, 'options': {'temperature': 0.7},
+        'keep_alive': '30m'  # 小龙保活: 模型常驻防冷加载 (14b 冷启 100s→热 10s)
     }
     try:
         req = _ur.Request('http://127.0.0.1:11434/api/chat',

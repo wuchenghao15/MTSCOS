@@ -64,7 +64,7 @@ def check_once() -> dict:
                 req = urllib.request.Request(
                     BASE + path, data=payload,
                     headers={'Content-Type': 'application/json'})
-                r = urllib.request.urlopen(req, timeout=90)
+                r = urllib.request.urlopen(req, timeout=150)
                 body = json.loads(r.read())
                 ans = body.get('data', {}).get('answer', '')
                 ok = body.get('code') == 0 and '未就绪' not in ans
