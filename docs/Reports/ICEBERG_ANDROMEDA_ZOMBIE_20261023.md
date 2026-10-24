@@ -382,3 +382,39 @@ def _heartbeat():
 2. **维护部队派单引擎接线**（60 PENDING 无人执行）
 3. **mt_task_hall_skills/contractors 空壳表**处置决策（删表或接线）
 4. mini 磁盘回写元凶排查（autosync 嫌疑，代码被回滚旧版一次）
+
+---
+
+## 九、2026-10-24 上午 Phase 3 四项收官战报（flow_unified_ops_20261024）
+
+### 9.1 执行顺序与结论
+
+按依赖序执行：④元凶排查（防修改被回滚）→ ①写者寡头 → ②派单 → ③空壳表。**四项全部完成**。
+
+| # | 项 | 结论 | 关键 commit | 验证 |
+|---|---|---|---|---|
+| ④ | mini 磁盘回写元凶 | **不存在回滚进程**。08:13-09:27 连续 pull 是上轮会话手动同步残留；"被回滚"观感 = mini 手工热修未入 git 造成树漂移。已 `git checkout + merge --ff-only` 对齐 8a25e3c、树清零。autosync（项目根 `_runtime/` 真身）源码无任何 git/copy 操作，洗清嫌疑 | — | mini HEAD=8a25e3c，`git status` 无已跟踪修改，md5 与 git 一致 |
+| ④b | 本机 cron 失联 | sync_github.sh 被移入 `_runtime/git_push_ws/mtscos_push/` 后 cron 仍指旧路径，每 5min 空跑 → crontab 已修正 + 手动跑通（main=MTSCOS 同步恢复） | — | 推送输出 `main → MTSCOS (force)` 成功 |
+| ① | 写者寡头第二步 | 两处幂等守卫：`_ensure_site_decoration_schema` 哨兵键跳过（该函数**每次页面渲染**都被 `_get_footer_info` 调用，SQL-TRACE 实测 ui_site_decoration **1316 条/半天** = 请求路径最大残余写者）；`_ensure_claim_tables` 进程级一次化 `_LAB_TABLES_READY`（14+ 路由 + lab-daemon 每 15min tick 反复全量种子） | `1740688` | 重启后渲染×3 + tick：ui_site_decoration **0 条**（原 16/渲染）、mt_lab_centers **0 条**（原 13/tick）；残余仅启动一次性种子 48 条，**-90%+** |
+| ② | 维护部队派单 | 新引擎 `maintenance_dispatch_engine.py`：task_type+标题关键词 → 连队 duty/empowerment/技能打分 → 连内员工负载轮转；逐任务短事务。首跑 60 failed（`ai_employees.status='active'` 小写，过滤用大写）→ 改 `LOWER()` → **60/60 DISPATCHED**，六军团各 10 单，匹配精准（漏洞修复→P0补丁组、语法错误→语法错误组、blueprint注册→注册遗漏组） | `23841be`→`49760a1` | `mt_maintenance_log` 60 条 AUTO_DISPATCH JSON 留痕；守护 PID 80410 registry RUNNING |
+| ③ | 任务大厅空壳表 | **接线非删表**（与规则索引 §13.3"任务大厅 3 表"登记一致）：三表 0 行 0 引用 → `ensure_seed()` 幂等种子 10 技能包+20 承包商（中国神兽命名，rating/SLA/cost 字段激活）；`external_dispatch_once()` 外派溢出阀门 = 内部 claim 管线消化不了的 QUEUED>24h → 技能匹配 → 最优承包商 → dispatch 留痕。首跑撞 WAL 锁 → 整轮重试 3 次/5s | `7e7a5c6`→`95f22ca` | skills=10/contractors=20 落库；stale=0（内部管线健康，阀门待命）；守护单实例 300s 双模式 |
+
+### 9.2 当前 mini 稳态
+
+- Flask：/index 200 / 0.22s，单实例（10:22:28 起稳定）
+- 新增常驻：`sys_maintenance_dispatch`（内派+外派，300s，文件心跳+registry 双写）
+- daemon 总数：52（+1）
+- 播种风暴：请求路径归零，残余仅启动一次性
+- 三方 git：本地 = origin/main = gitee = mini = 95f22ca，工作树干净
+
+### 9.3 Phase 3 新增运维资产
+
+- `python3 maintenance_dispatch_engine.py dispatch|external|loop|status` 四模式 CLI
+- 外派阀门语义：`mt_lab_task_hall.status='EXTERNAL_DISPATCHED'` + `claim_type='external_contractor'`，dispatch 记录含 SLA 截止/briefing/cost_estimate
+- 排查方法论沉淀：**mtime≠回滚**——先查 git reflog 命令签名（`pull --ff-only` vs `pull -q`）再定罪；树漂移（热修未入 git）会被误判为"代码被回滚"
+
+### 9.4 遗留（低优先级）
+
+1. evaluation_criteria 播种在独立库 `intelligent_evaluation.db`，不抢主库锁，暂不处理
+2. `sys_maintenance_dispatch` 未纳入 keepalive_engines 双引擎清单（daemon 自带文件心跳+patrol 可见，如需拉起保护后续接入 cron 双保险）
+3. 外派承包商 contact_method 为占位邮箱（eigenflux.local），真实外联通道待接 EigenFlux 网络
