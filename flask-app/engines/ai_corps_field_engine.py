@@ -66,7 +66,7 @@ def _hall_task(conn, title, desc, prio='NORMAL', source='corps_field'):
 def _squads(conn, stype: str, limit: int = 3):
     """按 squad_id 取模分编 — 每类分队固定领 3 个连."""
     return conn.execute(
-        "SELECT squad_id, IFNULL(squad_name, IFNULL(name,'')) FROM mt_corps_squads "
+        "SELECT squad_id, IFNULL(name,'') FROM mt_corps_squads "
         "WHERE (CAST(squad_id AS INTEGER) % 5)=? ORDER BY squad_id LIMIT ?",
         (SQUAD_TYPES.index(stype), limit)).fetchall()
 
