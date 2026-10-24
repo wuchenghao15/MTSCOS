@@ -307,7 +307,20 @@ def _real_agenda(conn) -> tuple:
     return 'AI 社会生活圆桌: 系统现状与演化方向交流', 'fallback'
 
 
-def social_once(conn=None) -> dict:
+def social_once(conn=None, _retries: int = 3) -> dict:
+    """圆桌活动链, WAL 锁竞争整轮重试 (5s 间隔)."""
+    for attempt in range(_retries):
+        try:
+            return _social_inner(conn)
+        except sqlite3.OperationalError as e:
+            if 'locked' in str(e).lower() and attempt < _retries - 1:
+                time.sleep(5)
+                continue
+            raise
+    return {'roundtable': 0, 'learning': 0, 'messages': 0}
+
+
+def _social_inner(conn=None) -> dict:
     own = conn is None
     if own:
         conn = _connect()
