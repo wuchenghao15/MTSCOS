@@ -80,6 +80,14 @@ _sq_flask.connect = _tracked_sqlite_connect
 import sqlite3.dbapi2 as _sq_dbapi2_flask
 _sq_dbapi2_flask.connect = _tracked_sqlite_connect
 
+# P1-1b 取证: kill -USR1 <flask_pid> → dump 全线程 Python 栈 (定位持锁线程的精确文件:行号)
+try:
+    import faulthandler as _fh_flask
+    import signal as _sig_flask
+    _fh_flask.register(_sig_flask.SIGUSR1)
+except Exception:
+    pass
+
 _SKIP_KEYWORDS = (
     # 原守护线程
     'routine_maintenance', 'comprehensive_upgrader', 'system_upgrade',
