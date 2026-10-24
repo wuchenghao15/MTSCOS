@@ -573,3 +573,19 @@ EigenFlux(4658 节点心跳, 28.3万消息) ✅
 ```
 
 方法论 +1：guard 来源校验先查存量真实 source 分布再定名单 — 白名单模式误伤 no_team_match/frontline_patrol（存量管线合法来源），改黑名单后 0 误伤。
+
+### 13.4 全链活性审计（"有空转假死或没起来的吗"）
+
+**业务产出审计（不看心跳看产出，24h 增量）**：圆桌 11 / 学习 36 / 交流 28 / 脑库 9096 / 大厅 396 / 维护 60 / 交友 32696 / health 10 — **全绿无空转**。三新守护在位（governance 97114 / society 501 / dispatch 5858），8 引擎进程全活。
+
+**揪出 5 个假死，诚实标 DOWN**：
+
+| daemon | 症状 | 定性 |
+|---|---|---|
+| exam_auto_daemon | hb 从未写入 + 无进程 | 从未起来（考试季触发型，低优先） |
+| ai_link_guard_engine | 死 2 天；kill 后 keepalive 40s 拉活但心跳依然不跳 | **真空转**（心跳机制坏） |
+| sys_archive_engine | 12h 停；拉活后不跳 | 真空转 |
+| sys_wecom_meeting | 12h 停；拉活后不跳 | 真空转 |
+| sys_crypto_key_rotate | 12h 停；拉活后不跳 | 真空转 |
+
+registry 终态：**46 RUNNING + 5 DOWN（诚实）**。4 个真空转均为边缘引擎（归档/企微会议/密钥轮转/链接守卫），keepalive 会拉活进程但业务写入坏，留待专项 flow 修复，不阻塞主链。sys_knowledge_precious 低频心跳（2h 级）留观。
