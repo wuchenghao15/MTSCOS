@@ -602,3 +602,16 @@ registry 终态：**46 RUNNING + 5 DOWN（诚实）**。4 个真空转均为边�
 | **A3 心跳自愈闭环** | 复用 society survey 的"僵尸心跳清理"缺口信号（已存在，销账） | 检测→大厅回灌链路已在 |
 
 **脑库诊断结论**：30841 行/7MB 不膨胀、无重复 — 病不是垃圾数据，是**高频模板化稀释检索价值**（6 天团 × 每条广播各投一条，样本见嵌套复利 `[🏆金牌测试] [🏆金牌测试]`）。B1 从源头限流。B2 归档建表（DDL）留待批准；B4 质量分级随 B1 后续。
+
+### 13.6 防火墙四抗加固引擎上线（flow_unified_ops_20261023）
+
+用户需求：提高防火墙抗病毒/抗冲击/抗攻击/抗污染源入侵能力。
+
+| 四抗 | 机制 | 首轮冒烟 |
+|---|---|---|
+| **① 抗攻击** | Flask 日志 4000 行扫 403/404/429/locked 高频外网源（≥20 次）→ `mt_firewall_rules` 自动插 DENY 黑名单 + hit_count + 留痕 | **实战抓到攻击源拉黑**（后修正：local 源=内部锁竞争不拉黑，删误插规则） |
+| **② 抗冲击** | 日志错误速率 3x 基线突增 → 大厅回灌"抗冲击体检" | recent 16 vs base 12 正常 |
+| **③ 抗病毒** | auto_daemons+engines 目录 py 快照（size:mtime）比对 + 可疑特征（eval(compile/base64 长串/反连 socket/rm -rf）扫描 | 19 文件快照建档，1 可疑待复核 |
+| **④ 抗污染** | 大厅 QUEUED+脑库投喂扫注入/占位/脚本特征 → CONTAMINATED 隔离 + 大厅告警 | 大厅 50+脑库 50 全净 |
+
+守护 `sys_firewall_hardening`（300s）+ launchd `com.mtscos.fw-hardening` 拉起保护（PID 33411, exit 0）。零 DDL（复用 firewall_rules/maintenance_log/lab_task_hall 三表）。陷阱 +1：sed 链式替换把 plist 文件名打坏（society→fw-hardening 先执行吞掉文件名替换）→ python 找不到文件 exit 2，重写全文修复。commit 链 9929b3c→(FA_DIR 双层 dirname 修复)→804a1b95。
