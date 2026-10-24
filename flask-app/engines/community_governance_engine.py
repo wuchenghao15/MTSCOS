@@ -340,7 +340,9 @@ def _social_inner(conn=None) -> dict:
                 "FROM eigenflux_registrations "
                 "ORDER BY last_heartbeat DESC LIMIT 4").fetchall()
         if len(nodes) >= 2:
-            sid = f'RT_{time.strftime("%Y%m%d_%H%M%S")}'
+            sid = (f'RT_{time.strftime("%Y%m%d_%H%M%S")}'
+                   f'_{int(hashlib.md5(agenda.encode()).hexdigest()[:4], 16):04x}'
+                   f'{os.getpid() % 100:02d}')
             experts = [{'id': r[0], 'name': r[1]} for r in nodes]
             outcome = (f'就「{agenda}」达成共识: 由 {nodes[0][1]} 牵头整理要点投喂脑库, '
                        f'{nodes[1][1]} 跟进落地; 与会 {len(nodes)} 人一致认为该议题 '
