@@ -293,12 +293,28 @@ def _broadcast(conn, src_cid: int, msg_id: int, msg_type: str, content: str,
     return sent
 
 
+# B1 脑库限流聚合 (flow_unified_ops_20261024): 每 actor 10min 窗口只落 1 条,
+# 窗口内其余条目计数合并 — 治理高频模板化投喂 (9000+/天 → ~860/天), 信息不丢.
+FEED_WINDOW_SEC = 600
+_FEED_GATE: dict = {}  # actor -> [window_start_ts, merged_count]
+
+
 def _feed_brain(conn, content: str, actor: str) -> None:
+    import time as _t
+    now = _t.time()
+    slot = _FEED_GATE.get(actor)
+    if slot and now - slot[0] < FEED_WINDOW_SEC:
+        slot[1] += 1
+        return
+    extra = ''
+    if slot and slot[1] > 0:
+        extra = ' (聚合窗口合并同类 %d 条)' % slot[1]
+    _FEED_GATE[actor] = [now, 0]
     try:
         conn.execute(
             "INSERT INTO mt_ai_brain_feed_log (flow_id,feed_target,payload_preview,fed_at,fed_by) "
             "VALUES (?,?,?,datetime('now','localtime'),?)",
-            (FLOW_ID, 'team_collab', ('[%s] %s' % (actor, content))[:480], actor))
+            (FLOW_ID, 'team_collab', ('[%s] %s%s' % (actor, content, extra))[:480], actor))
     except sqlite3.Error:
         pass
 
