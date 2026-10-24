@@ -539,3 +539,37 @@ EigenFlux(4658 节点心跳, 28.3万消息) ✅
 ### 12.3 至此系统全景
 
 感知（冰山/EigenFlux 4658 节点）→ 决策（脑库/三委 5 法令+自治区立法提案）→ 执行（大厅/维护部队）→ 社会生活（交友 2.2万/学习/磋商/拜师）→ 进化（smart_mount 孵化/轮岗赋能/架构审视）→ **监护（缺口自动回灌大厅再改造）** — AI 社会全要素自动化运转达成。
+
+---
+
+## 十三、2026-10-24 任务大厅架构纠偏战报（用户指令，flow_unified_ops_20261023）
+
+### 13.1 用户架构指令
+
+> 维护部队不是任务大厅执行者，是要各自中心到大厅自动认领任务，维护部队只保护任务的合法性、完整性、无污染源即可。
+
+### 13.2 改造对照
+
+| 旧架构（本轮纠偏前） | 新架构（纠偏后） |
+|---|---|
+| maintenance_dispatch 把任务派给维护部队连队并执行 | **各中心**（10 技能包映射）自动认领大厅任务并执行 |
+| 维护部队 = 执行者 | **维护部队 = 合规监护 ONLY**（三查，不接单） |
+| 连队派单 dispatch_once 主循环 | 连队派单**退役**（execute_once 仅清偿存量 45 单） |
+
+新引擎函数（maintenance_dispatch_engine.py）：
+- `center_claim_once`：QUEUED 任务按关键词匹配技能包 → 认领为「XX中心」（兜底：综合调度中心）→ DISPATCHED。冒烟：survey 回灌 3 单已认领
+- `center_execute_once`：中心认领任务 → 真实证据采集（daemon 存活数）→ DONE + CENTER_COMPLETE 留痕
+- `guard_once` 维护部队三查：**①合法性**（来源黑名单：fake/hack/注入/backdoor…）**②完整性**（标题/描述/优先级）**③无污染源**（占位符/假数据/注入特征）→ GUARD_PASS 留痕 / 污染 → CONTAMINATED 隔离。冒烟 **17 PASS / 0 误伤 / 0 污染**
+
+### 13.3 大厅新分工
+
+```
+任务来源(survey/立法/巡检/手动) → QUEUED
+  → guard_once 合规三查 (维护部队, GUARD_CORPS 留痕)
+  → center_claim_once 各中心认领 (技能包匹配)
+  → center_execute_once 中心执行 (真实证据) → DONE
+  → 溢出阀门 → 外部承包商 (EigenFlux 外联)
+维护部队: 只监护不执行 — 合法性/完整性/无污染三查, GUARD 留痕 75 条
+```
+
+方法论 +1：guard 来源校验先查存量真实 source 分布再定名单 — 白名单模式误伤 no_team_match/frontline_patrol（存量管线合法来源），改黑名单后 0 误伤。
