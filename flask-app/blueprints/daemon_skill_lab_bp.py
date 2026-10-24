@@ -3261,6 +3261,7 @@ _SKILL_KEYWORDS = {
     "后端":       ["后端", "api", "flask", "接口", "路由", "服务"],
     "运维":       ["部署", "运维", "服务器", "daemon", "进程", "重启", "监控"],
     "数据":       ["数据", "统计", "报表", "分析", "清洗", "图表"],
+    "人力":       ["人事", "人力", "雇佣", "绩效", "名册", "招聘", "考勤"],
     "教育":       ["教学", "题库", "课程", "学习", "考试", "教辅"],
     "IoT":        ["arduino", "iot", "传感器", "硬件", "串口", "板卡"],
 }
@@ -3281,6 +3282,8 @@ _SKILL_ID_MAP = {
     "后端":   "SKILL_BACKEND",
     "运维":   "SKILL_DEVOPS",
     "数据":   "SKILL_DATA",
+    "人力":   "SKILL_HR",
+    "教育":   "SKILL_EDU",
     "IoT":    "SKILL_IOT",
 }
 
@@ -3314,6 +3317,11 @@ def _pick_contractor(conn, skill: str):
                 return c[k].lower() in ("available", "active", "1", "online", "idle", "在岗")
         return True  # 无状态列视为全部在岗
     def _skill_hit(c):
+        sid = _skill_id(skill)
+        # 🏛 flow_advisory_hall_20261024: primary_skill_id 结构化强命中 (3分)
+        #   > name/关键词文本命中 (2/1分) — 修复纯文本巧合误匹配
+        if sid and str(c.get("primary_skill_id") or "") == sid:
+            return 3
         blob = " ".join(str(c.get(k, "")) for k in
                         ("skills", "skill_tags", "specialty", "tags", "name")).lower()
         if not skill or skill == "通用":
