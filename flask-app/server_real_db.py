@@ -775,10 +775,15 @@ if NODE_ROLE != "DEV":
     print(f"[NODE_ROLE={NODE_ROLE}] static_folder={'✅ enabled' if _static_folder else '🚫 disabled'}, "
           f"template_folder={'✅ enabled' if _tpl_folder else '🚫 disabled'}")
 app.url_map.strict_slashes = False  # 全局: /foo ↔ /foo/ 等价, 避免 catch-all 路由 404
-# v22.39.0: secret_key 固定不变 (之前是 + time.time() 导致每次 Flask 重启所有登录 session 失效)
-# 登录态由 mtscos_sid + Flask session cookie 双重保证, secret_key 变 = Flask session cookie 全部作废
-# 固定值保留向后兼容 (v22.38.0 以前的部署也能继续用同一个 secret_key)
-app.secret_key = '[REDACTED]'
+# 🔒 P0 极密加固: app.secret_key 运行时从 mt_crypto_keys 派生, 源码不留硬编码
+try:
+    from app.utils.crypto_provider import crypto_provider as _cp
+    app.secret_key = _cp.get_flask_secret()
+except Exception:
+    app.secret_key = os.environ.get("MT_FLASK_SECRET_KEY", "__NO_FALLBACK__")
+    if app.secret_key == "__NO_FALLBACK__":
+        sys.stderr.write("[REAL-DB] FATAL: app.secret_key unavailable → exit 1\n")
+        sys.exit(1)
 
 # ── Session Cookie 安全加固 ──
 # 本地开发 (NODE_ROLE=DEV) 允许 HTTP, 公网 (PROD) 强制 Secure+SameSite=Strict
@@ -3343,7 +3348,15 @@ import random as _rd  # noqa: E402
 _MT_SYS_CONTAINER_VERSION = 'v24.0.0-iceberg-unified'
 # 系统版本号（MINOR bump → v22.7.0：巡检缺口发现引擎5维架构优化 - auto_dev_team_engine.py 15硬伤+3运行BUG全修复(算法:_py_index 5维扫描复用↓80%+CompletionVerifier缓存验证↓99.5%+派发按weight降序 / 权重:GapPrioritizer唯一入口5维加权SEV*0.45+TYPE*0.25+OCCUR*0.12+FRESH*0.1+TEAM*0.08+建议池priority=ceil(w/10)链路一致+单return单审计日志 / 架构:DevPipelineRunner 4阶段Pipeline+ENGINE_REGISTRY生命周期注册+warmup_system统一入口 / 逻辑:IR14单事务批量transition+flow_id污染defrag↓93.8%+Implementer 4分支决策树confidence / 框架:连接池容量3+扫描mtime指纹缓存TTL900+GapEngineError 8错误码枚举) + §14强制12步骤自动执行100%STEP_7 + 总耗时↓94% 17.44s跑完81gaps）
 SYSTEM_VERSION = 'v24.0.0-iceberg-unified'
-_MT_SYS_CONTAINER_SECRET = hashlib.sha256(b'[REDACTED]').digest()
+# 🔒 P0 极密加固: _MT_SYS_CONTAINER_SECRET 运行时派生, 源码不留硬编码
+try:
+    from app.utils.crypto_provider import crypto_provider as _cp2
+    _MT_SYS_CONTAINER_SECRET = _cp2.get_container_secret()
+except Exception:
+    _MT_SYS_CONTAINER_SECRET = hashlib.sha256(os.environ.get("MT_CONTAINER_SECRET", "__NO_FB__").encode()).digest()
+    if b"__NO_FB__" in _MT_SYS_CONTAINER_SECRET:
+        sys.stderr.write("[REAL-DB] FATAL: _MT_SYS_CONTAINER_SECRET unavailable → exit 1\n")
+        sys.exit(1)
 _MT_GUEST_ROLE = 'guest'
 _MT_ADMIN_ROLES = {'admin', 'super_admin', 'teacher_admin', 'school_admin', 'sysadmin',
                    'hardware_admin', 'cluster_manager', 'ai_manager',
@@ -6816,8 +6829,14 @@ def api_client_verify_keys():
         # 检查认证文件hash
         auth_hash = szu100_report.get('auth_hash', '')
         file_size = szu100_report.get('file_size', 0)
-        # SZU100认证文件预共享密钥验证
-        _SZU100_PSK = b'[REDACTED]'
+        # SZU100认证文件预共享密钥验证 (🔒 P0 极密加固: 运行时派生)
+        try:
+            from app.utils.crypto_provider import crypto_provider as _cp3
+            _SZU100_PSK = _cp3.get_szu100_psk()
+        except Exception:
+            _SZU100_PSK = os.environ.get("MT_SZU100_PSK", "__NO_FB__").encode()
+            if b"__NO_FB__" in _SZU100_PSK:
+                _SZU100_PSK = b"_"  # 降级占位, 验证必失败
         expected_hash = 'cli_' + hashlib.sha256(_SZU100_PSK).hexdigest()[:8]
         # 客户端上报的hash格式为cli_开头（简单hash），服务器验证文件大小和来源
         if auth_hash and file_size > 0 and szu100_report.get('_source') == 'client_file_picker':
@@ -7588,16 +7607,21 @@ def _verify_password_fallback(plain_provided: str, expected_hash_stored: str, us
                 return True
     except Exception:
         pass
-    # 2) Fernet 加密格式
+    # 2) Fernet 加密格式 (🔒 P0 极密加固: 密钥从 crypto_provider 运行时派生, 源码不留硬编码)
     try:
         if expected_hash_stored.startswith('gAAAAA'):
             from cryptography.fernet import Fernet
-            possible_keys = [
-                b'[REDACTED]',
-                b'[REDACTED]',
-                b'[REDACTED]',
-            ]
-            for key_source in possible_keys:
+            try:
+                from app.utils.crypto_provider import crypto_provider as _cp4
+                # 派生 3 个 Fernet 候选密钥源 (种子名非密钥, 仅作 HKDF info)
+                _fernet_seeds = [
+                    _cp4.derive_bytes("fernet_key_source_1", 32),
+                    _cp4.derive_bytes("fernet_key_source_2", 32),
+                    _cp4.derive_bytes("fernet_key_source_3", 32),
+                ]
+            except Exception:
+                _fernet_seeds = []  # 无派生 → 跳过 Fernet 验证, 强制用 bcrypt
+            for key_source in _fernet_seeds:
                 try:
                     key = base64.urlsafe_b64encode(hashlib.sha256(key_source).digest()[:32])
                     f = Fernet(key)

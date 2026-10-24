@@ -35,7 +35,16 @@ from datetime import datetime
 from functools import wraps
 from flask import Blueprint, Response, current_app, g, jsonify, request, session, stream_with_context
 from app.db import DB_PATH, connect as _db  # flow_db_unify_chat_20261022 单一权威入口
-_REWARD_KEY = os.environ.get('MTSCOS_REWARD_SEED', '[REDACTED]').encode()[:16]
+# 🔒 P0 极密加固: _REWARD_KEY 运行时从 crypto_provider 派生, 源码不留硬编码
+try:
+    from app.utils.crypto_provider import crypto_provider as _cp
+    _REWARD_KEY = _cp.get_reward_xor_key()
+except Exception:
+    _REWARD_KEY = os.environ.get('MTSCOS_REWARD_SEED', '__NO_FALLBACK__').encode()[:16]
+    if b'__NO_FALLBACK__' in _REWARD_KEY:
+        import sys as _sys
+        _sys.stderr.write('[CHAT] FATAL: _REWARD_KEY not available → exit 1\n')
+        _sys.exit(1)
 
 # flow_token_encrypt_20261024 P0 token 加密: 导入现成加密库
 try:

@@ -106,10 +106,19 @@ LEVEL_CAPABILITY = {
 # 二、VIKEY 密钥派生体系（最高级）
 # ---------------------------------------------------------------------------
 
-# 根密钥盐（固定常量，与 VIKEY 硬件信息组合派生，本身非密钥）
-_ROOT_SALT = b"[REDACTED]"
-_KEK_INFO = b"mtscos_kek_master_v1"
-_DEK_INFO_PREFIX = b"mtscos_dek_"
+# 🔒 L0 极密: 盐/info/前缀 全部运行时从 mt_crypto_keys 派生, 源码不留硬编码.
+# 所有调用点通过 _derive_bytes(seed_name, length) 取 HKDF 派生值.
+# 派生种子名 (seed_name) 仅作 HKDF info 参数, 本身不是密钥.
+try:
+    from app.utils.crypto_provider import crypto_provider as _cp
+    _ROOT_SALT = _cp.derive_bytes("vikey_root_salt", 32)
+    _KEK_INFO = _cp.derive_bytes("kek_master_info", 32)
+    _DEK_INFO_PREFIX = _cp.derive_bytes("dek_level_prefix", 16)
+except Exception as _e:
+    sys.stderr.write(f"[CRYPTO] crypto_provider unavailable → L0 locked: {_e}\n")
+    _ROOT_SALT = b"_"  # 占位, 真正加密会在 _get_master_key 时 exit 1
+    _KEK_INFO = b"_"
+    _DEK_INFO_PREFIX = b"_"
 
 
 class VikeyKeyDerivation:
@@ -588,21 +597,22 @@ class DatabaseEncryption:
             self._bind_dev_key()
 
     def _init_legacy_fernet(self):
-        """初始化旧 Fernet（仅用于解密历史数据）"""
-        if not HAS_CRYPTOGRAPHY:
-            return
-        if os.path.exists(self.key_file):
-            try:
-                with open(self.key_file, "rb") as f:
-                    key = f.read()
-                self._legacy_fernet = Fernet(key)
-            except Exception:
-                self._legacy_fernet = None
+        """🔒 P0 极密加固: 已废弃 Fernet 兜底逻辑, 不再从源码或文件读取密钥.
+        历史密文如需解密, 应通过迁移脚本显式提供密钥 (mt_crypto_keys)."""
+        self._legacy_fernet = None  # 强制 None, 禁止源码兜底
 
     def _bind_dev_key(self):
-        """开发期绑定默认密钥（无 VIKEY 时降级，仅 L1-L3 可用，L0 锁定）"""
-        # 仅当未绑定 VIKEY 时使用开发根密钥
-        dev_vikey = "[REDACTED]"
+        """🔒 P0 极密加固: 不再使用硬编码 dev_vikey.
+        开发期密钥改为从 crypto_provider 运行时派生 (基于 mt_crypto_keys 主密钥)."""
+        try:
+            from app.utils.crypto_provider import crypto_provider as _cp
+            dev_vikey = _cp.derive_str("dev_vikey_binding", 32)
+        except Exception:
+            # 最后兜底: 从环境变量读取, 强制开发人员自行设置
+            dev_vikey = os.environ.get("MT_DEV_VIKEY_BINDING")
+            if not dev_vikey:
+                sys.stderr.write("[CRYPTO] FATAL: dev_vikey not available → exit 1\n")
+                sys.exit(1)
         self.key_derivation.bind_vikey(dev_vikey)
         self.key_derivation.cache_kek_for_offline()
 
