@@ -49,7 +49,7 @@ def _hall_task(conn, title, desc, prio='NORMAL'):
 
 
 def check_once() -> dict:
-    out = {'ok': 0, 'bad': [], 'chat_ok': False}
+    out = {'ok': [], 'bad': [], 'chat_ok': False}
     for label, path, method in ENDPOINTS:
         try:
             if method == 'GET':
@@ -64,12 +64,12 @@ def check_once() -> dict:
                 req = urllib.request.Request(
                     BASE + path, data=payload,
                     headers={'Content-Type': 'application/json'})
-                r = urllib.request.urlopen(req, timeout=75)
+                r = urllib.request.urlopen(req, timeout=90)
                 body = json.loads(r.read())
                 ans = body.get('data', {}).get('answer', '')
                 ok = body.get('code') == 0 and '未就绪' not in ans
                 out['chat_ok'] = ok
-            out['ok' if ok else 'bad'].append(label) if ok else out['bad'].append(label)
+            (out['ok'] if ok else out['bad']).append(label)
         except Exception as e:
             out['bad'].append(f'{label}:{str(e)[:40]}')
     return out
