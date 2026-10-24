@@ -14,6 +14,8 @@ import json
 import sqlite3
 import hashlib
 import logging
+import threading
+import queue as _queue
 from datetime import datetime
 from collections import defaultdict, deque
 
@@ -317,8 +319,16 @@ def load_rules(force=False):
     return RULE_CACHE['rules']
 
 
+# v22.25.18 热修复 (flow_unified_ops_20261024): 审计写改异步队列。
+# 之前 _log_event 在 before_request/preprocess 同步 INSERT security_events_log +
+# UPDATE hit_count, WAL 写锁竞争时每请求堵 30s → 全部 worker 堵死 → Flask 假死
+# (实测 2026-10-24 09:17 栈转储: 线程卡在 INSERT INTO security_events_log)。
+# 现改为: 内存队列(上限 8000, 满丢最旧) + 后台守护线程批量落库, 审计语义不变(≤2s 延迟)。
+_AUDIT_QUEUE = _queue.Queue(maxsize=8000)
+
+
 def _log_event(rule, request_obj=None, matched_snippet='', extra=None):
-    """把命中写入 security_events_log"""
+    """把命中事件入队（后台批量写入 security_events_log）"""
     try:
         if request_obj is None:
             ip, ua, path, method = '', '', '', ''
@@ -332,28 +342,68 @@ def _log_event(rule, request_obj=None, matched_snippet='', extra=None):
         severity = rule.get('severity') if rule else 'info'
         rule_code = rule.get('rule_code') if rule else ''
         desc = rule.get('description') if rule else 'global audit'
-        with _conn() as conn:
-            conn.execute(f'''
-                INSERT INTO {EVENT_TABLE} (
-                    event_type,rule_code,target,severity,description,
-                    ip_address,user_agent,request_path,request_method,matched,details,timestamp
-                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
-            ''', (
-                (rule or {}).get('category', 'audit') or 'audit',
-                rule_code,
-                (rule or {}).get('name', 'MTSCOS AI Firewall') or '',
-                severity or 'info',
-                desc or '',
-                ip, ua, path, method,
-                (matched_snippet or '')[:800],
-                json.dumps(extra or {}, ensure_ascii=False)[:4000],
-                ts,
-            ))
-            if rule and rule.get('id'):
-                conn.execute(f"UPDATE {RULE_TABLE} SET hit_count=hit_count+1, last_hit_at=? WHERE id=?", (ts, rule['id']))
-            conn.commit()
+        rec = (
+            (rule or {}).get('category', 'audit') or 'audit',
+            rule_code,
+            (rule or {}).get('name', 'MTSCOS AI Firewall') or '',
+            severity or 'info',
+            desc or '',
+            ip, ua, path, method,
+            (matched_snippet or '')[:800],
+            json.dumps(extra or {}, ensure_ascii=False)[:4000],
+            ts,
+            (rule or {}).get('id'),
+        )
+        try:
+            _AUDIT_QUEUE.put_nowait(rec)
+        except _queue.Full:
+            try:  # 队列满: 丢最旧保最新
+                _AUDIT_QUEUE.get_nowait()
+                _AUDIT_QUEUE.put_nowait(rec)
+            except Exception:
+                pass
     except Exception as e:
-        logger.warning(f"[ai_firewall] log event fail: {e}")
+        logger.warning(f"[ai_firewall] log event enqueue fail: {e}")
+
+
+def _audit_flusher():
+    """后台审计落库线程: 2s 无新事件即空转, 攒批(≤100)一次事务写入"""
+    while True:
+        batch = []
+        try:
+            batch.append(_AUDIT_QUEUE.get(timeout=2))
+        except _queue.Empty:
+            continue
+        while len(batch) < 100:
+            try:
+                batch.append(_AUDIT_QUEUE.get_nowait())
+            except _queue.Empty:
+                break
+        conn = _conn()
+        try:
+            for rec in batch:
+                conn.execute(f'''
+                    INSERT INTO {EVENT_TABLE} (
+                        event_type,rule_code,target,severity,description,
+                        ip_address,user_agent,request_path,request_method,matched,details,timestamp
+                    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+                ''', rec[:12])
+                if rec[12]:
+                    conn.execute(
+                        f"UPDATE {RULE_TABLE} SET hit_count=hit_count+1, last_hit_at=? WHERE id=?",
+                        (rec[11], rec[12]))
+            conn.commit()
+        except Exception as e:
+            logger.warning(f"[ai_firewall] audit flush fail ({len(batch)} dropped): {e}")
+        finally:
+            try:
+                conn.close()
+            except Exception:
+                pass
+
+
+threading.Thread(target=_audit_flusher, daemon=True,
+                 name='ai-firewall-audit-flusher').start()
 
 
 def _extract_inputs(request_obj):
