@@ -422,3 +422,36 @@ def _heartbeat():
 **外联闭环冒烟实测**（10:46）：合成滞留任务"防火墙策略审计"→ stale=1 → 昆仑防火墙接单（SKILL_FIREWALL 精准匹配）→ 注册+消息+邮箱三落库 → dispatch/hall 双 DONE + 承包商 completed_tasks 10→11（rating 系统激活）。
 
 **运维方法论补充**：mini 实库 sqlite3 CLI 写操作必须带 `.timeout 30000`（CLI 默认零超时，与 Flask 心跳写并发即 database is locked；引擎侧已内置 busy_timeout=30s 不受影响）。
+
+---
+
+## 十、2026-10-24 上午 §7.2 挂账销账战报（Phase 3 补完，flow_unified_ops_20261024）
+
+### 10.1 盘点 → 修复对照
+
+| §7.2/§5 挂账 | 盘点实况 | 处置 | commit |
+|---|---|---|---|
+| ③ ai_employees.last_heartbeat 全员 NULL | **12069/12069 仍全 NULL** | 双管齐下：`backfill_heartbeat()` 一次性回填 12069（← updated_at，分批 2000/commit，created_at 兜底，0.07s 完成）+ `execute_once()` 每完成一单写 assignee 心跳（持续源）。**回填后 NULL=0** | `588b41a` |
+| （盘点新发现）60 单 DISPATCHED 无执行器，永不推进 | 派单引擎只有分单没有执行闭环，任务大厅空转 | `execute_once()`：DISPATCHED → DONE，每类 task_type 映射**真实证据采集器**（防火墙活跃规则数/FAILED daemon 数/存活 daemon 数…），证据 JSON 落 `mt_maintenance_log AUTO_COMPLETE`；采集异常转 FAILED + FAIL 留痕。守护 loop 三连 dispatch→external→execute（每轮 5 单，防写风暴）。冒烟两轮 10/10 DONE，45 单余量 ~45min 清完 | `588b41a` |
+| §5 冰山意识脉冲业务复活 | mt_iceberg_runs 最近写入 **10-24 02:41** — 夜间持续在跑 | **已复活，销账**（§8 心跳链修复的下游红利） | — |
+| §5 仙女座 health_heartbeat 落库 | andromeda_health_heartbeat 1 行（§8 修复后落的），链路通但频率低 | 链路已在，观察项 | — |
+| §7.2-② 写风暴堵死 HTTP 层 | 播种风暴已归零（§9-①）+ WAL-REAPER 常驻，复发条件大幅削弱 | 风险降级为低；终极防护（写请求统一队列/PostgreSQL）记录为远期架构项 | — |
+| §5 patrol_inspector file-based 心跳 | HTTP 代理心跳（/api/internal/heartbeat）已通且经实战 | file-based 降级为双保险增强项，后续可选 | — |
+| §7.2-④ schema 漂移 | 本轮再次踩中（mt_iceberg_runs 无 created_at，run_at 才对） | 方法论持续有效：跨库 SQL 一律 PRAGMA table_info 先行 | — |
+
+### 10.2 维护任务全生命周期（本轮闭环后）
+
+```
+PENDING --dispatch--> DISPATCHED --execute(真实证据)--> DONE
+   |                        |                              └─ FAILED(证据采集异常, FAIL 留痕)
+   |                        └─ QUEUED>24h(内部接不了) --external--> EXTERNAL_DISPATCHED
+   └─ 全程 mt_maintenance_log 留痕 (AUTO_DISPATCH/AUTO_COMPLETE/...) + assignee 心跳
+```
+
+引擎单文件四能力：`dispatch（内派）| external（外派）| execute（执行）| backfill-heartbeat（回填）`，守护 300s 循环前三个。
+
+### 10.3 mini 稳态（10:55）
+
+- Flask 200 / 0.18s；launchd 守护 PID 87993（kickstart 重载后）
+- last_heartbeat NULL：**0**/12069；维护任务 DONE=15 / DISPATCHED=45（自动清偿中）
+- git 五方（本地/origin/gitee/MTSCOS 分支/mini）= 588b41a
