@@ -40,7 +40,23 @@ log = logging.getLogger("usb_hub")
 
 # ====== USB 枚举 ======
 def enumerate_usb():
-    """ioreg 轮询 + 正则解析所有 USB 设备"""
+    """ioreg 轮询 + **locationID 自动分组** 解析所有 USB 设备 (含嵌套 Hub 内部子设备)
+
+    四次失败复盘:
+      v1 靠 `+-o` 设备头切     → 嵌套子设备无独立头 → 漏 SZU100/摄像头
+      v2 靠缩进跳变切           → 子设备和父 Hub 缩进同层 → 永不触发
+      v3 靠缩进突变切           → cur_indent=min() 永远停在最小 → 子并入父
+      v4 手动 cur_loc + `+-o` 重置 → IOUSBHostInterface 子节点也重置 cur_loc
+                                     → idProduct 行丢 → 所有组 pid 空
+
+    v5 终极方案:
+      locationID 是 ioreg 里每个物理 USB 节点的唯一标识。
+      **完全不手动重置 cur_loc** —— locationID 值变了就自动创建新组,
+      保持不变就继续往当前组加属性。IOUSBHostInterface/Endpoint 子节点
+      共享父设备的 locationID → 属性正确并入父设备组。
+
+      去重: 同 locationID + 同 (vid,pid) 合并 → serial 优先取最完整的。
+    """
     try:
         out = subprocess.run(
             ["ioreg", "-w0", "-r", "-c", "IOUSBHostDevice", "-l"],
@@ -50,43 +66,63 @@ def enumerate_usb():
         log.error(f"ioreg 调用失败: {e}")
         return []
 
-    devices = []
-    cur = {}
-    for line in out.split("\n"):
-        raw = line.rstrip()
-        clean = raw.strip()
-        if clean.startswith("+-o") or clean.startswith("+-w"):
-            # 新设备开始
-            if cur and ("idVendor" in cur or cur.get("IOObjectClass") in
-                        ("IOUSBHostDevice", "AppleUSBHostDevice", "IOUSBDevice")):
-                devices.append(cur)
-            cur = {"name": clean.split(":")[-1].strip('" ')}
-        m = re.match(r'(?:\|)?\s*"?(\w+)"?\s*=\s*(?:"([^"]+)"|(\d+)|(\w+))', clean)
-        if m and cur is not None:
-            cur[m.group(1)] = m.group(2) or m.group(3) or m.group(4) or ""
-    if cur and ("idVendor" in cur):
-        devices.append(cur)
+    groups = {}     # locationID -> props dict
+    cur_loc = None
 
-    # 抽取 serial + idVendor + idProduct (多种 serial 字段兼容)
-    result = []
-    for d in devices:
-        serial = (d.get("kUSBSerialNumberString")
-                  or d.get("IOUSBHostSerialNumber")
-                  or d.get("USB Serial Number")
-                  or d.get("bDeviceSerialNumberIndex")
+    for raw in out.split("\n"):
+        if not raw.strip():
+            continue
+        # 设备头行 —— **不重置 cur_loc** (IOUSBHostInterface 也是头, 但属于同一设备)
+        # locationID 自身变了会自动切组
+        # 开头必须跳过所有缩进符: ioreg 里 | 和空格交错出现, 任意数量
+        stripped = raw.strip()
+        m = re.match(r'(?:\|\s*)*"?(\w+)"?\s*=\s*(?:"([^"]+)"|(\d+)|(\w+))', stripped)
+        if not m:
+            continue
+        key = m.group(1)
+        val = m.group(2) or m.group(3) or m.group(4) or ""
+
+        if key == "locationID" and val:
+            # locationID 值变了 → 新组
+            cur_loc = val
+            if val not in groups:
+                groups[val] = {"locationID": val}
+        elif cur_loc and cur_loc in groups:
+            groups[cur_loc][key] = val
+
+    # 从各组抽取设备
+    unique = []
+    seen_key = set()
+    for loc, p in sorted(groups.items(), key=lambda x: int(x[0]) if x[0].isdigit() else 0):
+        vid = p.get("idVendor", "")
+        pid = p.get("idProduct", "")
+        if not vid or not pid:
+            continue
+        serial = (p.get("kUSBSerialNumberString")
+                  or p.get("USB Serial Number")
+                  or p.get("IOUSBHostSerialNumber")
+                  or p.get("bDeviceSerialNumberIndex")
                   or "")
-        vid = d.get("idVendor", "")
-        pid = d.get("idProduct", "")
-        class_code = d.get("bDeviceClass", "")
-        prod_str = d.get("kUSBProductString") or d.get("iProduct", "")
-        result.append({
+        dedup = (loc, vid, pid)
+        if dedup in seen_key:
+            continue
+        seen_key.add(dedup)
+        unique.append({
             "serial": str(serial),
             "vid": vid, "pid": pid,
-            "vid_pid": f"{vid}:{pid}" if vid and pid else "",
-            "class_code": class_code,
-            "product": prod_str[:80],
+            "vid_pid": f"{vid}:{pid}",
+            "class_code": p.get("bDeviceClass", ""),
+            "subclass": p.get("bDeviceSubClass", ""),
+            "location_id": loc,
+            "product": (p.get("kUSBProductString") or p.get("USB Product Name") or "")[:80],
+            "vendor": (p.get("kUSBVendorString") or p.get("USB Vendor Name") or "")[:50],
         })
-    return result
+
+    serials = [d["serial"] for d in unique if d["serial"]]
+    log.info(f"enumerate_usb v5(locationID自动分组): 共 {len(unique)} 台, serial={serials}")
+    for d in unique:
+        log.info(f"  [{d['vid']}:{d['pid']}] serial={d['serial'][:30]:30s} loc={d['location_id']} cls={d['class_code']} prod={d['product'][:40]}")
+    return unique
 
 
 # ====== 落库 ======
