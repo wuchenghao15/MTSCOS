@@ -502,8 +502,10 @@ def _register():
 # ============================================================
 POLLUTION_MARKS = ['todo', 'fixme', '占位', '假数据', 'xxx', 'undefined', 'null',
                    '<script', '${', '{{', '测试test', 'placeholder', 'lorem']
-SOURCE_WHITELIST = {'andromeda_survey', 'andromeda_society', 'COMMITTEE', 'MANUAL',
-                    'SYSTEM_REQ', 'AI_SUGGESTION', 'EXAM_AUTO', 'PATROL'}
+# 来源黑名单模式: 抓真污染, 不误伤存量管线来源 (no_team_match/frontline_patrol
+# 均为系统现有认领/巡检管线的合法 source)
+SOURCE_BAD_MARKS = ['fake', 'test123', 'unknown', 'none', 'null', 'hack', '注入',
+                    '假数据', 'undefined', 'evil', 'backdoor']
 
 
 def _hall_centers(conn) -> list:
@@ -609,8 +611,9 @@ def guard_once(conn=None, batch: int = 20) -> dict:
         for rid, title, desc, source, prio, status in rows:
             stats['checked'] += 1
             problems = []
-            # ① 合法性: 来源须在白名单 (历史兼容: 空来源视为 MANUAL 补录)
-            if source and source not in SOURCE_WHITELIST:
+            # ① 合法性: 来源黑名单模式 (空来源=历史补录放行; 含可疑特征判非法)
+            src_low = (source or '').lower()
+            if src_low and any(m in src_low for m in SOURCE_BAD_MARKS):
                 problems.append(f'来源非法:{source[:20]}')
             # ② 完整性: 标题/描述/优先级
             if not title.strip():
