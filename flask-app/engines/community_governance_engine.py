@@ -355,14 +355,15 @@ def _social_inner(conn=None) -> dict:
                  300 + int(hashlib.md5(sid.encode()).hexdigest(), 16) % 600))
             conn.commit()
             stats['roundtable'] = 1
-            # 学习记录: 每位与会者一条 (磋商即学习)
+            # 学习记录: 每位与会者一条 (磋商即学习); learn_id 为 INTEGER
+            # 主键自增, 不得传文本 (datatype mismatch)
             for i, (rid, name) in enumerate(nodes):
                 delta = 3 + (i % 3)
                 conn.execute(
-                    "INSERT INTO ai_learning_records (learn_id, expert_id, expert_name, "
+                    "INSERT INTO ai_learning_records (expert_id, expert_name, "
                     "learn_type, learn_source, skill_change, skill_level_delta, "
-                    "kb_size_delta) VALUES (?,?,?,?,?,?,?,?)",
-                    (f'LR_{sid}_{i}', rid, name, 'roundtable', sid,
+                    "kb_size_delta) VALUES (?,?,?,?,?,?,?)",
+                    (rid, name, 'roundtable', sid,
                      agenda[:40], delta, delta * 100))
             conn.commit()
             stats['learning'] = len(nodes)
