@@ -658,3 +658,16 @@ registry 终态：**46 RUNNING + 5 DOWN（诚实）**。4 个真空转均为边�
 1. **幽灵库再现（重要）**：`/Users/wuchenghao/MTSCOS_AI_Project/app.db`（19MB，PID 35095=sys_consciousness 系打开）— iceberg_command.py 的 DB 解析在 daemon cwd 下落到项目根。六循环产出本身已正确入主库（mt_iceberg_runs 6 类齐增），但**双库写入共存**，需下轮把 iceberg_command.DB 改绝对路径后重启 daemon（同类陷阱 §7.2 曾隔离 4KB 壳，本次 19MB 需比对内容后处置，禁直接删 — 进程正打开）。
 2. **心跳首跳**：crypto/wecom CYCLE=86400（一天一跳是设计行为，非假死）；archive patch 已部署但运行进程为旧代次（lsof 无 db 打开）— 需进程代次刷新后复核。下轮专项。
 3. **society 留痕**：andromeda_society_engine.py（真身在 engines/，非 auto_daemons）不写 maintenance_log — 产出走大厅回灌（andromeda_survey=3 已实证），销账。
+
+### 15. 中心↔AI 联动关系引擎上线（commit 链至 bc498cbb，flow_unified_ops_20261023）
+
+用户需求：适配各中心及各 AI 之间的联动和关系。
+
+| 能力 | 机制 | 冒烟 |
+|---|---|---|
+| **关系落库** | 新表 `mt_center_ai_binding`（IF NOT EXISTS 幂等，UNIQUE(center_code, ai_employee_code)） | **44 绑定 / 11 中心**（每中心 4 名主责员工） |
+| **自动绑定** bind_once | 10 技能包 × CENTER_KEYS 关键词匹配 ai_employees.specialties/capabilities（兜底 RANDOM 保证每中心有人）+ 1 名 EigenFlux 承包商 advisor | 全中心覆盖 |
+| **认领广播** notify_once | 任务 DISPATCHED → 绑定 AI 组 eigenflux_comm CENTER_NOTIFY 广播（同任务幂等），认领即联动可审计 | 机制就位（待下一单认领触发） |
+| **关系盘点** report_once | 绑定/中心/广播计数 → maintenance_log CENTER_RELATION 留痕 | 全绿 |
+
+守护 `sys_center_relation`（300s）+ launchd `com.mtscos.center-relation`（PID 46620）。列名陷阱 +2：skills 表用 skill_name/skill_id（非 name）、任务大厅主键 id（非 task_id）、认领者列 claim_owner。

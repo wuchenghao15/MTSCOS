@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.mtscos.center-relation</string>
+    <key>Comment</key>
+    <string>MTSCOS 中心↔AI 联动关系引擎 (自动绑定/认领广播/关系盘点) (flow_unified_ops_20261023)</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/bin/python3</string>
+        <string>-u</string>
+        <string>flask-app/engines/ai_center_relation_engine.py</string>
+        <string>loop</string>
+    </array>
+    <key>WorkingDirectory</key>
+    <string>/Users/wuchenghao/MTSCOS_AI_Project</string>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>ThrottleInterval</key>
+    <integer>30</integer>
+    <key>StandardOutPath</key>
+    <string>/Users/wuchenghao/MTSCOS_AI_Project/_runtime/logs/sys_center_relation_launchd.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/wuchenghao/MTSCOS_AI_Project/_runtime/logs/sys_center_relation_launchd.log</string>
+</dict>
+</plist>
