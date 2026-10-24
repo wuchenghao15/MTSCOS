@@ -383,51 +383,74 @@ def run_threat_scan():
     _init_tables(conn)
     results = {"fetched": 0, "matched": 0, "rules": 0, "fed": 0, "hall": 0, "errors": []}
 
-    # Step 1: 嗅探
-    signals = _fetch_nvd_recent()
-    results["fetched"] = len(signals)
-    _log_action(conn, "SCAN", "NVD_API", f"fetched={len(signals)}", "OK" if signals else "empty")
+    # 🔧 flow_unified_ops_20261023 P1-1b 根因修复:
+    # 旧版 _log_action(SCAN) INSERT 即开 WAL 写事务, 若后续 _ingest_signal 等无保护步骤
+    # 抛异常 → commit/close 被跳过 → 连接带写事务被丢弃 → WAL 写锁永久持有,
+    # 全舰队外部写 database is locked (mini 08:10:26 SQL-TRACE 实证).
+    # 修复: SCAN 日志即时提交 + 全体 try/finally 保证 commit/rollback/close.
+    try:
+        # Step 1: 嗅探
+        signals = _fetch_nvd_recent()
+        results["fetched"] = len(signals)
+        _log_action(conn, "SCAN", "NVD_API", f"fetched={len(signals)}", "OK" if signals else "empty")
+        conn.commit()  # 🔧 即时落盘, 不带着写锁跑整个管线
 
-    for sig in signals:
-        if "error" in sig:
-            results["errors"].append(sig["error"]); continue
+        for sig in signals:
+            if "error" in sig:
+                results["errors"].append(sig["error"]); continue
 
-        # Step 2: 匹配
-        sig_id = _ingest_signal(conn, sig)
-        if not sig_id: continue
-        matches = sig.get("matches", [])
-        if not matches: continue
-        results["matched"] += 1
+            # Step 2: 匹配
+            try:
+                sig_id = _ingest_signal(conn, sig)
+            except Exception as e:
+                results["errors"].append(f"ingest: {e}")
+                continue
+            if not sig_id: continue
+            matches = sig.get("matches", [])
+            if not matches: continue
+            results["matched"] += 1
 
-        # Step 3: 防御 → 自动筑墙
+            # Step 3: 防御 → 自动筑墙
+            try:
+                rules = _auto_generate_firewall_rules(conn, sig)
+                results["rules"] += len(rules)
+            except Exception as e:
+                results["errors"].append(f"firewall: {e}")
+
+            # Step 4: 投喂 → 特征库 + 脑库
+            try:
+                _feed_brain_and_signature(conn, sig)
+                results["fed"] += 1
+            except Exception as e:
+                results["errors"].append(f"feed: {e}")
+
+            # Step 5: 上报 → 任务大厅 + 金牌安全天团
+            try:
+                if _escalate_to_hall(conn, sig):
+                    results["hall"] += 1
+            except Exception as e:
+                results["errors"].append(f"hall: {e}")
+
+        conn.commit()
+
+        # 汇总日志
+        _log_action(conn, "SCAN_SUMMARY", "ALL",
+                    f"fetched={results['fetched']}, matched={results['matched']}, "
+                    f"rules={results['rules']}, fed={results['fed']}, hall={results['hall']}",
+                    json.dumps(results, ensure_ascii=False)[:500])
+        conn.commit()
+    finally:
         try:
-            rules = _auto_generate_firewall_rules(conn, sig)
-            results["rules"] += len(rules)
-        except Exception as e:
-            results["errors"].append(f"firewall: {e}")
-
-        # Step 4: 投喂 → 特征库 + 脑库
+            conn.commit()
+        except Exception:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
         try:
-            _feed_brain_and_signature(conn, sig)
-            results["fed"] += 1
-        except Exception as e:
-            results["errors"].append(f"feed: {e}")
-
-        # Step 5: 上报 → 任务大厅 + 金牌安全天团
-        try:
-            if _escalate_to_hall(conn, sig):
-                results["hall"] += 1
-        except Exception as e:
-            results["errors"].append(f"hall: {e}")
-
-    conn.commit()
-
-    # 汇总日志
-    _log_action(conn, "SCAN_SUMMARY", "ALL",
-                f"fetched={results['fetched']}, matched={results['matched']}, "
-                f"rules={results['rules']}, fed={results['fed']}, hall={results['hall']}",
-                json.dumps(results, ensure_ascii=False)[:500])
-    conn.close()
+            conn.close()
+        except Exception:
+            pass
 
     return {
         "ok": True, "engine": "threat_intel",

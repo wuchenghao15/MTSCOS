@@ -76,6 +76,9 @@ def _tracked_sqlite_connect(*args, **kwargs):
         pass
     return _conn
 _sq_flask.connect = _tracked_sqlite_connect
+# 覆盖 `from sqlite3.dbapi2 import connect` 等底层导入路径 (SQL-TRACE 实证有引擎绕过包级 patch)
+import sqlite3.dbapi2 as _sq_dbapi2_flask
+_sq_dbapi2_flask.connect = _tracked_sqlite_connect
 
 _SKIP_KEYWORDS = (
     # 原守护线程
