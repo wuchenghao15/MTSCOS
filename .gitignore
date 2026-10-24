@@ -459,3 +459,4 @@ HTML/
 !flask-app/templates/andromeda_*.html
 _test_ignore_dir/
 _test_ignore_dir/
+.git_backup_*

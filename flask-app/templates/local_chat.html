@@ -428,16 +428,86 @@ async function markSessionRead(sid){
 // ═══ 发送消息 (SSE 流式) ═══
 function bindEnter(){
   const t = $('input');
+  // 🆕 flow_chat_history_20261024: 输入历史 (shell-like ArrowUp/ArrowDown)
+  // 按 session_id 隔离, localStorage 持久化, 每会话 ≤50 条
+  window._inputHistory = window._inputHistory || [];
+  window._historyIndex = -1;           // -1 = 新输入态
+  window._historyBuffer = '';          // 用户正在编辑但还没提交的临时文本
+  const HIST_MAX = 50;
+  const historyKey = () => `chat_input_history:${currentSessionId || 'new'}`;
+  // 加载历史 (切会话时)
+  try {
+    if(!window._historyLoadedFor || window._historyLoadedFor !== currentSessionId){
+      const saved = localStorage.getItem(historyKey());
+      window._inputHistory = saved ? JSON.parse(saved) : [];
+      window._historyIndex = -1;
+      window._historyLoadedFor = currentSessionId;
+    }
+  } catch(_){}
+
   t.addEventListener('keydown', e=>{
     if(e.key==='Enter' && !e.shiftKey && !isStreaming){
       e.preventDefault();
       send();
+      return;
+    }
+    // 🆕 ArrowUp: 翻历史 (按会话)
+    if(e.key==='ArrowUp' && !e.shiftKey){
+      if(t.selectionStart !== t.selectionEnd) return; // 选中文本时不翻
+      e.preventDefault();
+      if(window._inputHistory.length === 0) return;
+      // 第一次按上: 保存当前编辑 buffer
+      if(window._historyIndex === -1){
+        window._historyBuffer = t.value;
+        window._historyIndex = window._inputHistory.length - 1;
+      } else if(window._historyIndex > 0){
+        window._historyIndex--;
+      }
+      t.value = window._inputHistory[window._historyIndex] || '';
+      t.style.height = 'auto';
+      t.style.height = Math.min(t.scrollHeight, 160) + 'px';
+      return;
+    }
+    // 🆕 ArrowDown: 往下翻 (翻到底恢复用户编辑 buffer)
+    if(e.key==='ArrowDown' && !e.shiftKey){
+      if(t.selectionStart !== t.selectionEnd) return;
+      e.preventDefault();
+      if(window._inputHistory.length === 0 || window._historyIndex === -1) return;
+      if(window._historyIndex < window._inputHistory.length - 1){
+        window._historyIndex++;
+        t.value = window._inputHistory[window._historyIndex] || '';
+      } else {
+        // 翻完了 → 恢复用户之前在编辑的 buffer
+        window._historyIndex = -1;
+        t.value = window._historyBuffer;
+      }
+      t.style.height = 'auto';
+      t.style.height = Math.min(t.scrollHeight, 160) + 'px';
+      return;
+    }
+    // 其他按键 → 用户开始新编辑, 重置 history index
+    if(window._historyIndex !== -1 && e.key.length === 1){
+      window._historyIndex = -1;
+      window._historyBuffer = '';
     }
   });
   t.addEventListener('input', ()=>{
     t.style.height = 'auto';
     t.style.height = Math.min(t.scrollHeight, 160) + 'px';
   });
+}
+// 🆕 flow_chat_history_20261024: 提交后 push 到 history (由 send() 调用)
+function pushHistory(text){
+  if(!text || !text.trim()) return;
+  const hist = window._inputHistory;
+  // 不重复相邻相同内容
+  if(hist.length === 0 || hist[hist.length-1] !== text){
+    hist.push(text);
+    if(hist.length > HIST_MAX) hist.shift();
+  }
+  window._historyIndex = -1;
+  window._historyBuffer = '';
+  try { localStorage.setItem(`chat_input_history:${currentSessionId || 'new'}`, JSON.stringify(hist)); } catch(_){}
 }
 
 // ═══ flow_chat_multi_ai_20261022: 多人 AI 同时聊 ═══
@@ -539,6 +609,8 @@ async function send(){
       lastUser.insertBefore(img, lastUser.firstChild);
     }
   }
+  // 🆕 flow_chat_history_20261024: 发送成功 → 入 history
+  pushHistory(text);
   input.value = '';
   input.style.height = 'auto';
   
