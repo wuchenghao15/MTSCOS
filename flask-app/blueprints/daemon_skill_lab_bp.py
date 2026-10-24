@@ -3249,7 +3249,11 @@ def run_lab_daemon_loop():
 
 _SKILL_KEYWORDS = {
     "防火墙":     ["防火墙", "攻击", "入侵", "ddos", "网络防护", "拦截"],
-    "安全":       ["安全", "漏洞", "渗透", "审计", "加固", "泄密"],
+    "安全":       ["安全", "漏洞", "渗透", "加固", "泄密"],
+    "审计":       ["审计", "稽核", "内控", "账目核查", "合规审计"],
+    "会计":       ["会计", "财务", "记账", "税务", "核算", "报销"],
+    "架构":       ["架构", "系统设计", "技术选型", "重构", "分层", "模块设计"],
+    "政法":       ["政法", "政法委", "执法", "司法", "案件研判", "纠纷"],
     "AI":         ["ai", "模型", "训练", "推理", "ollama", "llm", "神经网络", "智能"],
     "法律":       ["法律", "合规", "隐私", "个保法", "法务", "条款"],
     "数据库":     ["数据库", "sqlite", "索引", "慢查询", "落库", "表结构", "wal"],
@@ -3260,6 +3264,30 @@ _SKILL_KEYWORDS = {
     "教育":       ["教学", "题库", "课程", "学习", "考试", "教辅"],
     "IoT":        ["arduino", "iot", "传感器", "硬件", "串口", "板卡"],
 }
+
+# 🧾 flow_taskhall_expand_20261024: 中文技能名 → SKILL_XXX 标准 ID
+# dispatch.skill_id 列统一落标准 ID (历史中文值仅兼容展示, 不再新增)
+_SKILL_ID_MAP = {
+    "防火墙": "SKILL_FIREWALL",
+    "安全":   "SKILL_SECURITY",
+    "审计":   "SKILL_AUDIT",
+    "会计":   "SKILL_ACCOUNTING",
+    "架构":   "SKILL_ARCH",
+    "政法":   "SKILL_LEGAL_POL",
+    "AI":     "SKILL_AI",
+    "法律":   "SKILL_LEGAL",
+    "数据库": "SKILL_DATABASE",
+    "前端":   "SKILL_FRONTEND",
+    "后端":   "SKILL_BACKEND",
+    "运维":   "SKILL_DEVOPS",
+    "数据":   "SKILL_DATA",
+    "IoT":    "SKILL_IOT",
+}
+
+
+def _skill_id(skill: str) -> str:
+    """中文技能名 → SKILL_XXX 标准ID; 无映射(教育/通用等)保留原值"""
+    return _SKILL_ID_MAP.get(skill, skill)
 
 
 def _match_skill(title_desc: str) -> str:
@@ -3342,6 +3370,7 @@ def hall_smart_dispatch():
                 cid = str(c.get("contractor_id") or c.get("id") or "")
                 cname = str(c.get("name") or c.get("username") or cid)
                 did = f"DISP-{int(_time.time())}-{t['id']}"
+                sid = _skill_id(skill)  # 🧾 flow_taskhall_expand_20261024: skill_id 列统一落标准 ID
                 briefing = (f"[智能下发] 任务#{t['id']} {t.get('title','')} | "
                             f"匹配技能: {skill} | 承接: {cname} | "
                             f"优先级: {t.get('priority','NORMAL')}")
@@ -3350,7 +3379,7 @@ def hall_smart_dispatch():
                        (dispatch_id, source_task_id, skill_id, contractor_id, priority,
                         sla_deadline, status, briefing, dispatched_at)
                        VALUES(?,?,?,?,?,?, 'DISPATCHED', ?, datetime('now','localtime'))""",
-                    (did, str(t["id"]), skill, cid,
+                    (did, str(t["id"]), sid, cid,
                      1 if str(t.get("priority", "")).upper() == "HIGH" else 2,
                      "2026-10-26 23:59:59", briefing))
                 conn.execute(
