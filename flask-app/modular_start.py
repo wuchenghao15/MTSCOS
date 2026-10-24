@@ -66,6 +66,14 @@ def _tracked_sqlite_connect(*args, **kwargs):
         _SQLITE_CONN_REGISTRY.append(_weakref_flask.ref(_conn))
     except Exception:
         pass
+    try:
+        # P1-1b 语句追踪: 长语句(autocommit 期间持锁)取证 — [SQL-TRACE] 每条语句起始时间
+        from datetime import datetime as _dt_trace
+        _conn.set_trace_callback(
+            lambda stmt: sys.stderr.write(
+                '[SQL-TRACE] ' + _dt_trace.now().strftime('%H:%M:%S') + ' ' + str(stmt)[:150].replace('\n', ' ') + '\n'))
+    except Exception:
+        pass
     return _conn
 _sq_flask.connect = _tracked_sqlite_connect
 
