@@ -2267,12 +2267,13 @@ except NameError:
 BASE_HERE = os.path.dirname(_here) if os.path.basename(_here) == 'engines' else _here
 
 _paths = [
-    os.environ.get('APP_DB'),
-    os.path.join(BASE_HERE, 'engines', 'app.db'),
+    os.environ.get('APP_DB') or os.environ.get('MTSCOS_DB_PATH'),
     os.path.join(BASE_HERE, 'database', 'app.db'),
-    os.path.expanduser('~/MTSCOS_AI_Project/flask-app/engines/app.db'),
-    os.path.expanduser('~/MTSCOS_AI_Project/flask-app/app.db'),
+    os.path.expanduser('~/MTSCOS_AI_Project/flask-app/database/app.db'),
+    os.path.join(BASE_HERE, 'engines', 'app.db'),
 ]
+# 🔧 flow_unified_ops_20261023 P1-3: database/app.db 优先, engines/app.db (4KB/860MB 陷阱库) 降为末位;
+# expanduser engines/app.db 与 flask-app/app.db 两个陷阱路径已从候选链剔除 (mini 10-24 实证误连)
 DB_PATH = next((p for p in _paths if p and os.path.exists(p)), None)
 if not DB_PATH:
     log.warning(f'无可用 DB (尝试 {_paths}), life daemon 跳过')
