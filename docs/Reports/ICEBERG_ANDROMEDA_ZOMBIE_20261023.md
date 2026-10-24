@@ -589,3 +589,16 @@ EigenFlux(4658 节点心跳, 28.3万消息) ✅
 | sys_crypto_key_rotate | 12h 停；拉活后不跳 | 真空转 |
 
 registry 终态：**46 RUNNING + 5 DOWN（诚实）**。4 个真空转均为边缘引擎（归档/企微会议/密钥轮转/链接守卫），keepalive 会拉活进程但业务写入坏，留待专项 flow 修复，不阻塞主链。sys_knowledge_precious 低频心跳（2h 级）留观。
+
+### 13.5 僵尸进程 + 脑库数据 修复方案执行（flow_unified_ops_20261024）
+
+**根因链翻案（§13.4"真空转"定性修正）**：archive daemon 心跳函数**早已是双写新版**，函数手调实证可写（hb→12:28:52）— 真根因 = **心跳调用在循环尾 + CYCLE 过长（archive 21600s=6h）+ OneDrive 文件提供者 import 延迟**三者叠加的"假死观感"。keepalive 拉活后进程活着，但第一跳要等 6 小时后。
+
+| 项 | 交付 | 验证 |
+|---|---|---|
+| **A1 心跳首跳补丁** | `_runtime/patches/patch_daemon_first_heartbeat.py`：3 个 auto_daemons 在 `sleep(_offset)` 后立即插 `_heartbeat()`；`patch_link_guard_heartbeat.py`：link_guard 补全缺失的心跳代码（原版 0 心跳） | 3+1 文件 PATCHED+compiled OK；进程已用新代码复活（28204/28209/13646/28219）；首跳待循环边界自然生效 |
+| **B1 脑库限流聚合** | ai_team_collab_engine `_feed_brain` 每 actor 10min 窗口 1 条+同类计数合并（commit 4f7113c） | 9000+/天 → ~860/天 预期；聚合标注"(聚合窗口合并同类 N 条)"信息不丢 |
+| **B3 空 preview** | 15 条历史空投喂回填标记 | changes()=15 |
+| **A3 心跳自愈闭环** | 复用 society survey 的"僵尸心跳清理"缺口信号（已存在，销账） | 检测→大厅回灌链路已在 |
+
+**脑库诊断结论**：30841 行/7MB 不膨胀、无重复 — 病不是垃圾数据，是**高频模板化稀释检索价值**（6 天团 × 每条广播各投一条，样本见嵌套复利 `[🏆金牌测试] [🏆金牌测试]`）。B1 从源头限流。B2 归档建表（DDL）留待批准；B4 质量分级随 B1 后续。
