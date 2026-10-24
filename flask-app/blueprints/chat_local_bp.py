@@ -37,6 +37,61 @@ from flask import Blueprint, Response, current_app, g, jsonify, request, session
 from app.db import DB_PATH, connect as _db  # flow_db_unify_chat_20261022 单一权威入口
 _REWARD_KEY = os.environ.get('MTSCOS_REWARD_SEED', '[REDACTED]').encode()[:16]
 
+# flow_token_encrypt_20261024 P0 token 加密: 导入现成加密库
+try:
+    from app.utils.db_encryption import db_encryption, EncryptionLevel
+    _HAS_CRYPTO = True
+except Exception:
+    _HAS_CRYPTO = False
+
+
+def _encrypt_wallet_snapshot(conn, user_id, is_guest, level=EncryptionLevel.L0_TOP_SECRET):
+    """Phase 1 双写加密副本: 明文列刚更新后, 加密整行 JSON 存 _enc 列
+    加密失败不阻断主流程 (明文列才是权威, _enc 是审计备份+Phase 2 迁移过渡)
+    """
+    if not _HAS_CRYPTO:
+        return
+    try:
+        if is_guest:
+            row = conn.execute("SELECT * FROM mt_token_wallets WHERE user_id=?", (user_id,)).fetchone()
+            if row is None: return
+            cols = [d[0] for d in conn.execute("SELECT * FROM mt_token_wallets WHERE user_id=?", (user_id,)).description]
+        else:
+            row = conn.execute("SELECT * FROM mt_user_token_accounts WHERE user_id=?", (user_id,)).fetchone()
+            if row is None: return
+            cols = [d[0] for d in conn.execute("SELECT * FROM mt_user_token_accounts WHERE user_id=?", (user_id,)).description]
+        rd = dict(zip(cols, row))
+        enc_dict = {}
+        for k, v in rd.items():
+            if v is None:
+                enc_dict[k] = None
+            elif isinstance(v, (int, float, bool)):
+                enc_dict[k] = v  # 数字保持明文 (SQL 算术需要)
+            else:
+                enc_dict[k] = db_encryption.encrypt_data(str(v), level,
+                    "mt_token_wallets" if is_guest else "mt_user_token_accounts", k)
+        enc_json = json.dumps(enc_dict, ensure_ascii=False)
+        if is_guest:
+            conn.execute("UPDATE mt_token_wallets SET wallet_enc=? WHERE user_id=?", (enc_json, user_id))
+        else:
+            conn.execute("UPDATE mt_user_token_accounts SET account_enc=? WHERE user_id=?", (enc_json, user_id))
+    except Exception:
+        pass  # 加密失败静默, 不阻断钱包主流程
+
+
+def _encrypt_ledger_detail(conn, ledger_id):
+    """ledger 写后同步加密 detail → detail_enc"""
+    if not _HAS_CRYPTO:
+        return
+    try:
+        row = conn.execute("SELECT detail FROM mt_user_token_ledger WHERE id=?", (ledger_id,)).fetchone()
+        if row and row['detail']:
+            enc = db_encryption.encrypt_data(row['detail'], EncryptionLevel.L0_TOP_SECRET,
+                "mt_user_token_ledger", "detail")
+            conn.execute("UPDATE mt_user_token_ledger SET detail_enc=? WHERE id=?", (enc, ledger_id))
+    except Exception:
+        pass
+
 def _crypto_mask(raw_bytes, key=_REWARD_KEY):
     """XOR + 时间盐混淆, 防直接读公式"""
     import hashlib
@@ -477,6 +532,9 @@ def _prehold(user_id, session_id, estimated_cost, model):
              json.dumps({'estimated': estimated_cost}, ensure_ascii=False), new_balance)
         )
         held_id = cur.lastrowid
+        # flow_token_encrypt_20261024: Phase 1 双写加密副本
+        _encrypt_wallet_snapshot(conn, str(user_id), is_guest)
+        _encrypt_ledger_detail(conn, held_id)
         conn.commit()
         return {'ok': True, 'balance': new_balance, 'held_id': held_id, 'held_amount': estimated_cost}
     except Exception as e:
@@ -538,6 +596,10 @@ def _refund_prehold(user_id, prehold_amount, session_id='', reason='error'):
              json.dumps({'reason': reason, 'prehold_amount': prehold_amount,
                          'actual_release': actual_release}, ensure_ascii=False), bal_after)
         )
+        held_id = cur.lastrowid
+        # flow_token_encrypt_20261024: Phase 1 双写加密副本
+        _encrypt_wallet_snapshot(conn, uid_str, is_guest)
+        _encrypt_ledger_detail(conn, held_id)
         conn.commit()
         sys.stderr.write(f"[CHAT-LOCAL] _refund_prehold user={uid_str} release={actual_release} reason={reason} sid={session_id}\n")
     except Exception as e:
@@ -665,6 +727,15 @@ def _finalize(user_id, session_id, model, prompt_tokens, completion_tokens, preh
                  new_balance)
             )
 
+        # flow_token_encrypt_20261024: Phase 1 双写加密副本 (wallet + 本次所有未加密 ledger)
+        _encrypt_wallet_snapshot(conn, uid_str, is_guest)
+        try:
+            for lid, det in conn.execute(
+                "SELECT id, detail FROM mt_user_token_ledger WHERE session_id=? AND detail IS NOT NULL AND detail_enc IS NULL",
+                (session_id or '',)).fetchall():
+                _encrypt_ledger_detail(conn, lid)
+        except Exception:
+            pass
         conn.commit()
         return {
             'balance': new_balance, 'net_cost': actual_deduct,
@@ -1332,9 +1403,11 @@ def _ensure_guest_wallet(device_hash, db=None):
     db = db or _db()
     row = db.execute("SELECT * FROM mt_token_wallets WHERE user_id=?", (f"guest_{device_hash}",)).fetchone()
     if row:
-        # 已存在, 补 balance 兜底
+        # 已存在, 补 balance 兜底 + 加密快照
         try:
             db.execute("UPDATE mt_token_wallets SET updated_at=datetime('now','localtime') WHERE user_id=?", (f"guest_{device_hash}",))
+            # flow_token_encrypt_20261024: Phase 1 双写加密副本
+            _encrypt_wallet_snapshot(db, f"guest_{device_hash}", is_guest=True)
             db.commit()
         except sqlite3.OperationalError:
             pass  # 锁冲突不阻断聊天 (钱包已在, 只是没摸 updated_at)
@@ -1350,6 +1423,8 @@ def _ensure_guest_wallet(device_hash, db=None):
     for _i in range(4):
         try:
             db.execute(_ins, _args)
+            # flow_token_encrypt_20261024: Phase 1 新钱包出生即加密
+            _encrypt_wallet_snapshot(db, f"guest_{device_hash}", is_guest=True)
             db.commit()
             break
         except sqlite3.OperationalError as _e:
