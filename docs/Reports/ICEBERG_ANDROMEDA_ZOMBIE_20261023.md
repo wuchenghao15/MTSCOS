@@ -308,3 +308,77 @@ def _heartbeat():
 - `[SQL-TRACE c<conn_id>]`：语句级追踪（flask_launchd.log），按连接聚合可定位长事务
 - `[WAL-REAPER]`：泄漏事务清道夫日志（20s 周期）
 - SIGKILL 二分定位法：SIGSTOP 不释放 fcntl 锁，必须 SIGKILL（今夜实证）
+
+---
+
+## 八、2026-10-24 上午全链启动战报（逐级盘点 + 逐级修复，flow_unified_ops_20261024）
+
+> **方式**：L1 进程层 → L2 引擎层 → L3 数据层 → L4 Flask 层逐级体检，发现即修，修后即验。
+
+### 8.1 L1 进程层 — Flask 假死根治（3 层修复，commit eaf5343）
+
+**现象**：Flask 进程活、0% CPU 空转、curl 全超时（/api/health 45s 无响应）。
+**取证**：`kill -USR1` 全线程栈转储 → 请求线程全部堵在两处请求路径 DB 写。
+**修复**（commit eaf5343）：
+
+| 层 | 病灶 | 修法 |
+|---|---|---|
+| ① | `_ensure_legal_redlines_schema` 被 `_mt_check_rules_on_request` **每请求**全量执行（4 表 CREATE/ALTER + 40 种子 + SRE 200+ 迁移），WAL 排队堵死 worker | 进程级一次性初始化（`_LEGAL_REDLINES_SCHEMA_READY` 幂等守卫） |
+| ② | active 规则全表读每请求执行 | 15s TTL 进程内缓存 |
+| ③ | `ai_firewall._log_event` before_request 同步 INSERT security_events_log + UPDATE hit_count | 内存队列（8000 上限丢最旧）+ 后台批量落库（≤2s 延迟，审计语义不变） |
+
+**验证**：/index 45s 超时 → 200/0.14s；并发 20 全 200 最慢 67ms；3min 审计 101 条落库；flush fail=0。
+**插曲**：mini 磁盘代码被某同步进程回写旧版（09:23）导致复发一次 → git checkout + pull eaf5343 后稳定。
+
+### 8.2 L1 daemon 复活（9 个）
+
+| daemon | 处置 |
+|---|---|
+| sys_arduino_detect / sys_arduino_sync / sys_auto_approval / sys_gray_release_progress / sys_think_loop | Popen + start_new_session 拉起（heredoc 后台管道挂起坑改用 Popen） |
+| ai_eigenflux_network_engine | 见 8.3 五层修复链 |
+| ai_link_guard_engine | registry 标 RETIRED（无脚本遗留注册） |
+| sys_wendaemon | 实际存活（engines/ 目录，pgrep 模式修正后确认） |
+| registry 终态 | 50 有效注册全部对应真实存活进程 |
+
+### 8.3 L2/L3 — EigenFlux 心跳链五层修复（心跳停更 5 天 → 实时）
+
+| # | 层 | 病灶 | 修法 |
+|---|---|---|---|
+| 1 | wrapper spawn 路径 | `TARGET="ai_eigenflux_network_engine.py"` 相对路径，cwd 不符 → Popen 立即失败 30s 冷却无限重试 | 改绝对路径 |
+| 2 | wrapper spawn 参数 | 引擎无 `start` 参数默认打 STATUS 秒退（与 patrol 同款历史 bug） | `Popen([...TARGET, "start"])` |
+| 3 | 引擎锁耐心 | busy_timeout 12s，启动期 ensure_eigenflux_registrations 撞 WAL 锁即崩 | 12s→60s |
+| 4 | 心跳轮性能 | 兜底循环 244 次逐行 UPDATE × 全表扫 12080 行（OR 条件废索引）≈300 万行/轮，主线程卡死 10min+ | 单条 IN 批量 UPDATE + `idx_ae_reg_emp(employee_id, employee_type)` 复合索引 |
+| 5 | wrapper/引擎 PID 文件冲突 | wrapper 把**自己的 PID** 写进共享 `ai_eigenflux_network_engine.pid` → 子引擎读文件发现 wrapper"在跑" → 永远 refuse 双启 | wrapper 改用 `.wrapper.pid` 独立文件 |
+
+**验证**：子引擎 62813 稳定，心跳 R13→R15 每 5.7s 一轮，12068 节点全量，`eigenflux_registrations.last_heartbeat` 实时推进（09:54:45+）。
+
+### 8.4 L2/L3 其余活性确认（健康，无需修复）
+
+| 链 | 状态 |
+|---|---|
+| 冰山五自循环 | 凌晨 00:38 仍在跑（列名修正后确认）；iceberg_command daemon 运行中 |
+| 脑库投喂 | mt_ai_brain_feed_log 最新 1 分钟前，实时投喂中 |
+| 任务大厅 | 真实管线 = `mt_lab_task_hall`（250 任务，9 成 DONE），daemon_skill_lab_bp 驱动全生命周期；`mt_task_hall_skills/contractors` 为 630bc22 空壳目录表（无代码引用，遗留待清理决策） |
+| 三委 | 提案有审议结果（PASSED 等），管线活 |
+| 维护部队 | 60 任务全 PENDING 无执行者 — 业务空转（有任务无人接单），功能缺口非故障，待派单引擎接线 |
+| ai_employees | 12068 节点已全量注册 EigenFlux（本次自动补注册 11824） |
+
+### 8.5 L4 Flask 分层冒烟（全绿）
+
+| 层 | 结果 |
+|---|---|
+| L1 路由 | /index /login /admin /eigenflux /andromeda /task_hall 全 200（99-252ms）；/api/health 200/2ms |
+| L2 页面 | 全 200 ~100ms |
+| L3 API | health 2ms；internal/heartbeat GET 405=POST-only 正常 |
+| L4 业务流 | POST /api/internal/heartbeat 200/5ms（fail-closed 链路语义正确） |
+
+### 8.6 L2 引擎层
+
+48 个 `sys_*` wrapper 进程全活（47 脚本）；smart_mount 管辖 32 进程心跳新鲜（10min 内，仅 1 stale）；keepalive cron 周期脚本（keepalive_engines/ai_file_organizer）跑完即退为设计行为。
+
+### 8.7 待办移交（Phase 3）
+
+1. **写者寡头根治**（rules_engine 播种风暴）——本次 3 层修复已消掉请求路径大头，播种风暴仍是残余峰值源
+2. **维护部队派单引擎接线**（60 PENDING 无人执行）
+3. **mt_task_hall_skills/contractors 空壳表**处置决策（删表或接线）
+4. mini 磁盘回写元凶排查（autosync 嫌疑，代码被回滚旧版一次）
