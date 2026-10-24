@@ -73,6 +73,12 @@ def _require_login():
 
 # ─── 首页 /mobile/home ────────────────────────────────────
 
+@mobile_bp.route('/chat', methods=['GET'])
+def mobile_chat():
+    """🧊 flow_mobile_chat_20261024: 移动端冰山聊天 (游客友好 — 未登录走 guest 模式)"""
+    return render_template('mobile/chat.html')
+
+
 @mobile_bp.route('/', methods=['GET'])
 @mobile_bp.route('/home', methods=['GET'])
 def mobile_home():

@@ -79,12 +79,16 @@ def connect(timeout: float = 15.0, busy_timeout_ms: int = 30000,
     """
     if readonly:
         conn = sqlite3.connect(DB_PATH, timeout=timeout, uri=True)
-        conn.execute("PRAGMA journal_mode=WAL")
+        # journal_mode 是持久属性, 只在缺失时设置 (每次 SET 需短暂独占锁 → 50 daemon 高频连接会引发锁风暴)
+        if conn.execute("PRAGMA journal_mode").fetchone()[0].lower() != "wal":
+            conn.execute("PRAGMA journal_mode=WAL")
     else:
         conn = sqlite3.connect(DB_PATH, timeout=timeout)
         conn.execute(f"PRAGMA busy_timeout={busy_timeout_ms}")
-        conn.execute("PRAGMA journal_mode=WAL")
-        conn.execute("PRAGMA synchronous=NORMAL")  # WAL 下 NORMAL 安全且快
+        # 🔒 flow_chat_lock_storm_20261024: journal_mode 持久属性 — 已是 WAL 则不再 SET (防锁风暴)
+        if conn.execute("PRAGMA journal_mode").fetchone()[0].lower() != "wal":
+            conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA synchronous=NORMAL")  # WAL 下 NORMAL 安全且快 (会话属性, 需每次设)
     conn.row_factory = row_factory
     return conn
 

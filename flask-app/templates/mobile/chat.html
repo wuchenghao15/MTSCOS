@@ -1,0 +1,119 @@
+{% extends "mobile/base_mobile.html" %}
+{% block title %}冰山聊天{% endblock %}
+{% block page_title %}❄️ 冰山聊天{% endblock %}
+
+{% block content %}
+<div class="chat-wrap" style="display:flex;flex-direction:column;height:calc(100vh - 130px);">
+  <div id="chat-box" style="flex:1;overflow-y:auto;padding:10px 12px;background:var(--m-bg,#f5f7fa);">
+    <div class="msg ai"><div class="bubble">你好，我是冰山 🧊<br>游客可直接聊天（1 万免费 token）</div></div>
+  </div>
+  <div id="balance-bar" style="padding:6px 12px;font-size:12px;color:#888;background:#fff;border-top:1px solid #eee;">
+    余额: <span id="balance">加载中…</span>
+  </div>
+  <div style="display:flex;gap:8px;padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:#fff;border-top:1px solid #eee;">
+    <input id="chat-input" type="text" placeholder="输入消息…" autocomplete="off"
+           style="flex:1;padding:10px 14px;border-radius:20px;border:1px solid #ddd;font-size:15px;outline:none;">
+    <button id="send-btn" onclick="sendMsg()"
+            style="padding:10px 18px;border-radius:20px;border:none;background:#2b7de9;color:#fff;font-size:15px;">发送</button>
+  </div>
+</div>
+<div id="guest-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:14px;padding:22px;width:80%;max-width:320px;text-align:center;">
+    <div style="font-size:34px;">🧊</div>
+    <h3 style="margin:8px 0;">游客额度提醒</h3>
+    <p style="font-size:13px;color:#666;">您已累计消费 5000 token。登录后可获更多额度与完整功能。</p>
+    <div style="display:flex;gap:10px;margin-top:14px;">
+      <button onclick="document.getElementById('guest-modal').style.display='none'"
+              style="flex:1;padding:10px;border-radius:8px;border:1px solid #ddd;background:#fff;">继续游客</button>
+      <a href="/mobile/login" style="flex:1;padding:10px;border-radius:8px;background:#2b7de9;color:#fff;text-decoration:none;">立即登录</a>
+    </div>
+  </div>
+</div>
+<style>
+  .msg{display:flex;margin:8px 0;}
+  .msg.user{justify-content:flex-end;}
+  .bubble{max-width:78%;padding:10px 14px;border-radius:14px;font-size:15px;line-height:1.5;word-break:break-word;white-space:pre-wrap;}
+  .msg.ai .bubble{background:#fff;color:#222;border-top-left-radius:4px;box-shadow:0 1px 2px rgba(0,0,0,.06);}
+  .msg.user .bubble{background:#2b7de9;color:#fff;border-top-right-radius:4px;}
+  .msg .bubble.err{background:#fee;color:#c33;}
+  .typing{color:#999;font-style:italic;}
+</style>
+<script>
+let streaming = false;
+const box = document.getElementById('chat-box');
+function scrollBottom(){ box.scrollTop = box.scrollHeight; }
+function addMsg(role, text, cls){
+  const d = document.createElement('div');
+  d.className = 'msg ' + role;
+  const b = document.createElement('div');
+  b.className = 'bubble' + (cls ? ' ' + cls : '');
+  b.textContent = text;
+  d.appendChild(b); box.appendChild(d); scrollBottom();
+  return b;
+}
+function setBalance(v){ if(v !== null && v !== undefined) document.getElementById('balance').textContent = v + ' token'; }
+
+async function sendMsg(){
+  if(streaming) return;
+  const inp = document.getElementById('chat-input');
+  const text = inp.value.trim();
+  if(!text) return;
+  inp.value = ''; streaming = true;
+  addMsg('user', text);
+  const aiB = addMsg('ai', '…', 'typing');
+  let acc = '', model = '';
+  try{
+    const resp = await fetch('/api/local-chat/send', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({message: text})
+    });
+    if(!resp.ok || !resp.body){
+      const et = await resp.text().catch(() => '');
+      aiB.classList.remove('typing');
+      aiB.classList.add('err');
+      aiB.textContent = '请求失败 HTTP ' + resp.status + (et ? ': ' + et.slice(0, 120) : '');
+      streaming = false; return;
+    }
+    const reader = resp.body.getReader();
+    const dec = new TextDecoder();
+    let buf = '';
+    while(true){
+      const {done, value} = await reader.read();
+      if(done) break;
+      buf += dec.decode(value, {stream:true});
+      const lines = buf.split('\n'); buf = lines.pop();
+      for(const line of lines){
+        if(!line.startsWith('data:')) continue;
+        const payload = line.slice(5).trim();
+        if(payload.startsWith('[done]')){
+          try{ model = JSON.parse(payload.slice(6)).model || ''; }catch(e){}
+        } else if(payload.startsWith('[prehold]')){
+          try{ setBalance(JSON.parse(payload.slice(10)).balance); }catch(e){}
+        } else if(payload.startsWith('[billing]')){
+          try{ const b = JSON.parse(payload.slice(9)); setBalance(b.balance); }catch(e){}
+        } else if(payload.startsWith('[guest_limit]')){
+          document.getElementById('guest-modal').style.display = 'flex';
+        } else if(payload.startsWith('[error]')){
+          let em = payload.slice(7); try{ em = JSON.parse(em).error; }catch(e){}
+          acc += '\n[出错] ' + em;
+        } else if(payload.startsWith('{')){
+          try{ const j = JSON.parse(payload); if(j.token) acc += j.token; }catch(e){}
+        }
+      }
+      aiB.classList.remove('typing');
+      aiB.textContent = acc || '…';
+      scrollBottom();
+    }
+    if(!acc){ aiB.textContent = '(空回复)'; }
+  }catch(e){
+    aiB.classList.remove('typing'); aiB.classList.add('err');
+    aiB.textContent = '网络异常: ' + e.message;
+  }
+  streaming = false;
+  scrollBottom();
+}
+document.getElementById('chat-input').addEventListener('keydown', e => { if(e.key === 'Enter') sendMsg(); });
+fetch('/api/local-chat/balance').then(r => r.json()).then(d => setBalance(d.balance !== undefined ? d.balance : (d.data && d.data.balance))).catch(() => setBalance('游客 10000'));
+</script>
+{% endblock %}

@@ -2588,6 +2588,7 @@ def _frontline_patrol():
 
         # ── 维度 9: Flask 路由 405/404 巡检 (本地 test_client) ──
         try:
+            conn.commit()  # 🔒 先落库释放写锁 — test_client 页面请求需要写库, 防自锁死锁
             from server_real_db import app as _flask_app
             bad_routes = []
             quick_checks = ["/local-chat", "/ai", "/api/local-chat/sessions",
@@ -2651,6 +2652,9 @@ def _ingest_patrol_task(conn, title, description, source_sub, priority, source_i
         "VALUES (?,?,?,?,?,?,?,?,?,datetime('now','localtime'))",
         (title, description, "frontline_patrol", source_id, priority, "QUEUED",
          "OPS", patrol_team, "gold_qa_frontline"))
+    conn.commit()  # 🔒 flow_lock_death_fix_20261024: 立即提交释放写锁
+    # (实证: INSERT 不 commit → 巡逻 conn 持写锁 → 维度9 test_client 同步打页面写库撞自家锁
+    #  → 线程卡死 → commit 永不到达 → 全系统写锁死 (自锁死锁))
 
 
 def _int_now():
@@ -3235,3 +3239,132 @@ def run_lab_daemon_loop():
         # 等下一轮 15min
         _t.sleep(900)
 
+
+
+# ═══════════════════════════════════════════════════════════════════
+# 🧠 flow_smart_dispatch_20261024: 任务中心智能下发
+# 零 token 规则引擎: 任务描述 → 关键词匹配 11 技能包 → 挑选最优 contractor
+# (在岗优先 + 技能匹配 + 负载均衡) → mt_task_hall_dispatch 落库 → 回写大厅
+# ═══════════════════════════════════════════════════════════════════
+
+_SKILL_KEYWORDS = {
+    "防火墙":     ["防火墙", "攻击", "入侵", "ddos", "网络防护", "拦截"],
+    "安全":       ["安全", "漏洞", "渗透", "审计", "加固", "泄密"],
+    "AI":         ["ai", "模型", "训练", "推理", "ollama", "llm", "神经网络", "智能"],
+    "法律":       ["法律", "合规", "隐私", "个保法", "法务", "条款"],
+    "数据库":     ["数据库", "sqlite", "索引", "慢查询", "落库", "表结构", "wal"],
+    "前端":       ["前端", "页面", "ui", "css", "移动端", "h5", "渲染"],
+    "后端":       ["后端", "api", "flask", "接口", "路由", "服务"],
+    "运维":       ["部署", "运维", "服务器", "daemon", "进程", "重启", "监控"],
+    "数据":       ["数据", "统计", "报表", "分析", "清洗", "图表"],
+    "教育":       ["教学", "题库", "课程", "学习", "考试", "教辅"],
+    "IoT":        ["arduino", "iot", "传感器", "硬件", "串口", "板卡"],
+}
+
+
+def _match_skill(title_desc: str) -> str:
+    """关键词命中计分 → 最高分技能; 零命中 → '通用'"""
+    text = (title_desc or "").lower()
+    best, best_n = "通用", 0
+    for skill, kws in _SKILL_KEYWORDS.items():
+        n = sum(1 for kw in kws if kw in text)
+        if n > best_n:
+            best, best_n = skill, n
+    return best
+
+
+def _pick_contractor(conn, skill: str):
+    """挑选 contractor: 技能名/ID 匹配 > 在岗状态 > 历史派单最少 (负载均衡)"""
+    contractors = [dict(r) for r in conn.execute(
+        "SELECT * FROM mt_task_hall_contractors")]
+    if not contractors:
+        return None
+    # 实际列探测 (status/active/available 兼容)
+    def _is_available(c):
+        for k in ("status", "active", "available", "state"):
+            if k in c and isinstance(c[k], str):
+                return c[k].lower() in ("available", "active", "1", "online", "idle", "在岗")
+        return True  # 无状态列视为全部在岗
+    def _skill_hit(c):
+        blob = " ".join(str(c.get(k, "")) for k in
+                        ("skills", "skill_tags", "specialty", "tags", "name")).lower()
+        if not skill or skill == "通用":
+            return 0
+        return 2 if skill in blob else (1 if any(kw in blob for kw in _SKILL_KEYWORDS.get(skill, [])) else 0)
+    # 负载: dispatch 表里各 contractor 的在途单
+    load = {}
+    try:
+        for r in conn.execute(
+            "SELECT contractor_id, count(*) n FROM mt_task_hall_dispatch "
+            "WHERE status NOT IN ('DONE','DELIVERED','CANCELLED') GROUP BY contractor_id"):
+            load[r["contractor_id"]] = r["n"]
+    except Exception:
+        pass
+    def _load(c):
+        return load.get(str(c.get("contractor_id") or c.get("id") or ""), 0)
+    ranked = sorted(contractors,
+                    key=lambda c: (-_skill_hit(c), 0 if _is_available(c) else 1, _load(c)))
+    return ranked[0] if ranked else None
+
+
+@daemon_skill_lab_bp.route("/api/daemon-lab/hall/smart-dispatch", methods=["POST"])
+@_login_required
+def hall_smart_dispatch():
+    """🧠 智能下发:
+    - body: {"task_ids": [id...]}  或  {"limit": N} (默认抓全部 QUEUED)
+    - 每个任务: _match_skill → _pick_contractor → mt_task_hall_dispatch 落库
+      → 回写 mt_lab_task_hall status=DISPATCHED
+    - 返回: {ok, dispatched:[...], failed:[...]}"""
+    _ensure_claim_tables()
+    body = request.get_json(silent=True) or {}
+    task_ids = body.get("task_ids") or []
+    limit = int(body.get("limit") or 20)
+    conn = _db()
+    try:
+        if task_ids:
+            qmarks = ",".join("?" * len(task_ids))
+            tasks = [dict(r) for r in conn.execute(
+                f"SELECT * FROM mt_lab_task_hall WHERE id IN ({qmarks}) AND status='QUEUED'",
+                task_ids)]
+        else:
+            tasks = [dict(r) for r in conn.execute(
+                "SELECT * FROM mt_lab_task_hall WHERE status='QUEUED' "
+                "ORDER BY CASE priority WHEN 'HIGH' THEN 0 ELSE 1 END, id ASC LIMIT ?", (limit,))]
+        dispatched, failed = [], []
+        for t in tasks:
+            try:
+                desc = f"{t.get('title','')} {t.get('description','')}"
+                skill = _match_skill(desc)
+                c = _pick_contractor(conn, skill)
+                if not c:
+                    failed.append({"id": t["id"], "error": "no_contractor"})
+                    continue
+                cid = str(c.get("contractor_id") or c.get("id") or "")
+                cname = str(c.get("name") or c.get("username") or cid)
+                did = f"DISP-{int(_time.time())}-{t['id']}"
+                briefing = (f"[智能下发] 任务#{t['id']} {t.get('title','')} | "
+                            f"匹配技能: {skill} | 承接: {cname} | "
+                            f"优先级: {t.get('priority','NORMAL')}")
+                conn.execute(
+                    """INSERT INTO mt_task_hall_dispatch
+                       (dispatch_id, source_task_id, skill_id, contractor_id, priority,
+                        sla_deadline, status, briefing, dispatched_at)
+                       VALUES(?,?,?,?,?,?, 'DISPATCHED', ?, datetime('now','localtime'))""",
+                    (did, str(t["id"]), skill, cid,
+                     1 if str(t.get("priority", "")).upper() == "HIGH" else 2,
+                     "2026-10-26 23:59:59", briefing))
+                conn.execute(
+                    "UPDATE mt_lab_task_hall SET status='DISPATCHED', "
+                    "dispatched_at=datetime('now','localtime'), verdict=? WHERE id=?",
+                    (f"SMART:{skill}->{cid}", t["id"]))
+                conn.commit()
+                dispatched.append({"task": t["id"], "skill": skill, "contractor": cname,
+                                   "dispatch_id": did})
+                _audit("hall", "SMART_DISPATCH", f"#{t['id']} {skill}->{cid}",
+                       {"dispatch_id": did, "skill": skill, "contractor": cid})
+            except Exception as e:
+                failed.append({"id": t.get("id"), "error": str(e)[:120]})
+        return jsonify({"ok": True, "matched": len(tasks),
+                        "dispatched": dispatched, "failed": failed})
+    finally:
+        conn.close()

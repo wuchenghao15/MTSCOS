@@ -33,7 +33,7 @@ import time
 import uuid
 from datetime import datetime
 from functools import wraps
-from flask import Blueprint, Response, g, jsonify, request, session, stream_with_context
+from flask import Blueprint, Response, current_app, g, jsonify, request, session, stream_with_context
 from app.db import DB_PATH, connect as _db  # flow_db_unify_chat_20261022 单一权威入口
 _REWARD_KEY = os.environ.get('MTSCOS_REWARD_SEED', '[REDACTED]').encode()[:16]
 
@@ -399,13 +399,42 @@ def _estimate_cost(model, prompt_tokens, completion_tokens):
             'pricing': p}
 
 
+def _begin_immediate_retry(conn, attempts: int = 4, delay: float = 0.5):
+    """🔒 flow_chat_lock_storm_20261024: BEGIN IMMEDIATE 锁重试
+    50 daemon 高频写库环境下 30s busy_timeout 仍可能超时, 三段式退避兜底"""
+    for i in range(attempts):
+        try:
+            conn.execute("BEGIN IMMEDIATE")
+            return
+        except sqlite3.OperationalError as e:
+            if "locked" in str(e).lower() and i < attempts - 1:
+                time.sleep(delay * (i + 1))
+                continue
+            raise
+
+
 def _prehold(user_id, session_id, estimated_cost, model):
     """原子预扣: 游客→mt_token_wallets, 注册→mt_user_token_accounts
     返回 {'ok': bool, 'balance': int, 'held_id': ledger_id}"""
     conn = _db()
     try:
         is_guest = str(user_id).startswith('guest')
-        conn.execute("BEGIN IMMEDIATE")
+        _begin_immediate_retry(conn)
+        # 🔐 flow_token_tamper_audit_20261024: 验签 → 篡改检测
+        if is_guest:
+            ok, wallet, tampered = _verify_wallet_hash(user_id, conn=conn)
+            if tampered:
+                conn.rollback()
+                conn.close()
+                _audit_token_tamper(user_id, wallet or {}, reason='prehold_hash_mismatch')
+                return {'ok': False, 'balance': 0, 'held_id': None,
+                        'error': 'wallet_tampered_locked'}
+            # 🔐 老钱包无签名 → prehold 时自动补签名 (消灭篡改检测盲区)
+            if ok and wallet and not (wallet.get('salt') and wallet.get('balance_hash')):
+                _bs = os.urandom(8).hex()
+                _bh = _recompute_wallet_hash(wallet.get('balance', 0), wallet.get('frozen', 0), _bs)
+                conn.execute("UPDATE mt_token_wallets SET salt=?, balance_hash=? WHERE user_id=?",
+                             (_bs, _bh, user_id))
         if is_guest:
             row = conn.execute(
                 "SELECT balance, frozen FROM mt_token_wallets WHERE user_id=?", (user_id,)
@@ -420,6 +449,8 @@ def _prehold(user_id, session_id, estimated_cost, model):
                 "UPDATE mt_token_wallets SET frozen=frozen+?, updated_at=datetime('now','localtime') "
                 "WHERE user_id=?", (estimated_cost, user_id)
             )
+            # 🔐 更新 balance_hash (签名链) — 事务内同步
+            _sync_wallet_hash(user_id, conn)
         else:
             row = conn.execute(
                 "SELECT balance, frozen FROM mt_user_token_accounts WHERE user_id=?", (user_id,)
@@ -464,7 +495,7 @@ def _refund_prehold(user_id, prehold_amount, session_id='', reason='error'):
     is_guest = uid_str.startswith('guest')
     conn = _db()
     try:
-        conn.execute("BEGIN IMMEDIATE")
+        _begin_immediate_retry(conn)
         if is_guest:
             row = conn.execute(
                 "SELECT balance, frozen FROM mt_token_wallets WHERE user_id=?", (uid_str,)
@@ -481,6 +512,7 @@ def _refund_prehold(user_id, prehold_amount, session_id='', reason='error'):
                 "UPDATE mt_token_wallets SET balance=balance+?, frozen=frozen-? "
                 "WHERE user_id=?", (actual_release, actual_release, uid_str)
             )
+            _sync_wallet_hash(uid_str, conn)
             bal_after = row['balance'] + actual_release
         else:
             row = conn.execute(
@@ -524,7 +556,7 @@ def _finalize(user_id, session_id, model, prompt_tokens, completion_tokens, preh
     is_guest = uid_str.startswith('guest')
     conn = _db()
     try:
-        conn.execute("BEGIN IMMEDIATE")
+        _begin_immediate_retry(conn)
         prehold_amount = (prehold_result or {}).get('held_amount', 0)
 
         # 2) 实扣真实用量
@@ -544,7 +576,7 @@ def _finalize(user_id, session_id, model, prompt_tokens, completion_tokens, preh
                 "UPDATE mt_token_wallets SET balance=?, frozen=MAX(0,frozen-?) WHERE user_id=?",
                 (new_balance, prehold_amount, uid_str)
             )
-        else:
+            _sync_wallet_hash(uid_str, conn)
             row = conn.execute(
                 "SELECT balance FROM mt_user_token_accounts WHERE user_id=?", (user_id,)
             ).fetchone()
@@ -577,6 +609,7 @@ def _finalize(user_id, session_id, model, prompt_tokens, completion_tokens, preh
                     "UPDATE mt_token_wallets SET balance=balance+? WHERE user_id=?",
                     (refund, uid_str)
                 )
+                _sync_wallet_hash(uid_str, conn)
             else:
                 conn.execute(
                     "UPDATE mt_user_token_accounts SET balance=balance+? WHERE user_id=?",
@@ -606,6 +639,7 @@ def _finalize(user_id, session_id, model, prompt_tokens, completion_tokens, preh
                     "UPDATE mt_token_wallets SET balance=balance+? WHERE user_id=?",
                     (reward, uid_str)
                 )
+                _sync_wallet_hash(uid_str, conn)
             else:
                 conn.execute(
                     "UPDATE mt_user_token_accounts SET balance=balance+?, total_rewarded=total_rewarded+? "
@@ -1086,7 +1120,8 @@ def _call_ollama_stream(user_text, system_prompt, username, images=None, model_o
 
     try:
         host = os.environ.get("OLLAMA_HOST", "").strip() or _resolve_ollama_host()
-        model = model_override or os.environ.get("OLLAMA_MODEL", "qwen2.5:7b")
+        # 与计费 pricing 配置一致; mini 实装 qwen2.5:14b (7b 未装会 404)
+        model = model_override or os.environ.get("OLLAMA_MODEL", "").strip() or "qwen2.5:14b"
         user_msg = {"role": "user", "content": user_text}
         if images:
             user_msg["images"] = images  # base64 列表, 视觉模型多模态输入
@@ -1127,15 +1162,116 @@ def _call_ollama_stream(user_text, system_prompt, username, images=None, model_o
 # ║ flow_chat_guest_free_20261023: 游客 1 万免费 token 权限体系
 # ║ 注册用户 → 正常扣费 mt_token_wallets.balance ← mt_user_token_ledger
 # ║ 游客     → device_hash 身份 + 10000 免费额度 (30天过期)
+# ║          🔐 token 签名链 + 审计 (flow_token_tamper_audit_20261024)
+# ║          每次变更: 验旧 hash → 改余额 → 算新 hash → 触发立法委告警
+# ╚═══════════════════════════════════════════════════════════════
+
+def _recompute_wallet_hash(balance: int, frozen: int, salt: str) -> str:
+    """wallet 签名 = sha256(balance|frozen|salt) 32 位 hex"""
+    blob = f"{balance}|{frozen}|{salt}"
+    return hashlib.sha256(blob.encode()).hexdigest()
+
+
+def _sync_wallet_hash(user_id: str, conn):
+    """改完 balance/frozen 后重算 + 写入 balance_hash (事务内版本)
+    传入的 conn 必须已 BEGIN, 本函数不 commit/rollback"""
+    try:
+        row = conn.execute(
+            "SELECT balance, frozen, salt FROM mt_token_wallets WHERE user_id=?", (user_id,)
+        ).fetchone()
+        if row and row['salt']:
+            h = _recompute_wallet_hash(row['balance'], row['frozen'], row['salt'])
+            conn.execute("UPDATE mt_token_wallets SET balance_hash=? WHERE user_id=?", (h, user_id))
+    except Exception as e:
+        sys.stderr.write(f"[TOKEN] _sync_wallet_hash fail user={user_id}: {e}\n")
+
+
+def _verify_wallet_hash(user_id: str, conn=None) -> tuple:
+    """验签 + 检测篡改 → (ok, wallet_row, tampered)
+    返回 (是否验签通过, wallet dict, 是否被篡改)"""
+    close = conn is None
+    conn = conn or _db()
+    try:
+        row = conn.execute(
+            "SELECT * FROM mt_token_wallets WHERE user_id=?", (user_id,)).fetchone()
+        if row is None:
+            return False, None, False
+        salt = row['salt'] or ''
+        stored_hash = row['balance_hash'] or ''
+        if not salt or not stored_hash:
+            # 新钱包/老钱包无签名 → 自动补签名
+            close and conn.close()
+            return True, dict(row), False
+        expected = _recompute_wallet_hash(row['balance'], row['frozen'], salt)
+        tampered = (expected != stored_hash)
+        return not tampered, dict(row), tampered
+    finally:
+        close and conn.close()
+
+
+def _audit_token_tamper(user_id: str, wallet: dict, reason: str = 'hash_mismatch'):
+    """检测到 token 篡改 → 写入审计表 + 触发立法委紧急告警 + 锁钱包
+    flow_token_legislature_20261024: 非法改 token 自动触发立法委紧急立法"""
+    try:
+        conn = _db()
+        # 1) 锁钱包 (frozen 置为 balance → 冻结全部) + 更新 hash
+        conn.execute(
+            "UPDATE mt_token_wallets SET frozen=balance, updated_at=datetime('now','localtime') "
+            "WHERE user_id=?", (user_id,))
+        # 锁后重算 hash (frozen 变成 balance, 签名链必须同步)
+        try:
+            _upd = conn.execute("SELECT balance, frozen, salt FROM mt_token_wallets WHERE user_id=?", (user_id,)).fetchone()
+            if _upd and _upd['salt']:
+                _h = _recompute_wallet_hash(_upd['balance'], _upd['frozen'], _upd['salt'])
+                conn.execute("UPDATE mt_token_wallets SET balance_hash=? WHERE user_id=?", (_h, user_id))
+        except Exception: pass
+        # 2) 写审计日志
+        conn.execute("""INSERT INTO mt_token_audit_log
+            (user_id, balance, frozen, balance_hash, reason, action, legislative_triggered)
+            VALUES(?,?,?,?,?,?,1)""",
+            (user_id, wallet.get('balance', 0), wallet.get('frozen', 0),
+             wallet.get('balance_hash', ''), reason, 'LOCK_AND_AUDIT'))
+        # 3) 立法委紧急告警: 创建紧急提案 (flow_token_legislature_20261024)
+        try:
+            conn.execute("""INSERT INTO mt_committee_proposals
+                (title, body, proposal_type, sponsor, status, priority, emergency_flag, created_at)
+                VALUES(?,?,?,?,?,?,1,datetime('now','localtime'))""",
+                (f'TOKEN 紧急立法 — {user_id} token 篡改检测',
+                 f'检测到用户 {user_id} 的 mt_token_wallets hash 签名链断裂 (reason={reason}). '
+                 f'当前 balance={wallet.get("balance",0)}, frozen={wallet.get("frozen",0)}. '
+                 f'钱包已锁 frozen=balance. 需要立法委颁布 token 保护法令, 禁止直接修改 DB 余额. '
+                 f'法定改 token 渠道: (1)_prehold → _finalize 三阶段结算 (2)_refund_prehold 冲正 '
+                 f'(3)_ensure_daily_grant 每日赠送 (4)_admin_adjust 管理员调整 (7步审批)',
+                 '修改', 'token_audit_ai', 'PROPOSED', 'CRITICAL'))
+        except Exception:
+            pass  # 委员会表可能不存在
+        conn.commit()
+        conn.close()
+        sys.stderr.write(f"[TOKEN-AUDIT] TAMPER DETECTED user={user_id} reason={reason} → wallet LOCKED + legislature triggered\n")
+        return True
+    except Exception as e:
+        sys.stderr.write(f"[TOKEN-AUDIT] _audit_token_tamper fail: {e}\n")
+        return False
+
+
 # ║          未登录不 401 → 自动建 guest session
 # ╚═══════════════════════════════════════════════════════════════
 
+
 def _device_hash(req=None):
-    """游客唯一身份 = sha256(IP|UA) 前 16 位 — 无需注册, 浏览器换指纹变人"""
+    """游客唯一身份 = sha256(real_ip|UA|canvas) 前 16 位 — 绑定设备防多开
+    flow_guest_mac_bind_20261024: X-Forwarded-For → 真实 IP (Cloudflare tunnel)
+    X-Forwarded-User → 前端 canvas 指纹 (可选, 无则仅 IP|UA)"""
     r = req or request
-    ip = r.remote_addr or '0.0.0.0'
+    # 真实 IP 优先级: X-Forwarded-For (Cloudflare) > X-Real-IP > remote_addr
+    ip = r.headers.get('X-Forwarded-For', '')
+    if ip:
+        ip = ip.split(',')[0].strip()
+    else:
+        ip = r.headers.get('X-Real-IP') or r.remote_addr or '0.0.0.0'
     ua = (r.headers.get('User-Agent') or 'unknown')[:80]
-    raw = f"{ip}|{ua}"
+    canvas = r.headers.get('X-Device-Fp', '')[:32]  # 前端 canvas 指纹 (可选)
+    raw = f"{ip}|{ua}|{canvas}"
     return hashlib.sha256(raw.encode()).hexdigest()[:16]
 
 def _ensure_guest_wallet(device_hash, db=None):
@@ -1144,15 +1280,30 @@ def _ensure_guest_wallet(device_hash, db=None):
     row = db.execute("SELECT * FROM mt_token_wallets WHERE user_id=?", (f"guest_{device_hash}",)).fetchone()
     if row:
         # 已存在, 补 balance 兜底
-        db.execute("UPDATE mt_token_wallets SET updated_at=datetime('now','localtime') WHERE user_id=?", (f"guest_{device_hash}",))
-        db.commit()
+        try:
+            db.execute("UPDATE mt_token_wallets SET updated_at=datetime('now','localtime') WHERE user_id=?", (f"guest_{device_hash}",))
+            db.commit()
+        except sqlite3.OperationalError:
+            pass  # 锁冲突不阻断聊天 (钱包已在, 只是没摸 updated_at)
         return dict(row)
-    # 新建游客钱包
-    db.execute("""INSERT INTO mt_token_wallets(user_id, username, is_guest, guest_device_hash,
-                    balance, guest_free_grant, expires_at)
-                  VALUES(?,?,1,?,?,10000, datetime('now','localtime','+30 days'))""",
-               (f"guest_{device_hash}", f"Guest_{device_hash[:8]}", device_hash, 10000))
-    db.commit()
+    # 新建游客钱包 (出生即带签名链: salt + balance_hash, 防篡改盲区)
+    # 🔒 flow_chat_lock_storm_20261024: 建档 INSERT 锁重试 (50 daemon 环境下锁冲突常见)
+    _salt = os.urandom(8).hex()
+    _h0 = _recompute_wallet_hash(10000, 0, _salt)
+    _ins = """INSERT INTO mt_token_wallets(user_id, username, is_guest, guest_device_hash,
+                    balance, guest_free_grant, salt, balance_hash, expires_at)
+              VALUES(?,?,1,?,?,10000,?,?, datetime('now','localtime','+30 days'))"""
+    _args = (f"guest_{device_hash}", f"Guest_{device_hash[:8]}", device_hash, 10000, _salt, _h0)
+    for _i in range(4):
+        try:
+            db.execute(_ins, _args)
+            db.commit()
+            break
+        except sqlite3.OperationalError as _e:
+            if "locked" in str(_e).lower() and _i < 3:
+                time.sleep(0.5 * (_i + 1))
+                continue
+            raise
     row = db.execute("SELECT * FROM mt_token_wallets WHERE user_id=?", (f"guest_{device_hash}",)).fetchone()
     return dict(row) if row else None
 
@@ -2528,6 +2679,23 @@ def send_message():
 
     # ── Token 计费 v25.5: 每日赠送 + 预扣拦截 ──
     sa_exempt = _is_sa(u)
+
+    # ── flow_orphan_cleanup_20261024: 入口处先清断网残留 frozen prehold ──
+    # 断网/刷新/GeneratorExit 后可能残留 frozen prehold 未释放
+    if not sa_exempt:
+        try:
+            _c = _db()
+            _orphans = _c.execute(
+                "SELECT COALESCE(frozen,0) FROM mt_token_wallets WHERE user_id=?",
+                (u['user_id'],)).fetchone()
+            if _orphans and _orphans[0] > 0:
+                _refund_prehold(u['user_id'], _orphans[0],
+                                reason='orphan_cleanup_on_new_request',
+                                session_id=sid or '')
+            _c.close()
+        except Exception:
+            pass
+
     prehold_result = None
     estimated_cost = 0
     if not sa_exempt:
@@ -2623,10 +2791,25 @@ def send_message():
                     except Exception:
                         pass
         except GeneratorExit:
+            # 断网/刷新/非法中断 → 紧急冲正 prehold token 冻结 (flow_disconnect_refund_20261024)
             usage['completion_tokens'] = len(''.join(full_response))
-            pass
+            if not sa_exempt and prehold_result:
+                _refund_prehold(u['user_id'],
+                                prehold_result.get('held_amount', 0),
+                                sid,
+                                reason='sse_disconnect_generator_exit')
+            raise  # 继续抛出, 让 Flask 正常终止 Response 生成
         except Exception as e:
             yield f"data: [error] {json.dumps({'error': str(e)}, ensure_ascii=False)}\n\n"
+            # 异常后也尝试冲正 (兜底)
+            if not sa_exempt and prehold_result:
+                try:
+                    _refund_prehold(u['user_id'],
+                                    prehold_result.get('held_amount', 0),
+                                    sid,
+                                    reason=f'sse_exception:{type(e).__name__}')
+                except Exception:
+                    pass
 
         full_ai_text = ''.join(full_response)
         duration_ms = int((time.time() - t0) * 1000)
@@ -2682,6 +2865,28 @@ def send_message():
                 yield f"data: [billing] {json.dumps({'prompt_tokens': usage['prompt_tokens'], 'completion_tokens': usage['completion_tokens'], 'model': model, 'model_weight': _pricing_for(model)['model_weight'], 'deducted': settle['net_cost'], 'preheld': settle.get('prehold', 0), 'refunded': settle.get('refund', 0), 'reward': settle.get('reward', 0), 'balance': settle['balance']}, ensure_ascii=False)}\n\n"
             except Exception:
                 pass
+
+            # 游客弹窗: 累计消费超 5000 token → 提示登录 (限频: session 内只弹 1 次/阈值)
+            if str(u['user_id']).startswith('guest_') and settle['net_cost'] > 0:
+                try:
+                    _CONSUMPTION_WARN_THRESHOLD = 5000
+                    _SESSION_KEY = f"glimit_{u['user_id']}_{_CONSUMPTION_WARN_THRESHOLD}"
+                    if not session.get(_SESSION_KEY):
+                        # 查累计消费
+                        _c = _db()
+                        _row = _c.execute(
+                            "SELECT COALESCE(guest_consumed,0) AS gc FROM mt_token_wallets WHERE user_id=?",
+                            (u['user_id'],)).fetchone()
+                        _c.close()
+                        _total_consumed = (_row['gc'] if _row else 0) + settle['net_cost']
+                        if _total_consumed >= _CONSUMPTION_WARN_THRESHOLD:
+                            session[_SESSION_KEY] = 1
+                            try:
+                                yield f"data: [guest_limit] {json.dumps({'reason': f'consumed_ge_{_CONSUMPTION_WARN_THRESHOLD}', 'total_consumed': _total_consumed, 'threshold': _CONSUMPTION_WARN_THRESHOLD, 'login_url': '/login?next=/local-chat', 'message': f'游客已累计消耗 {_total_consumed} token, 建议登录获取更多免费额度 + 本地 AI 引擎 (零 token)'} , ensure_ascii=False)}\n\n"
+                            except Exception:
+                                pass
+                except Exception:
+                    pass
 
         # 保存 AI 消息
         _save_message(sid, u['user_id'], 'assistant', full_ai_text,
