@@ -63,12 +63,70 @@ def _hall_task(conn, title, desc, prio='NORMAL', source='corps_field'):
         return False
 
 
-def _squads(conn, stype: str, limit: int = 3):
-    """按 squad_id 取模分编 — 每类分队固定领 3 个连."""
+def _squads(conn, stype: str, limit: int = 12):
+    """按 rowid 取模分编 — 54 连全编入, 每类 ~11 连."""
     return conn.execute(
         "SELECT squad_id, IFNULL(name,'') FROM mt_corps_squads "
         "WHERE (rowid % 5)=? ORDER BY rowid LIMIT ?",
         (SQUAD_TYPES.index(stype), limit)).fetchall()
+
+
+# 下沉领域池 (连队级细分): 领域 → 检查表/检查方式
+DOMAIN_POOL = [
+    ('教辅K12', 'mt_edu_sync_log'), ('Arduino 同步', 'mt_arduino_sync_log'),
+    ('文件整理', 'mt_file_organize_log'), ('防火墙', 'mt_firewall_rules'),
+    ('任务大厅', 'mt_lab_task_hall'), ('脑库投喂', 'mt_ai_brain_feed_log'),
+    ('EigenFlux', 'eigenflux_comm_messages'), ('维护部队', 'mt_maintenance_log'),
+    ('冰山脉冲', 'mt_iceberg_runs'), ('三委立法', 'mt_committee_proposals'),
+    ('题库质量', 'mt_edu_sync_content'), ('关系绑定', 'mt_center_ai_binding'),
+    ('规则学习', 'mt_ai_rule_learning_log'), ('深度巡检', 'mt_daemon_registry'),
+    ('员工心跳', 'ai_employees'),
+]
+
+
+def assign_domains_once(conn) -> dict:
+    """连队级领域绑定: 54 连按序领领域 (多轮循环), 落 duty 列."""
+    stats = {'assigned': 0, 'squads': 0}
+    squads = conn.execute(
+        "SELECT rowid, squad_id, IFNULL(duty,'') FROM mt_corps_squads "
+        "ORDER BY rowid").fetchall()
+    stats['squads'] = len(squads)
+    for i, (rowid, sid, duty) in enumerate(squads):
+        stype = SQUAD_TYPES[i % 5]
+        dom = DOMAIN_POOL[(i // 5) % len(DOMAIN_POOL)][0]
+        new_duty = f'{stype}·{dom}'
+        if duty == new_duty:
+            continue
+        try:
+            conn.execute("UPDATE mt_corps_squads SET duty=? WHERE rowid=?",
+                         (new_duty, rowid))
+            stats['assigned'] += 1
+        except Exception:
+            pass
+    conn.commit()
+    return stats
+
+
+def domain_health_once(conn) -> dict:
+    """按连队领域抽查对应表新鲜度 (每轮抽查 4 个领域)."""
+    stats = {'checked': 0, 'stale': 0}
+    start = int(time.time() // POLL_SECS) % len(DOMAIN_POOL)
+    for k in range(4):
+        dom, tbl = DOMAIN_POOL[(start + k) % len(DOMAIN_POOL)]
+        try:
+            n = conn.execute(
+                f"SELECT count(*) FROM {tbl} WHERE rowid>(SELECT max(rowid)-50 "
+                f"FROM {tbl})").fetchone()[0]
+            stats['checked'] += 1
+            if n == 0:
+                stats['stale'] += 1
+                _hall_task(conn, f'维和下沉: 领域「{dom}」近 50 行零产出',
+                           f'抽查表 {tbl} 无近期活动, 需领域连队核查', 'NORMAL')
+        except Exception:
+            continue
+    if stats['stale']:
+        _log(conn, 'DOMAIN_STALE', stats)
+    return stats
 
 
 def patrol_once(conn) -> dict:
@@ -163,16 +221,21 @@ LOOPS = [('PATROL', patrol_once), ('SURVEY', survey_once), ('REPAIR', repair_onc
 
 
 def field_once(conn) -> dict:
-    """每轮轮转 1 类分队 (按时间片), 全分队产出聚合."""
+    """每轮: 领域分配 (幂等) + 轮转 1 类分队行动 + 领域健康抽查."""
+    r = {'assign': assign_domains_once(conn),
+         'domain_health': domain_health_once(conn)}
     idx = int(time.time() // POLL_SECS) % len(LOOPS)
     name, fn = LOOPS[idx]
-    r = fn(conn)
-    r['squad_type'] = name
+    r['squad_action'] = fn(conn)
+    r['squad_action']['squad_type'] = name
     return r
 
 
 def run_all(conn) -> dict:
-    out = {name: fn(conn) for name, fn in LOOPS}
+    out = {'assign': assign_domains_once(conn),
+           'domain_health': domain_health_once(conn)}
+    for name, fn in LOOPS:
+        out[name] = fn(conn)
     out['note'] = 'GUARD 由 dispatch.guard_once 持有'
     return out
 
