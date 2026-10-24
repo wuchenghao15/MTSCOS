@@ -255,7 +255,9 @@ def get_conn() -> sqlite3.Connection:
         conn.execute("PRAGMA journal_mode=WAL")
     except sqlite3.Error:
         pass
-    conn.execute("PRAGMA busy_timeout=12000")
+    # flow_unified_ops_20261024: 12s→60s — 启动期 ensure_eigenflux_registrations
+    # 在 WAL 写竞争下 12s 等不到锁即崩, wrapper 30s 冷却无限重试 → 心跳停更 5 天
+    conn.execute("PRAGMA busy_timeout=60000")
     return conn
 
 
@@ -306,6 +308,8 @@ def ensure_tables() -> Dict[str, bool]:
             ON mt_ai_eigenflux_connections(right_employee_id, right_employee_table);
         CREATE INDEX IF NOT EXISTS idx_ae_conn_state
             ON mt_ai_eigenflux_connections(handshake_state);
+        CREATE INDEX IF NOT EXISTS idx_ae_reg_emp
+            ON eigenflux_registrations(employee_id, employee_type);
 
         CREATE TABLE IF NOT EXISTS mt_ai_eigenflux_messages (
             msg_id             INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -533,15 +537,18 @@ def _heartbeat_round(
                 [(a[0], a[0], a[1], a[2]) for a in update_args],
             )
             # 兼容老类型 business_expert，若上面没更新到(employee_type不匹配)再兜底一次
-            for a in update_args:
-                now_iso_a, eid, etbl = a[0], a[1], a[2]
-                if etbl == "ai_employees":
-                    conn.execute(
-                        "UPDATE eigenflux_registrations SET last_heartbeat=?, updated_at=? "
-                        "WHERE employee_id=? AND employee_type='business_expert' "
-                        "AND (last_heartbeat IS NULL OR last_heartbeat < ?)",
-                        (now_iso_a, now_iso_a, eid, now_iso_a),
-                    )
+            # flow_unified_ops_20261024: 原逐行循环 244 次全表扫(OR 条件废索引)≈300万行/轮
+            # 把主线程卡死 10min+；改为单条 IN 批量 UPDATE + 复合索引, 单次扫描完成
+            _legacy_ids = [a[1] for a in update_args if a[2] == "ai_employees"]
+            if _legacy_ids:
+                _ph = ",".join("?" * len(_legacy_ids))
+                conn.execute(
+                    "UPDATE eigenflux_registrations SET last_heartbeat=?, updated_at=? "
+                    "WHERE employee_type='business_expert' "
+                    f"AND employee_id IN ({_ph}) "
+                    "AND (last_heartbeat IS NULL OR last_heartbeat < ?)",
+                    [update_args[0][0], update_args[0][0], *_legacy_ids, update_args[0][0]],
+                )
             conn.commit()
 
     # 组件级 system_heartbeat
