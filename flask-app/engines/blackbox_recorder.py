@@ -249,7 +249,7 @@ class BlackBoxRecorder:
         try:
             with self._get_connection() as conn:
                 cursor = conn.cursor()
-                cursor.execute("PRAGMA integrity_check")
+                cursor.execute("PRAGMA quick_check")
                 state['integrity'] = cursor.fetchone()[0]
 
                 cursor.execute("SELECT COUNT(*) FROM system_rules WHERE is_active = 1")
@@ -570,7 +570,7 @@ class BlackBoxRecorder:
                 if event_type == 'database_corruption':
                     action += "执行数据库完整性修复"
                     with self._get_connection() as conn:
-                        conn.execute("PRAGMA integrity_check")
+                        conn.execute("PRAGMA quick_check")
                         conn.execute("VACUUM")
                 elif event_type == 'scheduler_crash':
                     action += "尝试重启调度引擎"

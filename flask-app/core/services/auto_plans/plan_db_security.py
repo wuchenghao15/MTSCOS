@@ -63,7 +63,7 @@ class DBSecurityPlan(AbstractAutoPlan):
 
             conn = sqlite3.connect(db_path)
             cursor = conn.cursor()
-            cursor.execute("PRAGMA integrity_check")
+            cursor.execute("PRAGMA quick_check")
             integrity = cursor.fetchone()[0]
 
             cursor.execute("PRAGMA quick_check")

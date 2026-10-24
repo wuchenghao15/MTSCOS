@@ -525,7 +525,7 @@ class SystemMonitorAgent:
         try:
             with get_db_connection() as conn:
                 cursor = conn.cursor()
-                cursor.execute('PRAGMA integrity_check')
+                cursor.execute('PRAGMA quick_check')
                 result = cursor.fetchone()
                 if result[0] == 'ok':
                     return {'success': True, 'message': '数据库完整性检查通过'}

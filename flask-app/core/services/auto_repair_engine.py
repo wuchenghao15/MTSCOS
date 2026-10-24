@@ -683,7 +683,7 @@ class AutoRepairEngine:
                 repair_actions.append('执行数据库完整性检查')
                 with self._get_connection() as conn:
                     cursor = conn.cursor()
-                    cursor.execute("PRAGMA integrity_check")
+                    cursor.execute("PRAGMA quick_check")
                     result = cursor.fetchone()[0]
                     validation_result = result
 

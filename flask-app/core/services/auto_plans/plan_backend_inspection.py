@@ -80,7 +80,7 @@ class BackendInspectionPlan(AbstractAutoPlan):
 
             conn = sqlite3.connect(db_path, timeout=5)
             cursor = conn.cursor()
-            cursor.execute(r"PRAGMA integrity_check")
+            cursor.execute(r"PRAGMA quick_check")
             integrity = cursor.fetchone()[0]
 
             cursor.execute(r"SELECT COUNT(*) FROM system_rules WHERE is_active=1")

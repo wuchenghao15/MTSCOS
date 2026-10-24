@@ -243,7 +243,7 @@ def run_maintenance_tasks(conn):
     
     print("\n4. 检查数据库完整性...")
     try:
-        cursor.execute("PRAGMA integrity_check")
+        cursor.execute("PRAGMA quick_check")
         result = cursor.fetchone()[0]
         if result == 'ok':
             print("   ✓ 数据库完整性检查通过")

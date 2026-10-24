@@ -2478,10 +2478,15 @@ def _frontline_patrol():
         # ── 维度 4: DB integrity ──
         try:
             db_path = os.environ.get("APP_DB") or "database/app.db"
-            integrity = conn.execute("PRAGMA integrity_check").fetchone()[0]
+            # 🔧 P1-1b 全案真凶修复 (flow_unified_ops_20261023, mini SQL-TRACE + faulthandler 实证):
+            # 旧版 integrity_check 对 8.3GB 库全页扫描数分钟, 且 wal_checkpoint(PASSIVE)
+            # 会阻塞全部写者 → 每 30min 巡检周期内全舰队 database is locked
+            # (冰山 pulse/心跳/threat/iceberg_command 全部间歇锁死的总根源).
+            # 修复: integrity_check → quick_check (秒级抽样校验); TRUNCATE → PASSIVE (永不阻塞写者).
+            integrity = conn.execute("PRAGMA quick_check").fetchone()[0]
             wal_ok = True
             try:
-                wal = conn.execute("PRAGMA wal_checkpoint(TRUNCATE)").fetchall()
+                wal = conn.execute("PRAGMA wal_checkpoint(PASSIVE)").fetchall()
             except Exception:
                 wal_ok = False
             report.append({"dim": "DB integrity", "status": "OK" if integrity == "ok" else integrity,

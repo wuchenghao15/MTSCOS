@@ -247,7 +247,7 @@ def run_maintenance_tasks(conn):
 
     logger.info("\n4. 检查数据库完整性...")
     try:
-        cursor.execute("PRAGMA integrity_check")
+        cursor.execute("PRAGMA quick_check")
         result = cursor.fetchone()[0]
         if result == 'ok':
             logger.info("   ✓ 数据库完整性检查通过")

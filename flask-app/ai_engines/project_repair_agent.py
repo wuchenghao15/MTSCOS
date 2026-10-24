@@ -155,7 +155,7 @@ class ProjectRepairAgent(AIEmployee):
                 conn = sqlite3.connect(db_file)
                 cursor = conn.cursor()
 
-                cursor.execute("PRAGMA integrity_check")
+                cursor.execute("PRAGMA quick_check")
                 result = cursor.fetchone()
                 if result[0] != "ok":
                     errors.append({
