@@ -18,6 +18,20 @@ import sqlite3
 import secrets
 from datetime import datetime, timedelta
 
+# 🔒 v25 SemVer4: 版本号唯一权威 = flask-app/VERSION (含 tag), 经 core.version_source 读取
+# 禁止硬编码 — 违者触发 VERSION-RULE-VIOLATION
+try:
+    from core import version_source as _vs
+    _VER_TAGGED = _vs.read_raw_version() or _vs.get_system_version_tagged() or 'v25.0.0.1-iceberg-saga'
+except Exception:
+    # server_real_db 可能在 flask-app/ 外运行 (mini 根副本), VERSION 回退链
+    _VER_FALLBACK_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'flask-app', 'VERSION')
+    try:
+        with open(_VER_FALLBACK_PATH, 'r') as _f:
+            _VER_TAGGED = _f.read().strip()
+    except Exception:
+        _VER_TAGGED = 'v25.0.0.1-iceberg-saga'
+
 def _timefmt():
     """全项目统一的时间戳格式：ISO8601 naive local datetime."""
     return datetime.now().isoformat()
@@ -2014,7 +2028,7 @@ def _validate_enum(v, whitelist, field_name='参数'):
 #        → STEP_12_TEST1000 → (测试完重复步1-11) → FINAL_DONE
 # ============================================================
 
-_MT_DEV_FLOW_VERSION = 'v24.0.0-iceberg-unified'
+_MT_DEV_FLOW_VERSION = _VER_TAGGED
 _MT_DEV_FLOW_STEPS = (
     'STEP_1_PROPOSAL',              # 1. 提案
     'STEP_2A_ROUND',                # 2. A轮讨论
@@ -3345,9 +3359,9 @@ import hmac as _hmac  # noqa: E402
 import random as _rd  # noqa: E402
 
 # ---------- 容器常量 ----------
-_MT_SYS_CONTAINER_VERSION = 'v24.0.0-iceberg-unified'
-# 系统版本号（MINOR bump → v22.7.0：巡检缺口发现引擎5维架构优化 - auto_dev_team_engine.py 15硬伤+3运行BUG全修复(算法:_py_index 5维扫描复用↓80%+CompletionVerifier缓存验证↓99.5%+派发按weight降序 / 权重:GapPrioritizer唯一入口5维加权SEV*0.45+TYPE*0.25+OCCUR*0.12+FRESH*0.1+TEAM*0.08+建议池priority=ceil(w/10)链路一致+单return单审计日志 / 架构:DevPipelineRunner 4阶段Pipeline+ENGINE_REGISTRY生命周期注册+warmup_system统一入口 / 逻辑:IR14单事务批量transition+flow_id污染defrag↓93.8%+Implementer 4分支决策树confidence / 框架:连接池容量3+扫描mtime指纹缓存TTL900+GapEngineError 8错误码枚举) + §14强制12步骤自动执行100%STEP_7 + 总耗时↓94% 17.44s跑完81gaps）
-SYSTEM_VERSION = 'v24.0.0-iceberg-unified'
+# ⬆️ 版本号 _VER_TAGGED 已在文件顶部从 flask-app/VERSION 权威源派生, 直接引用
+_MT_SYS_CONTAINER_VERSION = _VER_TAGGED
+SYSTEM_VERSION = _VER_TAGGED
 # 🔒 P0 极密加固: _MT_SYS_CONTAINER_SECRET 运行时派生, 源码不留硬编码
 try:
     from app.utils.crypto_provider import crypto_provider as _cp2
@@ -5571,7 +5585,7 @@ _ROLE_CN = {
 # ==========================================================
 #  协议文档（注册时必须勾选）+ 身份组别体系
 # ==========================================================
-_LEGAL_TERMS_VERSION = 'v24.0.0-iceberg-unified'
+_LEGAL_TERMS_VERSION = _VER_TAGGED
 _LEGAL_TERMS_UPDATED_AT = '2026-08-05'
 
 _LEGAL_DOCUMENTS = {
