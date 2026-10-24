@@ -687,3 +687,5 @@ registry 终态：**46 RUNNING + 5 DOWN（诚实）**。4 个真空转均为边�
 | RECON 侦察队 | EigenFlux 最新情报监视 | 情报留痕 |
 
 守护 `sys_corps_field`（600s 轮转 1 类）+ launchd `com.mtscos.corps-field`。首跑：五分队各 3 连就位 + **EMPOWER 当场发现 11 技能缺口**。陷阱 +1：squad_id 为文本 UUID（CAST 全 0 → 全进 PATROL），分编改 rowid 取模。
+
+**§16.1 下沉分裂深化（同日续）**：54 连**全部编入**（每类 10-11 连）+ **连队级领域绑定** — 15 领域池（教辅K12/Arduino/文件整理/防火墙/任务大厅/脑库/EigenFlux/维护部队/冰山/三委/题库/关系绑定/规则学习/深度巡检/员工心跳）按序分配，duty 列真实落库（如 `PATROL·Arduino 同步 ← SQD_e4151c`），50/54 连绑定（4 个幂等已符）。新增 domain_health_once：每轮抽查 4 领域对应表近 50 行产出，停滞自动回灌大厅。守护重启 pid 51637。
