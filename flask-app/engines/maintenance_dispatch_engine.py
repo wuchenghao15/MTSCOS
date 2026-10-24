@@ -240,6 +240,108 @@ def _external_dispatch_inner(conn=None) -> dict:
     return stats
 
 
+# ============================================================
+# 执行闭环 (Phase3-补: 派发后无执行器, 60 单永远停在 DISPATCHED)
+# 每类任务映射一个真实证据采集器 — 执行 = 采集系统真实状态作证据,
+# 产出落 mt_maintenance_log, 完成时顺带写 ai_employees.last_heartbeat
+# ============================================================
+EVIDENCE_QUERIES = {
+    'security': ("防火墙活跃规则数", "SELECT count(*) FROM mt_firewall_rules WHERE IFNULL(status,'')='ACTIVE'"),
+    'bugfix':   ("FAILED daemon 数", "SELECT count(*) FROM mt_daemon_registry WHERE status='FAILED'"),
+    'cleanup':  ("非活跃 daemon 数", "SELECT count(*) FROM mt_daemon_registry WHERE status NOT IN ('RUNNING','ACTIVE')"),
+    'ops':      ("存活 daemon 数", "SELECT count(*) FROM mt_daemon_registry WHERE status IN ('RUNNING','ACTIVE')"),
+    'upgrade':  ("daemon 注册总数", "SELECT count(*) FROM mt_daemon_registry"),
+    'feature':  ("在册员工数", "SELECT count(*) FROM ai_employees WHERE IFNULL(status,'')!=''"),
+    'refactor': ("registry 总行数", "SELECT count(*) FROM mt_daemon_registry"),
+}
+EXECUTE_BATCH = 5
+
+
+def execute_once(conn=None, batch: int = EXECUTE_BATCH) -> dict:
+    """执行闭环: DISPATCHED → DONE (真实证据) / FAILED (采集异常).
+    每完成一单写一次 assignee 心跳 (last_heartbeat 链路修复的持续源)."""
+    own = conn is None
+    if own:
+        conn = _connect()
+    stats = {'executed': 0, 'failed': 0, 'heartbeats': 0}
+    try:
+        rows = conn.execute(
+            "SELECT id, task_id, corps_id, task_type, title, assignee_name, assignee_code "
+            "FROM mt_maintenance_tasks WHERE status='DISPATCHED' "
+            "ORDER BY priority ASC, id ASC LIMIT ?", (batch,)).fetchall()
+        for tid, task_id, corps_id, task_type, title, aname, acode in rows:
+            try:
+                label, sql = EVIDENCE_QUERIES.get(
+                    task_type, EVIDENCE_QUERIES['ops'])
+                evidence = conn.execute(sql).fetchone()[0]
+                now = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())
+                conn.execute(
+                    "UPDATE mt_maintenance_tasks SET status='DONE' WHERE id=?", (tid,))
+                if acode:
+                    cur = conn.execute(
+                        "UPDATE ai_employees SET last_heartbeat=?, updated_at=? "
+                        "WHERE employee_code=?", (now, now, acode))
+                    stats['heartbeats'] += max(cur.rowcount, 0)
+                conn.execute(
+                    "INSERT INTO mt_maintenance_log (corps_id, task_id, action, detail) "
+                    "VALUES (?,?,?,?)",
+                    (corps_id, task_id, 'AUTO_COMPLETE', json.dumps(
+                        {'employee': aname, 'employee_code': acode,
+                         'evidence': label, 'value': evidence,
+                         'engine': DAEMON_NAME}, ensure_ascii=False)))
+                conn.commit()
+                stats['executed'] += 1
+            except Exception as e:
+                stats['failed'] += 1
+                try:
+                    conn.execute(
+                        "UPDATE mt_maintenance_tasks SET status='FAILED' WHERE id=?", (tid,))
+                    conn.execute(
+                        "INSERT INTO mt_maintenance_log (corps_id, task_id, action, detail) "
+                        "VALUES (?,?,?,?)",
+                        (corps_id, task_id, 'AUTO_COMPLETE_FAIL',
+                         json.dumps({'error': str(e)[:160], 'engine': DAEMON_NAME},
+                                    ensure_ascii=False)))
+                    conn.commit()
+                except Exception:
+                    pass
+    finally:
+        if own:
+            conn.close()
+    return stats
+
+
+def backfill_heartbeat(conn=None, batch: int = 2000) -> int:
+    """一次性回填: last_heartbeat 全 NULL 的员工 ← updated_at (最后已知活跃).
+    分批 commit 防 WAL 长事务."""
+    own = conn is None
+    if own:
+        conn = _connect()
+    total = 0
+    try:
+        while True:
+            cur = conn.execute(
+                "UPDATE ai_employees SET last_heartbeat=updated_at "
+                "WHERE id IN (SELECT id FROM ai_employees "
+                "WHERE IFNULL(last_heartbeat,'')='' AND IFNULL(updated_at,'')!='' "
+                "LIMIT ?)", (batch,))
+            conn.commit()
+            total += cur.rowcount
+            if cur.rowcount < batch:
+                break
+        # updated_at 也为空的兜底: 用 created_at
+        cur = conn.execute(
+            "UPDATE ai_employees SET last_heartbeat=created_at "
+            "WHERE IFNULL(last_heartbeat,'')='' AND IFNULL(created_at,'')!='' "
+            "AND IFNULL(updated_at,'')=''")
+        conn.commit()
+        total += cur.rowcount
+        return total
+    finally:
+        if own:
+            conn.close()
+
+
 def _db_path() -> str:
     env = os.environ.get('MTSCOS_DB')
     if env and os.path.exists(env):
@@ -405,6 +507,15 @@ def main() -> int:
         print(json.dumps(stats, ensure_ascii=False))
         _heartbeat()
         return 0 if stats['no_match'] == 0 else 1
+    if cmd == 'execute':
+        stats = execute_once()
+        print(json.dumps(stats, ensure_ascii=False))
+        _heartbeat()
+        return 0 if stats['failed'] == 0 else 1
+    if cmd == 'backfill-heartbeat':
+        n = backfill_heartbeat()
+        print(json.dumps({'backfilled': n}, ensure_ascii=False))
+        return 0
     if cmd == 'loop':
         _register()
         print(f'[{DAEMON_NAME}] 守护启动 pid={os.getpid()} poll={POLL_SECS}s', flush=True)
@@ -418,6 +529,11 @@ def main() -> int:
                 if ext['dispatched'] or ext['no_match']:
                     print(f'[{DAEMON_NAME}] external dispatched={ext["dispatched"]} '
                           f'stale={ext["stale"]} no_match={ext["no_match"]}', flush=True)
+                exe = execute_once()
+                if exe['executed'] or exe['failed']:
+                    print(f'[{DAEMON_NAME}] execute done={exe["executed"]} '
+                          f'failed={exe["failed"]} heartbeats={exe["heartbeats"]}',
+                          flush=True)
             except Exception as e:
                 sys.stderr.write(f'[{DAEMON_NAME}] cycle error: {e}\n')
             _heartbeat()
