@@ -689,3 +689,21 @@ registry 终态：**46 RUNNING + 5 DOWN（诚实）**。4 个真空转均为边�
 守护 `sys_corps_field`（600s 轮转 1 类）+ launchd `com.mtscos.corps-field`。首跑：五分队各 3 连就位 + **EMPOWER 当场发现 11 技能缺口**。陷阱 +1：squad_id 为文本 UUID（CAST 全 0 → 全进 PATROL），分编改 rowid 取模。
 
 **§16.1 下沉分裂深化（同日续）**：54 连**全部编入**（每类 10-11 连）+ **连队级领域绑定** — 15 领域池（教辅K12/Arduino/文件整理/防火墙/任务大厅/脑库/EigenFlux/维护部队/冰山/三委/题库/关系绑定/规则学习/深度巡检/员工心跳）按序分配，duty 列真实落库（如 `PATROL·Arduino 同步 ← SQD_e4151c`），50/54 连绑定（4 个幂等已符）。新增 domain_health_once：每轮抽查 4 领域对应表近 50 行产出，停滞自动回灌大厅。守护重启 pid 51637。
+
+### 17. 任务大厅 CRITICAL：保活完善并运行聊天室"小龙"（commit 至 a8444ebd，flow_unified_ops_20261023）
+
+大厅任务 id=511（CRITICAL→DISPATCHED→CENTER_COMPLETE），八队介入全部留痕。
+
+| 队 | 交付 |
+|---|---|
+| **架构** | `_ollama_chat_model()` 模型自动探测（qwen2.5:7b 不存在→14b fallback，根治硬编码 404）+ `keep_alive:'30m'` 模型常驻（**冷启 100s→热 11s**） |
+| **后端** | persona_chat 真答 + 脑库 RAG 3 注入 1 命中 + 会话落库 sid |
+| **前端/美工** | /xiaolong、manifest、sw.js、icon 全 200（PWA 全链） |
+| **测试** | 端到端冒烟：GET 5/5 + 聊天真答（非降级固定回答） |
+| **法务** | 回答内容为业务类，无违规 |
+| **任务大厅/各中心** | 派单综合调度中心 + relation 44 绑定联动 |
+| **保活守护** | `ai_xiaolong_keepalive.py`（300s 全端点+聊天链路抽检，'未就绪'特征判定，异常自动回灌大厅，pid 66463） |
+
+**修复前 vs 后**：100 秒超时"[Ollama 未就绪，降级固定回答]" → 11 秒真人回答+RAG+落库。
+
+陷阱 +3：①Edit 插函数时误插到 @bp.route 与 def 之间破坏装饰器绑定（立即自纠）②守护脚本 `out['ok']` int/list 类型混用 ③SSH 内嵌 JSON SQL parse error→本地脚本直连+锁重试（attempt1 locked→retry 成功）。
