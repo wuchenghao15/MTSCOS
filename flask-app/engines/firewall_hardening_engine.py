@@ -33,6 +33,34 @@ PID_DIR = os.environ.get('MTSCOS_PID_DIR', os.path.join(
 LOG_CANDIDATES = ['/tmp/flask_launchd.log', os.path.join(
     PROJECT_ROOT, '_runtime', 'logs', 'flask_launchd.log')]
 DAEMON_NAME = 'sys_firewall_hardening'
+# 防火墙 AI 员工专岗 (flow_unified_ops_20261023): 四抗各配一名, 行动留痕自动归属
+OFFICERS = {'ATTACK': ('FW_OFF_ATTACK', 'FW·磐石'),
+            'SURGE': ('FW_OFF_SURGE', 'FW·观澜'),
+            'VIRUS': ('FW_OFF_VIRUS', 'FW·照妖'),
+            'POLLUTE': ('FW_OFF_POLLUTE', 'FW·涤尘')}
+OFFICER_SEEDS = [
+    ('FW·磐石', 'FW_OFF_ATTACK', '防火墙抗攻击专岗', 'attack_detection,ip_blacklist', '网络安全'),
+    ('FW·观澜', 'FW_OFF_SURGE', '防火墙抗冲击专岗', 'rate_analysis,anomaly_detection', '流量治理'),
+    ('FW·照妖', 'FW_OFF_VIRUS', '防火墙抗病毒专岗', 'file_integrity,malware_signature', '病毒防护'),
+    ('FW·涤尘', 'FW_OFF_POLLUTE', '防火墙抗污染专岗', 'content_sanitization,injection_detect', '数据治理'),
+]
+
+
+def ensure_officers(conn) -> int:
+    """幂等注册 4 名防火墙 AI 员工 (mini 重建后自愈)."""
+    n = 0
+    for name, code, desc, caps, spec in OFFICER_SEEDS:
+        try:
+            conn.execute(
+                "INSERT INTO ai_employees (name, employee_code, description, "
+                "capabilities, specialties, status) SELECT ?,?,?,?,?, 'active' "
+                "WHERE NOT EXISTS (SELECT 1 FROM ai_employees WHERE employee_code=?)",
+                (name, code, desc, caps, spec, code))
+            conn.commit()
+            n += conn.execute("SELECT changes()").fetchone()[0]
+        except Exception:
+            pass
+    return n
 POLL_SECS = 300
 POLLUTION_MARKS = ['<script', '${', '{{', 'union select', 'or 1=1', 'drop table',
                    'javascript:', 'eval(', 'rm -rf', '../../etc/passwd']
@@ -53,6 +81,11 @@ def _connect():
 
 def _log(conn, action: str, detail: dict) -> None:
     try:
+        detail = dict(detail)
+        for prefix, (code, name) in OFFICERS.items():
+            if action.startswith(prefix):
+                detail['ai_officer'] = f'{name}({code})'
+                break
         conn.execute(
             "INSERT INTO mt_maintenance_log (corps_id, task_id, action, detail) "
             "VALUES ('FIREWALL_HARDENING', ?, ?, ?)",
@@ -269,7 +302,9 @@ def main() -> int:
     if cmd == 'run_all':
         conn = _connect()
         try:
+            seeded = ensure_officers(conn)
             out = {name: fn(conn) for name, fn in MODULES}
+            out['officers_seeded'] = seeded
         finally:
             conn.close()
         print(json.dumps(out, ensure_ascii=False))
@@ -288,6 +323,7 @@ def main() -> int:
             try:
                 conn = _connect()
                 try:
+                    ensure_officers(conn)
                     for name, fn in MODULES:
                         try:
                             r = fn(conn)
