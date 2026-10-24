@@ -707,6 +707,42 @@ def hall_submit():
     return jsonify({"ok": True, "message": msg, **r})
 
 
+@daemon_skill_lab_bp.route("/api/daemon-lab/hall/proposal", methods=["POST"])
+def hall_proposal():
+    """flow_token_audit_bank_20261024: 提案 → 任务大厅 → 自动分派 (便捷端点)
+    任何新需求/缺口/紧急事项, 一行调用推入大厅 + 智能下发到对应中心.
+    request: {title, description, source?, priority?}  source 默认 'proposal'
+    返回: {ok, hall_code, dispatched, center}
+    """
+    _ensure_claim_tables()
+    data = request.get_json(silent=True) or {}
+    title = (data.get("title") or "").strip()
+    desc = (data.get("description") or "").strip()
+    if not title:
+        return jsonify({"ok": False, "error": "title 不能为空"}), 400
+    source = data.get("source") or "proposal"
+    priority = data.get("priority") or "NORMAL"
+    try:
+        u = _get_user()
+    except Exception:
+        u = {"user_id": "proposal_sys", "username": "提案通道", "role": "admin"}
+    try:
+        r = _hall_publish({
+            "title": title, "description": desc,
+            "source": source, "priority": priority,
+            "delivery_time": data.get("delivery_time"),
+        }, u)
+    except ValueError as e:
+        return jsonify({"ok": False, "error": str(e)}), 400
+    return jsonify({
+        "ok": True,
+        "hall_code": r["hall_code"],
+        "dispatched": r["dispatched"],
+        "center": r["dispatch"]["center"] if r["dispatched"] else None,
+        "task_id": r.get("task_id"),
+    })
+
+
 @daemon_skill_lab_bp.route("/api/daemon-lab/hall/approve", methods=["POST"])
 @_login_required
 def hall_approve():

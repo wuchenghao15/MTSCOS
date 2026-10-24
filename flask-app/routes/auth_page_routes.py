@@ -22,10 +22,10 @@ auth_page_routes — 认证域页面级路由 (v22.35.0 Phase 4 拆分)
 端点命名变更: 搬前 endpoint='login_page' 等, 搬后='auth_page_routes.login_page' 等
   - 全局 url_for 引用需要同步更新 (grep 后确认无引用)
 """
-import datetime as _dt
+import datetime as _dt, os
 
 from flask import (
-    Blueprint, redirect, render_template, request, session,
+    Blueprint, redirect, render_template, request, session, current_app,
     make_response as _make_response, jsonify as _jsonify,
 )
 from app.middlewares.system_container import system_container
@@ -33,6 +33,34 @@ from app.middlewares.system_container import system_container
 
 _bp = Blueprint('auth_page_routes', __name__)
 auth_page_bp = _bp  # register_all_blueprints 查找
+
+# flow_token_audit_bank_20261024: 登录/退出审计钩子
+_login_audited = set()
+
+@_bp.before_app_request
+def _auth_audit_hook():
+    """检测 session 登录状态变化 → 写 mt_login_audit_log (含 token 余额快照)"""
+    try:
+        sid = session.get('_id', '') or request.cookies.get('session', '')[:32] or ''
+        logged_in = bool(session.get('logged_in'))
+        last = session.get('_audit_login')
+        if logged_in and not last:
+            # 新登录 (首次 logged_in=True)
+            session['_audit_login'] = sid
+            ip = request.remote_addr or 'unknown_ip'
+            ua = request.headers.get('User-Agent', '')[:200]
+            uid = session.get('user_id'); uname = session.get('username') or ''
+            import sqlite3
+            conn = sqlite3.connect(os.path.expanduser("~/MTSCOS_AI_Project/flask-app/database/app.db"))
+            bal = 0; frozen = 0
+            if uid and not str(uid).startswith('guest'):
+                r = conn.execute("SELECT balance, frozen FROM mt_user_token_accounts WHERE user_id=?", (uid,)).fetchone()
+                if r: bal, frozen = r[0] or 0, r[1] or 0
+            conn.execute("INSERT INTO mt_login_audit_log(user_id,username,action,ip,session_id,token_balance,token_frozen,user_agent) VALUES(?,?,?,?,?,?,?,?)",
+                         (str(uid) if uid else '', uname, 'login', ip, sid, bal, frozen, ua))
+            conn.commit(); conn.close()
+    except Exception:
+        pass
 
 
 _sdb = None
@@ -70,6 +98,20 @@ def logout():
     ua = request.headers.get('User-Agent', '')[:200]
     username = session.get('username') or ''
     user_id = session.get('user_id')
+
+    # flow_token_audit_bank_20261024: 退出审计 (含 token 余额快照)
+    try:
+        import sqlite3
+        conn = sqlite3.connect(os.path.expanduser("~/MTSCOS_AI_Project/flask-app/database/app.db"))
+        bal = 0; frozen = 0
+        if user_id:
+            r = conn.execute("SELECT balance, frozen FROM mt_user_token_accounts WHERE user_id=?", (user_id,)).fetchone()
+            if r: bal, frozen = r[0] or 0, r[1] or 0
+        conn.execute("INSERT INTO mt_login_audit_log(user_id,username,action,ip,session_id,token_balance,token_frozen,user_agent) VALUES(?,?,?,?,?,?,?,?)",
+                     (str(user_id) if user_id else '', username, 'logout', ip, '', bal, frozen, ua))
+        conn.commit(); conn.close()
+    except Exception:
+        pass
     # 撤销该用户 remember-me token（可选择性地全部撤销）
     try:
         if user_id:

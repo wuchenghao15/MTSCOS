@@ -27,7 +27,8 @@ import sys
 import time
 from datetime import datetime
 
-PROJECT_ROOT = "/Users/wuchenghao/Library/CloudStorage/OneDrive-个人/文档/MTSCOS_AI_Project"
+# flow_autoaudit_20261024: 双机通用 (脚本在 <root>/flask-app/engines/ 下, 三层 dirname 回项目根)
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 FA_DIR = os.path.join(PROJECT_ROOT, "flask-app")
 RUNTIME_DIR = os.path.join(PROJECT_ROOT, "_runtime")
 LOG_DIR = os.path.join(RUNTIME_DIR, "logs")

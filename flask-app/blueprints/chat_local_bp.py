@@ -571,14 +571,14 @@ def _finalize(user_id, session_id, model, prompt_tokens, completion_tokens, preh
                 return {'balance': 0, 'net_cost': 0, 'reward': 0, 'refund': prehold_amount}
             actual_deduct = min(real_cost, row['balance'])
             new_balance = row['balance'] - actual_deduct
-            # 释放 frozen + 更新 balance
             conn.execute(
                 "UPDATE mt_token_wallets SET balance=?, frozen=MAX(0,frozen-?) WHERE user_id=?",
                 (new_balance, prehold_amount, uid_str)
             )
             _sync_wallet_hash(uid_str, conn)
+        else:
             row = conn.execute(
-                "SELECT balance FROM mt_user_token_accounts WHERE user_id=?", (user_id,)
+                "SELECT balance, frozen FROM mt_user_token_accounts WHERE user_id=?", (user_id,)
             ).fetchone()
             if row is None:
                 conn.rollback()
@@ -590,17 +590,26 @@ def _finalize(user_id, session_id, model, prompt_tokens, completion_tokens, preh
                 "total_consumed=total_consumed+?, updated_at=datetime('now','localtime') WHERE user_id=?",
                 (new_balance, prehold_amount, actual_deduct, user_id)
             )
-        # ledger
+
+        # flow_token_audit_bank_20261024: consume ledger 补全会计明细
+        ledger_detail = json.dumps({
+            'prompt_tokens': prompt_tokens,
+            'completion_tokens': completion_tokens,
+            'model_weight': cost['pricing']['model_weight'],
+            'unit_price': cost['pricing'].get('input_per_1k', 0),
+            'net_cost': actual_deduct,
+            'prehold_amount': prehold_amount,
+            'balance_before': new_balance + actual_deduct,  # 理论值, 近似
+            'balance_after': new_balance,
+            'entry_type': 'consume',
+            'account_type': 'guest_wallet' if is_guest else 'user_account',
+        }, ensure_ascii=False)
         conn.execute(
             "INSERT INTO mt_user_token_ledger(user_id,change,type,session_id,model,detail,balance_after) "
             "VALUES(?,?,?,?,?,?,?)",
-            (uid_str, -actual_deduct, 'consume', session_id or '', model or '',
-             json.dumps({'prompt_tokens': prompt_tokens, 'completion_tokens': completion_tokens,
-                         'model_weight': cost['pricing']['model_weight']}, ensure_ascii=False),
-             new_balance)
+            (uid_str, -actual_deduct, 'consume', session_id or '', model or '', ledger_detail, new_balance)
         )
 
-        # 3) 退差 (预扣 - 实扣 = 多扣了退回去)
         refund = prehold_amount - actual_deduct
         if refund > 0:
             new_balance += refund
@@ -615,12 +624,15 @@ def _finalize(user_id, session_id, model, prompt_tokens, completion_tokens, preh
                     "UPDATE mt_user_token_accounts SET balance=balance+? WHERE user_id=?",
                     (refund, user_id)
                 )
+            refund_detail = json.dumps({
+                'reason': 'prehold_over_actual', 'prehold': prehold_amount,
+                'actual': actual_deduct, 'entry_type': 'refund',
+                'account_type': 'guest_wallet' if is_guest else 'user_account',
+            }, ensure_ascii=False)
             conn.execute(
                 "INSERT INTO mt_user_token_ledger(user_id,change,type,session_id,model,detail,balance_after) "
                 "VALUES(?,?,?,?,?,?,?)",
-                (uid_str, refund, 'release', session_id or '', model or '',
-                 json.dumps({'reason': 'prehold_over_actual', 'prehold': prehold_amount, 'actual': actual_deduct},
-                            ensure_ascii=False), new_balance)
+                (uid_str, refund, 'release', session_id or '', model or '', refund_detail, new_balance)
             )
 
         # 4) 奖励 (游客简化: 不扣每日 200 封顶, 直接加余额)
