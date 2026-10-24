@@ -72,8 +72,8 @@ CENTER_KEYS = {
 def bind_once(conn) -> dict:
     stats = {'centers': 0, 'new_binds': 0, 'new_contractors': 0}
     skills = conn.execute(
-        "SELECT rowid, IFNULL(name,''), IFNULL(skill_code,name) FROM mt_task_hall_skills "
-        "ORDER BY rowid").fetchall()
+        "SELECT rowid, IFNULL(skill_name,''), IFNULL(skill_id,skill_name) "
+        "FROM mt_task_hall_skills ORDER BY rowid").fetchall()
     stats['centers'] = len(skills)
     for srow, name, code in skills:
         keys = CENTER_KEYS.get(name) or [name[:2]]
@@ -100,7 +100,7 @@ def bind_once(conn) -> dict:
         # 外聘顾问: 承包商按技能就近分配 (rowid 取模)
         ct = conn.execute(
             "SELECT rowid, IFNULL(name,'') FROM mt_task_hall_contractors "
-            "ORDER BY rowid").fetchall()
+            "WHERE availability='available' ORDER BY rowid").fetchall()
         if ct:
             cid, cname = ct[srow % len(ct)]
             cur = conn.execute(
