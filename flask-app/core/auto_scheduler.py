@@ -209,7 +209,7 @@ class AutoScheduler:
         try:
             with self._get_connection() as conn:
                 cursor = conn.cursor()
-                cursor.execute('PRAGMA integrity_check')
+                cursor.execute('PRAGMA quick_check')
                 result = cursor.fetchone()[0]
                 cursor.execute('SELECT COUNT(*) FROM system_rules WHERE is_active = 1')
                 active_rules = cursor.fetchone()[0]

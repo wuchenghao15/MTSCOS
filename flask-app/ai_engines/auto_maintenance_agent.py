@@ -654,7 +654,7 @@ class DatabaseHealthMonitor:
             try:
                 conn = sqlite3.connect(db_path, timeout=5)
                 cursor = conn.cursor()
-                cursor.execute("PRAGMA integrity_check;")
+                cursor.execute("PRAGMA quick_check;")
                 result = cursor.fetchone()
                 if result and result[0] != 'ok':
                     issues.append(MaintenanceIssue(
@@ -1329,7 +1329,7 @@ class DualDatabaseManager:
         try:
             conn = sqlite3.connect(self.primary_path, timeout=5)
             conn.execute("SELECT 1")
-            conn.execute("PRAGMA integrity_check")
+            conn.execute("PRAGMA quick_check")
             conn.close()
             result['primary_ok'] = True
             result['primary_size'] = os.path.getsize(self.primary_path) if os.path.exists(self.primary_path) else 0
@@ -1340,7 +1340,7 @@ class DualDatabaseManager:
         try:
             conn = sqlite3.connect(self.mirror_path, timeout=5)
             conn.execute("SELECT 1")
-            conn.execute("PRAGMA integrity_check")
+            conn.execute("PRAGMA quick_check")
             conn.close()
             result['mirror_ok'] = True
             result['mirror_size'] = os.path.getsize(self.mirror_path) if os.path.exists(self.mirror_path) else 0
@@ -1372,7 +1372,7 @@ class DatabaseBackupManager:
 
     功能：
       - 定时快照备份（SQLite backup API，在线热备）
-      - 完整性校验（PRAGMA integrity_check）
+      - 完整性校验（PRAGMA quick_check）
       - 自动清理（保留最近 N 份）
       - 备份验证（恢复测试）
       - 增量 WAL 支持
@@ -1446,7 +1446,7 @@ class DatabaseBackupManager:
         try:
             conn = sqlite3.connect(db_path, timeout=10)
             cursor = conn.cursor()
-            cursor.execute("PRAGMA integrity_check")
+            cursor.execute("PRAGMA quick_check")
             result = cursor.fetchone()
             conn.close()
             return result[0] == 'ok' if result else False

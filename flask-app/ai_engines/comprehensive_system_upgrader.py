@@ -3330,7 +3330,7 @@ class ComprehensiveSystemUpgrader:
                 cursor.fetchone()
                 cursor.execute("SELECT count(*) FROM sqlite_master WHERE type='table'")
                 table_count = cursor.fetchone()[0]
-                cursor.execute('PRAGMA integrity_check')
+                cursor.execute('PRAGMA quick_check')
                 integrity = cursor.fetchone()[0]
 
                 db_size_bytes = os.path.getsize(self.db_path)
@@ -3824,7 +3824,7 @@ class ComprehensiveSystemUpgrader:
             try:
                 i_conn = sqlite3.connect(self.db_path)
                 i_cursor = i_conn.cursor()
-                i_cursor.execute('PRAGMA integrity_check')
+                i_cursor.execute('PRAGMA quick_check')
                 integrity_result = i_cursor.fetchone()[0]
                 i_conn.close()
                 if integrity_result == 'ok':

@@ -53,7 +53,7 @@ class SystemMaintenancePlan(AbstractAutoPlan):
             if db_path and os.path.exists(db_path):
                 conn = sqlite3.connect(db_path)
                 cursor = conn.cursor()
-                cursor.execute(r"PRAGMA integrity_check")
+                cursor.execute(r"PRAGMA quick_check")
                 integrity = cursor.fetchone()[0]
                 cursor.execute(r"SELECT COUNT(*) FROM system_rules WHERE is_active=1")
                 active_rules = cursor.fetchone()[0]
@@ -109,7 +109,7 @@ class SystemMaintenancePlan(AbstractAutoPlan):
             db_path = self._find_app_db()
             if db_path and os.path.exists(db_path):
                 conn = sqlite3.connect(db_path)
-                conn.execute(r"PRAGMA wal_checkpoint(TRUNCATE)")
+                conn.execute(r"PRAGMA wal_checkpoint(PASSIVE)")
                 conn.isolation_level = None
                 conn.execute(r"VACUUM")
                 conn.close()

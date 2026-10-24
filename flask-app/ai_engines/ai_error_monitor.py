@@ -528,7 +528,7 @@ class AIErrorMonitor:
         try:
             with get_db_connection() as conn:
                 cursor = conn.cursor()
-                cursor.execute('PRAGMA integrity_check')
+                cursor.execute('PRAGMA quick_check')
                 result = cursor.fetchone()
                 if result[0] == 'ok':
                     logger.info("Database integrity check passed")

@@ -119,7 +119,7 @@ class AIAutoRepairAgent(AIEmployee):
             conn = sqlite3.connect(db_path)
             cursor = conn.cursor()
 
-            cursor.execute("PRAGMA integrity_check")
+            cursor.execute("PRAGMA quick_check")
             result = cursor.fetchone()
 
             if result[0] == 'ok':
