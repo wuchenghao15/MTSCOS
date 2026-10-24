@@ -86,7 +86,7 @@ def _load_squads(conn) -> dict:
     squads = {}
     for row in conn.execute(
             "SELECT squad_id, corps_id, name, duty, empowerment FROM mt_corps_squads "
-            "WHERE status='ACTIVE'").fetchall():
+            "WHERE LOWER(IFNULL(status,'active'))='active'").fetchall():
         squads.setdefault(row[1], []).append(
             {'squad_id': row[0], 'name': row[2] or '', 'duty': row[3] or '',
              'empowerment': row[4] or '', 'skills': []})
@@ -135,7 +135,7 @@ def dispatch_once(conn=None) -> dict:
                 squad = scored[0]
                 members = conn.execute(
                     "SELECT name, employee_code FROM ai_employees "
-                    "WHERE squad_id=? AND IFNULL(status,'ACTIVE')='ACTIVE' "
+                    "WHERE squad_id=? AND LOWER(IFNULL(status,'active'))='active' "
                     "ORDER BY id", (squad['squad_id'],)).fetchall()
                 if not members:
                     stats['failed'] += 1
