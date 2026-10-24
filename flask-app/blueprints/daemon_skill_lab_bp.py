@@ -97,7 +97,7 @@ _SEED_CENTERS = [
     ("ai_engine", "AI 引擎中心", "AI引擎", "ai,推理,脑库,ollama,向量,eigenflux,embedding"),
     ("workflow", "工作流研究中心", "工作流", "工作流,workflow,流水线,调度,协同,编排,任务链"),
     ("data_research", "数据研究中心", "数据研究", "数据,分析,报告,统计,研究,画像"),
-    ("frontend_design", "前端设计中心", "前端设计", "前端,设计,ui,页面,视觉,交互"),
+    ("frontend_design", "前端设计中心", "前端设计", "前端,设计,ui,页面,视觉,交互,美观,冰山,设计token,美化,渲染污染"),  # flow_iceberg_beauty_research_20261025
     ("edu_qbank", "教育题库中心", "教育题库", "教育,题库,考试,备课,教学,讲解,试题,测验,摸底,月考,模拟,招生,教育研究,学习,错题,组卷,学情,分层,考点,双语,游戏化,自适应,诊断"),  # flow_exam_auto_20261020 + flow_edu_research_taskhall_20261025
 ]
 
@@ -124,6 +124,14 @@ _SEED_EDU_RESEARCH = [
     ("游戏化学习激励", "闯关式学习与零氪金激励闭环设计", "研究积分/徽章/进度可视化对完课率的影响度量"),
     ("考试趋势挖掘", "摸底/月考/模拟/自主招生真题考点共现分析", "研究历年考点频率与命题趋势, 反哺出题优先级"),
     ("双语教学资源", "中英术语库对齐与教辅内容双语化", "研究学科术语库构建与翻译对齐质量校验"),
+]
+
+# 冰山美观研究方向种子 (flow_iceberg_beauty_research_20261025)
+# 新研究方法: 研究任务自动交付时产出结构化研究报告 (美观度扫描落库), 不再是通用占位文本
+_SEED_ICEBERG_RESEARCH = [
+    ("设计Token统一演进", "冰山/仙女座页面设计Token覆盖率与统一策略", "研究 Element Plus 变量替换硬编码颜色的迁移优先级与回归验证"),
+    ("翻译Key渲染污染治理", "t() 翻译key注入CSS/style导致渲染异常的治理", "研究 style块/内联样式中的 {{ t() }} 污染检测与自动修复规则"),
+    ("硬编码颜色全量治理", "冰山/仙女座模板硬编码颜色扫描与分层治理", "研究 #hex 颜色密度热力图与安全替换白名单机制"),
 ]
 
 # 教授数字分身候选池 (按姓名优先匹配 ai_employees)
@@ -158,9 +166,12 @@ def _ensure_claim_tables():
         for code, name, domain, kws in _SEED_CENTERS + _RESIDENT_CENTERS:
             conn.execute("INSERT OR IGNORE INTO mt_lab_centers (center_code,name,domain,keywords) VALUES (?,?,?,?)",
                          (code, name, domain, kws))
-        # flow_edu_research_taskhall_20261025: 存量库 edu_qbank 关键词对齐种子 (教育研究方向认领权重)
-        conn.execute("UPDATE mt_lab_centers SET keywords=? WHERE center_code='edu_qbank'",
-                     (_SEED_CENTERS[[c[0] for c in _SEED_CENTERS].index("edu_qbank")][3],))
+        # flow_edu_research_taskhall_20261025 + flow_iceberg_beauty_research_20261025:
+        # 存量库中心关键词对齐种子 (教育/冰山美观研究方向认领权重)
+        _seed_codes = [c[0] for c in _SEED_CENTERS]
+        for _cc in ("edu_qbank", "frontend_design"):
+            conn.execute("UPDATE mt_lab_centers SET keywords=? WHERE center_code=?",
+                         (_SEED_CENTERS[_seed_codes.index(_cc)][3], _cc))
         if conn.execute("SELECT count(*) FROM mt_lab_workflows").fetchone()[0] == 0:
             for nm, desc, direction in _SEED_WORKFLOWS:
                 conn.execute("INSERT INTO mt_lab_workflows (name,direction,description) VALUES (?,?,?)",
@@ -219,7 +230,8 @@ def _ensure_claim_tables():
                       "updated_at",
                       "hall_code", "publisher", "publisher_role", "task_type",
                       "acceptance_criteria", "expected_at", "approval_status",
-                      "approved_by", "approved_at", "archived_at", "cancel_reason"):
+                      "approved_by", "approved_at", "archived_at", "cancel_reason",
+                      "done_at", "acceptance"):  # flow_iceberg_beauty_research_20261025: 修复自动验收 no such column: done_at/acceptance
             cols = [r[1] for r in conn.execute("PRAGMA table_info(mt_lab_task_hall)").fetchall()]
             if alter not in cols:
                 conn.execute(f"ALTER TABLE mt_lab_task_hall ADD COLUMN {alter} TEXT")
@@ -245,6 +257,17 @@ def _ensure_claim_tables():
             conn.execute("""INSERT INTO mt_lab_task_hall (title,description,source,priority)
                             SELECT ?,?,'edu_research','NORMAL' WHERE NOT EXISTS
                             (SELECT 1 FROM mt_lab_task_hall WHERE title=? AND source='edu_research')""",
+                         (hall_title, desc, hall_title))
+        # ══ 冰山美观研究方向播种 (flow_iceberg_beauty_research_20261025, 幂等) ══
+        for nm, desc, direction in _SEED_ICEBERG_RESEARCH:
+            conn.execute("""INSERT INTO mt_lab_workflows (name,domain,direction,description)
+                            SELECT ?,?,?,? WHERE NOT EXISTS
+                            (SELECT 1 FROM mt_lab_workflows WHERE name=?)""",
+                         (nm, "冰山美观", direction, desc, nm))
+            hall_title = f"【冰山美观】{nm}"
+            conn.execute("""INSERT INTO mt_lab_task_hall (title,description,source,priority)
+                            SELECT ?,?,'iceberg_research','HIGH' WHERE NOT EXISTS
+                            (SELECT 1 FROM mt_lab_task_hall WHERE title=? AND source='iceberg_research')""",
                          (hall_title, desc, hall_title))
         conn.commit()
         _LAB_TABLES_READY = True
@@ -408,6 +431,78 @@ def run_hall_auto():
     return {"ingested": ingested, "dispatched": len(results), "results": results}
 
 
+def _scan_iceberg_beauty():
+    """冰山美观度扫描 (flow_iceberg_beauty_research_20261025, 零 token 本地规则):
+    扫描 iceberg/andromeda 模板 — ① 硬编码 #hex 颜色密度 ② 翻译key {{ t() }} 注入 style 渲染污染"""
+    import glob as _glob
+    st = {"files": 0, "hex_colors": 0, "tkey_css_pollution": 0, "hot_files": []}
+    try:
+        for fp in _glob.glob(os.path.join(_APP_DIR, "templates", "**", "*.html"), recursive=True):
+            low = fp.lower()
+            if "iceberg" not in low and "andromeda" not in low:
+                continue
+            try:
+                with open(fp, encoding="utf-8", errors="ignore") as f:
+                    txt = f.read()
+            except OSError:
+                continue
+            st["files"] += 1
+            hex_n = len(re.findall(r"#[0-9a-fA-F]{6}\b", txt))
+            tkey_n = sum(len(re.findall(r"\{\{\s*t\(", m.group(1)))
+                         for m in re.finditer(r"<style[^>]*>(.*?)</style>", txt, re.S))
+            tkey_n += len(re.findall(r"""style=(?:"|')[^"']*\{\{\s*t\(""", txt))
+            st["hex_colors"] += hex_n
+            st["tkey_css_pollution"] += tkey_n
+            if hex_n >= 10 or tkey_n > 0:
+                st["hot_files"].append({"file": os.path.relpath(fp, _APP_DIR),
+                                        "hex": hex_n, "tkey": tkey_n})
+    except Exception as e:
+        st["scan_error"] = str(e)
+    st["hot_files"].sort(key=lambda x: -(x["hex"] + x["tkey"] * 10))
+    st["hot_files"] = st["hot_files"][:5]
+    return st
+
+
+def _research_deliverable(source, title, description):
+    """🆕 新研究方法 (flow_iceberg_beauty_research_20261025):
+    研究任务自动交付 → 结构化研究报告 (研究方法/现状实测数据/演进建议), 替代通用占位文本"""
+    report = {"research_method": "自动研究引擎 (零 token 本地规则)",
+              "direction": title, "background": description or "", "generated_at":
+              datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+    if source == "iceberg_research":
+        scan = _scan_iceberg_beauty()
+        report["research_method"] = "冰山美观度扫描 (硬编码颜色密度 + 翻译key渲染污染, 零token)"
+        report["scan"] = scan
+        report["findings"] = [
+            f"扫描冰山/仙女座模板 {scan['files']} 个, 硬编码 #hex 颜色 {scan['hex_colors']} 处",
+            f"翻译key注入CSS渲染污染 {scan['tkey_css_pollution']} 处",
+        ]
+        report["advice"] = [
+            "按 hot_files 热力优先级分批迁移到 Element Plus 设计Token",
+            "t() 污染文件优先走 iceberg-beautify 管线修复并回归验证",
+        ]
+    elif source == "edu_research":
+        conn2 = _db()
+        try:
+            assets = {
+                "edu_content": conn2.execute("SELECT COUNT(*) FROM mt_edu_sync_content").fetchone()[0],
+                "question_types": conn2.execute("SELECT COUNT(*) FROM mt_edu_sync_question_types").fetchone()[0],
+                "experiments": conn2.execute("SELECT COUNT(*) FROM mt_edu_sync_experiments").fetchone()[0],
+            }
+        except Exception:
+            assets = {"edu_content": -1, "question_types": -1, "experiments": -1}
+        finally:
+            conn2.close()
+        report["research_method"] = "存量教辅资产盘点 + 研究框架输出 (零token)"
+        report["assets"] = assets
+        report["findings"] = [f"可复用教辅资产: 内容 {assets['edu_content']} 条 / 题型 {assets['question_types']} 种 / 实验 {assets['experiments']} 个"]
+        report["advice"] = ["以存量资产为基线产出研究原型, 结果回灌题库与教辅同步引擎"]
+    else:
+        report["findings"] = ["通用研究路径: 现状盘点 → 假设 → 验证 → 落库"]
+        report["advice"] = ["按中心关键词归属持续推进"]
+    return report
+
+
 def _hall_auto_execute_and_deliver(limit=10):
     """
     🆕 daemon 自动执行引擎 — 绕过 session, 直接 SQL 推进状态机:
@@ -421,15 +516,22 @@ def _hall_auto_execute_and_deliver(limit=10):
     try:
         # Step 1: DISPATCHED → 自动 CLAIMED → IN_PROGRESS
         dispatched = conn.execute(
-            "SELECT id, claim_owner, claim_owner_role, title, task_type, priority "
+            "SELECT id, claim_owner, claim_owner_role, title, task_type, priority, source, description "
             "FROM mt_lab_task_hall WHERE status='DISPATCHED' LIMIT ?", (limit,)).fetchall()
         for t in dispatched:
             task_id = t["id"]
             try:
                 conn.execute("UPDATE mt_lab_task_hall SET status='CLAIMED', claimed_at=datetime('now','localtime') WHERE id=?", (task_id,))
                 conn.execute("UPDATE mt_lab_task_hall SET status='IN_PROGRESS', started_at=datetime('now','localtime'), progress='33' WHERE id=?", (task_id,))
+                # flow_iceberg_beauty_research_20261025: 研究任务 → 结构化研究报告交付
+                if t["source"] in ("iceberg_research", "edu_research"):
+                    _deliv = json.dumps(_research_deliverable(t["source"], t["title"], t["description"]),
+                                        ensure_ascii=False)
+                else:
+                    _deliv = json.dumps({"executed_by": "lab-daemon", "result": "auto-completed",
+                                         "note": "daemon 自动执行+交付"}, ensure_ascii=False)
                 conn.execute("UPDATE mt_lab_task_hall SET status='DELIVERED', delivered_at=datetime('now','localtime'), progress='100', deliverable=? WHERE id=?",
-                             (json.dumps({"executed_by": "lab-daemon", "result": "auto-completed", "note": "daemon 自动执行+交付"}, ensure_ascii=False), task_id))
+                             (_deliv, task_id))
                 deliver_count += 1
             except Exception as e:
                 print(f'[LAB-EXEC] ⚠️ task_id={task_id} 推进异常: {e}')
