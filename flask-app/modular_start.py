@@ -71,11 +71,12 @@ def _tracked_sqlite_connect(*args, **kwargs):
     except Exception:
         pass
     try:
-        # P1-1b 语句追踪: 长语句(autocommit 期间持锁)取证 — [SQL-TRACE] 每条语句起始时间
+        # P1-1b 语句追踪: 长语句(autocommit 期间持锁)取证 — [SQL-TRACE c<conn_id>] 每条语句起始时间
         from datetime import datetime as _dt_trace
+        _cid = id(_conn) % 100000
         _conn.set_trace_callback(
-            lambda stmt: sys.stderr.write(
-                '[SQL-TRACE] ' + _dt_trace.now().strftime('%H:%M:%S') + ' ' + str(stmt)[:150].replace('\n', ' ') + '\n'))
+            lambda stmt, _c=_cid: sys.stderr.write(
+                f'[SQL-TRACE c{_c}] ' + _dt_trace.now().strftime('%H:%M:%S') + ' ' + str(stmt)[:140].replace('\n', ' ') + '\n'))
     except Exception:
         pass
     return _conn
