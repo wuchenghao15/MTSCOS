@@ -631,3 +631,16 @@ registry 终态：**46 RUNNING + 5 DOWN（诚实）**。4 个真空转均为边�
 **原理**：WAL 模式单写者是架构约束（§四 Phase 3 PostgreSQL 为远期），但"locked 即败"是可消除的工程问题 — connect 层 30s 等待覆盖了 daemon 短写窗口与 Flask 长事务的绝大部分重叠场景。1475 次 locked 历史多为零等待撞锁，补丁后预期大幅下降（观察指标：Flask 日志 locked 增速）。
 
 陷阱 +1：homebrew python 的 Cellar sitecustomize 优先于 user site-packages — 本地部署需追加而非新建。
+
+### 13.8 防火墙 AI 员工配置（commit d7bc4c7，flow_unified_ops_20261023）
+
+四抗各配专岗 AI 员工（ai_employees 注册，12064+4）：
+
+| 员工 | code | 专岗 | 绑定模块 |
+|---|---|---|---|
+| FW·磐石 | FW_OFF_ATTACK | 抗攻击（拉黑/溯源） | attack_once |
+| FW·观澜 | FW_OFF_SURGE | 抗冲击（速率基线） | surge_once |
+| FW·照妖 | FW_OFF_VIRUS | 抗病毒（快照/特征） | virus_once |
+| FW·涤尘 | FW_OFF_POLLUTE | 抗污染（隔离/溯源） | pollute_once |
+
+机制：引擎 `_log` 按 action 前缀自动注入 `ai_officer` 字段（行动留痕自动归属到人）；`ensure_officers` 幂等 seed 内置于 run_all/loop（mini 重建后自愈）。冒烟：officers_seeded=0（幂等确认）+ 四模块全绿 + 守护重启 pid=37313。
