@@ -277,3 +277,34 @@ def _heartbeat():
 | 规则索引 v3.3.0 刷新 | `6052ca4` | 633 表 + 51 daemon + 40 新表 |
 | smart_mount 心跳双写修复 | `6dc0a71` | **根因修复** |
 | **本报告** | 待 commit | 冰山仙女座运行状态 + 僵尸根因 + 修复路径 |
+
+---
+
+## 七、2026-10-24 凌晨战报（P1 四项修复执行记录）
+
+### 7.1 已交付（commit 链：a4c5b1a → c117722 → adca256）
+
+| 项 | 交付 | 关键 commit | 验证 |
+|---|---|---|---|
+| **P1-3 表名对齐** | life_daemon 七阶段全部改指真实 schema：`ai_employees`(12064行)/`eigenflux_registrations`/`mt_ai_eigenflux_connections`(conn_uid/ACQUAINTANCE/MENTOR)/`mt_ai_brain_feed_log`(feed_target/fed_by/payload_preview)；GROW 改 knowledge_base_size 生长 | 模板+mini 实例同步 patch | DB_PATH 已指 database/app.db，DEBATE/GAME 等阶段可跑通查询 |
+| **P1-3b 陷阱库隔离** | `flask-app/engines/app.db`（4KB 空库，10-19 误建）是"第二个宇宙"真身：无 env daemon 全连进去全表报错 → 已隔离改名 `.trap_quarantined_20261024`；`_paths` 候选顺序修正（database 优先、engines 降级、APP_DB 模块级优先） | 模板+mini | 无 env 启动 DB_PATH 正确 |
+| **P1-1 心跳 HTTP 代理** | Flask 新增 `POST /api/internal/heartbeat`（loopback-only + X-Internal-Token 600权限文件 + fail-closed + CSRF 豁免前缀）；模板 `_heartbeat` 双路：HTTP 优先 → 直写兜底；mini 5 daemon 已改造 | `bc8cef3` | 三连测全绿（无token 403 / 有token 200 / 双表各 1 行）；sys_consciousness/autosync 心跳 HTTP 全链路通 |
+| **P1-1b WAL 锁全案真凶** | `frontline_patrol` 的 `PRAGMA integrity_check`（8.3GB 全页扫数分钟）+ `wal_checkpoint(TRUNCATE)`（阻塞全部写者）= 全舰队锁死总根源（SQL-TRACE + faulthandler SIGUSR1 + SIGKILL 二分三重实证）；舰队级 22 文件替换 `quick_check`+`PASSIVE` | `0e4f006`→`c117722` | 多分钟级硬封锁消除 |
+| **P1-1c 清道夫+取证** | sqlite3.connect monkey-patch（check_same_thread=False + weakref 注册表 + dbapi2 覆盖）→ 每 20s 代提交泄漏事务；SQL-TRACE 语句级+连接ID追踪；SIGUSR1 全线程栈取证 | `6cd9290`/`adca256` | reaper 已上线，取证设施常驻 |
+| **P1-2 端口守卫** | modular_start 重导入前 health 探测：端口已有健康服务 → 安静退出（launchd KeepAlive / cron / 手动三拉起方竞争根治，EADDRINUSE 历史事故闭环） | 同日 | launchd 复活实例被守卫吸收，单实例稳定 |
+| **P1-4 五自循环** | iceberg_command --daemon 已拉起（90s busy_timeout），five-cycles 代码就位 | — | daemon 运行中；业务写入受残余写竞争影响（见下） |
+
+### 7.2 残余风险（Phase 3 待办，诚实记录）
+
+1. **写者寡头问题（未根治）**：Flask 进程内 rules_engine 每 300s 重播种（legal_red_lines 等 INSERT OR IGNORE×数百，单事务数分钟）+ 启动播种风暴 3min → 写锁准连续占用；外部 daemon 即便 90s 耐心仍会在风暴峰值失败。SQL-TRACE 实证 08:39-41/08:45-48 两轮完整风暴。**根治方向**：播种幂等守卫（表非空跳过）/ 写请求统一队列 / PostgreSQL 迁移。
+2. **一次写风暴曾把 Flask worker 全堵死**（health 000），权威重启恢复——写超载会演化成 HTTP 层瘫痪，Phase 3 必须处理。
+3. `ai_employees.last_heartbeat` 全员 NULL、`successful_fixes` 全 0：life 生殖/社交池的"新鲜度"过滤已改 `updated_at`，心跳落库仍需 autosync 链路修复。
+4. 本地/mini schema 漂移多处（ai_employees 列集、mt_iceberg_runs 列名 run_type 不存在等）——跨库 SQL 一律 PRAGMA table_info 先行。
+
+### 7.3 运维资产（新增常驻）
+
+- `POST /api/internal/heartbeat`：daemon 心跳标准通道（token 文件 `_runtime/.internal_token`，chmod 600，缺失即 fail-closed）
+- `kill -USR1 <flask_pid>`：全线程栈转储（faulthandler 常驻）
+- `[SQL-TRACE c<conn_id>]`：语句级追踪（flask_launchd.log），按连接聚合可定位长事务
+- `[WAL-REAPER]`：泄漏事务清道夫日志（20s 周期）
+- SIGKILL 二分定位法：SIGSTOP 不释放 fcntl 锁，必须 SIGKILL（今夜实证）
