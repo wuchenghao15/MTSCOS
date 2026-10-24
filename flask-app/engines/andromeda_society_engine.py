@@ -375,7 +375,7 @@ def _legis_inner(conn=None) -> dict:
             "INSERT OR IGNORE INTO mt_committee_proposals (proposal_id, title, type, "
             "category, proposer, priority, source, status) VALUES "
             "(?,?, '新增', '系统治理', '仙女座自治区', 2, 'ANDROMEDA_SOCIETY', 'PENDING')",
-            (pid, title, gap[0]))
+            (pid, title))
         conn.commit()
         if conn.execute("SELECT count(*) FROM mt_committee_proposals WHERE proposal_id=?",
                         (pid,)).fetchone()[0]:
