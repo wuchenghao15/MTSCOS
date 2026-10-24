@@ -872,18 +872,35 @@ def _extract_and_save_keywords(session_id, user_id, user_text, ai_text, inflecti
 # ════════════════════════════════════════════════════════════════
 # 上下文管理: 50MB 提示 / 128MB 自动压缩 + 脑库投喂
 # ════════════════════════════════════════════════════════════════
-CONTEXT_WARN_MB = 50.0
-CONTEXT_COMPRESS_MB = 128.0
-KEEP_RECENT_TURNS = 20
+# flow_context_quota_20261024: 上下文按身份分档限额
+#   游客: 30MB 硬限 (25MB 警告, 超限 413 block)
+#   普通: 512MB 硬限 (400MB 警告, 超限 413 block)
+#   SA:   无约束 (跳过整个 context 管理)
+CONTEXT_QUOTA = {
+    'guest':   {'warn_mb': 25.0, 'hard_mb': 30.0,  'compress_mb': 30.0},
+    'user':    {'warn_mb': 400.0, 'hard_mb': 512.0, 'compress_mb': 512.0},
+    # 'sa':   无约束, 整段跳过
+}
+KEEP_RECENT_TURNS = 20  # 给 Ollama 传最近 20 轮 (40 条 user+assistant)
 
 
-def _check_and_manage_context(session_id, user_id, username):
+def _check_and_manage_context(session_id, user_id, username, user_type='user'):
     """
-    检查 session 上下文大小, 超过阈值触发 warning 或自动压缩.
-    返回 dict: {warning/compressed/size_mb/size_mb_before/size_mb_after/archived_count}
-    自动压缩策略: 老消息投喂脑库后, 从后续 prompt 构建的 context 里截断 (DB 不删).
+    flow_context_quota_20261024: 按身份分档限额检查 + 自动压缩
+    user_type: 'guest' | 'user' | 'sa' (SA 跳过 → 返回空 status)
+    返回 dict: {warning/compressed/blocked/size_mb/limit_mb/...}
+      blocked=True → send_message 应直接 413 拒绝, 不再调 Ollama
     """
-    status = {'warning': False, 'compressed': False, 'size_mb': 0}
+    if user_type == 'sa':
+        return {}  # SA 豁免: 不警告、不压缩、不阻断
+
+    quota = CONTEXT_QUOTA.get(user_type, CONTEXT_QUOTA['user'])
+    warn_mb = quota['warn_mb']
+    hard_mb = quota['hard_mb']
+    compress_mb = quota['compress_mb']
+
+    status = {'warning': False, 'compressed': False, 'blocked': False,
+              'size_mb': 0, 'limit_mb': hard_mb, 'warn_mb': warn_mb}
     try:
         conn = _db()
         cur = conn.execute(
@@ -899,19 +916,49 @@ def _check_and_manage_context(session_id, user_id, username):
     size_mb = total_bytes / (1024 * 1024)
     status['size_mb'] = round(size_mb, 2)
 
-    if size_mb < CONTEXT_WARN_MB:
+    if size_mb >= hard_mb:
+        # 硬阻断: 超限 → 413 + 触发自动压缩归档 (下次进入后超限自然解除)
+        status['blocked'] = True
+        status['warning'] = True
+        # 先跑一轮压缩归档, 让 SA/运维知道这个 session 爆了
+        try:
+            conn = _db()
+            rows = conn.execute(
+                "SELECT id, role, content FROM chat_messages WHERE session_id=? AND role IN ('user','assistant') ORDER BY created_at ASC, id ASC",
+                (session_id,)
+            ).fetchall()
+            conn.close()
+            if rows and len(rows) > KEEP_RECENT_TURNS * 2:
+                archive_text = f"[上下文超限归档] session={session_id} 达 {size_mb:.1f}MB (限 {hard_mb}MB), 身份={user_type}\n"
+                for r in rows[:30]:
+                    archive_text += f"  {r['role']}: {(r['content'] or '')[:200]}\n"
+                try:
+                    conn2 = _db()
+                    conn2.execute(
+                        "INSERT OR IGNORE INTO mt_ai_brain_sources(source,content,created_at) VALUES(?,?,datetime('now','localtime'))",
+                        ('local_chat_context_archive', archive_text[:3000])
+                    )
+                    conn2.commit()
+                    conn2.close()
+                except Exception:
+                    pass
+                status['auto_archived'] = True
+        except Exception:
+            pass
         return status
 
-    # ≥ 50MB → 提示
+    if size_mb < warn_mb:
+        return status
+
+    # ≥ warn_mb → 提示
     status['warning'] = True
 
-    if size_mb < CONTEXT_COMPRESS_MB:
+    if size_mb < compress_mb:
         return status
 
-    # ≥ 128MB → 自动压缩
+    # ≥ compress_mb → 自动压缩归档 (老消息投喂脑库, DB 不删)
     try:
         conn = _db()
-        # 1. 取全部消息按序
         rows = conn.execute(
             "SELECT id, role, content FROM chat_messages WHERE session_id=? AND role IN ('user','assistant') ORDER BY created_at ASC, id ASC",
             (session_id,)
@@ -920,27 +967,21 @@ def _check_and_manage_context(session_id, user_id, username):
     except Exception:
         return status
 
-    total_msgs = len(rows)
-    if total_msgs <= KEEP_RECENT_TURNS * 2:
-        return status  # 太少不值得压缩
+    if len(rows) <= KEEP_RECENT_TURNS * 2:
+        return status
 
-    # 2. 切分: 保留最近 KEEP_RECENT_TURNS*2 条 (一轮对话=user+assistant)
     keep_count = KEEP_RECENT_TURNS * 2
     archived = rows[:-keep_count]
     kept = rows[-keep_count:]
-
     archived_bytes = sum(len(r['content'] or '') for r in archived)
     kept_bytes = sum(len(r['content'] or '') for r in kept)
 
-    # 3. 老消息投喂脑库 (异步)
     def _async_fed():
         try:
             conn2 = _db()
-            # 脑库摘要: 老消息压缩成摘要条目
             archive_text = f"[上下文压缩归档] session={session_id} 原{size_mb:.1f}MB → 保留最近 {KEEP_RECENT_TURNS} 轮\n"
-            for r in archived[-30:]:  # 最多喂 30 条老消息到脑库
-                snippet = (r['content'] or '')[:300]
-                archive_text += f"  {r['role']}: {snippet}\n"
+            for r in archived[-30:]:
+                archive_text += f"  {r['role']}: {(r['content'] or '')[:300]}\n"
             conn2.execute(
                 "INSERT OR IGNORE INTO mt_ai_brain_sources(source,content,created_at) VALUES(?,?,datetime('now','localtime'))",
                 ('local_chat_context_archive', archive_text[:2000])
@@ -957,7 +998,6 @@ def _check_and_manage_context(session_id, user_id, username):
     status['size_mb_before'] = round(size_mb, 2)
     status['size_mb_after'] = round(kept_bytes / (1024 * 1024), 2)
     status['archived_count'] = len(archived)
-
     return status
 
 
@@ -1098,19 +1138,17 @@ def _fallback_local_reply(user_text, username):
     return reply
 
 
-def _call_ollama_stream(user_text, system_prompt, username, images=None, model_override=None):
+def _call_ollama_stream(user_text, system_prompt, username, images=None, model_override=None, history=None):
     """
-    v25.1: Stream from Ollama /api/chat. Auto-detect available.
-    Falls back to _fallback_local_reply when Ollama unreachable.
-    flow_chat_all7_20261019: images (base64 list) → 多模态视觉理解;
-    model_override → 视觉模型名 (仅带图消息传入)
+    v25.5: Stream from Ollama /api/chat. 支持多轮上下文。
+    flow_context_quota_20261024: history=[{role,content}] 插入 system 与 user_msg 中间
+      → 多轮对话连贯, Ollama 自己管理上下文窗口
     """
     import urllib.request as _ur
 
     if not _ollama_available():
         yield f"data: [thinking]\n\n"
         fallback_text = _fallback_local_reply(user_text, username)
-        # Stream fallback text token-by-token for consistent UX
         for ch in fallback_text:
             yield f"data: {json.dumps({'token': ch}, ensure_ascii=False)}\n\n"
         yield f"data: [done] {json.dumps({'model': 'andromeda_fallback', 'duration_ms': 50, 'prompt_eval_count': len(user_text), 'eval_count': len(fallback_text)}, ensure_ascii=False)}\n\n"
@@ -1120,17 +1158,20 @@ def _call_ollama_stream(user_text, system_prompt, username, images=None, model_o
 
     try:
         host = os.environ.get("OLLAMA_HOST", "").strip() or _resolve_ollama_host()
-        # 与计费 pricing 配置一致; mini 实装 qwen2.5:14b (7b 未装会 404)
         model = model_override or os.environ.get("OLLAMA_MODEL", "").strip() or "qwen2.5:14b"
         user_msg = {"role": "user", "content": user_text}
         if images:
-            user_msg["images"] = images  # base64 列表, 视觉模型多模态输入
+            user_msg["images"] = images
+
+        # flow_context_quota_20261024: [system] + history + [user_msg]
+        messages = [{"role": "system", "content": system_prompt}]
+        if history:
+            messages.extend(history)
+        messages.append(user_msg)
+
         body = json.dumps({
             "model": model,
-            "messages": [
-                {"role": "system", "content": system_prompt},
-                user_msg,
-            ],
+            "messages": messages,
             "stream": True,
             "options": {"temperature": 0.85, "top_p": 0.92, "num_predict": 1024}
         }).encode()
@@ -2680,19 +2721,31 @@ def send_message():
     # ── Token 计费 v25.5: 每日赠送 + 预扣拦截 ──
     sa_exempt = _is_sa(u)
 
-    # ── flow_orphan_cleanup_20261024: 入口处先清断网残留 frozen prehold ──
-    # 断网/刷新/GeneratorExit 后可能残留 frozen prehold 未释放
+    # ── flow_orphan_cleanup_20261024 v2: 入口处清断网残留 frozen prehold ──
+    # v2 修复: 年龄门槛 (5min 未更新才算孤儿) — 避免误清活跃 SSE 的 prehold
+    # 原因: prehold 更新 updated_at=now, SSE 断后 frozen 年龄 = SSE 持续时间,
+    #       5min 门槛保证活跃对话 (AI 输出中) 不被误清, 真正孤儿 (SSE 已死 5min+) 才清
     if not sa_exempt:
         try:
             _c = _db()
+            # 加年龄门槛: frozen>0 且 5min 没更新 (活跃 SSE 的 prehold updated_at ≤ prehold 时,
+            # 但 SSE 每 30s heartbeat 更, 5min 窗口足够覆盖所有活跃情况)
             _orphans = _c.execute(
-                "SELECT COALESCE(frozen,0) FROM mt_token_wallets WHERE user_id=?",
+                "SELECT COALESCE(frozen,0), updated_at FROM mt_token_wallets WHERE user_id=?",
                 (u['user_id'],)).fetchone()
-            if _orphans and _orphans[0] > 0:
-                _refund_prehold(u['user_id'], _orphans[0],
-                                reason='orphan_cleanup_on_new_request',
-                                session_id=sid or '')
             _c.close()
+            if _orphans and _orphans[0] > 0:
+                # 判断年龄: 用 SQLite strftime 差 秒
+                _age_sql = f"""SELECT COALESCE(frozen,0) FROM mt_token_wallets
+                    WHERE user_id=? AND frozen>0 AND
+                    (strftime('%s','now','localtime') - strftime('%s', COALESCE(updated_at,datetime('now','localtime','-10 minutes')))) > 300"""
+                _c2 = _db()
+                _ok = _c2.execute(_age_sql, (u['user_id'],)).fetchone()
+                if _ok and _ok[0] > 0:
+                    _refund_prehold(u['user_id'], _ok[0],
+                                    reason='orphan_cleanup_age>5min',
+                                    session_id=sid or '')
+                _c2.close()
         except Exception:
             pass
 
@@ -2739,12 +2792,43 @@ def send_message():
     cp = _get_cognitive_profile(u['user_id'], u['username'])
     system_prompt = _build_divergent_prompt(user_text, u['username'], cp, page_context=page_context)
 
-    # 保存用户消息 (flow_chat_all7: 带图消息落附件标记)
+    # ── 上下文管理 (flow_context_quota_20261024: 分档限额) ──
+    is_guest = str(u['user_id']).startswith('guest')
+    sa_exempt = _is_sa(u)
+    user_type = 'sa' if sa_exempt else ('guest' if is_guest else 'user')
+
+    # 先查历史 (不含本轮 user_msg) → 再存消息 → 再检查限额
+    history_messages = []
+    if sid:
+        try:
+            conn = _db()
+            rows = conn.execute(
+                "SELECT role, content FROM chat_messages WHERE session_id=? AND role IN ('user','assistant') "
+                "ORDER BY created_at ASC, id DESC LIMIT ?",
+                (sid, KEEP_RECENT_TURNS * 2)
+            ).fetchall()
+            conn.close()
+            # 修正顺序 (DESC LIMIT 20 拿到的是最新 20 条逆序, 翻正序)
+            rows = list(reversed(rows))
+            history_messages = [{'role': r['role'], 'content': r['content']} for r in rows]
+        except Exception:
+            pass
+
+    # 保存用户消息
     _save_message(sid, u['user_id'], 'user', user_text + ('\n\n📎 [图片]' if image_b64 else ''))
     _record_action(sid, u['user_id'], 'send', {'text_len': len(user_text), 'model': model})
 
-    # ── 上下文管理 ──
-    ctx_status = _check_and_manage_context(sid, u['user_id'], u['username'])
+    ctx_status = _check_and_manage_context(sid, u['user_id'], u['username'], user_type=user_type)
+
+    # 硬阻断: 超限额 → 413, 不再调 Ollama
+    if ctx_status.get('blocked'):
+        return jsonify({
+            'success': False, 'error': 'context_exceeded',
+            'message': f'上下文已达 {ctx_status["size_mb"]:.1f}MB, 超过 {ctx_status["limit_mb"]}MB 限额 ({("游客" if is_guest else "普通用户")}档), 请新建对话',
+            'size_mb': ctx_status['size_mb'], 'limit_mb': ctx_status['limit_mb'],
+            'auto_archived': ctx_status.get('auto_archived', False),
+            'tip': '提示: 可新建 session; SA 无此约束'
+        }), 413
 
     # 生成 SSE 流
     def generate():
@@ -2753,13 +2837,12 @@ def send_message():
         t0 = time.time()
         brain_fed = False
 
-        # 先 yield 预扣事件
         if prehold_result and prehold_result.get('ok'):
             yield f"data: [prehold] {json.dumps({'held': prehold_result['held_amount'], 'balance': prehold_result['balance'], 'model': model, 'model_weight': _pricing_for(model)['model_weight']}, ensure_ascii=False)}\n\n"
 
         if ctx_status.get('warning'):
-            warn_msg = f"上下文已达 {ctx_status['size_mb']:.1f}MB, 建议手动压缩"
-            yield f"data: [context_warning] {json.dumps({'size_mb': ctx_status['size_mb'], 'threshold_mb': 50, 'message': warn_msg}, ensure_ascii=False)}\n\n"
+            warn_msg = f"上下文已达 {ctx_status['size_mb']:.1f}MB, 建议新建对话 (限 {ctx_status.get('warn_mb', 50)}MB 警告线)"
+            yield f"data: [context_warning] {json.dumps({'size_mb': ctx_status['size_mb'], 'warn_mb': ctx_status.get('warn_mb', 50), 'limit_mb': ctx_status.get('limit_mb'), 'message': warn_msg}, ensure_ascii=False)}\n\n"
         if ctx_status.get('compressed'):
             before_mb = ctx_status.get('size_mb_before', 0)
             after_mb = ctx_status.get('size_mb_after', 0)
@@ -2771,7 +2854,8 @@ def send_message():
         try:
             for chunk in _call_ollama_stream(user_text, system_prompt, u['username'],
                                              images=[image_b64] if image_b64 else None,
-                                             model_override=model if image_b64 else None):
+                                             model_override=model if image_b64 else None,
+                                             history=history_messages if not sa_exempt else None):
                 yield chunk
                 if chunk.startswith('data:'):
                     payload = chunk[5:].strip()
