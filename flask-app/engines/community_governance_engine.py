@@ -227,6 +227,8 @@ STAR_EMOJIS = ['⭐', '🌟', '✨', '💫', '🔆']
 
 
 def stars_expand_once(conn=None) -> dict:
+    """domain 列有 UNIQUE 约束 (每域一星, 25 星=25 领域).
+    扩容 = 从员工 specialties/group_tag 各分段里找【尚无星的新领域】补星."""
     own = conn is None
     if own:
         conn = _connect()
@@ -238,20 +240,29 @@ def stars_expand_once(conn=None) -> dict:
             return stats
         existing = {r[0] for r in conn.execute(
             "SELECT star_name FROM mt_andromeda_stars").fetchall()}
-        # 候选: 活跃员工, 心跳最新优先, 修复战绩加权
+        domains = {r[0] for r in conn.execute(
+            "SELECT domain FROM mt_andromeda_stars").fetchall()}
         cands = conn.execute(
             "SELECT name, IFNULL(specialties,''), IFNULL(group_tag,''), "
-            "IFNULL(title,''), IFNULL(grade,'') FROM ai_employees "
+            "IFNULL(title,'') FROM ai_employees "
             "WHERE LOWER(IFNULL(status,'active'))='active' "
             "AND IFNULL(name,'')!='' "
             "ORDER BY IFNULL(last_heartbeat,'') DESC, IFNULL(successful_fixes,0) DESC "
-            "LIMIT 400").fetchall()
-        for name, spec, gtag, title, grade in cands:
+            "LIMIT 800").fetchall()
+        for name, spec, gtag, title in cands:
             if stats['before'] + stats['added'] >= STAR_TARGET:
                 break
             if name in existing:
                 continue
-            domain = (gtag or spec or '综合').split('/')[0].split('、')[0][:12] or '综合'
+            # 分段候选池: group_tag 与 specialties 各段, 取第一个尚无星的新领域
+            segs = []
+            for src in (gtag, spec):
+                for sep in ('/', '、', '·', ','):
+                    src = src.replace(sep, '|')
+                segs += [s.strip() for s in src.split('|') if s.strip()]
+            domain = next((s[:12] for s in segs if s[:12] not in domains), None)
+            if not domain:
+                continue
             idx = int(hashlib.md5(name.encode()).hexdigest(), 16)
             conn.execute(
                 "INSERT INTO mt_andromeda_stars (domain, star_name, constellation, "
@@ -261,8 +272,9 @@ def stars_expand_once(conn=None) -> dict:
                  ['O5V', 'B8V', 'A3V', 'G2V', 'K1V', 'M5V'][idx % 6],
                  STAR_COLORS[idx % len(STAR_COLORS)],
                  STAR_EMOJIS[idx % len(STAR_EMOJIS)],
-                 f'{title or "AI 明星员工"}|{spec[:40] or gtag[:40] or "综合领域"}'))
+                 f'{title or "AI 明星员工"}|{(spec or gtag)[:40] or domain}'))
             existing.add(name)
+            domains.add(domain)
             stats['added'] += 1
         conn.commit()
     finally:
