@@ -124,7 +124,17 @@ _RESIDENT_CENTERS = [
 ]
 
 
+_LAB_TABLES_READY = False
+
+
 def _ensure_claim_tables():
+    # v22.25.19 播种幂等守卫 (flow_unified_ops_20261024): 本函数被 14+ 路由和
+    # lab-daemon 每 15min tick 反复调用, 全量 CREATE/ALTER/PRAGMA/种子 INSERT 每次
+    # 都抢 WAL 写锁 (SQL-TRACE 实测 mt_lab_centers 每 tick 13 条)。全部语句幂等,
+    # 进程级一次化: 首次成功后本进程直接 return (与 legal_redlines 同模式)。
+    global _LAB_TABLES_READY
+    if _LAB_TABLES_READY:
+        return
     conn = _db()
     try:
         for sql in _LAB_CLAIM_SQL:
@@ -205,6 +215,7 @@ def _ensure_claim_tables():
         )""")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_lab_task_events_task ON mt_lab_task_events(hall_task_id)")
         conn.commit()
+        _LAB_TABLES_READY = True
     finally:
         conn.close()
 
