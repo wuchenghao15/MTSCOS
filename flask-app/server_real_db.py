@@ -8583,6 +8583,12 @@ def _ensure_site_decoration_schema(conn):
             updated_at TEXT
         )""")
         conn.commit()
+        # v22.25.19 播种幂等守卫 (flow_unified_ops_20261024): 本函数被 _get_footer_info
+        # 在【每次页面渲染】上调用, 16 条 INSERT OR IGNORE + commit 每次都抢 WAL 写锁
+        # (SQL-TRACE 实测 1316 条/半天, 写者寡头残余大头)。哨兵键存在 → 种子必然齐全
+        # (INSERT OR IGNORE 不会覆盖用户改值), 跳过整个种子循环, 只剩 1 读。
+        if conn.execute("SELECT count(*) FROM ui_site_decoration WHERE k='footer_contact_worktime'").fetchone()[0] > 0:
+            return
         # 写入默认值（不存在时）
         now_iso = datetime.now().isoformat()
         defaults = [
