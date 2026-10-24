@@ -327,14 +327,17 @@ def _social_inner(conn=None) -> dict:
     stats = {'roundtable': 0, 'learning': 0, 'messages': 0}
     try:
         agenda, src_table = _real_agenda(conn)
-        # 参会者: 心跳最新的活跃节点 (host 1 + guests 3)
+        # 参会者: 心跳最新的活跃节点 (host 1 + guests 3); reg_id 全空,
+        # 实表 host/guest 惯例用节点名 → 这里用 employee_name, ID 用 employee_id
         nodes = conn.execute(
-            "SELECT reg_id, employee_name FROM eigenflux_registrations "
+            "SELECT IFNULL(NULLIF(employee_id,''), employee_name), employee_name "
+            "FROM eigenflux_registrations "
             "WHERE IFNULL(last_heartbeat,'')>datetime('now','localtime','-30 minutes') "
             "ORDER BY last_heartbeat DESC LIMIT 4").fetchall()
         if len(nodes) < 2:
             nodes = conn.execute(
-                "SELECT reg_id, employee_name FROM eigenflux_registrations "
+                "SELECT IFNULL(NULLIF(employee_id,''), employee_name), employee_name "
+                "FROM eigenflux_registrations "
                 "ORDER BY last_heartbeat DESC LIMIT 4").fetchall()
         if len(nodes) >= 2:
             sid = f'RT_{time.strftime("%Y%m%d_%H%M%S")}'
@@ -346,7 +349,7 @@ def _social_inner(conn=None) -> dict:
                 "INSERT INTO mt_roundtable_sessions (session_id, host_node, guest_node, "
                 "experts_json, agenda, outcome, shared_items, round_summary, duration_sec) "
                 "VALUES (?,?,?,?,?,?,?,?,?)",
-                (sid, nodes[0][0], nodes[1][0], json.dumps(experts, ensure_ascii=False),
+                (sid, nodes[0][1], nodes[1][1], json.dumps(experts, ensure_ascii=False),
                  agenda, outcome, agenda[:60],
                  f'社会生活引擎自动组织的圆桌磋商, 议题来源 {src_table}',
                  300 + int(hashlib.md5(sid.encode()).hexdigest(), 16) % 600))
