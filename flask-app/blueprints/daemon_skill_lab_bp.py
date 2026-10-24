@@ -98,7 +98,7 @@ _SEED_CENTERS = [
     ("workflow", "工作流研究中心", "工作流", "工作流,workflow,流水线,调度,协同,编排,任务链"),
     ("data_research", "数据研究中心", "数据研究", "数据,分析,报告,统计,研究,画像"),
     ("frontend_design", "前端设计中心", "前端设计", "前端,设计,ui,页面,视觉,交互"),
-    ("edu_qbank", "教育题库中心", "教育题库", "教育,题库,考试,备课,教学,讲解,试题,测验,摸底,月考,模拟,招生"),  # flow_exam_auto_20261020
+    ("edu_qbank", "教育题库中心", "教育题库", "教育,题库,考试,备课,教学,讲解,试题,测验,摸底,月考,模拟,招生,教育研究,学习,错题,组卷,学情,分层,考点,双语,游戏化,自适应,诊断"),  # flow_exam_auto_20261020 + flow_edu_research_taskhall_20261025
 ]
 
 # 工作流研究方向种子 (新增研究方向)
@@ -108,6 +108,22 @@ _SEED_WORKFLOWS = [
     ("教授分身导师工作流", "教授数字分身在研发任务中的评审/导师节点接入", "研究分身专家在代码评审与方向把关中的触发时机与权重"),
     ("零 token 磋商协议", "EigenFlux 多角色磋商的本地规则化表决协议", "研究纯本地磋商的议事规则、平票裁决与升级到 SA 的阈值"),
     ("跨中心任务交换协议", "多中心对同一候选的认领冲突与任务交换", "研究认领冲突仲裁与跨中心协作的握手协议"),
+]
+
+# 教育领域研究方向种子 (flow_edu_research_taskhall_20261025)
+# 任务中心新增教育研究方向: 入 mt_lab_workflows (domain=教育领域) + 入任务大厅自动认领
+# 复用存量教辅资产: mt_edu_sync_content 27条 / 7题型母题 / 4理化实验 / 考试自动引擎
+_SEED_EDU_RESEARCH = [
+    ("自适应学习路径", "基于学情画像动态规划个性化学习路径", "研究知识点依赖图建模与薄弱项优先排序, 输出可落库的路径生成器"),
+    ("错题归因诊断", "知识点级错因分类与补救题组生成", "研究错题→错因→补救归因链路, 对接题库自动出同类变式题"),
+    ("AI 自动组卷", "按考点覆盖/难度分布/题型约束智能组卷", "研究组卷约束求解与自适应回填策略, 复用 7 题型母题库"),
+    ("学情画像与预测", "成绩趋势预测与薄弱知识点早期预警", "研究时间序列画像指标与预警阈值, 支撑教学干预决策"),
+    ("理化虚拟实验", "理化实验交互式仿真与操作安全评估", "研究 4 个理化实验的仿真步骤建模与危险操作识别"),
+    ("分层教学法", "K12/高等/成人/文科分层题目与教案适配", "研究学段差异参数化, 同一考点自动生成分层讲解与练习"),
+    ("题目质量评测", "11 项质量巡检驱动的题目生命周期优化", "研究空解析/重复/难度漂移的自动修复优先级与回归验证"),
+    ("游戏化学习激励", "闯关式学习与零氪金激励闭环设计", "研究积分/徽章/进度可视化对完课率的影响度量"),
+    ("考试趋势挖掘", "摸底/月考/模拟/自主招生真题考点共现分析", "研究历年考点频率与命题趋势, 反哺出题优先级"),
+    ("双语教学资源", "中英术语库对齐与教辅内容双语化", "研究学科术语库构建与翻译对齐质量校验"),
 ]
 
 # 教授数字分身候选池 (按姓名优先匹配 ai_employees)
@@ -142,6 +158,9 @@ def _ensure_claim_tables():
         for code, name, domain, kws in _SEED_CENTERS + _RESIDENT_CENTERS:
             conn.execute("INSERT OR IGNORE INTO mt_lab_centers (center_code,name,domain,keywords) VALUES (?,?,?,?)",
                          (code, name, domain, kws))
+        # flow_edu_research_taskhall_20261025: 存量库 edu_qbank 关键词对齐种子 (教育研究方向认领权重)
+        conn.execute("UPDATE mt_lab_centers SET keywords=? WHERE center_code='edu_qbank'",
+                     (_SEED_CENTERS[[c[0] for c in _SEED_CENTERS].index("edu_qbank")][3],))
         if conn.execute("SELECT count(*) FROM mt_lab_workflows").fetchone()[0] == 0:
             for nm, desc, direction in _SEED_WORKFLOWS:
                 conn.execute("INSERT INTO mt_lab_workflows (name,direction,description) VALUES (?,?,?)",
@@ -214,6 +233,19 @@ def _ensure_claim_tables():
             created_at TEXT DEFAULT (datetime('now','localtime'))
         )""")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_lab_task_events_task ON mt_lab_task_events(hall_task_id)")
+        # ══ 教育领域研究方向播种 (flow_edu_research_taskhall_20261025, 幂等) ══
+        # ① 入 mt_lab_workflows (domain=教育领域) — 工作台研究方向展示
+        # ② 入 mt_lab_task_hall (source=edu_research) — 任务大厅 QUEUED, 教育题库中心按关键词自动认领
+        for nm, desc, direction in _SEED_EDU_RESEARCH:
+            conn.execute("""INSERT INTO mt_lab_workflows (name,domain,direction,description)
+                            SELECT ?,?,?,? WHERE NOT EXISTS
+                            (SELECT 1 FROM mt_lab_workflows WHERE name=?)""",
+                         (nm, "教育领域", direction, desc, nm))
+            hall_title = f"【教育研究】{nm}"
+            conn.execute("""INSERT INTO mt_lab_task_hall (title,description,source,priority)
+                            SELECT ?,?,'edu_research','NORMAL' WHERE NOT EXISTS
+                            (SELECT 1 FROM mt_lab_task_hall WHERE title=? AND source='edu_research')""",
+                         (hall_title, desc, hall_title))
         conn.commit()
         _LAB_TABLES_READY = True
     finally:
@@ -348,9 +380,10 @@ def _hall_dispatch_one(task):
             try:
                 from engines.ai_team_collab_engine import init_tables, open_channel
                 init_tables()
-                open_channel({"id": task["id"], "title": task["title"],
-                              "description": task.get("description") or "",
-                              "source": task.get("source") or "开发"})
+                _td = dict(task)   # flow_edu_research_taskhall_20261025: sqlite3.Row 无 .get
+                open_channel({"id": _td.get("id"), "title": _td.get("title"),
+                              "description": _td.get("description") or "",
+                              "source": _td.get("source") or "开发"})
             except Exception as _ce:
                 print(f"[TEAM-COLLAB] ⚠️ 开频道失败 task={task['id']}: {_ce}")
     finally:
