@@ -346,7 +346,11 @@ def run_iceberg_cycle() -> dict:
     t0 = time.time()
     log("══════ 🧊 冰山安全合规总指挥启动 ══════")
     
-    db = sqlite3.connect(str(DB))
+    db = sqlite3.connect(str(DB), timeout=15)
+    try:
+        db.execute("PRAGMA busy_timeout=15000")
+    except Exception:
+        pass
     _ensure_tables(db)
     
     results = {}

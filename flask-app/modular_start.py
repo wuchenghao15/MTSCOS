@@ -244,4 +244,38 @@ if __name__ == "__main__":
             except ValueError:
                 pass
             break
+    # ===== flow_unified_ops_20261023 P1-1b: WAL 泄漏事务清道夫 =====
+    # 实证: Flask 启动后 ~45s 内部某引擎连接 DML 后不 commit (常驻单例持有连接),
+    # WAL 写锁被永久占用 → 全舰队外部写 database is locked, Flask 其它连接也写不进.
+    # 清道夫: 每 20s 用 gc 找本进程所有 in_transaction 的 sqlite3.Connection 并代为
+    # commit (保留写意图, 释放写锁). 泄漏窗口从 ∞ 收敛到 ≤20s.
+    try:
+        import gc as _gc_reaper
+        import sqlite3 as _sq_reaper
+        import time as _t_reaper
+
+        def _wal_txn_reaper():
+            _n_total = 0
+            while True:
+                _t_reaper.sleep(20)
+                try:
+                    for _o in _gc_reaper.get_objects():
+                        if isinstance(_o, _sq_reaper.Connection):
+                            try:
+                                if _o.in_transaction:
+                                    _o.commit()
+                                    _n_total += 1
+                                    sys.stderr.write(
+                                        f'[WAL-REAPER] 已代提交泄漏事务 #{_n_total} (连接 {_o!r:.60})\n')
+                            except Exception:
+                                pass
+                except Exception:
+                    pass
+
+        _reaper_t = _threading_flask.Thread(target=_wal_txn_reaper, name='wal-txn-reaper', daemon=True)
+        _reaper_t.start()
+        sys.stderr.write("[WAL-REAPER] 泄漏事务清道夫已启动 (20s 周期)\n")
+    except Exception as _e:
+        sys.stderr.write(f"[WAL-REAPER] 启动失败(非致命): {_e}\n")
+
     app.run(host="0.0.0.0", port=_mt_port, debug=False, threaded=True)
