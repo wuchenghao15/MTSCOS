@@ -671,3 +671,19 @@ registry 终态：**46 RUNNING + 5 DOWN（诚实）**。4 个真空转均为边�
 | **关系盘点** report_once | 绑定/中心/广播计数 → maintenance_log CENTER_RELATION 留痕 | 全绿 |
 
 守护 `sys_center_relation`（300s）+ launchd `com.mtscos.center-relation`（PID 46620）。列名陷阱 +2：skills 表用 skill_name/skill_id（非 name）、任务大厅主键 id（非 task_id）、认领者列 claim_owner。
+
+### 16. 维和部队分队化 + 市场下沉引擎上线（commit 至 0e458c98，flow_unified_ops_20261023）
+
+用户需求：维和部队（维护部队）拆分成部队，下沉到市场，功能完全释放 — 不只依赖 guard 一个小功能。
+
+**54 连 → 五类分队分编**（rowid % 5，每类 3 连轮值；GUARD 监察由 dispatch.guard_once 持有不重写）：
+
+| 分队 | 下沉职能 | 产出通道 |
+|---|---|---|
+| PATROL 巡逻队 | registry 心跳停摆/FAILED daemon 扫描 | 大厅 HIGH 抢修单 |
+| SURVEY 调研队 | 下沉扫教辅/Arduino/文件整理同步链停滞 | 大厅缺口单 |
+| REPAIR 抢修队 | QUEUED 超 24h 催办+外派阀门介入 | 大厅催办单 |
+| EMPOWER 赋能队 | 连队技能 vs 中心技能包对齐 | 赋能记录 + 缺口盘点 |
+| RECON 侦察队 | EigenFlux 最新情报监视 | 情报留痕 |
+
+守护 `sys_corps_field`（600s 轮转 1 类）+ launchd `com.mtscos.corps-field`。首跑：五分队各 3 连就位 + **EMPOWER 当场发现 11 技能缺口**。陷阱 +1：squad_id 为文本 UUID（CAST 全 0 → 全进 PATROL），分编改 rowid 取模。

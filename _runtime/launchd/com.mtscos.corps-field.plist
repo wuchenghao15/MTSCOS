@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.mtscos.corps-field</string>
+    <key>Comment</key>
+    <string>MTSCOS 维和部队分队化市场下沉引擎 (巡逻/调研/抢修/赋能/侦察 轮转) (flow_unified_ops_20261023)</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/bin/python3</string>
+        <string>-u</string>
+        <string>flask-app/engines/ai_corps_field_engine.py</string>
+        <string>loop</string>
+    </array>
+    <key>WorkingDirectory</key>
+    <string>/Users/wuchenghao/MTSCOS_AI_Project</string>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>ThrottleInterval</key>
+    <integer>30</integer>
+    <key>StandardOutPath</key>
+    <string>/Users/wuchenghao/MTSCOS_AI_Project/_runtime/logs/sys_corps_field_launchd.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/wuchenghao/MTSCOS_AI_Project/_runtime/logs/sys_corps_field_launchd.log</string>
+</dict>
+</plist>
