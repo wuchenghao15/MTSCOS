@@ -123,8 +123,21 @@ def ensure_seed(conn) -> int:
     return n
 
 
-def external_dispatch_once(conn=None) -> dict:
-    """单轮外派: QUEUED 超时任务 → 技能匹配 → 最优承包商 → dispatch 留痕."""
+def external_dispatch_once(conn=None, _retries: int = 3) -> dict:
+    """单轮外派: QUEUED 超时任务 → 技能匹配 → 最优承包商 → dispatch 留痕.
+    WAL 锁竞争时整轮重试 (5s 间隔, 与 Flask 心跳错峰)."""
+    for attempt in range(_retries):
+        try:
+            return _external_dispatch_inner(conn)
+        except sqlite3.OperationalError as e:
+            if 'locked' in str(e).lower() and attempt < _retries - 1:
+                time.sleep(5)
+                continue
+            raise
+    return {'seeded': 0, 'stale': 0, 'dispatched': 0, 'no_match': 0}
+
+
+def _external_dispatch_inner(conn=None) -> dict:
     own = conn is None
     if own:
         conn = _connect()
