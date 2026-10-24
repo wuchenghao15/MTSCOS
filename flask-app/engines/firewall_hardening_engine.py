@@ -26,8 +26,8 @@ import time
 
 import sqlite3
 
-FA_DIR = os.path.dirname(os.path.abspath(__file__))
-PROJECT_ROOT = os.path.dirname(FA_DIR)
+FA_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+PROJECT_ROOT = FA_DIR
 PID_DIR = os.environ.get('MTSCOS_PID_DIR', os.path.join(
     PROJECT_ROOT, '_runtime', 'pids'))
 LOG_CANDIDATES = ['/tmp/flask_launchd.log', os.path.join(
