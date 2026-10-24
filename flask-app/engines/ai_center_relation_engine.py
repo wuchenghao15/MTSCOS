@@ -125,7 +125,7 @@ def notify_once(conn, hours: float = 1.0) -> dict:
         # 幂等: 同任务已通知过则跳过
         dup = conn.execute(
             "SELECT count(*) FROM eigenflux_comm_messages WHERE message_type='CENTER_NOTIFY' "
-            "AND content LIKE ?", (f'%[{tid}]%',)).fetchone()[0]
+            "AND message_content LIKE ?", (f'%[{tid}]%',)).fetchone()[0]
         if dup:
             continue
         bnds = conn.execute(
