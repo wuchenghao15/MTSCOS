@@ -413,7 +413,7 @@ def _strategy_inner(conn=None) -> dict:
         ).fetchone()[0]
         done24 = conn.execute(
             "SELECT count(*) FROM mt_maintenance_tasks WHERE status='DONE' AND "
-            "IFNULL(updated_at,'')>datetime('now','localtime','-24 hours')").fetchone()[0]
+            "IFNULL(created_at,'')>datetime('now','localtime','-24 hours')").fetchone()[0]
         friends24 = conn.execute(
             "SELECT count(*) FROM mt_ai_eigenflux_connections WHERE "
             "created_at>datetime('now','localtime','-24 hours')").fetchone()[0]
