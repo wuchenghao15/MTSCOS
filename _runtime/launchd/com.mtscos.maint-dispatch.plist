@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.mtscos.maint-dispatch</string>
+    <key>Comment</key>
+    <string>MTSCOS 维护部队派单+任务大厅外派守护 (flow_unified_ops_20261024) — KeepAlive 拉起保护</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/bin/python3</string>
+        <string>-u</string>
+        <string>flask-app/engines/maintenance_dispatch_engine.py</string>
+        <string>loop</string>
+    </array>
+    <key>WorkingDirectory</key>
+    <string>/Users/wuchenghao/MTSCOS_AI_Project</string>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>ThrottleInterval</key>
+    <integer>30</integer>
+    <key>StandardOutPath</key>
+    <string>/Users/wuchenghao/MTSCOS_AI_Project/_runtime/logs/sys_maintenance_dispatch_launchd.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/wuchenghao/MTSCOS_AI_Project/_runtime/logs/sys_maintenance_dispatch_launchd.log</string>
+</dict>
+</plist>
