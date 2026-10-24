@@ -8789,8 +8789,27 @@ _REDLINE_LEVELS = ['IRON_RULE',  # 铁规（0容忍，不可跳过，SA也须遵
                    'CONSTRAINT', # 制约（强制告警，可申请管理员审批宽限7d）
                    'WARNING']    # 警示（提示，可申请管理员豁免30d）
 
+_LEGAL_REDLINES_SCHEMA_READY = False
+
+
 def _ensure_legal_redlines_schema(conn):
-    """确保铁规红线表 + 跳过审批表 + 宽限窗口表 存在 + schema 升级补列"""
+    """确保铁规红线表 + 跳过审批表 + 宽限窗口表 存在 + schema 升级补列
+
+    v22.25.18 热修复 (flow_unified_ops_20261024): 本函数含 4 张表 CREATE/ALTER +
+    数十条种子 INSERT OR IGNORE + SRE 200+ 规则迁移, 之前被 _mt_check_rules_on_request
+    在【每个请求】上全量执行 → WAL 写锁排队(busy_timeout 30s) → worker 线程全部堵死 →
+    Flask 假死 (health 000, 实测 2026-10-24 09:17 全线程栈转储确认)。
+    改为进程级一次性初始化: 表结构/种子行本身幂等, 首次成功后本进程不再重跑。
+    """
+    global _LEGAL_REDLINES_SCHEMA_READY
+    if _LEGAL_REDLINES_SCHEMA_READY:
+        return
+    _ensure_legal_redlines_schema_full(conn)
+    _LEGAL_REDLINES_SCHEMA_READY = True
+
+
+def _ensure_legal_redlines_schema_full(conn):
+    """(原实现) 确保铁规红线表 + 跳过审批表 + 宽限窗口表 存在 + schema 升级补列"""
     try:
         # 1) 铁规红线主表
         conn.execute("""CREATE TABLE IF NOT EXISTS legal_red_lines (
@@ -9227,6 +9246,10 @@ def _mt_set_config_rule(key, value, operator=None):
 
 
 # ============ 规则校验核心中间件（在 @system_container 内调用）============
+# v22.25.18: active 规则集进程内 15s TTL 缓存 — 每请求全表读改为准内存命中
+_MT_ACTIVE_RULES_CACHE = {'rows': None, 'ts': 0.0, 'ttl': 15.0}
+
+
 def _mt_check_rules_on_request(page_name, path, user, request_ctx):
     """对当前请求执行规则检查，返回 (allowed: bool, redirect_html_or_None, audit_row)"""
     try:
@@ -9236,13 +9259,19 @@ def _mt_check_rules_on_request(page_name, path, user, request_ctx):
         _sa = (_uname == 'wuchenghao15')
         ip = request.remote_addr or 'unknown_ip'
         ua = request.headers.get('User-Agent', '')[:256]
-        # 0) 拉取所有 active 规则
-        with _get_conn(APP_DB) as conn:
-            _ensure_legal_redlines_schema(conn)
-            rows = conn.execute(
-                "SELECT rule_code,rule_level,penalty_action,skip_allowed,max_grace_hours,"
-                "sa_only_bypass,requires_vikey,scope FROM legal_red_lines WHERE is_active=1"
-            ).fetchall() or []
+        # 0) 拉取所有 active 规则 (15s TTL 缓存, 消除每请求 DB 读+schema ensure)
+        _now_ts = time.time()
+        if _MT_ACTIVE_RULES_CACHE['rows'] is not None and \
+                _now_ts - _MT_ACTIVE_RULES_CACHE['ts'] < _MT_ACTIVE_RULES_CACHE['ttl']:
+            rows = _MT_ACTIVE_RULES_CACHE['rows']
+        else:
+            with _get_conn(APP_DB) as conn:
+                _ensure_legal_redlines_schema(conn)
+                rows = conn.execute(
+                    "SELECT rule_code,rule_level,penalty_action,skip_allowed,max_grace_hours,"
+                    "sa_only_bypass,requires_vikey,scope FROM legal_red_lines WHERE is_active=1"
+                ).fetchall() or []
+            _MT_ACTIVE_RULES_CACHE.update(rows=rows, ts=_now_ts)
         if not rows:
             return True, None, None
         # 1) 检查 scope 是否命中（通配符 * 全命中；逗号分隔多scope匹配）
