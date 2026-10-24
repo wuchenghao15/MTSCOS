@@ -52,6 +52,23 @@ if __name__ == '__main__':
         pass  # 端口不可达 → 正常启动
 
 _ORIGINAL_THREAD_INIT = _threading_flask.Thread.__init__
+
+# ===== flow_unified_ops_20261023 P1-1b: sqlite3 连接注册表 (泄漏事务可发现性) =====
+# Python 3.9 的 sqlite3.Connection 不被 gc 跟踪 → gc.get_objects() 扫不到,
+# 必须在重模块导入前 monkey-patch sqlite3.connect 登记 weakref, 清道夫才能遍历.
+import sqlite3 as _sq_flask
+import weakref as _weakref_flask
+_SQLITE_CONN_REGISTRY = []
+_ORIG_SQLITE_CONNECT = _sq_flask.connect
+def _tracked_sqlite_connect(*args, **kwargs):
+    _conn = _ORIG_SQLITE_CONNECT(*args, **kwargs)
+    try:
+        _SQLITE_CONN_REGISTRY.append(_weakref_flask.ref(_conn))
+    except Exception:
+        pass
+    return _conn
+_sq_flask.connect = _tracked_sqlite_connect
+
 _SKIP_KEYWORDS = (
     # 原守护线程
     'routine_maintenance', 'comprehensive_upgrader', 'system_upgrade',
@@ -247,11 +264,9 @@ if __name__ == "__main__":
     # ===== flow_unified_ops_20261023 P1-1b: WAL 泄漏事务清道夫 =====
     # 实证: Flask 启动后 ~45s 内部某引擎连接 DML 后不 commit (常驻单例持有连接),
     # WAL 写锁被永久占用 → 全舰队外部写 database is locked, Flask 其它连接也写不进.
-    # 清道夫: 每 20s 用 gc 找本进程所有 in_transaction 的 sqlite3.Connection 并代为
-    # commit (保留写意图, 释放写锁). 泄漏窗口从 ∞ 收敛到 ≤20s.
+    # 清道夫: 每 20s 遍历连接注册表 (sqlite3.connect monkey-patch 登记, 见模块顶部),
+    # 对 in_transaction 的连接代为 commit (保留写意图, 释放写锁).
     try:
-        import gc as _gc_reaper
-        import sqlite3 as _sq_reaper
         import time as _t_reaper
 
         def _wal_txn_reaper():
@@ -259,16 +274,22 @@ if __name__ == "__main__":
             while True:
                 _t_reaper.sleep(20)
                 try:
-                    for _o in _gc_reaper.get_objects():
-                        if isinstance(_o, _sq_reaper.Connection):
+                    for _ref in list(_SQLITE_CONN_REGISTRY):
+                        _o = _ref()
+                        if _o is None:
                             try:
-                                if _o.in_transaction:
-                                    _o.commit()
-                                    _n_total += 1
-                                    sys.stderr.write(
-                                        f'[WAL-REAPER] 已代提交泄漏事务 #{_n_total} (连接 {_o!r:.60})\n')
-                            except Exception:
+                                _SQLITE_CONN_REGISTRY.remove(_ref)
+                            except ValueError:
                                 pass
+                            continue
+                        try:
+                            if _o.in_transaction:
+                                _o.commit()
+                                _n_total += 1
+                                sys.stderr.write(
+                                    f'[WAL-REAPER] 已代提交泄漏事务 #{_n_total} (连接 {_o!r:.60})\n')
+                        except Exception:
+                            pass
                 except Exception:
                     pass
 
