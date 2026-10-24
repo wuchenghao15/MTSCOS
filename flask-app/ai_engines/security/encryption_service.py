@@ -44,15 +44,19 @@ _SERVER_KEY_CACHE = None  # 服务器 master key 进程级缓存
 #  Tier 1: 极密 (TOP_SECRET) — AES-256-GCM + VIKEY 硬件狗派生密钥
 # ════════════════════════════════════════════════════════════════
 
-def _derive_vikey_key(salt: bytes = b"MTSCOS-ANDROMEDA-V1") -> bytes | None:
+def _derive_vikey_key(salt: bytes | None = None) -> bytes | None:
     """
+    🔒 P0 极密加固: salt 不再硬编码, 运行时从 crypto_provider HKDF 派生.
     从 VIKEY 硬件狗派生 32 字节密钥.
     VIKEY 离线 → 返回 None (fail-closed, 极密数据无法解密)
-
-    真实场景: VIKEY 硬件狗提供 HMAC-SHA256 签名能力, 
-    我们用固定 salt + 硬件狗唯一序列号做 PBKDF2 派生.
-    当前没有 VIKEY 硬件狗 → 返回 None (开发/测试降级)
     """
+    # 运行时派生 salt (源码不留硬编码)
+    if salt is None:
+        try:
+            from app.utils.crypto_provider import crypto_provider as _cp_enc
+            salt = _cp_enc.derive_bytes("vikey_tier1_salt", 32)
+        except Exception:
+            return None
     try:
         # 真实实现: 调 HardwareKeyProvider.derive_key()
         from core.services.vikey_driver import get_hardware_key_provider

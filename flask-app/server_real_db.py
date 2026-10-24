@@ -12576,11 +12576,24 @@ def _sa_update_device_binding(username, device_hash, ip, ua, login_success):
                 c.execute(
                     "UPDATE sa_device_bindings SET login_count=?, trust_level=?, last_seen=? WHERE id=?",
                     (new_count, new_trust, now, row['id']))
+                # flow_secret_l0_sa_keys_20261024: L0 双写 device_hash_enc
+                try:
+                    from app.utils.db_encryption import db_encryption, EncryptionLevel
+                    denc = db_encryption.encrypt_data(device_hash, EncryptionLevel.L0_TOP_SECRET, "sa_device_bindings", "device_hash_enc")
+                    c.execute("UPDATE sa_device_bindings SET device_hash_enc=? WHERE id=?", (denc, row['id']))
+                except Exception:
+                    pass
             else:
+                # flow_secret_l0_sa_keys_20261024: 新建时 device_hash 双写加密
+                try:
+                    from app.utils.db_encryption import db_encryption, EncryptionLevel
+                    denc = db_encryption.encrypt_data(device_hash, EncryptionLevel.L0_TOP_SECRET, "sa_device_bindings", "device_hash_enc")
+                except Exception:
+                    denc = None
                 c.execute(
-                    "INSERT INTO sa_device_bindings(username,device_hash,device_name,first_seen,last_seen,trust_level,login_count) "
-                    "VALUES (?,?,?,?,?,?,?)",
-                    (username, device_hash, ua[:80] if ua else 'unknown', now, now,
+                    "INSERT INTO sa_device_bindings(username,device_hash,device_hash_enc,device_name,first_seen,last_seen,trust_level,login_count) "
+                    "VALUES (?,?,?,?,?,?,?,?)",
+                    (username, device_hash, denc, ua[:80] if ua else 'unknown', now, now,
                      1 if login_success else 0, 1))
             c.commit()
     except Exception:

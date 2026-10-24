@@ -900,9 +900,15 @@ class VikeyAPI:
             except Exception:
                 pass
             if auth_token:
+                # flow_secret_l0_sa_keys_20261024: auth_token L0 双写加密副本
+                try:
+                    from app.utils.db_encryption import db_encryption, EncryptionLevel
+                    aenc = db_encryption.encrypt_data(auth_token, EncryptionLevel.L0_TOP_SECRET, "vikey_device_bindings", "auth_token_enc")
+                except Exception:
+                    aenc = None
                 c.execute(
-                    "UPDATE vikey_device_bindings SET auth_token=? WHERE serial=?",
-                    (auth_token, serial),
+                    "UPDATE vikey_device_bindings SET auth_token=?, auth_token_enc=? WHERE serial=?",
+                    (auth_token, aenc, serial),
                 )
             c.commit()
         self._write_log(
@@ -936,7 +942,7 @@ class VikeyAPI:
         with self._conn_admin() as c:
             c.execute(
                 """UPDATE vikey_device_bindings
-                   SET binding_status=?, unbound_at=?, remark=?, auth_token=''
+                   SET binding_status=?, unbound_at=?, remark=?, auth_token='', auth_token_enc=''
                    WHERE serial=?""",
                 (BINDING_STATUS_REVOKED, now, remark or "", serial),
             )
