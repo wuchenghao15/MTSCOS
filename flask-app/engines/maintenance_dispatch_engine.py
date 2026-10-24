@@ -137,6 +137,48 @@ def external_dispatch_once(conn=None, _retries: int = 3) -> dict:
     return {'seeded': 0, 'stale': 0, 'dispatched': 0, 'no_match': 0}
 
 
+def _eigenflux_outreach(conn, cid: str, cname: str, skill_id: str,
+                        did: str, title: str, sla_hours: int) -> None:
+    """承包商真实外联 (Phase3-遗留③): 注册 EigenFlux 节点 + 外联消息.
+    best-effort: 失败静默 (外派主流程已 commit, 下轮幂等补挂)."""
+    try:
+        email = f'{cid.lower()}@eigenflux.io'
+        conn.execute(
+            "INSERT OR IGNORE INTO eigenflux_registrations "
+            "(reg_id, employee_name, employee_type, registered_at, registration_status, "
+            "email, notes) VALUES (?,?,?,?, 'active', ?, 'task_hall_external_seed')",
+            (f'REG-{hashlib.md5(cid.encode()).hexdigest()[:8]}', cname,
+             'external_contractor',
+             time.strftime('%Y-%m-%d %H:%M:%S', time.localtime()), email))
+        conn.execute(
+            "UPDATE mt_task_hall_contractors SET contact_method=? WHERE contractor_id=?",
+            (email, cid))
+        conn.execute(
+            "INSERT OR IGNORE INTO eigenflux_comm_sessions "
+            "(session_uid, session_type, total_employees, status, started_at, topics_json) "
+            "VALUES (?, 'external_dispatch', 1, 'active', datetime('now','localtime'), ?)",
+            (f'TH_EXTERNAL_{time.strftime("%Y%m%d")}',
+             '["任务大厅外派", "外部承包商外联"]'))
+        sid = conn.execute(
+            "SELECT id FROM eigenflux_comm_sessions WHERE session_uid=?",
+            (f'TH_EXTERNAL_{time.strftime("%Y%m%d")}',)).fetchone()
+        if sid:
+            conn.execute(
+                "INSERT INTO eigenflux_comm_messages "
+                "(session_id, employee_name, employee_table, message_direction, "
+                "message_type, message_content, knowledge_tags_json, learning_value, "
+                "created_at) VALUES (?,?,?, 'outbound', 'TASK_DISPATCH', ?, ?, 3, "
+                "datetime('now','localtime'))",
+                (sid[0], cname, 'mt_task_hall_contractors',
+                 f'[EXTERNAL_DISPATCH] {did} | {title} | 技能包={skill_id} '
+                 f'SLA={sla_hours}h | 承包商={cname}({cid}) 已接单, 请按 brief 交付',
+                 json.dumps([skill_id, did, 'external_dispatch'],
+                            ensure_ascii=False)))
+        conn.commit()
+    except Exception:
+        pass
+
+
 def _external_dispatch_inner(conn=None) -> dict:
     own = conn is None
     if own:
@@ -161,20 +203,20 @@ def _external_dispatch_inner(conn=None) -> dict:
                 skill_id = 'SKILL_AI'  # 兜底: AI 专家团队承接杂项
             prio_map = {'CRITICAL': 1, 'HIGH': 1, 'URGENT': 1, 'NORMAL': 2, 'LOW': 3}
             contractor = conn.execute(
-                "SELECT contractor_id, sla_hours FROM mt_task_hall_contractors c "
-                "JOIN mt_task_hall_skills s ON s.skill_id=c.primary_skill_id "
-                "WHERE c.primary_skill_id=? AND c.status='ACTIVE' AND "
-                "c.availability='AVAILABLE' ORDER BY c.rating DESC, "
-                "c.completed_tasks DESC LIMIT 1", (skill_id,)).fetchone()
+                "SELECT c.contractor_id, s.sla_hours, c.name FROM "
+                "mt_task_hall_contractors c JOIN mt_task_hall_skills s ON "
+                "s.skill_id=c.primary_skill_id WHERE c.primary_skill_id=? AND "
+                "c.status='ACTIVE' AND c.availability='AVAILABLE' ORDER BY "
+                "c.rating DESC, c.completed_tasks DESC LIMIT 1", (skill_id,)).fetchone()
             if not contractor:
                 contractor = conn.execute(
-                    "SELECT contractor_id, 48 FROM mt_task_hall_contractors WHERE "
-                    "status='ACTIVE' AND availability='AVAILABLE' "
+                    "SELECT contractor_id, 48, name FROM mt_task_hall_contractors "
+                    "WHERE status='ACTIVE' AND availability='AVAILABLE' "
                     "ORDER BY rating DESC LIMIT 1").fetchone()
             if not contractor:
                 stats['no_match'] += 1
                 continue
-            cid, sla = contractor
+            cid, sla, cname = contractor
             did = f'{EXTERNAL_PREFIX}{tid:06d}_{int(time.time())%100000}'
             deadline = time.strftime(
                 '%Y-%m-%d %H:%M:%S', time.localtime(time.time() + int(sla) * 3600))
@@ -190,6 +232,7 @@ def _external_dispatch_inner(conn=None) -> dict:
                 "claim_type='external_contractor', dispatched_at=datetime('now','localtime') "
                 "WHERE id=?", (tid,))
             conn.commit()
+            _eigenflux_outreach(conn, cid, cname, skill_id, did, title, int(sla))
             stats['dispatched'] += 1
     finally:
         if own:
