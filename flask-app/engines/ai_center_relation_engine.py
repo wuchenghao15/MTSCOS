@@ -116,7 +116,7 @@ def notify_once(conn, hours: float = 1.0) -> dict:
     """认领任务 → 绑定 AI comm 广播 (24h 同任务幂等)."""
     stats = {'claimed': 0, 'notified': 0}
     tasks = conn.execute(
-        "SELECT task_id, IFNULL(title,''), IFNULL(assigned_center,'') "
+        "SELECT id, IFNULL(title,''), IFNULL(claim_owner,'') "
         "FROM mt_lab_task_hall WHERE status IN ('DISPATCHED','CENTER_COMPLETE') "
         "AND updated_at>datetime('now','localtime',?) LIMIT 20",
         (f'-{int(hours*3600)} seconds',)).fetchall()
