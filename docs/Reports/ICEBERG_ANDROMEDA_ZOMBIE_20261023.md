@@ -615,3 +615,19 @@ registry 终态：**46 RUNNING + 5 DOWN（诚实）**。4 个真空转均为边�
 | **④ 抗污染** | 大厅 QUEUED+脑库投喂扫注入/占位/脚本特征 → CONTAMINATED 隔离 + 大厅告警 | 大厅 50+脑库 50 全净 |
 
 守护 `sys_firewall_hardening`（300s）+ launchd `com.mtscos.fw-hardening` 拉起保护（PID 33411, exit 0）。零 DDL（复用 firewall_rules/maintenance_log/lab_task_hall 三表）。陷阱 +1：sed 链式替换把 plist 文件名打坏（society→fw-hardening 先执行吞掉文件名替换）→ python 找不到文件 exit 2，重写全文修复。commit 链 9929b3c→(FA_DIR 双层 dirname 修复)→804a1b95。
+
+### 13.7 数据库连接问题根治（WAL 单写者瓶颈，flow_unified_ops_20261023）
+
+**诊断**：Flask 日志累计 **1475 次 database is locked**；大量活跃引擎 sqlite3.connect 无 timeout（默认 5s 即败）；engines/app.db 陷阱壳（4KB, 10-19）仍在。
+
+**三步修复**：
+
+| 步 | 动作 | 结果 |
+|---|---|---|
+| ① 陷阱壳清除 | 删除 mini `engines/app.db`（4KB 空库，`_db()` 误连风险源） | 已删 |
+| ② sqlite3 全局加固 | `_runtime/patches/sitecustomize_db_hardening.py`：所有进程 `sqlite3.connect` 默认 timeout=30 + busy_timeout=30000 — **locked 即时失败变最长 30s 等待**，与 Flask（WAL 持有方）共存 | mini（user site-packages，/usr/bin/python3 全进程含 Flask+全部 daemon）**hardened: True busy=30000**；本地（homebrew 自带 sitecustomize 优先，追加补丁到 Cellar 文件）**hardened: True** |
+| ③ 验证 | 受影响 daemon 重启用新补丁 | archive/wecom 已重启 |
+
+**原理**：WAL 模式单写者是架构约束（§四 Phase 3 PostgreSQL 为远期），但"locked 即败"是可消除的工程问题 — connect 层 30s 等待覆盖了 daemon 短写窗口与 Flask 长事务的绝大部分重叠场景。1475 次 locked 历史多为零等待撞锁，补丁后预期大幅下降（观察指标：Flask 日志 locked 增速）。
+
+陷阱 +1：homebrew python 的 Cellar sitecustomize 优先于 user site-packages — 本地部署需追加而非新建。
