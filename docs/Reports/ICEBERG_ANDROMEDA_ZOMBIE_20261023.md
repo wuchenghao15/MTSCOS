@@ -485,3 +485,19 @@ EigenFlux(4658 节点心跳, 28.3万消息) ✅
 ```
 
 **十二环节全绿，无半活项。** 唯一 REJECTED 提案是管线健康的第一手证据（表决不是走过场）。
+
+### 11.4 AI 社会生活层验收（"学习/组队/考试/任教/磋商/交友/交流活起来了吗"）
+
+| 维度 | 实测 | 判定 |
+|---|---|---|
+| 交友 | mt_ai_eigenflux_connections 54102 条，**24h 新增 22142** | 🔥 极活跃 |
+| 考试 | exam_attempts 300 次/24h（最近 10-23 19:43） | ✅ 活 |
+| 组队 | 维护部队连队执行 + 任务大厅派单链 | ✅ 活 |
+| 任教 | teacher_classes 30 班级 | ✅ 存量活 |
+| **磋商** | 圆桌死 18 天 → social_once 复活 | ✅ **本轮复活** 17816→17822 |
+| **学习** | ai_learning_records 死 35 天 → 复活 | ✅ **本轮复活** 500→516 |
+| **交流** | comm_messages 24h 仅 1 条 → 复活 | ✅ **本轮复活** 1→13 |
+
+**三处停摆根因**：mini_evolution 等引擎心跳活着但业务写被静默吞（§3.3 空转型 daemon 旧病）。修复走 governance 引擎 `social_once()`：**议题取真实系统事件（最新法令→最新完成任务→最新脑库投喂）→ EigenFlux 心跳最新节点组会 → 圆桌 session → 与会者各落学习记录（磋商即学习）→ comm 频道聊成果**，300s 一轮与三委/星空/健康四模块并行。
+
+**schema 陷阱再 +3**（跨库 SQL 必须 PRAGMA 先行的实证）：mt_roundtable_sessions.host/guest 惯例为节点名（HULK-MACMINI）非 reg_id；eigenflux_registrations.reg_id 全空（用 employee_id）；ai_learning_records.learn_id 是 INTEGER 主键禁文本。
