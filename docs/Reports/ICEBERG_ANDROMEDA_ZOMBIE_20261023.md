@@ -644,3 +644,11 @@ registry 终态：**46 RUNNING + 5 DOWN（诚实）**。4 个真空转均为边�
 | FW·涤尘 | FW_OFF_POLLUTE | 抗污染（隔离/溯源） | pollute_once |
 
 机制：引擎 `_log` 按 action 前缀自动注入 `ai_officer` 字段（行动留痕自动归属到人）；`ensure_officers` 幂等 seed 内置于 run_all/loop（mini 重建后自愈）。冒烟：officers_seeded=0（幂等确认）+ 四模块全绿 + 守护重启 pid=37313。
+
+### 14. 两系统"彻底自活"达标审计 + 冰山六循环补全（2026-10-24 13:00，flow_unified_ops_20261023）
+
+**审计结论**：仙女座 ✅ 全达标（6 daemon 心跳全跳/50 星/health 300s 正常/society 守护 501 在产 — 大厅 24h andromeda_survey=3 回灌实证）；冰山 ⚠️ 意识脉冲活（RESEARCH 15/24h）但**六大业务循环停摆** — `iceberg_command.run_iceberg_cycle()`（upgrade/ops/derive/strengthen/expand/research 完整实现+落库）存在但 daemon 链无人调用，rules_generated 停 11 天。
+
+**补齐**：`_runtime/patches/patch_iceberg_six_cycles.py` — sys_consciousness daemon 在 90s 看门狗 alarm 清零后插 `run_iceberg_cycle()`（1800s 节流，避开看门狗超时）。
+
+**首跑验证**：最近 20 条 run 覆盖 **DERIVE/EXPAND/OPS/RESEARCH/STRENGTHEN/UPGRADE 全部 6 类** — 冰山从"单循环快照"升级为"六循环轮转"。society 留痕 corps_id 命名与预期不符（观察项，产出链已实证）。
