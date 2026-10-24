@@ -16,7 +16,7 @@ pyarrow>=14.0.0
 pandas>=2.0.0
 
 # Authentication
-PyJWT>=2.8.0
+PyJWT>=2.15.1
 cryptography>=41.0.0
 
 # Utilities
