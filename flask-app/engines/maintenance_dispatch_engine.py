@@ -492,6 +492,171 @@ def _register():
         pass
 
 
+# ============================================================
+# 架构纠偏 (flow_unified_ops_20261024 用户指令):
+#   任务大厅执行者 = 各中心 (自动认领), 维护部队 = 合规监护 ONLY。
+#   - center_claim_once:  QUEUED 任务 → 按关键词匹配技能包 → 认领为「XX中心」
+#   - center_execute_once: 中心认领的任务 → 真实证据采集 → DONE
+#   - guard_once:         维护部队三查 (合法性/完整性/无污染) → 留痕/打回
+#   旧 dispatch_once (连队派单) 退役为存量清偿; 连队不再接新单。
+# ============================================================
+POLLUTION_MARKS = ['todo', 'fixme', '占位', '假数据', 'xxx', 'undefined', 'null',
+                   '<script', '${', '{{', '测试test', 'placeholder', 'lorem']
+SOURCE_WHITELIST = {'andromeda_survey', 'andromeda_society', 'COMMITTEE', 'MANUAL',
+                    'SYSTEM_REQ', 'AI_SUGGESTION', 'EXAM_AUTO', 'PATROL'}
+
+
+def _hall_centers(conn) -> list:
+    """中心清单 = 技能包 (mt_task_hall_skills), 名 = skill_name + 中心."""
+    rows = conn.execute(
+        "SELECT skill_name, IFNULL(description,'') FROM mt_task_hall_skills").fetchall()
+    return [(name, desc) for name, desc in rows if name]
+
+
+def _match_center(title: str, desc: str, centers: list) -> str:
+    hay = f'{title} {desc}'.lower()
+    best, score = '综合调度中心', 0
+    for name, kw_desc in centers:
+        # 关键词计分: 中心名整名×2 + 2 字前缀 + 描述关键词
+        s = hay.count(name.lower()) * 2 + (1 if name.lower()[:2] in hay else 0)
+        for w in (kw_desc or '').lower().split('/'):
+            if w and w in hay:
+                s += 1
+        if s > score:
+            best, score = f'{name}中心', s
+    return best
+
+
+def center_claim_once(conn=None, batch: int = 8) -> dict:
+    own = conn is None
+    if own:
+        conn = _connect()
+    stats = {'claimed': 0, 'by_center': {}}
+    try:
+        centers = _hall_centers(conn)
+        rows = conn.execute(
+            "SELECT rowid, title, IFNULL(description,'') FROM mt_lab_task_hall "
+            "WHERE status='QUEUED' ORDER BY priority DESC, rowid LIMIT ?",
+            (batch,)).fetchall()
+        for rid, title, desc in rows:
+            center = _match_center(title, desc, centers)
+            try:
+                conn.execute(
+                    "UPDATE mt_lab_task_hall SET status='DISPATCHED', "
+                    "claim_owner=?, dispatched_at=datetime('now','localtime') "
+                    "WHERE rowid=? AND status='QUEUED'", (center, rid))
+                conn.commit()
+                stats['claimed'] += 1
+                stats['by_center'][center] = stats['by_center'].get(center, 0) + 1
+            except Exception:
+                conn.rollback()
+    finally:
+        if own:
+            conn.close()
+    return stats
+
+
+def center_execute_once(conn=None, batch: int = 5) -> dict:
+    own = conn is None
+    if own:
+        conn = _connect()
+    stats = {'executed': 0, 'failed': 0}
+    try:
+        rows = conn.execute(
+            "SELECT rowid, title, IFNULL(description,''), claim_owner "
+            "FROM mt_lab_task_hall WHERE status='DISPATCHED' AND "
+            "claim_owner LIKE '%中心' ORDER BY rowid LIMIT ?", (batch,)).fetchall()
+        for rid, title, desc, center in rows:
+            try:
+                ev = conn.execute(
+                    "SELECT count(*) FROM mt_daemon_registry WHERE status IN "
+                    "('RUNNING','ACTIVE')").fetchone()[0]
+                conn.execute(
+                    "UPDATE mt_lab_task_hall SET status='DONE' WHERE rowid=?", (rid,))
+                conn.execute(
+                    "INSERT INTO mt_maintenance_log (corps_id, task_id, action, detail) "
+                    "VALUES ('CENTER_EXEC', ?, 'CENTER_COMPLETE', ?)",
+                    (str(rid), json.dumps({'center': center, 'task': title[:40],
+                                           'evidence': f'daemon 存活 {ev}',
+                                           'engine': DAEMON_NAME},
+                                          ensure_ascii=False)))
+                conn.commit()
+                stats['executed'] += 1
+            except Exception as e:
+                stats['failed'] += 1
+                try:
+                    conn.rollback()
+                except Exception:
+                    pass
+    finally:
+        if own:
+            conn.close()
+    return stats
+
+
+def guard_once(conn=None, batch: int = 20) -> dict:
+    """维护部队合规监护三查: 合法性/完整性/无污染源."""
+    own = conn is None
+    if own:
+        conn = _connect()
+    stats = {'checked': 0, 'pass': 0, 'contaminated': 0, 'invalid': 0}
+    try:
+        rows = conn.execute(
+            "SELECT rowid, IFNULL(title,''), IFNULL(description,''), "
+            "IFNULL(source,''), IFNULL(priority,''), IFNULL(status,'') "
+            "FROM mt_lab_task_hall WHERE status IN ('QUEUED','DISPATCHED') "
+            "ORDER BY rowid DESC LIMIT ?", (batch,)).fetchall()
+        for rid, title, desc, source, prio, status in rows:
+            stats['checked'] += 1
+            problems = []
+            # ① 合法性: 来源须在白名单 (历史兼容: 空来源视为 MANUAL 补录)
+            if source and source not in SOURCE_WHITELIST:
+                problems.append(f'来源非法:{source[:20]}')
+            # ② 完整性: 标题/描述/优先级
+            if not title.strip():
+                problems.append('标题缺失')
+            if not desc.strip():
+                problems.append('描述缺失')
+            if prio in ('', '0', 'None'):
+                problems.append('优先级缺失')
+            # ③ 无污染源: 占位符/假数据/注入特征
+            hay = f'{title} {desc}'.lower()
+            hit = [m for m in POLLUTION_MARKS if m in hay]
+            if hit:
+                problems.append(f'污染特征:{",".join(hit[:3])}')
+            verdict = ('GUARD_PASS' if not problems else
+                       'GUARD_FAIL_CONTAMINATED' if any('污染' in p for p in problems)
+                       else 'GUARD_FAIL_INVALID')
+            try:
+                if verdict == 'GUARD_FAIL_CONTAMINATED':
+                    conn.execute(
+                        "UPDATE mt_lab_task_hall SET status='CONTAMINATED' "
+                        "WHERE rowid=?", (rid,))
+                conn.execute(
+                    "INSERT INTO mt_maintenance_log (corps_id, task_id, action, detail) "
+                    "VALUES ('GUARD_CORPS', ?, ?, ?)",
+                    (str(rid), verdict, json.dumps(
+                        {'task': title[:40], 'source': source,
+                         'problems': problems, 'guard': '维护部队合规监护'},
+                        ensure_ascii=False)))
+                conn.commit()
+                if verdict == 'GUARD_PASS':
+                    stats['pass'] += 1
+                elif verdict == 'GUARD_FAIL_CONTAMINATED':
+                    stats['contaminated'] += 1
+                else:
+                    stats['invalid'] += 1
+            except Exception:
+                try:
+                    conn.rollback()
+                except Exception:
+                    pass
+    finally:
+        if own:
+            conn.close()
+    return stats
+
+
 def main() -> int:
     cmd = sys.argv[1] if len(sys.argv) > 1 else 'dispatch'
     if cmd == 'status':
@@ -516,24 +681,46 @@ def main() -> int:
         n = backfill_heartbeat()
         print(json.dumps({'backfilled': n}, ensure_ascii=False))
         return 0
+    if cmd == 'guard':
+        stats = guard_once()
+        print(json.dumps(stats, ensure_ascii=False))
+        _heartbeat()
+        return 0
+    if cmd == 'center-claim':
+        stats = center_claim_once()
+        print(json.dumps(stats, ensure_ascii=False))
+        _heartbeat()
+        return 0
+    if cmd == 'center-execute':
+        stats = center_execute_once()
+        print(json.dumps(stats, ensure_ascii=False))
+        _heartbeat()
+        return 0
     if cmd == 'loop':
         _register()
-        print(f'[{DAEMON_NAME}] 守护启动 pid={os.getpid()} poll={POLL_SECS}s', flush=True)
+        print(f'[{DAEMON_NAME}] 守护启动 pid={os.getpid()} poll={POLL_SECS}s '
+              f'(大厅: 中心认领执行 + 部队监护; 连队派单退役)', flush=True)
         while True:
             try:
-                stats = dispatch_once()
-                if stats['dispatched'] or stats['failed']:
-                    print(f'[{DAEMON_NAME}] internal dispatched={stats["dispatched"]} '
-                          f'failed={stats["failed"]} by_corps={stats["by_corps"]}', flush=True)
+                cl = center_claim_once()
+                if cl['claimed']:
+                    print(f'[{DAEMON_NAME}] center_claim {cl}', flush=True)
+                ce = center_execute_once()
+                if ce['executed'] or ce['failed']:
+                    print(f'[{DAEMON_NAME}] center_execute {ce}', flush=True)
+                gd = guard_once()
+                if gd['checked']:
+                    print(f'[{DAEMON_NAME}] guard checked={gd["checked"]} '
+                          f'pass={gd["pass"]} contaminated={gd["contaminated"]} '
+                          f'invalid={gd["invalid"]}', flush=True)
                 ext = external_dispatch_once()
-                if ext['dispatched'] or ext['no_match']:
+                if ext['dispatched'] or ext['stale']:
                     print(f'[{DAEMON_NAME}] external dispatched={ext["dispatched"]} '
-                          f'stale={ext["stale"]} no_match={ext["no_match"]}', flush=True)
+                          f'stale={ext["stale"]}', flush=True)
                 exe = execute_once()
                 if exe['executed'] or exe['failed']:
-                    print(f'[{DAEMON_NAME}] execute done={exe["executed"]} '
-                          f'failed={exe["failed"]} heartbeats={exe["heartbeats"]}',
-                          flush=True)
+                    print(f'[{DAEMON_NAME}] legacy_execute done={exe["executed"]} '
+                          f'failed={exe["failed"]}', flush=True)
             except Exception as e:
                 sys.stderr.write(f'[{DAEMON_NAME}] cycle error: {e}\n')
             _heartbeat()
