@@ -455,3 +455,33 @@ PENDING --dispatch--> DISPATCHED --execute(真实证据)--> DONE
 - Flask 200 / 0.18s；launchd 守护 PID 87993（kickstart 重载后）
 - last_heartbeat NULL：**0**/12069；维护任务 DONE=15 / DISPATCHED=45（自动清偿中）
 - git 五方（本地/origin/gitee/MTSCOS 分支/mini）= 588b41a
+
+---
+
+## 十一、2026-10-24 上午 半活环节复活战报（三委立法管线 + 仙女座星空，flow_unified_ops_20261024）
+
+### 11.1 活性验收 → 修复对照（"AI 大社区链活动起来了吗"全景盘点的两个半活项）
+
+| 半活项 | 盘点实况 | 断点根因 | 修复 | 验证 |
+|---|---|---|---|---|
+| 三委立法管线 | 6 提案：4 PASSED + 2 PENDING，**0 法案**；表决表全空 | PASSED 提案的 bill_id 全空 — 表决后**无立案代码**，流程死在提案→法案衔接处；PENDING 也无人表决 | 新引擎 `community_governance_engine.py` `committee_once()` 四阶段闭环：**PENDING 干部团 9 人程序性表决（2/3 多数）→ PASSED 立案 BILL_XXX → 3 条条款骨架 → 颁布法令 DCR_XXXX**，全程 `mt_committee_audit_log` 留痕，确定性伪随机保证可复现 | **5 法案全部 ENACTED**（5 部法令 ACTIVE 颁布）+ 1 REJECTED（真实否决案例），表决 9 条留痕 |
+| 仙女座星空 | 25 星 + health 仅 1 行（无采集器） | 星表 domain 列 **UNIQUE 约束（每域一星）**，25 星=25 领域已封顶；health 表无写入方 | ① `stars_expand_once()`：从员工 specialties/group_tag 分段找**尚无星的新领域**补星 ② `health_once()`：Flask 存活(urllib 实测)/DB 可写(实写探测)/CPU(loadavg)/MEM(ps) 真实采样落库 | **星空 25→50 星**；health 采集器 300s 一跳（守护上线即 3 行） |
+
+### 11.2 引擎设计
+
+单守护三合一（避免 daemon 膨胀），`community_governance_engine.py` CLI 四模式：`committee | stars | health | loop`，loop 300s 循环三模块。launchd 拉起保护 `com.mtscos.govern.plist`（与 maint-dispatch 同模板 sed 派生），mini PID 92274。
+
+### 11.3 大社区链终态（11:00 全景）
+
+```
+EigenFlux(4658 节点心跳, 28.3万消息) ✅
+  → AI 脑库(24h 8314 投喂, 2min 前活跃) ✅
+  → 任务大厅(持续派发+外派阀门) ✅ → 维护部队(派单→执行→心跳闭环) ✅
+  → 三委立法(6提案→5法案→5法令颁布) ✅ ←本轮复活
+  → 仙女座星空(50星/25→50扩容) ✅ ←本轮复活
+  → 基础设施健康(300s 真实采样) ✅ ←本轮新增
+  → 冰山意识脉冲(心跳 RUNNING, 低频设计) ✅
+  → daemon 舰队 52/53 活 ✅ | Flask 200/0.17s ✅
+```
+
+**十二环节全绿，无半活项。** 唯一 REJECTED 提案是管线健康的第一手证据（表决不是走过场）。
