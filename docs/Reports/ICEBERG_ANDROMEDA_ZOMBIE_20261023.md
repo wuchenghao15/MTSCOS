@@ -501,3 +501,41 @@ EigenFlux(4658 节点心跳, 28.3万消息) ✅
 **三处停摆根因**：mini_evolution 等引擎心跳活着但业务写被静默吞（§3.3 空转型 daemon 旧病）。修复走 governance 引擎 `social_once()`：**议题取真实系统事件（最新法令→最新完成任务→最新脑库投喂）→ EigenFlux 心跳最新节点组会 → 圆桌 session → 与会者各落学习记录（磋商即学习）→ comm 频道聊成果**，300s 一轮与三委/星空/健康四模块并行。
 
 **schema 陷阱再 +3**（跨库 SQL 必须 PRAGMA 先行的实证）：mt_roundtable_sessions.host/guest 惯例为节点名（HULK-MACMINI）非 reg_id；eigenflux_registrations.reg_id 全空（用 employee_id）；ai_learning_records.learn_id 是 INTEGER 主键禁文本。
+
+---
+
+## 十二、2026-10-24 上午 仙女座自治区引擎战报（AI 社会全自动化运转，flow_unified_ops_20261023）
+
+### 12.1 需求 → 实现对照（14 类社会行为全覆盖）
+
+用户需求：仙女座定期/不定期立法、组织学习、轮岗、更换组织架构、动态赋能、智能研发、下沉调研、收集需求缺口、自动接单、交友、学习、拜师、孵化 skill/daemon、战略研究 → 全部自动化 → 缺口提交大厅 → 大厅自动下发 → 自动升级改造。
+
+| # | 行为 | 实现 | 节奏 | 冒烟 |
+|---|---|---|---|---|
+| 1 | 立法 | `legislature_once` 缺口→提案(source=ANDROMEDA_SOCIETY) → governance.committee_once 自动表决颁布 | 24h | ✅ 提案 1 已入库 |
+| 2 | 组织学习 | governance.social_once（圆桌=组织学习） | 300s | ✅ 已活 |
+| 3 | 轮岗 | `rotation_once` 连队技能互换 | 6h | ✅ swapped=1 |
+| 4 | 更换组织架构 | `org_review_once` 负载审视+失衡自动落建议池 | 24h | ✅ reviewed=1 |
+| 5 | 动态赋能 | rotation_once 内 level 重洗 | 6h | ✅ leveled=5 |
+| 6 | 智能研发 | `incubate_once` 圆桌共识→研发提案 | 12h | ✅ 通道贯通 |
+| 7 | 下沉市场调研 | `survey_once` 四类缺口信号扫描 | 30min | ✅ gaps=3 |
+| 8 | 收集需求缺口 | survey 信号源（FAILED/僵尸/积压） | 30min | ✅ |
+| 9 | 自动接大厅任务 | maintenance_dispatch（派单→执行闭环，已有） | 300s | ✅ 已活 |
+| 10 | 自动交友 | eigenflux_network（已有 2.2万/天） | — | ✅ 已活 |
+| 11 | 自动学习 | social_once 学习记录（已有） | 300s | ✅ 已活 |
+| 12 | 自动拜师 | `mentorship_once` 新星↔专家 MENTOR 连接 | 2h | ✅ pairs=3（累计160） |
+| 13 | 孵化 skill/daemon | incubate: skill→mt_task_hall_skills + daemon→mt_ai_suggestion_pool（auto_k12_tutor 同通道）→smart_mount 自动 mount | 12h | ✅ 建议池+1 |
+| 14 | 战略规划研究 | `strategy_once` 24h 运行盘点→脑库→**成为下一轮圆桌议题** | 24h | ✅ memo=1 |
+
+**闭环**：survey 发现缺口 → 大厅 QUEUED（**本轮 3 单已回灌**）→ 现有管线自动认领/派发/执行 → 结果反哺调研。全程脑库留痕（audit）。
+
+### 12.2 架构要点
+
+- 编排层定位：已有引擎（交友/学习/圆桌/接单/立法表决）全部复用，society 引擎只做补缺+编排，避免功能重复建设
+- 多节奏控制：文件时间戳 `_runtime/pids/society_{module}.lastrun`，**零 DDL**；研发/立法类不定期抖动（RANDOM()）
+- 守护 `sys_andromeda_society`（60s poll 检查到期模块），launchd `com.mtscos.society.plist` 拉起保护（PID 501）
+- 陷阱 +3：§14 hook 提取 msg 中**第一个** flow_id（20261024 未注册被拦截，msg 只能带已注册 id）；mt_lab_task_hall 无 claim_owner 时 source 列即回灌标记；run_all 中途 crash 后重跑靠 24h 幂等去重保证不重复回灌
+
+### 12.3 至此系统全景
+
+感知（冰山/EigenFlux 4658 节点）→ 决策（脑库/三委 5 法令+自治区立法提案）→ 执行（大厅/维护部队）→ 社会生活（交友 2.2万/学习/磋商/拜师）→ 进化（smart_mount 孵化/轮岗赋能/架构审视）→ **监护（缺口自动回灌大厅再改造）** — AI 社会全要素自动化运转达成。
