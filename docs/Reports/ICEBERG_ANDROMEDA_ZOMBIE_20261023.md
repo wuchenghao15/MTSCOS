@@ -415,6 +415,10 @@ def _heartbeat():
 
 ### 9.4 遗留（低优先级）
 
-1. evaluation_criteria 播种在独立库 `intelligent_evaluation.db`，不抢主库锁，暂不处理
-2. `sys_maintenance_dispatch` 未纳入 keepalive_engines 双引擎清单（daemon 自带文件心跳+patrol 可见，如需拉起保护后续接入 cron 双保险）
-3. 外派承包商 contact_method 为占位邮箱（eigenflux.local），真实外联通道待接 EigenFlux 网络
+1. ~~evaluation_criteria 播种在独立库 `intelligent_evaluation.db`~~ → **确认不处理**：独立库不抢主库 WAL 锁，无风险
+2. ~~`sys_maintenance_dispatch` 未纳入 keepalive~~ → **已接入 launchd 拉起保护**（commit `aea1e5d`）：`com.mtscos.maint-dispatch.plist`（RunAtLoad+KeepAlive+ThrottleInterval 30s）部署 mini LaunchAgents，launchd 接管 nohup（PID 85182 实测 exit 0）；plist 存 `_runtime/launchd/` 入 git 便于复部署
+3. ~~承包商 contact_method 为占位邮箱~~ → **已接 EigenFlux 真实外联**（commit `aea1e5d`）：`_eigenflux_outreach()` 外派时三连——承包商注册 `eigenflux_registrations`（external_contractor/active）+ `eigenflux_comm_messages` TASK_DISPATCH 外联消息（session TH_EXTERNAL_YYYYMMDD）+ contact_method 真实化（`{cid}@eigenflux.io`）；best-effort 不阻塞外派主流程
+
+**外联闭环冒烟实测**（10:46）：合成滞留任务"防火墙策略审计"→ stale=1 → 昆仑防火墙接单（SKILL_FIREWALL 精准匹配）→ 注册+消息+邮箱三落库 → dispatch/hall 双 DONE + 承包商 completed_tasks 10→11（rating 系统激活）。
+
+**运维方法论补充**：mini 实库 sqlite3 CLI 写操作必须带 `.timeout 30000`（CLI 默认零超时，与 Flask 心跳写并发即 database is locked；引擎侧已内置 busy_timeout=30s 不受影响）。
