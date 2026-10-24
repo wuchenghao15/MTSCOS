@@ -61,6 +61,10 @@ import weakref as _weakref_flask
 _SQLITE_CONN_REGISTRY = []
 _ORIG_SQLITE_CONNECT = _sq_flask.connect
 def _tracked_sqlite_connect(*args, **kwargs):
+    # 🔧 P1-1b: check_same_thread=False — 否则清道夫跨线程 commit 抛 ProgrammingError
+    # 被 except 静默吞掉, 泄漏事务永远清不掉 (实证: 代提交 0 次但锁持续被持).
+    # sqlite3 C 层有内部互斥, commit 单操作跨线程安全.
+    kwargs['check_same_thread'] = False
     _conn = _ORIG_SQLITE_CONNECT(*args, **kwargs)
     try:
         _SQLITE_CONN_REGISTRY.append(_weakref_flask.ref(_conn))
@@ -307,8 +311,10 @@ if __name__ == "__main__":
                                 _n_total += 1
                                 sys.stderr.write(
                                     f'[WAL-REAPER] 已代提交泄漏事务 #{_n_total} (连接 {_o!r:.60})\n')
-                        except Exception:
-                            pass
+                        except Exception as _e_r:
+                            # 🔧 不再静默: 记录失败原因 (check_same_thread / 锁 / 连接已关)
+                            sys.stderr.write(
+                                f'[WAL-REAPER] 代提交失败 (非致命): {type(_e_r).__name__}: {_e_r}\n')
                 except Exception:
                     pass
 
