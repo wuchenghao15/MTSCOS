@@ -730,6 +730,20 @@ def api_knowledge_graph_data():
     return jsonify(out)
 
 
+def _ollama_chat_model() -> str:
+    """小龙保活: 聊天模型自动探测 (qwen2.5:7b 不存在时降级 14b, 避免 100s 超时降级固定回答)"""
+    try:
+        r = _ur.urlopen('http://127.0.0.1:11434/api/tags', timeout=3)
+        names = [m.get('name', '') for m in _json.loads(r.read()).get('models', [])]
+        for cand in ('qwen2.5:7b', 'qwen2.5:14b', 'qwen2.5-coder:14b'):
+            for n in names:
+                if n.startswith(cand):
+                    return n
+    except Exception:
+        pass
+    return os.environ.get('MTSCOS_OLLAMA_CHAT_MODEL', 'qwen2.5:14b')
+
+
 @bp.route('/api/persona_chat', methods=['POST'])
 def api_persona_chat():
     """💬 AI 人格聊天室 — Ollama qwen2.5:7b + 脑库RAG + 会话落库 (flow_andromeda_chat_20261021)
@@ -771,7 +785,7 @@ def api_persona_chat():
                      f"领域：{persona.get('domain','综合')}。请以【{persona.get('name')}】的身份和口吻回答，"
                      f"保持这个角色的独特视角和语言风格。回答用中文。") + rag_ctx
     ollama_payload = {
-        'model': 'qwen2.5:7b',
+        'model': _ollama_chat_model(),
         'messages': [
             {'role': 'system', 'content': system_prompt},
             {'role': 'user', 'content': question},
@@ -806,7 +820,7 @@ def api_persona_chat():
         cur.execute("INSERT INTO chat_messages (session_id,user_id,role,content,model) VALUES (?,?,?,?,?)",
                     (sid, uid, 'user', question, ''))
         cur.execute("INSERT INTO chat_messages (session_id,user_id,role,content,model) VALUES (?,?,?,?,?)",
-                    (sid, uid, 'assistant', answer, f"qwen2.5:7b/{persona.get('name','AI')}"))
+                    (sid, uid, 'assistant', answer, f"{_ollama_chat_model()}/{persona.get('name','AI')}"))
         cur.execute(
             "UPDATE chat_sessions SET message_count=message_count+2, last_message=?, "
             "updated_at=datetime('now','localtime') WHERE session_id=?",
@@ -1307,7 +1321,7 @@ def api_knowledge_ask():
     try:
         import subprocess
         r = subprocess.run(
-            ["ollama", "run", "qwen2.5:7b", full_prompt],
+            ["ollama", "run", _ollama_chat_model(), full_prompt],
             capture_output=True, text=True, timeout=120
         )
         if r.returncode == 0 and r.stdout.strip():
