@@ -1,0 +1,293 @@
+{# AI 员工健康监控 — 实时心跳/任务/失败率/知识停滞 #}
+{% extends 'admin_app/base.html' %}
+{% block title %}AI 员工健康监控 - MTSCOS{% endblock %}
+{% set page_type = 'dashboard' %}
+{% set active_nav = 'ai_employee_health' %}
+{% block page_title %}AI 员工健康监控{% endblock %}
+
+{% block content %}
+<div class="mtscos-action-bar adp-slide-up">
+  <div class="mtscos-action-bar-title">
+    🫀 AI 员工健康监控
+    <span class="mtscos-action-bar-subtitle" id="health-meta">
+      加载中…
+    </span>
+  </div>
+  <div class="mtscos-action-bar-actions">
+    <button class="mtscos-btn is-default is-sm" onclick="location.href='/admin_app/ai_employee_dashboard'">返回员工看板</button>
+    <button class="mtscos-btn is-primary is-sm" id="refresh-btn" onclick="loadHealth()">🔄 刷新</button>
+  </div>
+</div>
+
+{# --- 4格 核心健康 KPI --- #}
+<div class="mtscos-kpi-grid mtscos-stagger" id="health-kpi">
+  <div class="mtscos-kpi-card" data-accent="success">
+    <div class="mtscos-kpi-title">🟢 活体 (心跳&lt;1h)</div>
+    <div class="mtscos-kpi-value" id="kpi-live">—</div>
+    <div class="mtscos-kpi-meta"><span class="mtscos-text-secondary">心跳正常, 业务活跃</span></div>
+  </div>
+  <div class="mtscos-kpi-card" data-accent="warning">
+    <div class="mtscos-kpi-title">🟡 疲软 (1h-24h)</div>
+    <div class="mtscos-kpi-value" id="kpi-weak">—</div>
+    <div class="mtscos-kpi-meta"><span class="mtscos-text-secondary">心跳延迟, 需关注</span></div>
+  </div>
+  <div class="mtscos-kpi-card" data-accent="danger">
+    <div class="mtscos-kpi-title">🔴 假死 (&gt;24h 或空)</div>
+    <div class="mtscos-kpi-value" id="kpi-stale">—</div>
+    <div class="mtscos-kpi-meta"><span class="mtscos-text-danger">心跳失联, 疑似空转</span></div>
+  </div>
+  <div class="mtscos-kpi-card" data-accent="info">
+    <div class="mtscos-kpi-title">⚪ 未被使用 (任务=0)</div>
+    <div class="mtscos-kpi-value" id="kpi-unused">—</div>
+    <div class="mtscos-kpi-meta"><span class="mtscos-text-secondary">注册但从未派单</span></div>
+  </div>
+</div>
+
+{# --- 2x3 详细诊断 --- #}
+<div class="mtscos-chart-grid adp-slide-up" id="health-detail">
+  {# 任务活跃度 #}
+  <div class="mtscos-chart-card">
+    <div class="mtscos-chart-card-header">
+      <h3 class="mtscos-chart-card-title">📊 任务活跃度分布</h3>
+      <span class="mtscos-status-badge" data-status="info">ACTIVITY</span>
+    </div>
+    <div class="mtscos-chart-card-body">
+      <div class="mtscos-stat-grid-4">
+        <div class="mtscos-stat-item">
+          <div class="mtscos-stat-label">从未派单</div>
+          <div class="mtscos-stat-value" data-accent="info" id="act-never">—</div>
+        </div>
+        <div class="mtscos-stat-item">
+          <div class="mtscos-stat-label">高成功率</div>
+          <div class="mtscos-stat-value" data-accent="success" id="act-high">—</div>
+        </div>
+        <div class="mtscos-stat-item">
+          <div class="mtscos-stat-label">失败率异常</div>
+          <div class="mtscos-stat-value" data-accent="warning" id="act-low">—</div>
+        </div>
+        <div class="mtscos-stat-item">
+          <div class="mtscos-stat-label">全败</div>
+          <div class="mtscos-stat-value" data-accent="danger" id="act-allfail">—</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# 职业状态 #}
+  <div class="mtscos-chart-card">
+    <div class="mtscos-chart-card-header">
+      <h3 class="mtscos-chart-card-title">🏢 职业生命周期</h3>
+      <span class="mtscos-status-badge" data-status="success">CAREER</span>
+    </div>
+    <div class="mtscos-chart-card-body">
+      <div class="mtscos-stat-grid-4">
+        <div class="mtscos-stat-item">
+          <div class="mtscos-stat-label">在职</div>
+          <div class="mtscos-stat-value" data-accent="primary" id="care-active">—</div>
+        </div>
+        <div class="mtscos-stat-item">
+          <div class="mtscos-stat-label">进阶中</div>
+          <div class="mtscos-stat-value" data-accent="warning" id="care-adv">—</div>
+        </div>
+        <div class="mtscos-stat-item">
+          <div class="mtscos-stat-label">退休</div>
+          <div class="mtscos-stat-value" data-accent="info" id="care-ret">—</div>
+        </div>
+        <div class="mtscos-stat-item">
+          <div class="mtscos-stat-label">知识停滞</div>
+          <div class="mtscos-stat-value" data-accent="danger" id="care-stag">—</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# 假死 Top 5 #}
+  <div class="mtscos-chart-card">
+    <div class="mtscos-chart-card-header">
+      <h3 class="mtscos-chart-card-title">💀 假死 Top 5 (心跳最久未更)</h3>
+      <span class="mtscos-status-badge" data-status="danger">STALE</span>
+    </div>
+    <div class="mtscos-chart-card-body">
+      <table class="mtscos-mini-table" id="stale-top-table">
+        <thead>
+          <tr><th>姓名</th><th>编码</th><th>最后心跳</th><th>状态</th></tr>
+        </thead>
+        <tbody><tr><td colspan="4" class="mtscos-text-secondary">加载中…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  {# 失败率异常 Top 5 #}
+  <div class="mtscos-chart-card">
+    <div class="mtscos-chart-card-header">
+      <h3 class="mtscos-chart-card-title">⚠️ 失败率异常 Top 5</h3>
+      <span class="mtscos-status-badge" data-status="warning">FAILING</span>
+    </div>
+    <div class="mtscos-chart-card-body">
+      <table class="mtscos-mini-table" id="failing-top-table">
+        <thead>
+          <tr><th>姓名</th><th>总任务</th><th>成功/失败</th><th>成功率</th></tr>
+        </thead>
+        <tbody><tr><td colspan="4" class="mtscos-text-secondary">加载中…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+{# --- 异常员工详情表 --- #}
+<div class="mtscos-chart-card adp-slide-up" style="margin-top:16px">
+  <div class="mtscos-chart-card-header">
+    <h3 class="mtscos-chart-card-title">🔍 异常员工详情</h3>
+    <div class="mtscos-detail-filter">
+      <select id="detail-filter" onchange="loadDetail()" class="mtscos-select is-sm">
+        <option value="ALL">全部异常</option>
+        <option value="STALE">🔴 假死 (心跳失联)</option>
+        <option value="WEAK">🟡 疲软 (心跳延迟)</option>
+        <option value="UNUSED">⚪ 未被使用</option>
+        <option value="FAILING">⚠️ 失败率异常</option>
+        <option value="STAGNANT">📚 知识停滞</option>
+      </select>
+      <button class="mtscos-btn is-primary is-sm" onclick="loadDetail()">查询</button>
+    </div>
+  </div>
+  <div class="mtscos-chart-card-body">
+    <table class="mtscos-full-table" id="health-detail-table">
+      <thead>
+        <tr>
+          <th>姓名</th><th>编码</th><th>健康</th><th>状态</th>
+          <th>职业</th><th>最后心跳</th><th>总任务</th><th>成功/失败</th>
+          <th>知识库</th><th>分组</th>
+        </tr>
+      </thead>
+      <tbody><tr><td colspan="10" class="mtscos-text-secondary">加载中…</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+{# --- 自动刷新提示 --- #}
+<div style="text-align:center;margin-top:16px">
+  <span class="mtscos-text-secondary" id="auto-refresh-info">⏱ 30 秒自动刷新</span>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const _tok = (document.cookie.match(/session=([^;]+)/) || [])[1] || '';
+let _autoTimer = null;
+
+function healthBadgeClass(h) {
+  return ({LIVE:'success', WEAK:'warning', STALE:'danger', NO_HB:'danger'})[h] || 'info';
+}
+function fmtHB(t) {
+  if (!t || t==='从未') return '从未';
+  // 简单时长估算
+  return t.replace('T',' ').slice(0,19);
+}
+
+async function loadHealth() {
+  const btn = document.getElementById('refresh-btn');
+  btn && btn.disabled && btn.classList.add('is-loading');
+  try {
+    const r = await fetch('/api/ai/employee_health');
+    const d = await r.json();
+    if (!d || d.code !== 0) { console.warn('health api fail', d); return; }
+    const data = d.data;
+
+    // 顶部 meta
+    document.getElementById('health-meta').textContent =
+      `共 ${data.total} AI 员工 · 启用 ${data.enabled} · 活跃 ${data.active} · 更新 ${data.generated_at || '—'}`;
+
+    // KPI
+    const hb = data.heartbeat || {};
+    document.getElementById('kpi-live').textContent = hb.LIVE ?? 0;
+    document.getElementById('kpi-weak').textContent = hb.WEAK ?? 0;
+    document.getElementById('kpi-stale').textContent =
+      (hb.STALE ?? 0) + (hb.NO_HB ?? 0);
+    const act = data.activity || {};
+    document.getElementById('kpi-unused').textContent = act.never_used ?? 0;
+
+    // 任务活跃度
+    document.getElementById('act-never').textContent = act.never_used ?? 0;
+    document.getElementById('act-high').textContent = act.high_success ?? 0;
+    document.getElementById('act-low').textContent = act.low_success ?? 0;
+    document.getElementById('act-allfail').textContent = act.all_failed ?? 0;
+
+    // 职业
+    const car = data.career || {};
+    document.getElementById('care-active').textContent = data.active ?? 0;
+    document.getElementById('care-adv').textContent = car.advancing ?? 0;
+    document.getElementById('care-ret').textContent = car.retired ?? 0;
+    document.getElementById('care-stag').textContent = car.stagnant_knowledge ?? 0;
+
+    // 假死 Top5
+    const sTop = data.stale_top || [];
+    const stb = document.getElementById('stale-top-table');
+    stb.querySelector('tbody').innerHTML = sTop.length === 0
+      ? '<tr><td colspan="4" class="mtscos-text-secondary">✅ 无假死员工</td></tr>'
+      : sTop.map(e => `<tr>
+          <td>${e.name}</td>
+          <td><code>${e.employee_code || ''}</code></td>
+          <td>${fmtHB(e.last_heartbeat)}</td>
+          <td><span class="mtscos-status-badge" data-status="danger">${e.career_status || e.status || ''}</span></td>
+        </tr>`).join('');
+
+    // 失败率 Top5
+    const fTop = data.failing_top || [];
+    const ftb = document.getElementById('failing-top-table');
+    ftb.querySelector('tbody').innerHTML = fTop.length === 0
+      ? '<tr><td colspan="4" class="mtscos-text-secondary">✅ 无失败率异常员工</td></tr>'
+      : fTop.map(e => `<tr>
+          <td>${e.name}</td>
+          <td>${e.total_tasks}</td>
+          <td>${e.successful_fixes}/${e.failed_fixes}</td>
+          <td>${(e.success_rate*100).toFixed(1)}%</td>
+        </tr>`).join('');
+
+    // 自动刷新倒计时
+    let left = 30;
+    document.getElementById('auto-refresh-info').textContent = `⏱ 30 秒自动刷新`;
+    if (_autoTimer) clearInterval(_autoTimer);
+    _autoTimer = setInterval(() => {
+      left--;
+      document.getElementById('auto-refresh-info').textContent = `⏱ ${left}s 后刷新`;
+      if (left <= 0) { clearInterval(_autoTimer); loadHealth(); }
+    }, 1000);
+  } catch (e) {
+    console.error('loadHealth fail', e);
+  } finally {
+    btn && btn.disabled && btn.classList.remove('is-loading');
+  }
+}
+
+async function loadDetail() {
+  const level = document.getElementById('detail-filter').value;
+  try {
+    const r = await fetch(`/api/ai/employee_health_detail?level=${encodeURIComponent(level)}&limit=100`);
+    const d = await r.json();
+    if (!d || d.code !== 0) { console.warn('detail api fail', d); return; }
+    const list = d.data.employees || [];
+    const tbl = document.getElementById('health-detail-table');
+    tbl.querySelector('tbody').innerHTML = list.length === 0
+      ? `<tr><td colspan="10" class="mtscos-text-secondary">✅ 过滤条件「${level}」下无异常 (共 ${d.data.total})</td></tr>`
+      : list.map(e => `<tr>
+          <td>${e.name}</td>
+          <td><code>${e.employee_code || ''}</code></td>
+          <td><span class="mtscos-status-badge" data-status="${healthBadgeClass(e.health)}">${e.health}</span></td>
+          <td>${e.status || ''}</td>
+          <td>${e.career_status || ''}</td>
+          <td>${fmtHB(e.last_heartbeat)}</td>
+          <td>${e.total_tasks}</td>
+          <td>${e.successful_fixes}/${e.failed_fixes}</td>
+          <td>${e.knowledge_base_size}</td>
+          <td>${e.group_tag || ''}</td>
+        </tr>`).join('');
+  } catch (e) {
+    console.error('loadDetail fail', e);
+  }
+}
+
+// 首屏
+loadHealth();
+loadDetail();
+</script>
+{% endblock %}

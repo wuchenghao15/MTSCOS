@@ -86,19 +86,21 @@ def _log(conn, detail):
         pass
 
 
-def _heartbeat(conn):
+def _heartbeat(conn=None):
+    """Flow unified_ops 20261023: 改走 Flask /api/internal/heartbeat 代理 (根治 WAL 锁)"""
     try:
-        conn.execute(
-            "INSERT OR IGNORE INTO mt_daemon_registry "
-            "(process_name, duty, pid, status, last_heartbeat, updated_at) "
-            "VALUES (?,?,?,?, datetime('now','localtime'), datetime('now','localtime'))",
-            (DAEMON, '小龙聊天室保活守护 (全端点+Ollama 聊天链路抽检) 300s', os.getpid()))
-        conn.execute(
-            "UPDATE mt_daemon_registry SET last_heartbeat=datetime('now','localtime'), "
-            "pid=?, status='RUNNING' WHERE process_name=?", (os.getpid(), DAEMON))
-        conn.commit()
+        _tok_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                 '..', '_runtime', '.internal_token')
+        _tok = open(_tok_path).read().strip() if os.path.exists(_tok_path) else ''
+        _payload = json.dumps({'process_name': DAEMON,
+                               'pid': os.getpid()}).encode()
+        _req = urllib.request.Request('http://127.0.0.1:5001/api/internal/heartbeat',
+                                      data=_payload,
+                                      headers={'Content-Type': 'application/json',
+                                               'X-Internal-Token': _tok})
+        urllib.request.urlopen(_req, timeout=4)
     except Exception:
-        pass
+        pass  # Flask 重启期间静默
 
 
 def main() -> int:

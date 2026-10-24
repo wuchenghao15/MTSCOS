@@ -276,22 +276,22 @@ def pollute_once(conn, batch: int = 50) -> dict:
 
 
 def _heartbeat():
+    """Flow unified_ops 20261023: 改走 Flask /api/internal/heartbeat 代理
+    Flask 自己写自己的 WAL 永不 locked (根治守护心跳被 Flask 写锁阻挡 except pass 吞掉)"""
     try:
-        conn = _connect()
-        conn.execute(
-            "INSERT OR IGNORE INTO mt_daemon_registry "
-            "(process_name, duty, pid, status, last_heartbeat, updated_at) "
-            "VALUES (?,?,?,?, datetime('now','localtime'), datetime('now','localtime'))",
-            (DAEMON_NAME, '防火墙四抗 (抗病毒/抗冲击/抗攻击/抗污染) 300s 巡检',
-             os.getpid()))
-        conn.execute(
-            "UPDATE mt_daemon_registry SET last_heartbeat=datetime('now','localtime'), "
-            "pid=?, status='RUNNING' WHERE process_name=?", (os.getpid(), DAEMON_NAME))
-        conn.commit()
-        conn.close()
+        _tok_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                                 '..', '_runtime', '.internal_token')
+        _tok = open(_tok_path).read().strip() if os.path.exists(_tok_path) else ''
+        import urllib.request as _ur
+        _payload = json.dumps({'process_name': DAEMON_NAME,
+                               'pid': os.getpid()}).encode()
+        _req = _ur.Request('http://127.0.0.1:5001/api/internal/heartbeat',
+                           data=_payload,
+                           headers={'Content-Type': 'application/json',
+                                    'X-Internal-Token': _tok})
+        _ur.urlopen(_req, timeout=4)
     except Exception:
-        pass
-
+        pass  # Flask 重启期间静默, 下轮再试
 
 MODULES = [('attack', attack_once), ('surge', surge_once),
            ('virus', virus_once), ('pollute', pollute_once)]

@@ -1,0 +1,940 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="andromeda">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>冰山 · MTSCOS AI | Iceberg System for Andromeda</title>
+<link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='img/favicon-iceberg.svg') }}">
+<link rel="alternate icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/common.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/andromeda_theme.css') }}">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+/* ═══════════════════════════════════════════
+   🎯 用户定制: 极简主页 · 时间+佛教派系事件+登录+注册+版本号
+   参考 nbdeli.com 布局 (白底企业站风格) + 冰山色系适配
+   ═══════════════════════════════════════════ */
+
+/* 侧栏隐藏 (只在这个页面生效) */
+body .uni-sidebar { display: none !important; }
+body .uni-main { margin-left: 0 !important; width: 100% !important; }
+
+/* 容器 */
+.mts-wrap {
+    max-width: 960px; margin: 0 auto;
+    padding: 40px 32px 60px;
+}
+
+/* ── 顶部: Logo + 版本 ── */
+.mts-top {
+    display:flex; align-items:center; justify-content:space-between;
+    padding-bottom: 28px; border-bottom: 1px solid rgba(11,31,58,.08);
+    margin-bottom: 40px;
+}
+.mts-logo {
+    display:flex; align-items:center; gap:10px;
+    font-size: 15px; font-weight: 800; color: var(--andromeda-deep, #0B1F3A);
+    letter-spacing: .5px;
+}
+.mts-logo .orb {
+    width: 28px; height: 28px; border-radius: 8px;
+    background: linear-gradient(135deg, var(--andromeda-purple-400, #9B59B6), var(--iceberg-blue-400, #2E86DE));
+    display:flex; align-items:center; justify-content:center;
+    color:#fff; font-size:14px;
+    box-shadow: 0 2px 8px rgba(155,89,182,.3);
+}
+.mts-ver {
+    font-size: 11px; font-weight: 600;
+    padding: 3px 12px; border-radius: 999px;
+    background: rgba(11,31,58,.05); color: var(--mtscos-text-secondary, #6b7a8f);
+    font-family: ui-monospace, monospace;
+}
+
+/* ── 主视觉: 时钟 (右上角, 小字, 右对齐) ── */
+.mts-top { align-items: center; }
+.mts-status { gap: 10px; }
+.mts-clock-top {
+    display:flex; flex-direction:column; align-items:flex-end;
+    margin-left: 14px; padding-left: 14px;
+    border-left: 1px solid rgba(11,31,58,.08);
+    line-height: 1.3;
+}
+.mts-clock-top .clk-date {
+    font-size: 10px; font-weight: 500; color: var(--mtscos-text-secondary, #6b7a8f);
+    letter-spacing: 1px;
+}
+.mts-clock-top .clk-time {
+    font-size: 14px; font-weight: 800;
+    font-family: 'SF Mono', 'JetBrains Mono', ui-monospace, monospace;
+    background: linear-gradient(135deg, var(--andromeda-purple-400, #9B59B6), var(--iceberg-blue-400, #2E86DE));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    letter-spacing: .5px;
+}
+.mts-clock-top .clk-week {
+    font-size: 9px; color: var(--mtscos-text-secondary, #9baab8);
+    letter-spacing: 3px; text-transform: uppercase;
+}
+
+/* ── 佛教派系 15 天事件 (小字, 时间下方) ── */
+.mts-buddhist {
+    margin-top: 18px;
+    padding: 10px 14px;
+    background: rgba(11,31,58,.015);
+    border: 1px dashed rgba(11,31,58,.06);
+    border-radius: 10px;
+    opacity: .75;
+}
+.mts-buddhist .bd-title {
+    font-size: 10px; font-weight: 600; letter-spacing: 1.5px;
+    color: var(--mtscos-text-secondary, #9baab8);
+    margin-bottom: 8px; text-transform: uppercase;
+}
+.mts-buddhist .bd-list {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 3px 14px;
+}
+.mts-buddhist .bd-item {
+    font-size: 10px; color: #9baab8;
+    display:flex; gap: 6px; align-items: baseline;
+}
+.mts-buddhist .bd-date {
+    font-family: ui-monospace, monospace;
+    color: #b8c4d0; font-weight: 500;
+    min-width: 44px; flex-shrink: 0;
+}
+.mts-buddhist .bd-faction { color: #8d9fae; font-weight: 500; }
+.mts-buddhist .bd-event { color: #9baab8; }
+
+/* ── 登录卡 ── */
+.mts-login-wrap {
+    display: flex; justify-content: center;
+    margin-top: 40px;
+}
+.mts-login {
+    width: 380px;
+    background: #fff;
+    border: 1px solid rgba(11,31,58,.1);
+    border-radius: 16px;
+    padding: 28px 28px 22px;
+    box-shadow: 0 12px 40px -16px rgba(11,31,58,.18);
+}
+.mts-login .lm-title {
+    font-size: 15px; font-weight: 800; color: var(--andromeda-deep, #0B1F3A);
+    margin-bottom: 18px; text-align: center;
+}
+.mts-login .lm-title::before {
+    content:'🔐'; margin-right: 6px;
+}
+.mts-login .field {
+    position: relative; margin-bottom: 12px;
+}
+.mts-login .field i {
+    position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+    font-size: 12px; color: var(--mtscos-text-secondary, #6b7a8f);
+}
+.mts-login .field input {
+    width: 100%; padding: 10px 12px 10px 34px;
+    border: 1px solid rgba(11,31,58,.12); border-radius: 8px;
+    font-size: 13px; color: var(--andromeda-deep, #0B1F3A);
+    background: #fff;
+    transition: border-color .18s, box-shadow .18s;
+}
+.mts-login .field input:focus {
+    outline: none; border-color: var(--andromeda-purple-400, #9B59B6);
+    box-shadow: 0 0 0 3px rgba(155,89,182,.12);
+}
+.mts-login .remember {
+    font-size: 11px; color: var(--mtscos-text-secondary, #6b7a8f);
+    margin-bottom: 12px;
+}
+.mts-login .remember input { margin-right: 6px; }
+.mts-login .btn {
+    width: 100%; padding: 11px;
+    border: none; border-radius: 8px;
+    background: linear-gradient(135deg, var(--andromeda-purple-400, #9B59B6), var(--iceberg-blue-400, #2E86DE));
+    color: #fff; font-size: 13px; font-weight: 700;
+    cursor: pointer; transition: opacity .18s, transform .18s;
+}
+.mts-login .btn:hover { opacity: .92; transform: translateY(-1px); }
+.mts-login .msg { min-height: 16px; font-size: 11px; margin-top: 8px; text-align: center; }
+.mts-login .msg.error { color: #DC2626; }
+.mts-login .msg.info  { color: #10B981; }
+.mts-login .register {
+    text-align: center; margin-top: 14px; font-size: 11px;
+    color: var(--mtscos-text-secondary, #6b7a8f);
+}
+.mts-login .register a {
+    color: var(--andromeda-purple-400, #9B59B6); text-decoration: none; font-weight: 600;
+}
+.mts-login .register a:hover { text-decoration: underline; }
+
+/* ── 仙女座状态徽章 (极简, 不破坏骨架) ── */
+.mts-status { display:flex; align-items:center; gap:8px; }
+.mts-status .dot {
+    width:8px; height:8px; border-radius:50%;
+    background:#10B981; box-shadow:0 0 6px rgba(16,185,129,.6);
+    animation: pulse 2s infinite;
+}
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+.mts-status .cnt {
+    font-size:10px; font-weight:700; color:var(--mtscos-text-secondary,#6b7a8f);
+    font-family:ui-monospace,monospace; letter-spacing:.5px;
+}
+
+/* ── 仙女座 AI 生态摘要条 ── */
+.mts-eco {
+    margin-top: 18px;
+    display:flex; justify-content:center; flex-wrap:nowrap;
+    gap: 4px 18px;
+    font-size: 11px; color:#7a8fa6;
+    letter-spacing:.3px;
+}
+.mts-eco .eco-item { display:flex; gap:5px; align-items:baseline; }
+.mts-eco .eco-num {
+    font-weight:800; font-family:ui-monospace,monospace;
+    background:linear-gradient(135deg,var(--andromeda-purple-400,#9B59B6),var(--iceberg-blue-400,#2E86DE));
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+}
+.mts-eco .eco-label { color:#9baab8; }
+
+/* ── Footer (极简) ── */
+.mts-footer {
+    text-align: center; padding: 32px 20px 12px;
+    font-size: 10.5px; color: #9baab8;
+}
+
+/* ╔══════════════════════════════════════════════════════════════╗
+ * ║  仙女座 UI Team — 首页内容美化 3 方向 (增量 CSS)              ║
+ * ╚══════════════════════════════════════════════════════════════╝ */
+
+/* ── 1. AI 生态: 图标容器 + hover 高亮 + 徽章边框 ── */
+.mts-eco { gap: 6px 6px; margin-top: 16px; padding-top: 14px;
+    border-top: 1px dashed rgba(99,102,241,.1);
+    flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden;
+    -webkit-overflow-scrolling: touch; scrollbar-width: none;
+    justify-content: flex-start; }
+.mts-eco::-webkit-scrollbar { display: none; }
+.mts-eco .eco-item { flex: 0 0 auto; white-space: nowrap; }
+.mts-eco .eco-item {
+    padding: 4px 8px; border-radius: 20px;
+    background: rgba(99,102,241,.04);
+    border: 1px solid rgba(99,102,241,.08);
+    gap: 6px; align-items: center;
+    transition: background .2s, border-color .2s, transform .2s;
+    cursor: default;
+}
+.mts-eco .eco-icon {
+    font-size: 10px; color: #8B5CF6;
+    width: 18px; height: 18px; border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: rgba(139,92,246,.1);
+}
+.mts-eco .eco-num { font-size: 12px; }
+.mts-eco .eco-label { font-size: 10px; }
+.mts-eco .eco-item:hover {
+    background: rgba(139,92,246,.1);
+    border-color: rgba(139,92,246,.25);
+    transform: translateY(-1px);
+}
+.mts-eco .eco-item:hover .eco-icon {
+    background: rgba(139,92,246,.2);
+    color: #7C3AED;
+}
+.mts-eco .eco-item:hover .eco-num {
+    filter: brightness(1.1);
+}
+/* 待修复徽章: 有 PENDING 诉求时转红 (含 smart_mount 主管离线单) */
+.mts-eco .eco-repair.is-alert {
+    background: rgba(239,68,68,.10);
+    border-color: rgba(239,68,68,.35);
+}
+.mts-eco .eco-repair.is-alert .eco-icon {
+    background: rgba(239,68,68,.18);
+    color: #DC2626;
+}
+.mts-eco .eco-repair.is-alert .eco-num {
+    background: linear-gradient(135deg,#EF4444,#F87171);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+
+/* ── 2. Footer 升级: 渐变分隔线 + 品牌字 + 分层 ── */
+.mts-footer {
+    position: relative;
+    padding: 36px 20px 20px;
+}
+.mts-footer::before {
+    content:''; position:absolute; top:0; left:50%; transform:translateX(-50%);
+    width: 60px; height: 2px; border-radius: 2px;
+    background: linear-gradient(90deg, #EF4444, #F97316, #8B5CF6, #3B82F6, #10B981);
+    opacity: .7;
+}
+.mts-footer .f-brand {
+    font-size: 10px; font-weight: 800; letter-spacing: 3px;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    margin-bottom: 8px;
+}
+.mts-footer .f-brand .f-andromeda {
+    background: linear-gradient(135deg, #7C3AED, #8B5CF6);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+.mts-footer .f-brand .f-iceberg {
+    background: linear-gradient(135deg, #2E86DE, #10B981);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+.mts-footer .f-copy { font-size: 10px; color: #b8c4d0; }
+.mts-footer .f-link { font-size: 9px; color: #c8cfda; margin-top: 4px; }
+.mts-footer .f-link a { color: #8B5CF6; text-decoration: none; font-weight: 600; }
+.mts-footer .f-link a:hover { text-decoration: underline; }
+
+/* ── 3. 佛教法会改 accordion (CSS-only <details>, 默认收起) ── */
+.mts-buddhist.mts-bd-accordion {
+    opacity: 1;                 /* 不再弱化, 因为默认收起不占视觉 */
+    border: 1px dashed rgba(11,31,58,.08);
+    background: rgba(11,31,58,.012);
+    max-height: 38px;          /* 默认只露出 title */
+    overflow: hidden;
+    transition: max-height .4s cubic-bezier(.22,1,.36,1);
+    cursor: pointer;
+}
+.mts-buddhist.mts-bd-accordion[open] {
+    max-height: 600px;         /* 展开后足够容纳所有条目 */
+    border-color: rgba(11,31,58,.12);
+    background: rgba(11,31,58,.02);
+}
+.mts-buddhist.mts-bd-accordion .bd-title {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 0; padding: 4px 0;
+}
+.mts-buddhist.mts-bd-accordion .bd-title::after {
+    content: '›'; font-size: 14px; font-weight: 700;
+    color: #9baab8; transition: transform .3s;
+}
+.mts-buddhist.mts-bd-accordion[open] .bd-title::after {
+    transform: rotate(90deg);
+}
+.mts-buddhist.mts-bd-accordion .bd-list {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px dashed rgba(11,31,58,.06);
+}
+.mts-buddhist.mts-bd-accordion:hover {
+    border-color: rgba(99,102,241,.15);
+}
+
+/* ── 响应式 ── */
+@media (max-width: 640px) {
+    .mts-clock .time { font-size: 56px; }
+    .mts-wrap { padding: 24px 18px 40px; }
+    .mts-login { width: 100%; }
+}
+
+/* ═══════════════════════════════════════════
+   🌀 仙女座发散增强 (在极简骨架上视觉升级)
+   保留所有内容, 只增强质感
+   ═══════════════════════════════════════════ */
+
+/* ① body 背景: 纯白 → 冰山顶部光晕 + 极淡点阵 */
+body {
+    background:
+        radial-gradient(ellipse 80% 40% at 50% -10%, rgba(155,89,182,.07) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 30% at 80% 20%, rgba(46,134,222,.06) 0%, transparent 50%),
+        #fafbfd !important;
+}
+
+/* ② 时钟已移至右上角, 旧 C 位动画已清 */
+
+/* ③ 仙女座星云脉动 (状态绿点升级) */
+.mts-status .dot {
+    position: relative;
+    background: radial-gradient(circle, #10B981 40%, #059669 100%);
+    box-shadow: 0 0 0 0 rgba(16,185,129,.6);
+    animation: andromeda-pulse 2.5s ease-in-out infinite;
+}
+.mts-status .dot::before,
+.mts-status .dot::after {
+    content:''; position:absolute; inset:-4px;
+    border-radius:50%;
+    border:1px solid rgba(16,185,129,.25);
+}
+.mts-status .dot::before { animation: ring-1 2.5s ease-out infinite; }
+.mts-status .dot::after  { animation: ring-2 2.5s ease-out infinite; animation-delay:.8s; }
+@keyframes andromeda-pulse {
+    0%,100% { box-shadow: 0 0 0 0 rgba(16,185,129,.5); }
+    50%     { box-shadow: 0 0 0 6px rgba(16,185,129,0); }
+}
+@keyframes ring-1 {
+    0%   { transform: scale(.8); opacity:.8; }
+    100% { transform: scale(2.2); opacity:0; }
+}
+@keyframes ring-2 {
+    0%   { transform: scale(.8); opacity:.6; }
+    100% { transform: scale(2.5); opacity:0; }
+}
+
+/* ④ Logo orb 缓慢旋转 */
+.mts-logo .orb {
+    animation: orb-spin 12s linear infinite;
+}
+@keyframes orb-spin {
+    0%   { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* ── 冰山系统 Logo (内联 SVG 升级) ── */
+.mts-logo { gap: 12px; }
+.mts-logo .orb { display: none; } /* 隐藏旧 ✦ 角标, 换冰山 SVG */
+.iceberg-svg {
+    border-radius: 7px;
+    box-shadow: 0 2px 10px rgba(99,102,241,.35), 0 0 0 1px rgba(139,92,246,.2);
+    animation: iceberg-float 6s ease-in-out infinite;
+    flex-shrink: 0;
+}
+@keyframes iceberg-float {
+    0%,100% { transform: translateY(0); }
+    50%     { transform: translateY(-2px); }
+}
+.mts-logo-text {
+    display:flex; flex-direction:column; line-height:1.15;
+}
+.mts-logo-main {
+    font-size: 15px; font-weight: 800;
+    background: linear-gradient(135deg, #4338CA 0%, #6366F1 40%, #8B5CF6 80%, #A78BFA 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+.mts-logo-sub {
+    font-size: 9px; font-weight: 600; letter-spacing: 2px;
+    color: var(--mtscos-text-secondary, #6b7a8f); text-transform: uppercase;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+/* ── 冰山系统介绍横幅 (突出, 顶栏下 C 位) ── */
+.iceberg-intro {
+    margin-top: 20px;
+    padding: 18px 24px;
+    background:
+        linear-gradient(135deg, rgba(67,56,202,.08) 0%, rgba(99,102,241,.06) 30%, rgba(139,92,246,.05) 60%, rgba(167,139,250,.04) 100%);
+    border: 1.5px solid rgba(99,102,241,.2);
+    border-radius: 14px;
+    display:flex; gap: 18px; align-items: center;
+    position: relative; overflow: hidden;
+    box-shadow: 0 4px 24px -8px rgba(99,102,241,.15), inset 0 1px 0 rgba(255,255,255,.5);
+    transition: border-color .3s, box-shadow .3s, transform .3s;
+}
+.iceberg-intro::before {
+    content:''; position:absolute; top:0; left:0; right:0; height:2px;
+    background: linear-gradient(90deg, #EF4444, #F97316, #8B5CF6, #3B82F6, #10B981);
+    opacity:.8; animation: iceberg-spectrum 8s linear infinite;
+}
+@keyframes iceberg-spectrum {
+    0%   { background-position: 0% 50%; }
+    100% { background-position: 200% 50%; }
+}
+.iceberg-intro:hover {
+    border-color: rgba(99,102,241,.45);
+    box-shadow: 0 6px 32px -8px rgba(99,102,241,.25), inset 0 1px 0 rgba(255,255,255,.6);
+    transform: translateY(-1px);
+}
+.iceberg-intro .ii-svg { width:44px; height:44px; flex-shrink:0; filter: drop-shadow(0 2px 8px rgba(99,102,241,.3)); }
+.iceberg-intro .ii-text { flex:1; min-width:0; }
+.iceberg-intro .ii-title {
+    font-size: 14px; font-weight: 900;
+    background: linear-gradient(135deg, #312E81 0%, #4338CA 30%, #6366F1 60%, #8B5CF6 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    letter-spacing: .5px;
+}
+.iceberg-intro .ii-desc {
+    font-size: 11px; color: #5a6b82; line-height: 1.55;
+    margin-top: 4px;
+}
+.iceberg-intro .ii-layers {
+    display:flex; gap: 4px; flex-shrink: 0;
+}
+.iceberg-intro .ii-layer {
+    font-size: 8px; font-weight: 800; letter-spacing: 1px;
+    padding: 4px 8px; border-radius: 5px;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+}
+.iceberg-intro .ii-layer.l0 { background:rgba(239,68,68,.12); color:#DC2626; border:1px solid rgba(239,68,68,.3); animation: layer-pulse-l0 3s ease-in-out infinite; }
+.iceberg-intro .ii-layer.l1 { background:rgba(139,92,246,.12); color:#7C3AED; border:1px solid rgba(139,92,246,.28); }
+.iceberg-intro .ii-layer.l2 { background:rgba(59,130,246,.12); color:#2563EB; border:1px solid rgba(59,130,246,.28); }
+.iceberg-intro .ii-layer.l3 { background:rgba(16,185,129,.12); color:#059669; border:1px solid rgba(16,185,129,.28); }
+@keyframes layer-pulse-l0 {
+    0%,100% { box-shadow: 0 0 0 0 rgba(239,68,68,.3); }
+    50%     { box-shadow: 0 0 0 3px rgba(239,68,68,.08); }
+}
+
+/* ⑤ 佛教事件卡: 已弱化, 仅保留基本 readability */
+.mts-buddhist:hover {
+    opacity: .9; /* 仅 hover 时稍微亮一点, 无抬升 */
+}
+.mts-buddhist .bd-item {
+    transition: color .2s;
+}
+.mts-buddhist .bd-item:hover {
+    color: #7a8fa6; /* 仅 hover 时稍微亮一点, 无位移/背景 */
+}
+
+/* ⑥ AI 生态摘要: 数字 pulsing + hover */
+.mts-eco .eco-num {
+    animation: eco-pulse 4s ease-in-out infinite;
+    display: inline-block;
+    transition: transform .2s;
+}
+.mts-eco .eco-item:hover .eco-num {
+    transform: translateY(-2px) scale(1.1);
+    animation-play-state: paused;
+}
+@keyframes eco-pulse {
+    0%,100% { opacity:1; }
+    50%     { opacity:.75; }
+}
+
+/* ⑦ 登录卡: 星云渐变顶条 + hover 微抬升 */
+.mts-login {
+    position: relative;
+    overflow: hidden;
+    transition: transform .25s, box-shadow .25s;
+}
+.mts-login::before {
+    content:''; position:absolute; top:0; left:0; right:0; height:2px;
+    background: linear-gradient(90deg, var(--andromeda-purple-400, #9B59B6), var(--iceberg-blue-400, #2E86DE), var(--andromeda-purple-400, #9B59B6));
+    background-size: 200% 100%;
+    animation: border-flow 6s linear infinite;
+}
+@keyframes border-flow {
+    0%   { background-position: 0% 0; }
+    100% { background-position: 200% 0; }
+}
+.mts-login:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 16px 48px -20px rgba(155,89,182,.25);
+}
+
+/* ⑧ 登录按钮增强: 冰川流动 */
+.mts-login .btn {
+    background-size: 200% 100%;
+    background-image: linear-gradient(90deg, var(--andromeda-purple-400, #9B59B6), var(--iceberg-blue-400, #2E86DE), var(--andromeda-purple-400, #9B59B6));
+    animation: border-flow 4s linear infinite;
+}
+
+/* ╔══════════════════════════════════════════════════════════════╗
+ * ║  🎨 仙女座全团队调度 — 登录卡终极美化 (增量追加)              ║
+ * ║  设计: Andromeda UI 专家  动效: Motion 工程师                  ║
+ * ║  数据: AI 引擎组  合规: 冰山规则组                             ║
+ * ╚══════════════════════════════════════════════════════════════╝ */
+
+/* L1 登录卡背景: 纯白 → 微渐变 + 仙女座星点 */
+.mts-login {
+    background:
+        radial-gradient(ellipse at top, rgba(139,92,246,.04) 0%, transparent 60%),
+        radial-gradient(ellipse at bottom right, rgba(46,134,222,.03) 0%, transparent 50%),
+        linear-gradient(180deg, #fff 0%, #fafbff 100%);
+    border-color: rgba(99,102,241,.14);
+}
+/* 仙女座星点 (3 颗, 呼应 Logo) */
+.mts-login::after {
+    content:''; position:absolute; inset:0; pointer-events:none;
+    background:
+        radial-gradient(1.5px 1.5px at 15% 18%, #FCD34D 50%, transparent 100%),
+        radial-gradient(1px 1px at 82% 25%, #A78BFA 50%, transparent 100%),
+        radial-gradient(1px 1px at 60% 85%, #A78BFA 50%, transparent 100%);
+    opacity:.65;
+    animation: star-twinkle 4s ease-in-out infinite;
+}
+@keyframes star-twinkle {
+    0%,100% { opacity:.45; }
+    50%     { opacity:.8; }
+}
+
+/* L2 标题: 渐变字 + 🔐 微漂浮 */
+.mts-login .lm-title {
+    background: linear-gradient(135deg, #312E81 0%, #5B21B6 40%, #8B5CF6 70%, #A78BFA 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    letter-spacing: .5px;
+}
+.mts-login .lm-title::before {
+    display: inline-block;
+    animation: lock-bob 2.5s ease-in-out infinite;
+    -webkit-text-fill-color: initial; /* emoji 不走渐变 */
+}
+@keyframes lock-bob {
+    0%,100% { transform: translateY(0); }
+    50%     { transform: translateY(-2px); }
+}
+
+/* L3 输入框: focus 紫色光晕 + 仙女座内环 */
+.mts-login .field input {
+    background: linear-gradient(180deg, #fff 0%, #fafbff 100%);
+    transition: border-color .25s, box-shadow .25s, background .25s;
+}
+.mts-login .field input:focus {
+    border-color: var(--andromeda-purple-500, #8B5CF6);
+    box-shadow:
+        0 0 0 3px rgba(139,92,246,.12),
+        0 0 18px -4px rgba(139,92,246,.25);
+    background: #fff;
+}
+/* 输入框内 icon: focus 时变色 */
+.mts-login .field input:focus + i,
+.mts-login .field:focus-within i {
+    color: var(--andromeda-purple-500, #8B5CF6);
+    transform: translateY(-50%) scale(1.05);
+    transition: color .2s, transform .2s;
+}
+.mts-login .field i {
+    transition: color .2s, transform .2s;
+}
+
+/* L4 登录按钮: 粒子流动 + glow 脉冲 */
+.mts-login .btn {
+    position: relative; overflow: hidden;
+    background: linear-gradient(90deg, #7C3AED, #9B59B6, #2E86DE, #7C3AED);
+    background-size: 300% 100%;
+    animation: login-btn-flow 5s linear infinite;
+    box-shadow: 0 4px 16px -6px rgba(124,58,237,.4);
+}
+@keyframes login-btn-flow {
+    0%   { background-position: 0% 50%; box-shadow: 0 4px 16px -6px rgba(124,58,237,.4); }
+    50%  { background-position: 150% 50%; box-shadow: 0 6px 24px -4px rgba(46,134,222,.45); }
+    100% { background-position: 300% 50%; box-shadow: 0 4px 16px -6px rgba(124,58,237,.4); }
+}
+.mts-login .btn:hover {
+    animation-play-state: paused;
+    transform: translateY(-1px);
+    box-shadow: 0 8px 28px -6px rgba(124,58,237,.5);
+}
+/* 按钮闪光扫过 */
+.mts-login .btn::after {
+    content:''; position:absolute; top:0; left:-100%; width:60%; height:100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,.22), transparent);
+    animation: btn-shine 3.5s ease-in-out infinite;
+}
+@keyframes btn-shine {
+    0%,70%  { left: -100%; }
+    85%     { left: 120%; }
+    100%    { left: 120%; }
+}
+
+/* L5 登录卡顶部 daemon 健康度条 (仙女座数据驱动) */
+.mts-login .health-bar {
+    height: 2px; margin: 0 -28px 14px -28px;
+    background: rgba(11,31,58,.06);
+    position: relative; overflow: hidden;
+}
+.mts-login .health-fill {
+    height: 100%; border-radius: 0 2px 2px 0;
+    background: linear-gradient(90deg, #10B981, #34D399, #6EE7B7);
+    transition: width .6s cubic-bezier(.22,1,.36,1);
+    box-shadow: 0 0 8px rgba(16,185,129,.4);
+}
+.mts-login .health-fill.medium { background: linear-gradient(90deg, #F59E0B, #FBBF24); box-shadow: 0 0 8px rgba(245,158,11,.35); }
+.mts-login .health-fill.low    { background: linear-gradient(90deg, #EF4444, #F87171); box-shadow: 0 0 8px rgba(239,68,68,.4); }
+.mts-login .health-label {
+    display:flex; justify-content: space-between;
+    font-size: 9px; font-weight: 600; letter-spacing: 1px;
+    color: #9baab8; margin-bottom: 14px;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    text-transform: uppercase;
+}
+.mts-login .health-label .hl-status.ok   { color: #10B981; }
+.mts-login .health-label .hl-status.warn { color: #F59E0B; }
+.mts-login .health-label .hl-status.crit { color: #EF4444; }
+
+/* L6 登录卡底部装饰: 渐变分隔 + 品牌字 */
+.mts-login .mts-brand-foot {
+    text-align: center; margin-top: 16px; padding-top: 12px;
+    border-top: 1px dashed rgba(11,31,58,.08);
+    font-size: 9px; font-weight: 700; letter-spacing: 2px;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    color: #c8cfda; text-transform: uppercase;
+}
+.mts-login .mts-brand-foot span {
+    background: linear-gradient(135deg, #8B5CF6, #2E86DE);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+
+/* ⑨ Footer 融入背景 */
+.mts-footer {
+    opacity: .6;
+    transition: opacity .3s;
+}
+.mts-footer:hover { opacity: 1; }
+</style>
+{# v24.3.3: 始终加载 SA 双密钥 CSS #}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/sa_proprietary.css') }}">
+</head>
+
+{% set buddhist_events = [
+    {'date': '10-13', 'faction': '汉传', 'event': '观音菩萨成道日'},
+    {'date': '10-24', 'faction': '汉传', 'event': '药师佛诞日'},
+    {'date': '11-04', 'faction': '汉传', 'event': '地藏王菩萨诞日'},
+    {'date': '11-17', 'faction': '汉传', 'event': '阿弥陀佛诞日'},
+    {'date': '10-15', 'faction': '藏传', 'event': '尊胜佛母日'},
+    {'date': '10-25', 'faction': '藏传', 'event': '文殊菩萨日'},
+    {'date': '11-08', 'faction': '藏传', 'event': '长寿佛日'},
+    {'date': '10-20', 'faction': '南传', 'event': '布萨日 (Uposatha)'},
+    {'date': '11-03', 'faction': '南传', 'event': '卡提那节 (Kathina)'},
+] %}
+
+<body class="layout-mode-{{ layout_mode or 'STANDARD' }}">
+
+<!-- ═══ 主内容 (侧栏已隐藏) ═══ -->
+<main class="mts-wrap">
+
+    <!-- 顶部 Logo + 冰山品牌 + 状态 + 版本 -->
+    <div class="mts-top">
+        <div class="mts-logo">
+            <!-- 冰山系统 Logo (SVG 内联, 与仙女座共享光晕) -->
+            <svg class="iceberg-svg" viewBox="0 0 32 32" width="32" height="32" xmlns="http://www.w3.org/2000/svg">
+                <rect width="32" height="32" rx="7" fill="#0B0A1E"/>
+                <polygon points="16,4 27,18 5,18" fill="url(#icePeakInline)"/>
+                <polygon points="7,18 25,18 21,25 11,25" fill="#4338CA" opacity=".92"/>
+                <polygon points="11,25 21,25 19,30 13,30" fill="#1E1B4B"/>
+                <line x1="4" y1="18" x2="28" y2="18" stroke="#A78BFA" stroke-width=".6" stroke-dasharray="2,1.5" opacity=".55"/>
+                <!-- 仙女座 3 星 (冰山支撑仙女座!) -->
+                <circle cx="16" cy="2.5" r="1.3" fill="#FCD34D"/>
+                <circle cx="12" cy="4.5" r=".6" fill="#A78BFA"/>
+                <circle cx="20" cy="4.5" r=".6" fill="#A78BFA"/>
+                <!-- 小光晕 -->
+                <circle cx="16" cy="4" r="8" fill="none" stroke="#8B5CF6" stroke-width=".3" opacity=".25"/>
+                <defs>
+                    <linearGradient id="icePeakInline" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0" stop-color="#E0E7FF"/>
+                        <stop offset=".4" stop-color="#A5B4FC" stop-opacity=".95"/>
+                        <stop offset="1" stop-color="#6366F1"/>
+                    </linearGradient>
+                </defs>
+            </svg>
+            <div class="mts-logo-text">
+                <span class="mts-logo-main">冰山 · MTSCOS AI</span>
+                <span class="mts-logo-sub">ICEBERG SYSTEM for Andromeda</span>
+            </div>
+        </div>
+        <div class="mts-status">
+            <span class="dot" title="仙女座守护进程在线"></span>
+            <span class="cnt">{{ andromeda_state.daemon_running | default(0) }}/{{ andromeda_state.daemon_total | default(0) }} DAEMON</span>
+            <span class="mts-ver" style="margin-left:8px;">
+                v{{ version | default('23.0.0') }}
+                {% if andromeda_version %}·{{ andromeda_version }}{% endif %}
+            </span>
+            <!-- 右上角时钟 (小字, 右对齐) -->
+            <span class="mts-clock-top">
+                <span class="clk-date" id="clkDate">—</span>
+                <span class="clk-time" id="clkTime">--:--:--</span>
+                <span class="clk-week" id="clkWeek">—</span>
+            </span>
+        </div>
+    </div>
+
+    <!-- 冰山系统介绍横幅 (与仙女座关联) -->
+    <div class="iceberg-intro">
+        <svg class="ii-svg" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+            <rect width="32" height="32" rx="6" fill="#0B0A1E"/>
+            <polygon points="16,4 27,18 5,18" fill="url(#ip2)"/>
+            <polygon points="7,18 25,18 21,25 11,25" fill="#4338CA" opacity=".9"/>
+            <polygon points="11,25 21,25 19,30 13,30" fill="#1E1B4B"/>
+            <line x1="4" y1="18" x2="28" y2="18" stroke="#A78BFA" stroke-width=".5" stroke-dasharray="2,1.5" opacity=".6"/>
+            <circle cx="16" cy="2.5" r="1.1" fill="#FCD34D"/>
+            <circle cx="12" cy="4.5" r=".5" fill="#A78BFA"/>
+            <circle cx="20" cy="4.5" r=".5" fill="#A78BFA"/>
+            <defs>
+                <linearGradient id="ip2" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0" stop-color="#E0E7FF"/>
+                    <stop offset="1" stop-color="#6366F1"/>
+                </linearGradient>
+            </defs>
+        </svg>
+        <div class="ii-text">
+            <div class="ii-title">冰山系统 · Iceberg System</div>
+            <div class="ii-desc">L0 IRON_RULE 铁律12步骤 强制约束 · L1 核心规范 · L2 操作规范 · L3 实施细则 — 为仙女座星系提供不可绕过的规则底座</div>
+        </div>
+        <div class="ii-layers">
+            <span class="ii-layer l0">L0 IRON</span>
+            <span class="ii-layer l1">L1 CORE</span>
+            <span class="ii-layer l2">L2 OPS</span>
+            <span class="ii-layer l3">L3 IMPL</span>
+        </div>
+    </div>
+
+    <!-- 佛教派系 15 天事件 (可折叠 accordion, 默认收起) -->
+    <details class="mts-buddhist mts-bd-accordion" data-andromeda-reveal>
+        <summary class="bd-title">佛教派系 · 近期法会</summary>
+        <div class="bd-list">
+        {% for ev in buddhist_events %}
+            <div class="bd-item">
+                <span class="bd-date">{{ ev.date }}</span>
+                <span class="bd-faction">[{{ ev.faction }}]</span>
+                <span class="bd-event">{{ ev.event }}</span>
+            </div>
+        {% endfor %}
+        </div>
+    </details>
+
+    <!-- 仙女座 AI 生态摘要 (DB 驱动, 极简) -->
+    <div class="mts-eco" data-andromeda-reveal>
+        <!-- 仙女座 AI 生态: 图标 + 渐变数字 + tooltip; 全部 30s 实时轮询 (data-evo-field) -->
+        <span class="eco-item" title="AI 员工总数 (mtos_ai_employees + mtscos_ai_employees)">
+            <i class="eco-icon fas fa-robot"></i>
+            <span class="eco-num" data-evo-field="ai_employees">{{ andromeda_state.ai_employees | default(0) }}</span>
+            <span class="eco-label">AI 员工</span>
+        </span>
+        <span class="eco-item" title="仙女座守护进程在线 / 总数 (mt_daemon_registry 实时)">
+            <i class="eco-icon fas fa-shield-heart"></i>
+            <span class="eco-num" data-evo-field="daemon_running">{{ andromeda_state.daemon_running | default(0) }}</span>
+            <span class="eco-label">/<span data-evo-field="daemon_total">{{ andromeda_state.daemon_total | default(0) }}</span> 守护</span>
+        </span>
+        <span class="eco-item" title="AI 脑库知识投喂累计条数 (mt_ai_brain_feed_log)">
+            <i class="eco-icon fas fa-brain"></i>
+            <span class="eco-num" data-evo-field="brain_feeds">{{ andromeda_state.brain_feeds | default(0) }}</span>
+            <span class="eco-label">脑库投喂</span>
+        </span>
+        <span class="eco-item" title="本地推理引擎节省 tokens, 零 API 消耗 (mt_local_ai_inference_log)">
+            <i class="eco-icon fas fa-coins"></i>
+            <span class="eco-num" data-evo-field="tokens_saved">{{ (andromeda_state.tokens_saved | default(0)) | int }}</span>
+            <span class="eco-label">tokens 节省</span>
+        </span>
+        <span class="eco-item" title="仙女座源码巡逻队扫描次数 (mt_patrol_runs)">
+            <i class="eco-icon fas fa-magnifying-glass-chart"></i>
+            <span class="eco-num" data-evo-field="patrol_runs">{{ andromeda_state.patrol_runs | default(0) }}</span>
+            <span class="eco-label">源码巡逻</span>
+        </span>
+        <span class="eco-item" title="仙女座自我探研: Q5 头脑风暴提案经 EigenFlux 投票通过并建 §14 flow 的累计数">
+            <i class="eco-icon fas fa-dna"></i>
+            <span class="eco-num" data-evo-field="evo_research_started">{{ andromeda_state.evo_research_started | default(0) }}</span>
+            <span class="eco-label">自探研</span>
+        </span>
+        <span class="eco-item eco-repair{% if (andromeda_state.evo_repair_pending | default(0)) > 0 %} is-alert{% endif %}" title="待拉起/修复的 daemon 诉求 (建议池 DAEMON_REPAIR PENDING); 含 smart_mount 主管离线单">
+            <i class="eco-icon fas fa-wrench"></i>
+            <span class="eco-num" data-evo-field="evo_repair_pending">{{ andromeda_state.evo_repair_pending | default(0) }}</span>
+            <span class="eco-label">待修复</span>
+        </span>
+    </div>
+    <script data-repair-pending="{{ andromeda_state.evo_repair_pending | default(0) }}">
+    (function(){
+        var _mtRepairPending = parseInt(document.currentScript.dataset.repairPending || '0', 10);
+        function paint(n){
+            document.querySelectorAll('.mts-eco .eco-repair').forEach(function(el){
+                el.classList.toggle('is-alert', (n || 0) > 0);
+            });
+        }
+        paint(_mtRepairPending);
+        document.addEventListener('andromeda:state', function(e){
+            if (e && e.detail) paint(e.detail.evo_repair_pending || 0);
+        });
+        // health-fill width: data-width → inline style
+        document.addEventListener('DOMContentLoaded', function(){
+            var hf = document.querySelector('.health-fill');
+            if (hf && hf.dataset.width) hf.style.width = hf.dataset.width + '%';
+        });
+    })();
+    </script>
+
+    <!-- 登录卡 (保留完整 CSRF + JS hook) -->
+    <div class="mts-login-wrap" data-andromeda-reveal>
+        <form class="mts-login" id="bizLoginFormMain" onsubmit="return false;">
+            <!-- 🎯 仙女座数据驱动: daemon 健康度条 -->
+            {%- set _dr = andromeda_state.daemon_running | default(0) -%}
+            {%- set _dt = andromeda_state.daemon_total   | default(1) -%}
+            {%- set _dp = ((_dr / _dt * 100) | round | int) if _dt > 0 else 0 -%}
+            <div class="health-label" data-andromeda-reveal>
+                <span>DAEMON</span>
+                <span class="hl-status {% if _dp >= 90 %}ok{% elif _dp >= 60 %}warn{% else %}crit{% endif %}">
+                    {{ _dr }}/{{ _dt }} · {{ _dp }}%
+                </span>
+            </div>
+            <div class="health-bar"><div class="health-fill {% if _dp >= 90 %}ok{% elif _dp >= 60 %}medium{% else %}low{% endif %}" data-width="{{ _dp }}"></div></div>
+
+            <div class="lm-title" data-andromeda-reveal>安全登录 MTSCOS AI</div>
+            <input type="hidden" name="csrf_token" value="{{ page_csrf_token if page_csrf_token else (csrf_token if csrf_token else '') }}">
+            <div class="field" data-andromeda-reveal>
+                <i class="fas fa-user"></i>
+                <input type="text" id="bizUsernameMain" name="username" autocomplete="username"
+                       placeholder="{{ t('home.ph_username', default='请输入用户名') }}" required>
+            </div>
+            <div class="field" data-andromeda-reveal>
+                <i class="fas fa-lock"></i>
+                <input type="password" id="bizPasswordMain" name="password" autocomplete="current-password"
+                       placeholder="{{ t('home.ph_password', default='请输入密码') }}" required>
+            </div>
+            <label class="remember" data-andromeda-reveal><input type="checkbox" id="bizRememberMain"> {{ t('home.remember_me', default='7 天内免登录') }}</label>
+            <button type="submit" class="btn" id="bizLoginBtnMain" data-andromeda-reveal>
+                <i class="fas fa-right-to-bracket"></i> {{ t('home.btn_login', default='登 录') }}
+            </button>
+            <div class="msg" id="bizLoginMsgMain"></div>
+            <div class="register" data-andromeda-reveal><i class="fas fa-user-plus"></i> 没有账号？<a href="{{ url_for('auth.register') }}">立即注册 →</a></div>
+            <!-- 仙女座 + 冰山双品牌底部 -->
+            <div class="mts-brand-foot">
+                <span>ANDROMEDA</span> × ICEBERG · SYSTEM {{ version }}
+            </div>
+        </form>
+    </div>
+
+    <!-- Footer (仙女座 × 冰山双品牌) -->
+    <div class="mts-footer">
+        <div class="f-brand">
+            <span class="f-andromeda">ANDROMEDA</span> × <span class="f-iceberg">ICEBERG</span>
+        </div>
+        <div class="f-copy">
+            {{ footer_info.company if footer_info and footer_info.company else 'MTS Architecture' }} &copy; 2024-{{ footer_info.copyright_year if footer_info and footer_info.copyright_year else '2026' }}
+        </div>
+        <div class="f-link">
+            <i class="fas fa-code-branch"></i> {{ version }}
+            · <i class="fas fa-shield-halved"></i> L0 IRON_RULE
+        </div>
+    </div>
+</main>
+
+<!-- ═══ 仙女座自动美化引擎 (渐进增强, defer 不阻塞首屏) ═══ -->
+<script defer src="{{ url_for('static', filename='js/andromeda-beautify.js') }}"></script>
+
+<!-- ═══ 时钟 JS ═══ -->
+<script>
+(function(){
+    function pad(n){ return String(n).padStart(2,'0'); }
+    var WEEK = ['星期日','星期一','星期二','星期三','星期四','星期五','星期六'];
+    function tick(){
+        var d = new Date();
+        document.getElementById('clkDate').textContent =
+            d.getFullYear() + '年' + pad(d.getMonth()+1) + '月' + pad(d.getDate()) + '日';
+        document.getElementById('clkTime').textContent =
+            pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+        document.getElementById('clkWeek').textContent = WEEK[d.getDay()];
+    }
+    tick(); setInterval(tick, 1000);
+})();
+</script>
+
+<!-- ═══ 登录提交 JS (完整保留原逻辑) ═══ -->
+<script>
+(function(){
+    var form = document.getElementById('bizLoginFormMain');
+    if (!form) return;
+    form.addEventListener('submit', function(){
+        var u = document.getElementById('bizUsernameMain').value.trim();
+        var p = document.getElementById('bizPasswordMain').value;
+        var r = document.getElementById('bizRememberMain').checked;
+        var csrf = document.querySelector('#bizLoginFormMain [name=csrf_token]').value;
+        var msg = document.getElementById('bizLoginMsgMain');
+        var btn = document.getElementById('bizLoginBtnMain');
+        if (!u || !p) { msg.textContent='请输入用户名和密码'; msg.className='msg error'; return; }
+        btn.disabled = true; btn.style.opacity='.6';
+        fetch('/auth/login', {
+            method:'POST',
+            headers:{'Content-Type':'application/x-www-form-urlencoded','X-Requested-With':'XMLHttpRequest'},
+            body:'username='+encodeURIComponent(u)+'&password='+encodeURIComponent(p)+'&remember='+(r?'1':'0')+'&csrf_token='+encodeURIComponent(csrf)
+        })
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+            btn.disabled=false; btn.style.opacity='1';
+            if (d.success) { msg.textContent='登录成功, 跳转中…'; msg.className='msg info';
+                setTimeout(function(){ window.location.href = (d.redirect || '/'); }, 600);
+            } else { msg.textContent = d.message || '登录失败'; msg.className='msg error'; }
+        })
+        .catch(function(){ btn.disabled=false; btn.style.opacity='1';
+            msg.textContent='网络错误, 请重试'; msg.className='msg error'; });
+    });
+})();
+</script>
+
+</body>
+</html>

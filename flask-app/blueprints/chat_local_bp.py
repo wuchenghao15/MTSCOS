@@ -452,7 +452,66 @@ def _prehold(user_id, session_id, estimated_cost, model):
         try: conn.rollback()
         except Exception: pass
         sys.stderr.write(f"[CHAT-LOCAL] _prehold error: {e}\n")
-        return {'ok': False, 'balance': 0, 'held_id': None}
+
+
+def _refund_prehold(user_id, prehold_amount, session_id='', reason='error'):
+    """紧急冲正: 释放 frozen prehold token 回余额 + ledger 记录
+    触发场景: Ollama 崩溃/超时/404、_finalize 自身异常、SSE 连接已断
+    幂等: 多次调同一 held_amount 不会多退 (Frozen 为 0 时 UPDATE no-op)"""
+    if not prehold_amount or prehold_amount <= 0:
+        return
+    uid_str = str(user_id)
+    is_guest = uid_str.startswith('guest')
+    conn = _db()
+    try:
+        conn.execute("BEGIN IMMEDIATE")
+        if is_guest:
+            row = conn.execute(
+                "SELECT balance, frozen FROM mt_token_wallets WHERE user_id=?", (uid_str,)
+            ).fetchone()
+            if row is None:
+                conn.rollback()
+                return
+            # frozen 最小化到 0 释放 + 余额回退
+            actual_release = min(prehold_amount, row['frozen'])
+            if actual_release <= 0:
+                conn.rollback()
+                return
+            conn.execute(
+                "UPDATE mt_token_wallets SET balance=balance+?, frozen=frozen-? "
+                "WHERE user_id=?", (actual_release, actual_release, uid_str)
+            )
+            bal_after = row['balance'] + actual_release
+        else:
+            row = conn.execute(
+                "SELECT balance, frozen FROM mt_user_token_accounts WHERE user_id=?", (user_id,)
+            ).fetchone()
+            if row is None:
+                conn.rollback()
+                return
+            frozen = row['frozen'] if 'frozen' in row.keys() else 0
+            actual_release = min(prehold_amount, frozen)
+            if actual_release <= 0:
+                conn.rollback()
+                return
+            conn.execute(
+                "UPDATE mt_user_token_accounts SET balance=balance+?, frozen=frozen-? "
+                "WHERE user_id=?", (actual_release, actual_release, user_id)
+            )
+            bal_after = row['balance'] + actual_release
+        conn.execute(
+            "INSERT INTO mt_user_token_ledger(user_id,change,type,session_id,model,detail,balance_after) "
+            "VALUES(?,?,?,?,?,?,?)",
+            (uid_str, actual_release, 'release', session_id or '', '',
+             json.dumps({'reason': reason, 'prehold_amount': prehold_amount,
+                         'actual_release': actual_release}, ensure_ascii=False), bal_after)
+        )
+        conn.commit()
+        sys.stderr.write(f"[CHAT-LOCAL] _refund_prehold user={uid_str} release={actual_release} reason={reason} sid={session_id}\n")
+    except Exception as e:
+        try: conn.rollback()
+        except Exception: pass
+        sys.stderr.write(f"[CHAT-LOCAL] _refund_prehold FAIL user={uid_str}: {e}\n")
     finally:
         conn.close()
 
@@ -568,8 +627,12 @@ def _finalize(user_id, session_id, model, prompt_tokens, completion_tokens, preh
     except Exception as e:
         try: conn.rollback()
         except Exception: pass
-        sys.stderr.write(f"[CHAT-LOCAL] _finalize error: {e}\n")
-        return {'balance': 0, 'net_cost': 0, 'reward': 0, 'refund': 0}
+        # 紧急冲正: _finalize 自身异常 → 释放全部 prehold frozen
+        pa = (prehold_result or {}).get('held_amount', 0)
+        if pa > 0:
+            _refund_prehold(user_id, pa, session_id, reason=f'finalize_exception:{type(e).__name__}')
+        sys.stderr.write(f"[CHAT-LOCAL] _finalize error (refunded={pa}): {e}\n")
+        return {'balance': 0, 'net_cost': 0, 'reward': 0, 'refund': pa, '_error': str(e)}
     finally:
         conn.close()
 

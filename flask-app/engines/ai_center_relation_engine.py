@@ -141,7 +141,7 @@ def notify_once(conn, hours: float = 1.0) -> dict:
                    f'联动组: {",".join(names)} (relation 引擎自动广播)')
         try:
             conn.execute(
-                "INSERT INTO eigenflux_comm_messages (from_id, to_id, content, message_type) "
+                "INSERT INTO eigenflux_comm_messages (from_id, to_id, message_content, message_type) "
                 "VALUES ('sys_center_relation', 'center_group', ?, 'CENTER_NOTIFY')",
                 (content,))
             stats['notified'] += 1
@@ -170,25 +170,44 @@ def report_once(conn) -> dict:
 
 
 def _heartbeat():
+    """Flow unified_ops 20261023: 改走 Flask /api/internal/heartbeat 代理
+    Flask 自己写自己的 WAL 永不 locked (根治守护心跳被 Flask 写锁阻挡 except pass 吞掉)"""
     try:
-        conn = _connect()
-        conn.execute(
-            "INSERT OR IGNORE INTO mt_daemon_registry "
-            "(process_name, duty, pid, status, last_heartbeat, updated_at) "
-            "VALUES (?,?,?,?, datetime('now','localtime'), datetime('now','localtime'))",
-            (DAEMON_NAME, '中心↔AI 联动关系引擎 (自动绑定/认领广播/关系盘点) 300s',
-             os.getpid()))
-        conn.execute(
-            "UPDATE mt_daemon_registry SET last_heartbeat=datetime('now','localtime'), "
-            "pid=?, status='RUNNING' WHERE process_name=?", (os.getpid(), DAEMON_NAME))
-        conn.commit()
-        conn.close()
+        _tok_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                                 '..', '_runtime', '.internal_token')
+        _tok = open(_tok_path).read().strip() if os.path.exists(_tok_path) else ''
+        import urllib.request as _ur
+        _payload = json.dumps({'process_name': DAEMON_NAME,
+                               'pid': os.getpid()}).encode()
+        _req = _ur.Request('http://127.0.0.1:5001/api/internal/heartbeat',
+                           data=_payload,
+                           headers={'Content-Type': 'application/json',
+                                    'X-Internal-Token': _tok})
+        _ur.urlopen(_req, timeout=4)
     except Exception:
-        pass
-
+        pass  # Flask 重启期间静默, 下轮再试
 
 def main() -> int:
     cmd = sys.argv[1] if len(sys.argv) > 1 else 'loop'
+    if cmd == 'loop':
+        print(f'[{DAEMON_NAME}] 中心↔AI 联动守护 pid={os.getpid()} '
+              f'poll={POLL_SECS}s (WAL-safe per-cycle conn)', flush=True)
+        while True:
+            conn = _connect()
+            try:
+                ensure_table(conn)
+                try:
+                    r = report_once(conn)
+                    if r.get('new_binds') or r.get('notified'):
+                        print(f'[{DAEMON_NAME}] {r}', flush=True)
+                except Exception as e:
+                    sys.stderr.write(f'[{DAEMON_NAME}] {e}\n')
+            finally:
+                conn.close()
+            _heartbeat()
+            time.sleep(POLL_SECS)
+        return 0
+    # 单次命令分支
     conn = _connect()
     try:
         ensure_table(conn)
@@ -196,18 +215,9 @@ def main() -> int:
             print(json.dumps(bind_once(conn), ensure_ascii=False))
         elif cmd == 'report':
             print(json.dumps(report_once(conn), ensure_ascii=False))
-        else:  # loop
-            print(f'[{DAEMON_NAME}] 中心↔AI 联动守护 pid={os.getpid()} '
-                  f'poll={POLL_SECS}s', flush=True)
-            while True:
-                try:
-                    r = report_once(conn)
-                    if r.get('new_binds') or r.get('notified'):
-                        print(f'[{DAEMON_NAME}] {r}', flush=True)
-                except Exception as e:
-                    sys.stderr.write(f'[{DAEMON_NAME}] {e}\n')
-                _heartbeat()
-                time.sleep(POLL_SECS)
+        else:
+            print(f'unknown cmd: {cmd}', file=sys.stderr)
+            return 2
     finally:
         conn.close()
     return 0

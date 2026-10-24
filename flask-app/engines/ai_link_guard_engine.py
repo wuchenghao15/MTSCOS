@@ -323,6 +323,23 @@ def show_status() -> None:
     print(json.dumps(out, ensure_ascii=False, indent=2))
 
 
+
+def _daemon_hb():
+    """A1b patch (flow_unified_ops_20261024): 补 registry 心跳 — 原版完全没有."""
+    try:
+        conn = sqlite3.connect(
+            os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                         'database', 'app.db'), timeout=30)
+        conn.execute("PRAGMA busy_timeout=30000")
+        conn.execute(
+            "UPDATE mt_daemon_registry SET last_heartbeat=datetime('now','localtime'), "
+            "pid=?, status='RUNNING' WHERE process_name='ai_link_guard_engine'")
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument('--init', action='store_true')
@@ -357,6 +374,7 @@ def main() -> int:
                           f"wan={r['wan_ok']} heal={r['heal'] or '-'}", flush=True)
                 except Exception as e:
                     print(f"[{time.strftime('%H:%M:%S')}] #{n} ERROR {e}", flush=True)
+                _daemon_hb()
                 time.sleep(a.loop)
         except SystemExit:
             return 0

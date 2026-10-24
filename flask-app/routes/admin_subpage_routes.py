@@ -85,7 +85,7 @@ def _admin_app_pages_impl(name='dashboard'):
     # unified_pages 统一整合到 dashboard.html
     unified_pages = [
         'dashboard', 'dashboard_unified', 'users', 'exams', 'questions', 'courses',
-        'ai_employee_dashboard', 'ai_employees',
+        'ai_employee_dashboard', 'ai_employee_health', 'ai_employees',
         'settings', 'system', 'status', 'backup', 'permissions',
         'permission_management', 'roles', 'vikey', 'vikey_manager', 'upgrade',
         'logs', 'monitor', 'security', 'security_dashboard',
