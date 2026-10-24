@@ -652,3 +652,9 @@ registry 终态：**46 RUNNING + 5 DOWN（诚实）**。4 个真空转均为边�
 **补齐**：`_runtime/patches/patch_iceberg_six_cycles.py` — sys_consciousness daemon 在 90s 看门狗 alarm 清零后插 `run_iceberg_cycle()`（1800s 节流，避开看门狗超时）。
 
 **首跑验证**：最近 20 条 run 覆盖 **DERIVE/EXPAND/OPS/RESEARCH/STRENGTHEN/UPGRADE 全部 6 类** — 冰山从"单循环快照"升级为"六循环轮转"。society 留痕 corps_id 命名与预期不符（观察项，产出链已实证）。
+
+### 14.1 续查收口（13:05）
+
+1. **幽灵库再现（重要）**：`/Users/wuchenghao/MTSCOS_AI_Project/app.db`（19MB，PID 35095=sys_consciousness 系打开）— iceberg_command.py 的 DB 解析在 daemon cwd 下落到项目根。六循环产出本身已正确入主库（mt_iceberg_runs 6 类齐增），但**双库写入共存**，需下轮把 iceberg_command.DB 改绝对路径后重启 daemon（同类陷阱 §7.2 曾隔离 4KB 壳，本次 19MB 需比对内容后处置，禁直接删 — 进程正打开）。
+2. **心跳首跳**：crypto/wecom CYCLE=86400（一天一跳是设计行为，非假死）；archive patch 已部署但运行进程为旧代次（lsof 无 db 打开）— 需进程代次刷新后复核。下轮专项。
+3. **society 留痕**：andromeda_society_engine.py（真身在 engines/，非 auto_daemons）不写 maintenance_log — 产出走大厅回灌（andromeda_survey=3 已实证），销账。
