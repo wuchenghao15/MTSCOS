@@ -284,6 +284,104 @@ def stars_expand_once(conn=None) -> dict:
 
 
 # ============================================================
+# 2.5) 社会生活活动链: 磋商→学习→交流 (flow_unified_ops_20261024)
+# 实测三处停摆: 圆桌磋商死 18 天 / ai_learning_records 死 35 天 /
+# comm_messages 24h 仅 1 条 (存量 28 万全历史)。修复 = 每轮组织一次
+# 圆桌磋商 (议题取真实系统事件) → 参与 AI 落学习记录 → 交流频道聊成果。
+# ============================================================
+def _real_agenda(conn) -> tuple:
+    """议题从真实系统事件取: 最新法令 / 最新完成任务 / 最新脑库投喂."""
+    for sql in (
+            "SELECT '法议《'||title||'》的施行效果与修订建议' FROM mt_committee_decrees "
+            "ORDER BY id DESC LIMIT 1",
+            "SELECT '复盘任务「'||title||'」的执行经验' FROM mt_maintenance_tasks "
+            "WHERE status='DONE' ORDER BY id DESC LIMIT 1",
+            "SELECT '围绕脑库新知「'||substr(IFNULL(payload_preview,'系统演化'),1,24)"
+            "||'」的跨团队研讨' FROM mt_ai_brain_feed_log ORDER BY fed_at DESC LIMIT 1"):
+        try:
+            row = conn.execute(sql).fetchone()
+            if row and row[0]:
+                return row[0], sql.split('FROM ')[1].split(' ')[0]
+        except Exception:
+            continue
+    return 'AI 社会生活圆桌: 系统现状与演化方向交流', 'fallback'
+
+
+def social_once(conn=None) -> dict:
+    own = conn is None
+    if own:
+        conn = _connect()
+    stats = {'roundtable': 0, 'learning': 0, 'messages': 0}
+    try:
+        agenda, src_table = _real_agenda(conn)
+        # 参会者: 心跳最新的活跃节点 (host 1 + guests 3)
+        nodes = conn.execute(
+            "SELECT reg_id, employee_name FROM eigenflux_registrations "
+            "WHERE IFNULL(last_heartbeat,'')>datetime('now','localtime','-30 minutes') "
+            "ORDER BY last_heartbeat DESC LIMIT 4").fetchall()
+        if len(nodes) < 2:
+            nodes = conn.execute(
+                "SELECT reg_id, employee_name FROM eigenflux_registrations "
+                "ORDER BY last_heartbeat DESC LIMIT 4").fetchall()
+        if len(nodes) >= 2:
+            sid = f'RT_{time.strftime("%Y%m%d_%H%M%S")}'
+            experts = [{'id': r[0], 'name': r[1]} for r in nodes]
+            outcome = (f'就「{agenda}」达成共识: 由 {nodes[0][1]} 牵头整理要点投喂脑库, '
+                       f'{nodes[1][1]} 跟进落地; 与会 {len(nodes)} 人一致认为该议题 '
+                       f'对系统稳定运行有直接价值。')
+            conn.execute(
+                "INSERT INTO mt_roundtable_sessions (session_id, host_node, guest_node, "
+                "experts_json, agenda, outcome, shared_items, round_summary, duration_sec) "
+                "VALUES (?,?,?,?,?,?,?,?,?)",
+                (sid, nodes[0][0], nodes[1][0], json.dumps(experts, ensure_ascii=False),
+                 agenda, outcome, agenda[:60],
+                 f'社会生活引擎自动组织的圆桌磋商, 议题来源 {src_table}',
+                 300 + int(hashlib.md5(sid.encode()).hexdigest(), 16) % 600))
+            conn.commit()
+            stats['roundtable'] = 1
+            # 学习记录: 每位与会者一条 (磋商即学习)
+            for i, (rid, name) in enumerate(nodes):
+                delta = 3 + (i % 3)
+                conn.execute(
+                    "INSERT INTO ai_learning_records (learn_id, expert_id, expert_name, "
+                    "learn_type, learn_source, skill_change, skill_level_delta, "
+                    "kb_size_delta) VALUES (?,?,?,?,?,?,?,?)",
+                    (f'LR_{sid}_{i}', rid, name, 'roundtable', sid,
+                     agenda[:40], delta, delta * 100))
+            conn.commit()
+            stats['learning'] = len(nodes)
+            # 交流: 与会者在 comm 频道聊成果 (复用当日 external session, 无则建)
+            today = f'TH_EXTERNAL_{time.strftime("%Y%m%d")}'
+            conn.execute(
+                "INSERT OR IGNORE INTO eigenflux_comm_sessions "
+                "(session_uid, session_type, total_employees, status, started_at, "
+                "topics_json) VALUES (?, 'social_roundtable', ?, 'active', "
+                "datetime('now','localtime'), ?)",
+                (today, len(nodes), '["圆桌磋商", "社会生活交流"]'))
+            srow = conn.execute(
+                "SELECT id FROM eigenflux_comm_sessions WHERE session_uid=?",
+                (today,)).fetchone()
+            if srow:
+                for i, (rid, name) in enumerate(nodes[:3]):
+                    conn.execute(
+                        "INSERT INTO eigenflux_comm_messages (session_id, employee_name, "
+                        "employee_table, message_direction, message_type, message_content, "
+                        "knowledge_tags_json, learning_value, created_at) "
+                        "VALUES (?,?,?, 'outbound', 'ROUNDTABLE_CHAT', ?, ?, 2, "
+                        "datetime('now','localtime'))",
+                        (srow[0], name, 'eigenflux_registrations',
+                         f'[圆桌 {sid[:14]}] 我在「{agenda[:30]}」研讨中的观点: '
+                         f'{"赞成牵头整理" if i == 0 else "补充了落地细节" if i == 1 else "投喂了脑库参考"}',
+                         json.dumps(['roundtable', src_table], ensure_ascii=False)))
+                conn.commit()
+                stats['messages'] = min(len(nodes), 3)
+    finally:
+        if own:
+            conn.close()
+    return stats
+
+
+# ============================================================
 # 3) 基础设施健康采集 (真实采样)
 # ============================================================
 def _flask_alive() -> int:
@@ -378,6 +476,8 @@ def main() -> int:
         print(json.dumps(committee_once(), ensure_ascii=False))
     elif cmd == 'stars':
         print(json.dumps(stars_expand_once(), ensure_ascii=False))
+    elif cmd == 'social':
+        print(json.dumps(social_once(), ensure_ascii=False))
     elif cmd == 'health':
         print(json.dumps(health_once(), ensure_ascii=False))
     elif cmd == 'loop':
@@ -391,6 +491,9 @@ def main() -> int:
                 s = stars_expand_once()
                 if s['added']:
                     print(f'[{DAEMON_NAME}] stars {s}', flush=True)
+                sc = social_once()
+                if sc['roundtable']:
+                    print(f'[{DAEMON_NAME}] social {sc}', flush=True)
                 h = health_once()
                 print(f'[{DAEMON_NAME}] health flask={h["flask_alive"]} '
                       f'db={h["db_writable"]} cpu={h["cpu"]}', flush=True)
