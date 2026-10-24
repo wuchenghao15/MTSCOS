@@ -6,7 +6,7 @@ _BASE = Path(__file__).resolve().parent.parent.parent
 
 
 class Config:
-    SECRET_KEY = os.environ.get("SECRET_KEY", "[REDACTED]")
+    SECRET_KEY = os.environ.get("SECRET_KEY", os.environ.get("MT_FLASK_SECRET_KEY", os.urandom(32).hex()))  # 🔒 P0 极密加固: 无默认硬编码
     SQLALCHEMY_DATABASE_URI = os.environ.get("MT_MAIN_DB_PATH", f"sqlite:///{_BASE}/ai_engines/app.db")
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     DEBUG = os.environ.get("FLASK_DEBUG", "0") == "1"

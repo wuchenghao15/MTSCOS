@@ -407,10 +407,20 @@ def bt_register():
     if not (4 <= len(serial) <= 64):
         return jsonify({'ok': False, 'error': 'serial 长度 4-64'}), 400
     psk = d.get('psk') or secrets.token_hex(16)
+    # 🔒 P0 极密加固: HMAC key 运行时派生, 源码不留硬编码
+    try:
+        from app.utils.crypto_provider import crypto_provider as _cp_bt
+        _bt_hmac_key = _cp_bt.get_sa_bt_hmac_key()
+    except Exception:
+        _bt_hmac_key = os.environ.get("MT_SA_BT_HMAC_KEY", "_NO_FB_").encode()
+        if b"_NO_FB_" in _bt_hmac_key:
+            import sys as _sys
+            _sys.stderr.write("[SA-BT] FATAL: HMAC key unavailable → exit 1\n")
+            _sys.exit(1)
     conn = _db()
     try:
         conn.execute("INSERT OR REPLACE INTO mt_sa_bt_passports (serial, psk, name, status) VALUES (?,?,?,?)",
-                     (serial, _hmac.new(b'[REDACTED]', psk.encode(), hashlib.sha256).hexdigest(),
+                     (serial, _hmac.new(_bt_hmac_key, psk.encode(), hashlib.sha256).hexdigest(),
                       d.get('name') or 'Trae AI Passport', 'ACTIVE'))
         conn.commit()
     finally:

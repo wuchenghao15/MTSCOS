@@ -26,8 +26,17 @@ from datetime import datetime
 logger = logging.getLogger(__name__)
 
 # ===== SZU100 合法性配置 =====
-# 预共享密钥（写入U盘 .szu100_auth 文件）
-_SZU100_PSK = b'[REDACTED]'
+# 🔒 P0 极密加固: _SZU100_PSK 运行时从 crypto_provider 派生, 源码不留硬编码
+try:
+    from app.utils.crypto_provider import crypto_provider as _cp_szu
+    _SZU100_PSK = _cp_szu.get_szu100_psk()
+except Exception:
+    import os as _os
+    _SZU100_PSK = _os.environ.get("MT_SZU100_PSK", "_NO_FALLBACK_").encode()
+    if b"_NO_FALLBACK_" in _SZU100_PSK:
+        import sys as _sys
+        _sys.stderr.write("[SZU100] FATAL: _SZU100_PSK unavailable → exit 1\n")
+        _sys.exit(1)
 _SZU100_AUTH_FILENAME = '.szu100_auth'
 
 # 合法SZU100的USB硬件特征（多组兼容）
