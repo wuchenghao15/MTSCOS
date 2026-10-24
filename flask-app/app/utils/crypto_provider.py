@@ -13,9 +13,26 @@ flow_secret_l0_harden_20261024
 
 SA 豁免: SA 双密钥在线时才允许读取 crypto_keys, 否则锁定所有加密操作.
 """
-import os, sys, hashlib, secrets, sqlite3
+import os, sys, hashlib, secrets, sqlite3, time
 
-_DB_PATH = os.path.expanduser("~/MTSCOS_AI_Project/flask-app/database/app.db")
+# P0-1 多候选 DB 路径: 环境变量 > mini home > 本地 OneDrive > __file__ 相对路径
+# 修复风险: expanduser 硬编码路径漂移 → 所有加密层 exit(1) 锁死
+def _resolve_db_path():
+    candidates = [
+        os.environ.get("MTSCOS_DB_PATH"),
+        os.path.expanduser("~/MTSCOS_AI_Project/flask-app/database/app.db"),
+        os.path.expanduser("~/Library/CloudStorage/OneDrive-个人/文档/MTSCOS_AI_Project/flask-app/database/app.db"),
+        os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "database", "app.db"),
+    ]
+    for c in candidates:
+        if c and os.path.exists(c):
+            sys.stderr.write(f"[CRYPTO] resolved db_path = {c}\n")
+            return c
+    # 兜底: 返回第一条 (让 sqlite3 报错比静默失败好)
+    sys.stderr.write(f"[CRYPTO] WARN: no db found in candidates, returning default\n")
+    return candidates[1] or candidates[3]
+
+_DB_PATH = _resolve_db_path()
 
 # 极密规则: 源码中不得出现任何实际密钥值. 仅保留占位符供环境变量 fallback.
 # 环境变量 fallback 仅用于本地开发, mini 必须用 mt_crypto_keys 表.
@@ -34,34 +51,47 @@ class CryptoMaterialProvider:
         return sqlite3.connect(self.db_path, timeout=30)
 
     def _init_db_entries(self):
-        """确保 mt_crypto_keys 有必要的派生盐/info 种子条目 (首次启动自动注册, 不写密钥值)"""
-        conn = self._conn()
-        try:
-            # 派生种子条目 (key_type='secret' 标记为极密, key_b64=None 表示运行时 HKDF 派生)
-            seeds = [
-                ("seed_root_salt", "secret", "HKDF salt for VIKEY root derivation"),
-                ("seed_kek_info", "secret", "HKDF info for KEK derivation"),
-                ("seed_dek_prefix", "secret", "HKDF info prefix for DEK derivation"),
-                ("seed_reward_xor", "secret", "XOR key for reward formula masking"),
-                ("seed_container_secret", "secret", "SHA256 input for system container"),
-                ("seed_szu100_psk", "secret", "PSK for SZU100 双密钥通信"),
-                ("seed_sa_bt_hmac", "secret", "HMAC key for SA terminal auth"),
-                ("seed_flask_session", "secret", "Flask session cookie secret"),
-                ("seed_dev_vikey_binding", "secret", "Dev VIKEY binding info"),
-                ("seed_fernet_1", "secret", "Fernet key source 1 (legacy compat)"),
-                ("seed_fernet_2", "secret", "Fernet key source 2 (legacy compat)"),
-                ("seed_fernet_3", "secret", "Fernet key source 3 (legacy compat)"),
-            ]
-            for kid, ktype, purpose in seeds:
-                conn.execute(
-                    "INSERT OR IGNORE INTO mt_crypto_keys(key_id,key_type,purpose,created_at) VALUES(?,?,?,datetime('now','localtime'))",
-                    (kid, ktype, purpose)
-                )
-            conn.commit()
-        except Exception as e:
-            sys.stderr.write(f"[CRYPTO] init db entries: {e}\n")
-        finally:
-            conn.close()
+        """确保 mt_crypto_keys 有必要的派生盐/info 种子条目 (首次启动自动注册, 不写密钥值)
+
+        P1-1 修复: 加 retry 1 次逻辑 — SQLite 可能偶发 database is locked (mini 16GB WAL DB,
+        多线程 daemon 同时读写), 不能第一次失败就 exit(1) 锁死 Flask.
+        """
+        seeds = [
+            ("seed_root_salt", "secret", "HKDF salt for VIKEY root derivation"),
+            ("seed_kek_info", "secret", "HKDF info for KEK derivation"),
+            ("seed_dek_prefix", "secret", "HKDF info prefix for DEK derivation"),
+            ("seed_reward_xor", "secret", "XOR key for reward formula masking"),
+            ("seed_container_secret", "secret", "SHA256 input for system container"),
+            ("seed_szu100_psk", "secret", "PSK for SZU100 双密钥通信"),
+            ("seed_sa_bt_hmac", "secret", "HMAC key for SA terminal auth"),
+            ("seed_flask_session", "secret", "Flask session cookie secret"),
+            ("seed_dev_vikey_binding", "secret", "Dev VIKEY binding info"),
+            ("seed_fernet_1", "secret", "Fernet key source 1 (legacy compat)"),
+            ("seed_fernet_2", "secret", "Fernet key source 2 (legacy compat)"),
+            ("seed_fernet_3", "secret", "Fernet key source 3 (legacy compat)"),
+        ]
+        last_err = None
+        for attempt in range(2):   # retry 1 次 = 总共 2 次
+            conn = self._conn()
+            try:
+                for kid, ktype, purpose in seeds:
+                    conn.execute(
+                        "INSERT OR IGNORE INTO mt_crypto_keys(key_id,key_type,purpose,created_at) VALUES(?,?,?,datetime('now','localtime'))",
+                        (kid, ktype, purpose)
+                    )
+                conn.commit()
+                if attempt > 0:
+                    sys.stderr.write(f"[CRYPTO] init db entries recovered on retry ({attempt+1}/2)\n")
+                return  # 成功返回
+            except Exception as e:
+                last_err = e
+                sys.stderr.write(f"[CRYPTO] init db entries attempt {attempt+1}: {e}\n")
+                time.sleep(0.5 * (attempt + 1))  # backoff 0.5s → 1s
+            finally:
+                conn.close()
+        # 两次都失败 → fail-closed (种子缺失 = 加密层不完整)
+        sys.stderr.write(f"[CRYPTO] FATAL: init db entries failed after 2 attempts → exit 1 (last={last_err})\n")
+        sys.exit(1)
 
     def _get_master_key(self):
         """取主密钥: mt_crypto_keys.key_id='mtscos_server_master_v1'"""

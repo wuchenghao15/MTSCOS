@@ -192,15 +192,17 @@ def monitor_loop():
     init_schema(db)
 
     baseline_serial_set = None       # {serial: vid_pid}
+    baseline_fps = None              # {(vid, pid, class_code)} 设备指纹 (P0-2 新增)
     last_status = "OK"
     consec_critical = 0
 
     # 首次基线
     first_devs = enumerate_usb()
     baseline_serial_set = {d["serial"]: d["vid_pid"] for d in first_devs if d["serial"]}
+    baseline_fps = {(d["vid"], d["pid"], d["class_code"]) for d in first_devs}
     save_snapshot(db, first_devs, status="OK")
-    log.info(f"首次基线: {len(baseline_serial_set)} 台 USB 设备")
-    log_event(db, "BASELINE", "OK", f"首次基线建立: {len(baseline_serial_set)} 台 USB 设备")
+    log.info(f"首次基线: {len(baseline_serial_set)} 台 serial + {len(baseline_fps)} 个指纹")
+    log_event(db, "BASELINE", "OK", f"首次基线建立: serial={len(baseline_serial_set)} fps={len(baseline_fps)}")
 
     try:
         while True:
@@ -212,8 +214,31 @@ def monitor_loop():
                 continue
 
             current_set = {d["serial"]: d["vid_pid"] for d in devs if d["serial"]}
+            current_fps = {(d["vid"], d["pid"], d["class_code"]) for d in devs}
             now_count = len(current_set)
             base_count = len(baseline_serial_set)
+
+            # P0-2 新增: 未授权设备指纹检测 (即使 serial 集合不变, 新 VID:PID 组合 = 伪造/篡改)
+            fps_delta = current_fps - baseline_fps
+            if fps_delta:
+                log.error(f"P0-2 UNAUTHORIZED_DEVICE 检测到新指纹: {fps_delta}")
+                log_event(db, "UNAUTHORIZED_DEVICE", "CRITICAL",
+                          f"检测到未授权 USB 设备指纹: {fps_delta}",
+                          serial=",".join([d[0]+":"+d[1] for d in fps_delta]))
+                consec_critical += 1
+                # 连续 CRITICAL → 触发 Flask SA 密钥重验证
+                if consec_critical >= 3:
+                    try:
+                        import urllib.request
+                        urllib.request.urlopen("http://127.0.0.1:5001/api/sa/rebind", timeout=3)
+                        log_event(db, "TRIGGERED", "CRITICAL", "Flask SA rebind triggered (fps_delta)",
+                                  action="trigger_rebind")
+                    except Exception:
+                        pass
+                # 指纹检测失败 → 重置 baseline_fps 为当前值 (新设备已被记录)
+                baseline_fps = current_fps
+                baseline_serial_set = current_set
+                continue
 
             # 1) serial 集合完全一致
             if current_set == baseline_serial_set:
