@@ -104,9 +104,9 @@ def attack_once(conn) -> dict:
                                      'Traceback', ' 404 ')):
             continue
         m = re.search(r'\b(\d+\.\d+\.\d+\.\d+)\b', ln)
-        src = m.group(1) if m else 'local'
-        if src.startswith('127.') or src.startswith('100.'):
-            continue  # loopback/内网 Tailscale 不算攻击源
+        src = m.group(1) if m else None
+        if not src or src.startswith('127.') or src.startswith('100.'):
+            continue  # 无 IP(local)/loopback/内网 Tailscale 不拉黑 — 内部锁竞争归 surge 管
         hits[src] = hits.get(src, 0) + 1
     stats['scanned'] = len(hits)
     for src, cnt in sorted(hits.items(), key=lambda x: -x[1])[:5]:
