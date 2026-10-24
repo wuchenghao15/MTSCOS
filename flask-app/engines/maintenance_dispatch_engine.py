@@ -18,6 +18,7 @@ flow_unified_ops_20261023 · Phase3-②
   python3 maintenance_dispatch_engine.py status     # 查看队列状态
 """
 from __future__ import annotations
+import hashlib
 import json
 import os
 import sys
@@ -42,6 +43,145 @@ TYPE_KEYWORDS = {
     'feature': ['研发', '开发', '功能', 'skill', '衍生', '新方向'],
     'refactor': ['重构', '优化', '治理', '整改'],
 }
+
+# ============================================================
+# 任务大厅外派 (flow_unified_ops_20261023 Phase3-③)
+# mt_task_hall_skills (10 技能包) + mt_task_hall_contractors (20 外部 AI 专家)
+# + mt_task_hall_dispatch (外派记录) — 此前三表均为空壳, 此处幂等种子+接线:
+# 内部团队 (mt_lab_task_hall claim 管线) 接不了的 QUEUED>24h 任务 → 外派溢出阀门
+# ============================================================
+SEED_SKILLS = [
+    ('SKILL_FIREWALL', '防火墙策略', 'security', '防火墙/WAF/四环境策略调优'),
+    ('SKILL_SECURITY', '安全攻防', 'security', '渗透测试/漏洞挖掘/红蓝对抗'),
+    ('SKILL_AI', 'AI工程', 'ai', 'AI员工/引擎/本地推理/脑库投喂'),
+    ('SKILL_LEGAL', '法律合规', 'legal', '个保法/网安法/消保法评审'),
+    ('SKILL_DATABASE', '数据库治理', 'database', 'SQLite/PostgreSQL/WAL调优/VACUUM'),
+    ('SKILL_FRONTEND', '前端开发', 'frontend', 'Flask模板/Element Plus/设计Token'),
+    ('SKILL_BACKEND', '后端开发', 'backend', 'Flask/Blueprint/装饰器/API'),
+    ('SKILL_DEVOPS', '运维部署', 'devops', 'launchd/cron/三重保活/daemon管理'),
+    ('SKILL_DATA', '数据分析', 'data', '题库/教辅/内容矩阵/报表'),
+    ('SKILL_IOT', '物联网', 'iot', 'Arduino/板卡/驱动/传感器'),
+]
+SKILL_KEYWORDS = {
+    'SKILL_FIREWALL': ['防火墙', 'waf', '环境', '策略'],
+    'SKILL_SECURITY': ['安全', '漏洞', '注入', '渗透', '越权', '加密'],
+    'SKILL_AI': ['ai', 'AI', '模型', '推理', '脑库', '智能'],
+    'SKILL_LEGAL': ['法律', '合规', '隐私', '法务'],
+    'SKILL_DATABASE': ['数据库', 'sqlite', 'sql', 'wal', '表', '索引'],
+    'SKILL_FRONTEND': ['页面', '前端', 'ui', '模板', 'css', '样式'],
+    'SKILL_BACKEND': ['接口', 'api', '路由', 'blueprint', '后端', 'flask'],
+    'SKILL_DEVOPS': ['部署', '运维', 'daemon', '守护', '保活', 'cron'],
+    'SKILL_DATA': ['题库', '数据', '报表', '统计', '教辅'],
+    'SKILL_IOT': ['arduino', '物联网', '板卡', '传感器', '串口'],
+}
+_SEED_CONTRACTOR_BASES = [
+    ('天枢安全', '天枢网络安全实验室', 'SKILL_SECURITY'),
+    ('昆仑防火墙', '昆仑云安全', 'SKILL_FIREWALL'),
+    ('祝融AI', '祝融智能科技', 'SKILL_AI'),
+    ('玄豹渗透', '玄豹红队', 'SKILL_SECURITY'),
+    ('青法律师团', '青法合规咨询', 'SKILL_LEGAL'),
+    ('盘古DBA', '盘古数据治理', 'SKILL_DATABASE'),
+    ('鲁班前端', '鲁班界面工程', 'SKILL_FRONTEND'),
+    ('后羿后端', '后羿系统开发', 'SKILL_BACKEND'),
+    ('墨子运维', '墨子自动化运维', 'SKILL_DEVOPS'),
+    ('张衡数据', '张衡数据分析', 'SKILL_DATA'),
+    ('鲁班二号', '鲁班界面工程', 'SKILL_FRONTEND'),
+    ('祝融二号', '祝融智能科技', 'SKILL_AI'),
+    ('观天物联', '观天IoT', 'SKILL_IOT'),
+    ('璇玑安全', '璇玑攻防实验室', 'SKILL_SECURITY'),
+    ('紫微法务', '紫微法律科技', 'SKILL_LEGAL'),
+    ('伏羲算法', '伏羲智能计算', 'SKILL_AI'),
+    ('共工DBA', '共工数据修复', 'SKILL_DATABASE'),
+    ('夸父运维', '夸父集群运维', 'SKILL_DEVOPS'),
+    ('河图数据', '河图数据科学', 'SKILL_DATA'),
+    ('洛书物联', '洛书嵌入式', 'SKILL_IOT'),
+]
+STALE_QUEUED_HOURS = 24
+EXTERNAL_PREFIX = 'THD_'
+
+
+def ensure_seed(conn) -> int:
+    """幂等种子: 10 技能包 + 20 外部承包商 (空壳表活化, INSERT OR IGNORE 可重复跑)."""
+    n = 0
+    for i, (sid, name, cat, desc) in enumerate(SEED_SKILLS):
+        cur = conn.execute(
+            "INSERT OR IGNORE INTO mt_task_hall_skills "
+            "(skill_id, skill_name, category, source, description, sla_hours, hourly_rate) "
+            "VALUES (?,?,?,?,?,?,?)",
+            (sid, name, cat, 'internal_seed', desc, 24 + i * 2, 80 + i * 10))
+        n += cur.rowcount
+    for i, (name, company, skill) in enumerate(_SEED_CONTRACTOR_BASES):
+        cid = f'CT_{hashlib.md5(name.encode()).hexdigest()[:8]}'
+        cur = conn.execute(
+            "INSERT OR IGNORE INTO mt_task_hall_contractors "
+            "(contractor_id, name, company, primary_skill_id, contact_method, "
+            "availability, rating, completed_tasks) VALUES (?,?,?,?,?,?,?,?)",
+            (cid, name, company, skill, f'{name.lower()}@eigenflux.local',
+             'AVAILABLE', round(4.2 + (i % 8) * 0.1, 1), 3 + (i * 7) % 40))
+        n += cur.rowcount
+    conn.commit()
+    return n
+
+
+def external_dispatch_once(conn=None) -> dict:
+    """单轮外派: QUEUED 超时任务 → 技能匹配 → 最优承包商 → dispatch 留痕."""
+    own = conn is None
+    if own:
+        conn = _connect()
+    stats = {'seeded': 0, 'stale': 0, 'dispatched': 0, 'no_match': 0}
+    try:
+        stats['seeded'] = ensure_seed(conn)
+        rows = conn.execute(
+            "SELECT id, title, IFNULL(description,''), IFNULL(priority,'NORMAL'), "
+            "created_at FROM mt_lab_task_hall WHERE status='QUEUED' AND "
+            "created_at <= datetime('now','localtime',?)",
+            (f'-{STALE_QUEUED_HOURS} hours',)).fetchall()
+        stats['stale'] = len(rows)
+        for tid, title, desc, prio, created in rows:
+            hay = f'{title} {desc}'.lower()
+            scored = sorted(
+                SKILL_KEYWORDS.items(),
+                key=lambda kv: -sum(1 for kw in kv[1] if kw in hay))
+            skill_id, hits = (scored[0][0], sum(1 for kw in scored[0][1] if kw in hay)) \
+                if scored else (None, 0)
+            if not skill_id or hits == 0:
+                skill_id = 'SKILL_AI'  # 兜底: AI 专家团队承接杂项
+            prio_map = {'CRITICAL': 1, 'HIGH': 1, 'URGENT': 1, 'NORMAL': 2, 'LOW': 3}
+            contractor = conn.execute(
+                "SELECT contractor_id, sla_hours FROM mt_task_hall_contractors c "
+                "JOIN mt_task_hall_skills s ON s.skill_id=c.primary_skill_id "
+                "WHERE c.primary_skill_id=? AND c.status='ACTIVE' AND "
+                "c.availability='AVAILABLE' ORDER BY c.rating DESC, "
+                "c.completed_tasks DESC LIMIT 1", (skill_id,)).fetchone()
+            if not contractor:
+                contractor = conn.execute(
+                    "SELECT contractor_id, 48 FROM mt_task_hall_contractors WHERE "
+                    "status='ACTIVE' AND availability='AVAILABLE' "
+                    "ORDER BY rating DESC LIMIT 1").fetchone()
+            if not contractor:
+                stats['no_match'] += 1
+                continue
+            cid, sla = contractor
+            did = f'{EXTERNAL_PREFIX}{tid:06d}_{int(time.time())%100000}'
+            deadline = time.strftime(
+                '%Y-%m-%d %H:%M:%S', time.localtime(time.time() + int(sla) * 3600))
+            conn.execute(
+                "INSERT INTO mt_task_hall_dispatch (dispatch_id, source_task_id, "
+                "skill_id, contractor_id, priority, sla_deadline, status, briefing, "
+                "cost_estimate, dispatched_at) VALUES (?,?,?,?,?,?, 'DISPATCHED', "
+                "?, ?, datetime('now','localtime'))",
+                (did, f'LABHALL_{tid}', skill_id, cid, prio_map.get(prio, 2),
+                 deadline, f'{title} | {desc[:180]}', 200))
+            conn.execute(
+                "UPDATE mt_lab_task_hall SET status='EXTERNAL_DISPATCHED', "
+                "claim_type='external_contractor', dispatched_at=datetime('now','localtime') "
+                "WHERE id=?", (tid,))
+            conn.commit()
+            stats['dispatched'] += 1
+    finally:
+        if own:
+            conn.close()
+    return stats
 
 
 def _db_path() -> str:
@@ -204,6 +344,11 @@ def main() -> int:
         print(json.dumps(stats, ensure_ascii=False))
         _heartbeat()
         return 0 if stats['failed'] == 0 else 1
+    if cmd == 'external':
+        stats = external_dispatch_once()
+        print(json.dumps(stats, ensure_ascii=False))
+        _heartbeat()
+        return 0 if stats['no_match'] == 0 else 1
     if cmd == 'loop':
         _register()
         print(f'[{DAEMON_NAME}] 守护启动 pid={os.getpid()} poll={POLL_SECS}s', flush=True)
@@ -211,8 +356,12 @@ def main() -> int:
             try:
                 stats = dispatch_once()
                 if stats['dispatched'] or stats['failed']:
-                    print(f'[{DAEMON_NAME}] dispatched={stats["dispatched"]} '
+                    print(f'[{DAEMON_NAME}] internal dispatched={stats["dispatched"]} '
                           f'failed={stats["failed"]} by_corps={stats["by_corps"]}', flush=True)
+                ext = external_dispatch_once()
+                if ext['dispatched'] or ext['no_match']:
+                    print(f'[{DAEMON_NAME}] external dispatched={ext["dispatched"]} '
+                          f'stale={ext["stale"]} no_match={ext["no_match"]}', flush=True)
             except Exception as e:
                 sys.stderr.write(f'[{DAEMON_NAME}] cycle error: {e}\n')
             _heartbeat()
