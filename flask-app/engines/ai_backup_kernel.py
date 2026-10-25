@@ -98,11 +98,13 @@ class StrategyProvider:
         self.k = kernel
         self.conn = _db()
 
-    def _db_write(self, sql, params=None, retries=10):
-        """通用 retry SQL 写入 — 根治 Flask WAL 锁 race"""
+    def _db_write(self, sql, params=None, retries=30):
+        """通用 retry SQL 写入 — 根治 Flask/daemon WAL 写竞争
+        retries=30, backoff 0.5s→15s, total ~232s, busy_timeout=300s
+        """
         for attempt in range(retries):
             try:
-                self.conn.execute("PRAGMA busy_timeout=120000")
+                self.conn.execute("PRAGMA busy_timeout=300000")
                 if params is None:
                     self.conn.execute(sql)
                 else:
@@ -110,7 +112,7 @@ class StrategyProvider:
                 return True
             except sqlite3.OperationalError as e:
                 if ("locked" in str(e).lower() or "busy" in str(e).lower()) and attempt < retries - 1:
-                    time.sleep(0.5 * (attempt + 1))
+                    time.sleep(min(15, 0.5 * (attempt + 1)))
                     continue
                 return False
             except Exception:
