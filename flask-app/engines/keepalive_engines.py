@@ -101,6 +101,9 @@ ENGINES = [
     ("ai_eigenflux_network_engine", "engines/ai_eigenflux_network_engine.py", "start"),
     ("ai_center_hall_hook_engine", "engines/ai_center_hall_hook_engine.py", "start"),  # flow_center_hook_hall_20261025
     ("ai_nas_storage_engine", "engines/ai_nas_storage_engine.py", "start"),  # flow_fnos_nas_integrate_20261025
+    ("sys_network_probe", "engines/sys_network_probe.py", "start"),  # flow_andromeda_sense_20261025
+    ("sys_center_evolution", "engines/sys_center_evolution.py", "start"),  # flow_andromeda_center_20261025
+    ("sys_future_vision", "engines/sys_future_vision.py", "start"),  # flow_andromeda_future_20261025
 ]
 
 
