@@ -647,10 +647,148 @@ def topo_order(conn):
     return result
 
 
+def _ensure_tables(conn):
+    """每次 kernel 执行前自修复 schema — 根治外部 ALTER TABLE 被 daemon WAL 锁堵死的问题"""
+    try:
+        conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+    except Exception: pass
+
+    # 1. 核心互锁链
+    conn.executescript("""
+    CREATE TABLE IF NOT EXISTS mt_backup_chain (
+        chain_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        prev_strategy TEXT NOT NULL,
+        next_strategy TEXT NOT NULL,
+        node_name TEXT,
+        optional INTEGER DEFAULT 0,
+        UNIQUE(prev_strategy, next_strategy)
+    );
+    CREATE TABLE IF NOT EXISTS mt_backup_strategy_lock (
+        lock_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        strategy_type TEXT NOT NULL UNIQUE,
+        node_name TEXT,
+        status TEXT DEFAULT 'IDLE',
+        locked_at TEXT,
+        released_at TEXT,
+        detail TEXT
+    );
+    """)
+
+    # 2. 建缺失列 (mt_backup_log)
+    try:
+        cols = set(x[1] for x in conn.execute("PRAGMA table_info(mt_backup_log)").fetchall())
+        for col in ["strategy_type","node_name","checksum","interlock_status","chain_depth","run_id"]:
+            if col not in cols:
+                conn.execute("ALTER TABLE mt_backup_log ADD COLUMN %s TEXT" % col)
+    except Exception: pass
+
+    # 3. mt_backup_access_log (拐点)
+    conn.executescript("""
+    CREATE TABLE IF NOT EXISTS mt_backup_access_log (
+        log_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        run_id TEXT,
+        action_type TEXT,
+        strategy_type TEXT,
+        node_name TEXT,
+        operator TEXT,
+        target_path TEXT,
+        before_hash TEXT,
+        after_hash TEXT,
+        ok INTEGER DEFAULT 1,
+        detail TEXT,
+        signed_off INTEGER DEFAULT 0,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+    """)
+
+    # 4. mt_backup_webhook 三表 (确保存在, Flask blueprint 可能先启)
+    conn.executescript("""
+    CREATE TABLE IF NOT EXISTS mt_backup_webhook_cfg (
+        cfg_key TEXT PRIMARY KEY,
+        cfg_value TEXT,
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE TABLE IF NOT EXISTS mt_backup_webhook_log (
+        run_id TEXT PRIMARY KEY,
+        source TEXT NOT NULL,
+        action TEXT,
+        actor TEXT,
+        commit_sha TEXT,
+        ref TEXT,
+        payload_size INTEGER DEFAULT 0,
+        signature_ok INTEGER DEFAULT 0,
+        rate_limited INTEGER DEFAULT 0,
+        kernel_pid INTEGER DEFAULT 0,
+        kernel_ok INTEGER DEFAULT 0,
+        kernel_ms INTEGER DEFAULT 0,
+        detail TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE TABLE IF NOT EXISTS mt_backup_webhook_throttle (
+        source TEXT PRIMARY KEY,
+        last_run_at INTEGER DEFAULT 0,
+        last_run_id TEXT
+    );
+    """)
+
+    # 5. 预填 mt_backup_chain (如果全空)
+    n = conn.execute("SELECT COUNT(1) FROM mt_backup_chain").fetchone()[0]
+    if n == 0:
+        chains = [
+            ("DB_PERMANENT","NAS_SNAPSHOT","hulk-nas-fnos",0),
+            ("DB_PERMANENT","LOCAL_SNAPSHOT","mini",0),
+            ("DB_PERMANENT","HULK_ORACLE","hulk-server",1),
+            ("NAS_SNAPSHOT","NAS_SECTOR_DOUBLE","fnOS-NAS-RAID",0),
+            ("NAS_SNAPSHOT","SHADOW_MIRROR","hulk-server",0),
+            ("DB_PERMANENT","GIT_PUSH","mini",0),
+            ("DB_PERMANENT","WHITELIST_TAR","mini",1),
+            ("DB_PERMANENT","ISO_SNAPSHOT","mini",1),
+            ("LOCAL_SNAPSHOT","GIT_PUSH","mini",1),
+            ("GIT_PUSH","GITHUB_MIRROR","github",0),
+            ("GIT_PUSH","GITEE_MIRROR","gitee",0),
+            ("NAS_SECTOR_DOUBLE","DUAL_CROSS_CHECK","mini+hulk",0),
+            ("HULK_ORACLE","DUAL_CROSS_CHECK","mini+hulk",1),
+            ("SHADOW_MIRROR","DUAL_CROSS_CHECK","mini+hulk",0),
+            ("DUAL_CROSS_CHECK","COLD_ARCHIVE","hulk-nas-fnos",0),
+            ("COLD_ARCHIVE","JAR_ARTIFACT","mini",1),
+            ("NAS_SNAPSHOT","SANDBOX_ISOLATE","hulk-server",1),
+        ]
+        for prev, nxt, node, opt in chains:
+            conn.execute("""INSERT OR IGNORE INTO mt_backup_chain
+                (prev_strategy, next_strategy, node_name, optional) VALUES (?,?,?,?)""",
+                (prev, nxt, node, opt))
+        _log(f"[ensure_tables] 预填 mt_backup_chain {len(chains)} 条")
+
+    # 6. 预填 strategy_lock
+    n_lock = conn.execute("SELECT COUNT(1) FROM mt_backup_strategy_lock").fetchone()[0]
+    if n_lock == 0:
+        strategies = [
+            ("DB_PERMANENT","mini"),("LOCAL_SNAPSHOT","mini"),
+            ("NAS_SNAPSHOT","hulk-nas-fnos"),("NAS_SECTOR_DOUBLE","fnOS-NAS-RAID"),
+            ("HULK_ORACLE","hulk-server"),("SHADOW_MIRROR","hulk-server"),
+            ("GIT_PUSH","mini"),("GITHUB_MIRROR","github"),("GITEE_MIRROR","gitee"),
+            ("DUAL_CROSS_CHECK","mini+hulk"),("COLD_ARCHIVE","hulk-nas-fnos"),
+            ("WHITELIST_TAR","mini"),("ISO_SNAPSHOT","mini"),
+            ("SANDBOX_ISOLATE","hulk-server"),
+        ]
+        for stype, node in strategies:
+            conn.execute("""INSERT OR IGNORE INTO mt_backup_strategy_lock
+                (strategy_type, node_name, status) VALUES (?,?, 'IDLE')""", (stype, node))
+        _log(f"[ensure_tables] 预填 mt_backup_strategy_lock {len(strategies)} 条")
+
+    # 7. 重置所有 FAILED 锁 (允许重试)
+    conn.execute("UPDATE mt_backup_strategy_lock SET status='IDLE' WHERE status='FAILED'")
+
+    conn.commit()
+
+
 def run_once():
     conn = _db()
     t0 = time.time()
-    # ① 开仓: 备份中心进入可操作状态
+    # ① 自修复 schema (每次都跑, 根治 daemon WAL 锁问题)
+    try: _ensure_tables(conn)
+    except Exception as e: _log(f"[ensure_tables] warn: {e}")
+    # ② 开仓: 备份中心进入可操作状态
     try:
         conn.execute("""INSERT INTO mt_backup_access_log
             (action_type, operator, ok, detail, signed_off)
