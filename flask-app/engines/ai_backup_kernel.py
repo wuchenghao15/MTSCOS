@@ -37,7 +37,10 @@ from datetime import datetime
 APP_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if APP_DIR not in sys.path:
     sys.path.insert(0, APP_DIR)
+# app.db: Flask + daemons + kernel read + kernel backup source (WAL 竞争高)
 DB_PATH = os.path.join(APP_DIR, "database", "app.db")
+# backup_kernel.db: kernel 独占 — 锁/chain/access_log — 零 WAL 竞争!
+KERNEL_DB_PATH = os.path.join(APP_DIR, "database", "backup_kernel.db")
 FLOW_ID = "flow_backup_kernel_20261025"
 DAEMON = "ai_backup_kernel"
 INTERVAL = 600  # 10 分钟一轮
@@ -55,8 +58,17 @@ NODES = {
 
 
 def _db():
-    c = sqlite3.connect(DB_PATH, timeout=30, isolation_level=None)
+    """Kernel 独占 DB — 零 WAL 竞争"""
+    c = sqlite3.connect(KERNEL_DB_PATH, timeout=30, isolation_level=None)
     c.execute("PRAGMA busy_timeout=30000")
+    c.execute("PRAGMA journal_mode=WAL")
+    return c
+
+
+def _db_app():
+    """app.db 连接 — Flask + daemons 也在写 (WAL 竞争高)"""
+    c = sqlite3.connect(DB_PATH, timeout=120, isolation_level=None)
+    c.execute("PRAGMA busy_timeout=120000")
     c.execute("PRAGMA journal_mode=WAL")
     return c
 
@@ -146,24 +158,51 @@ class StrategyProvider:
         return True, "OK"
 
     def _log_backup(self, ok, size=0, detail="", chain_depth=0, checksum=None):
-        self._db_write(
-            """INSERT INTO mt_backup_log
-               (action, detail, ok, size_bytes, elapsed_sec, strategy_type, node_name, checksum, interlock_status, chain_depth)
-               VALUES (?,?,?,?,?,?,?,?,?,?)""",
-            (self.STRATEGY_TYPE, detail, 1 if ok else 0, size, 0,
-             self.STRATEGY_TYPE, self.NODE_NAME, checksum,
-             "INTERLOCK" if self.DEPENDS_ON else "INDEPENDENT", chain_depth))
+        """写 app.db (Flask 可读) — 带 retry 应对 WAL 竞争"""
+        for attempt in range(30):
+            try:
+                conn = _db_app()
+                conn.execute("""INSERT INTO mt_backup_log
+                    (action, detail, ok, size_bytes, elapsed_sec, strategy_type, node_name, checksum, interlock_status, chain_depth)
+                    VALUES (?,?,?,?,?,?,?,?,?,?)""",
+                    (self.STRATEGY_TYPE, detail, 1 if ok else 0, size, 0,
+                     self.STRATEGY_TYPE, self.NODE_NAME, checksum,
+                     "INTERLOCK" if self.DEPENDS_ON else "INDEPENDENT", chain_depth))
+                conn.close()
+                return
+            except sqlite3.OperationalError as e:
+                if ("locked" in str(e).lower() or "busy" in str(e).lower()) and attempt < 29:
+                    time.sleep(min(15, 0.5 * (attempt + 1)))
+                    continue
+                _log(f"  _log_backup err (app.db): {e}")
+                return
+            except Exception as e:
+                _log(f"  _log_backup err: {e}")
+                return
 
     def _log_access(self, action_type, operator="ai_backup_kernel", target_path="",
                    before_hash=None, after_hash=None, ok=1, detail=""):
-        """备份中心拐点动作记录 (授权/修改/调取/解锁/开仓关仓)"""
-        self._db_write(
-            """INSERT INTO mt_backup_access_log
-               (action_type, strategy_type, node_name, operator, target_path,
-                before_hash, after_hash, ok, detail, signed_off)
-               VALUES (?,?,?,?,?,?,?,?,?,0)""",
-            (action_type, self.STRATEGY_TYPE, self.NODE_NAME, operator,
-             target_path, before_hash, after_hash, ok, detail))
+        """备份中心拐点动作记录 — 写 app.db"""
+        for attempt in range(30):
+            try:
+                conn = _db_app()
+                conn.execute("""INSERT INTO mt_backup_access_log
+                    (action_type, strategy_type, node_name, operator, target_path,
+                     before_hash, after_hash, ok, detail, signed_off)
+                    VALUES (?,?,?,?,?,?,?,?,?,0)""",
+                    (action_type, self.STRATEGY_TYPE, self.NODE_NAME, operator,
+                     target_path, before_hash, after_hash, ok, detail))
+                conn.close()
+                return
+            except sqlite3.OperationalError as e:
+                if ("locked" in str(e).lower() or "busy" in str(e).lower()) and attempt < 29:
+                    time.sleep(min(15, 0.5 * (attempt + 1)))
+                    continue
+                _log(f"  _log_access err (app.db): {e}")
+                return
+            except Exception as e:
+                _log(f"  _log_access err: {e}")
+                return
 
     def run(self, chain_depth=0):
         """子类覆盖: 返回 (ok: bool, detail: str, size: int)"""
@@ -665,10 +704,9 @@ def topo_order(conn):
 
 
 def _ensure_tables(conn):
-    """每次 kernel 执行前自修复 schema — 根治外部 ALTER TABLE 被 daemon WAL 锁堵死的问题"""
+    """每次 kernel 执行前自修复 kernel_db schema — 零 Flask WAL 竞争"""
 
     def _exec(sql, label="sql", retries=5):
-        """带 retry 的 SQL 执行, 处理 database is locked"""
         for attempt in range(retries):
             try:
                 conn.execute(sql)
@@ -684,12 +722,15 @@ def _ensure_tables(conn):
                 return False
         return False
 
-    # WAL checkpoint (PASSIVE 不阻塞, Flask 持 WAL 锁时直接跳过 — 避免 TRUNCATE 被堵 30s)
-    try:
-        conn.execute("PRAGMA wal_checkpoint(PASSIVE)")
+    # WAL checkpoint (kernel.db 独占 WAL, 不会竞争)
+    try: conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
     except Exception: pass
 
-    # 1. 核心互锁链
+    # ═══════════════════════════════════════════════
+    # kernel.db 独占表 (零 Flask WAL 竞争!)
+    # ═══════════════════════════════════════════════
+
+    # 1. mt_backup_chain (互锁拓扑)
     _exec("""
         CREATE TABLE IF NOT EXISTS mt_backup_chain (
             chain_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -700,6 +741,8 @@ def _ensure_tables(conn):
             UNIQUE(prev_strategy, next_strategy)
         )
     """, "CREATE mt_backup_chain")
+
+    # 2. mt_backup_strategy_lock (策略锁 — acquired_at + pid 用于 _lock_acquire)
     _exec("""
         CREATE TABLE IF NOT EXISTS mt_backup_strategy_lock (
             lock_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -713,78 +756,8 @@ def _ensure_tables(conn):
             detail TEXT
         )
     """, "CREATE mt_backup_strategy_lock")
-    # 补齐锁表缺失列 (兼容旧 schema)
-    try:
-        cols_lock = set(x[1] for x in conn.execute("PRAGMA table_info(mt_backup_strategy_lock)").fetchall())
-        for col in ["acquired_at", "pid"]:
-            if col not in cols_lock:
-                _exec("ALTER TABLE mt_backup_strategy_lock ADD COLUMN %s TEXT" % col, "ALTER lock.%s" % col)
-    except Exception as e:
-        _log(f"  [ensure_tables] WARN lock ALTER: {e}")
 
-    # 2. 建缺失列 (mt_backup_log)
-    try:
-        cols = set(x[1] for x in conn.execute("PRAGMA table_info(mt_backup_log)").fetchall())
-        for col in ["strategy_type","node_name","checksum","interlock_status","chain_depth","run_id"]:
-            if col not in cols:
-                _exec("ALTER TABLE mt_backup_log ADD COLUMN %s TEXT" % col, "ALTER mt_backup_log.%s" % col)
-    except Exception as e:
-        _log(f"  [ensure_tables] WARN mt_backup_log ALTER: {e}")
-
-    # 3. mt_backup_access_log (拐点 — 用 CURRENT_TIMESTAMP 避免 "default not constant" 错误)
-    _exec("""
-        CREATE TABLE IF NOT EXISTS mt_backup_access_log (
-            log_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            run_id TEXT,
-            action_type TEXT,
-            strategy_type TEXT,
-            node_name TEXT,
-            operator TEXT,
-            target_path TEXT,
-            before_hash TEXT,
-            after_hash TEXT,
-            ok INTEGER DEFAULT 1,
-            detail TEXT,
-            signed_off INTEGER DEFAULT 0,
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP
-        )
-    """, "CREATE mt_backup_access_log")
-
-    # 4. mt_backup_webhook 三表
-    _exec("""
-        CREATE TABLE IF NOT EXISTS mt_backup_webhook_cfg (
-            cfg_key TEXT PRIMARY KEY,
-            cfg_value TEXT,
-            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
-        )
-    """, "CREATE mt_backup_webhook_cfg")
-    _exec("""
-        CREATE TABLE IF NOT EXISTS mt_backup_webhook_log (
-            run_id TEXT PRIMARY KEY,
-            source TEXT NOT NULL,
-            action TEXT,
-            actor TEXT,
-            commit_sha TEXT,
-            ref TEXT,
-            payload_size INTEGER DEFAULT 0,
-            signature_ok INTEGER DEFAULT 0,
-            rate_limited INTEGER DEFAULT 0,
-            kernel_pid INTEGER DEFAULT 0,
-            kernel_ok INTEGER DEFAULT 0,
-            kernel_ms INTEGER DEFAULT 0,
-            detail TEXT,
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP
-        )
-    """, "CREATE mt_backup_webhook_log")
-    _exec("""
-        CREATE TABLE IF NOT EXISTS mt_backup_webhook_throttle (
-            source TEXT PRIMARY KEY,
-            last_run_at INTEGER DEFAULT 0,
-            last_run_id TEXT
-        )
-    """, "CREATE mt_backup_webhook_throttle")
-
-    # 5. 预填 mt_backup_chain (如果全空)
+    # 3. 预填 mt_backup_chain (全空时)
     try:
         n = conn.execute("SELECT COUNT(1) FROM mt_backup_chain").fetchone()[0]
         if n == 0:
@@ -815,7 +788,7 @@ def _ensure_tables(conn):
     except Exception as e:
         _log(f"  [ensure_tables] WARN chain prefill: {e}")
 
-    # 6. 预填 strategy_lock
+    # 4. 预填 strategy_lock (全空时) + 重置 FAILED
     try:
         n_lock = conn.execute("SELECT COUNT(1) FROM mt_backup_strategy_lock").fetchone()[0]
         if n_lock == 0:
@@ -833,7 +806,7 @@ def _ensure_tables(conn):
                     (strategy_type, node_name, status) VALUES (?,?, 'IDLE')""", (stype, node))
             _log(f"[ensure_tables] 预填 mt_backup_strategy_lock {len(strategies)} 条")
 
-        # 7. 重置所有 FAILED 锁 (允许重试)
+        # 重置所有 FAILED 锁 (允许重试)
         conn.execute("UPDATE mt_backup_strategy_lock SET status='IDLE' WHERE status='FAILED'")
     except Exception as e:
         _log(f"  [ensure_tables] WARN lock prefill/reset: {e}")
