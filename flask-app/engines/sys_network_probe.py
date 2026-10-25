@@ -108,10 +108,10 @@ def scan_once():
                     (host_label, host, port, service, http_status, note, now))
             except Exception as e:
                 print(f"  [skip] {host}:{port} {e}")
-            # 新发现资源 → 记日志
-            prev = c.execute("SELECT http_status FROM mt_probe_log WHERE target=? AND created_at > datetime('now','-10 minutes') ORDER BY log_id DESC LIMIT 1",
+            # 新发现资源 → 记日志 (避免重复记录同状态)
+            prev = c.execute("SELECT event FROM mt_probe_log WHERE target=? AND created_at > datetime('now','-10 minutes') ORDER BY log_id DESC LIMIT 1",
                            (f"{host}:{port}",)).fetchone()
-            if tcp and (not prev or prev[0] != http_status):
+            if tcp and (not prev or prev[0] != "DISCOVERED"):
                 c.execute("""INSERT INTO mt_probe_log (target, event, detail)
                     VALUES (?,?,?)""",
                     (f"{host}:{port}", "DISCOVERED" if tcp else "DOWN", note))

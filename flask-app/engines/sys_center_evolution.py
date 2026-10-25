@@ -63,11 +63,14 @@ _SCHEMA = [
 def discover_directions(c):
     """从建议池+任务大厅抽取方向种子"""
     seeds_found = 0
-    # 活跃中心列表
-    centers = [r[0] for r in c.execute(
-        "SELECT center_name FROM mt_center_registry WHERE status LIKE 'ACTIVE%' OR status='ONLINE'").fetchall()]
-    if not centers:
-        centers = list(CENTER_SEEDS.keys())[:5]  # fallback
+    # 活跃中心列表 — 兼容: mt_center_registry 可能不存在, 回退固定种子库
+    try:
+        centers = [r[0] for r in c.execute(
+            "SELECT center_name FROM mt_center_registry WHERE status LIKE 'ACTIVE%' OR status='ONLINE'").fetchall()]
+        if not centers:
+            raise Exception("no rows")
+    except Exception:
+        centers = list(CENTER_SEEDS.keys())[:8]
     for center in centers:
         # 从 mt_ai_suggestion_pool 抽对口建议
         rows = c.execute(

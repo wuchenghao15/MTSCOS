@@ -172,9 +172,11 @@ def _snapshot(conn):
     src_gb = os.path.getsize(DB_PATH) / 1024 / 1024 / 1024
 
     # ③ NAS 端 VACUUM INTO 紧凑版 (孤儿临时文件一并清理)
-    vac = ("import sqlite3,os,sys; src,dst,ok=sys.argv[1],sys.argv[2],sys.argv[1]+'.vac_tmp'; "
-           "c=sqlite3.connect(src); c.execute('VACUUM INTO ?',(ok,)); c.close(); "
-           "os.replace(ok,dst)")
+    # 注: python3 -c 内联引号严格匹配, .vac_tmp 必须加引号
+    vac = ("import sqlite3,os,sys; "
+           "src=sys.argv[1]; dst=sys.argv[2]; tmp=src+'.vac_tmp'; "
+           "c=sqlite3.connect(src); c.execute('VACUUM INTO ?',(tmp,)); c.close(); "
+           "os.replace(tmp,dst)")
     ok3, out3, err3 = _nas_ssh(
         f"python3 -c '{vac}' {target} {NAS_BACKUP_DIR}/{SLIM_NAME} && "
         f"find {NAS_BACKUP_DIR} -maxdepth 1 -name '.*' -size +1G -mmin +30 -delete && "
