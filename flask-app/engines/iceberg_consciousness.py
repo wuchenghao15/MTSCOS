@@ -91,6 +91,17 @@ class IcebergConsciousness:
                 five_self['strengthen'] = False
                 triggers.append(f'{domain} health_score={score:.1f} < 70 → strengthen needed')
 
+        # 1.1 🆕 goal_engine 集成: 弱目标 → strengthen
+        try:
+            from andromeda_goal_engine import GoalEngine
+            ge = GoalEngine()
+            gscan = ge.scan_weak_for_iceberg()
+            if gscan.get("goal_strengthen_needed"):
+                five_self['strengthen'] = False
+                triggers.append(f"goal_engine: 弱目标={gscan['weak_goals']}, stuck_hooks={gscan['stuck_hooks']} → strengthen needed")
+        except Exception as _ge:
+            pass  # goal_engine 未就绪时不阻塞
+
         # 2. 脑库增量 (对比上次 pulse) ✅ 修: 存真正的增量而非总量
         brain_now = self._count('mt_ai_brain_feed_log')
         brain_prev_row = c.execute(
@@ -212,6 +223,27 @@ class IcebergConsciousness:
                 total_score/max(domain_count,1), brain_now, brain_delta)
         else:
             exec_result = None
+
+        # 10. 🆕 meta_cognition introspect — 本轮 pulse 完整后做一次自省
+        meta_result = None
+        try:
+            from andromeda_meta_cognition import MetaCognitionEngine
+            mc = MetaCognitionEngine()
+            meta_result = mc.introspect(
+                health_score=round(total_score/max(domain_count,1),1),
+                brain_now=brain_now,
+                run_id=run_id)
+            # 自省 feelings 追加到 five_self JSON (落 iceberg_runs)
+            if meta_result and meta_result.get("feelings"):
+                fs_dict = json.loads(five_self) if isinstance(five_self, str) else dict(five_self)
+                fs_dict["meta_feelings"] = meta_result["feelings"]
+                five_self = json.dumps(fs_dict, ensure_ascii=False)
+                try:
+                    c.execute("UPDATE mt_iceberg_consciousness_runs SET five_self_status=? WHERE run_id=?",
+                              (five_self, run_id))
+                except Exception: pass
+        except Exception as _mc:
+            pass
 
         self.db.commit()
         return {

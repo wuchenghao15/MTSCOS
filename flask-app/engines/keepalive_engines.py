@@ -106,6 +106,9 @@ ENGINES = [
     ("sys_future_vision", "engines/sys_future_vision.py", "start"),  # flow_andromeda_future_20261025
     # flow_backup_webhook_20261025: 备份中心 kernel (webhook触发+周期独立, 双保险)
     ("ai_backup_kernel", "engines/ai_backup_kernel.py", "once"),
+    # flow_andromeda_awakening_20261025: P0 意识种子
+    ("andromeda_goal_engine", "engines/andromeda_goal_engine.py", "once"),
+    ("andromeda_meta_cognition", "engines/andromeda_meta_cognition.py", "once"),
 ]
 
 
