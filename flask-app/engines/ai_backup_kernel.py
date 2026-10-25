@@ -378,12 +378,14 @@ class LocalSnapshotProvider(StrategyProvider):
         """mini 本地 /tmp 快照 → NAS 冷备, 作为 NAS 快照快照应急通道"""
         t0 = time.time()
         tmp = f"/tmp/mtscos_local_snap_{time.strftime('%Y%m%d_%H%M%S')}.db"
-        # 用 Python .backup (不占本地 VACUUM 空间)
+        # 用 Python .backup() API (不占本地 VACUUM 空间, 不是 .execute(".backup"))
         try:
             src = sqlite3.connect(DB_PATH, timeout=60, isolation_level=None)
             src.execute("PRAGMA busy_timeout=60000")
             src.execute("PRAGMA wal_checkpoint(TRUNCATE)")
-            src.execute(f".backup {tmp}")
+            dst = sqlite3.connect(tmp)
+            src.backup(dst)
+            dst.close()
             src.close()
             ok1 = True
         except Exception as e:
