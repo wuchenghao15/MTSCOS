@@ -220,9 +220,9 @@ class DBPermanentProvider(StrategyProvider):
         # ① WAL checkpoint (直接 Python 命令, 避开 subprocess 60s 锁等待)
         try:
             ck = sqlite3.connect(DB_PATH, timeout=30, isolation_level=None)
-            ck.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+            ck.execute("PRAGMA wal_checkpoint(PASSIVE)")
             ck.execute("PRAGMA busy_timeout=30000")
-            ck.execute("PRAGMA wal_checkpoint(TRUNCATE)")  # 两次确保 WAL 归零
+            ck.execute("PRAGMA wal_checkpoint(PASSIVE)")  # 两次确保 WAL 归零
             ck.close()
             ok = True
         except Exception as e:
@@ -436,7 +436,7 @@ class LocalSnapshotProvider(StrategyProvider):
         try:
             src = sqlite3.connect(DB_PATH, timeout=60, isolation_level=None)
             src.execute("PRAGMA busy_timeout=60000")
-            src.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+            src.execute("PRAGMA wal_checkpoint(PASSIVE)")
             dst = sqlite3.connect(tmp)
             src.backup(dst)
             dst.close()
@@ -598,7 +598,7 @@ class HulkOracleProvider(StrategyProvider):
         try:
             ck = sqlite3.connect(DB_PATH, timeout=60, isolation_level=None)
             ck.execute("PRAGMA busy_timeout=60000")
-            ck.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+            ck.execute("PRAGMA wal_checkpoint(PASSIVE)")
             ck.close()
         except Exception: pass
 
