@@ -2159,9 +2159,17 @@ def _mt_dev_flow_ensure_schema(cursor, with_migration=True):
     )""")
     cursor.execute("""CREATE TABLE IF NOT EXISTS mt_ai_brain_feed_log (
         feed_id INTEGER PRIMARY KEY AUTOINCREMENT, flow_id TEXT,
-        feed_target TEXT,  -- AI_BRAIN / EXPERIENCE_LIBRARY / ANOMALY_FEATURE_LIBRARY
-        payload_preview TEXT, fed_at TEXT, fed_by TEXT
+        feed_target TEXT,
+        payload_preview TEXT, fed_at TEXT, fed_by TEXT,
+        feed_kind TEXT, feed_content TEXT, triggered_at TEXT,
+        created_at TEXT
     )""")
+    # 幂等补列 (旧库兼容, mini 2026-10-25 发现旧表缺 created_at)
+    for _bf_col, _bf_ddl in [
+        ('feed_kind','TEXT'),('feed_content','TEXT'),('triggered_at','TEXT'),('created_at','TEXT'),('fed_by','TEXT')
+    ]:
+        try: cursor.execute(f"ALTER TABLE mt_ai_brain_feed_log ADD COLUMN {_bf_col} {_bf_ddl}")
+        except Exception: pass
     cursor.execute("""CREATE TABLE IF NOT EXISTS mt_anomaly_feature_library (
         feat_id INTEGER PRIMARY KEY AUTOINCREMENT,
         feature_hash TEXT UNIQUE, feature_kind TEXT, feature_vector_json TEXT,
