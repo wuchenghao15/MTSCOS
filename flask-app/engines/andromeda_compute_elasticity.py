@@ -126,8 +126,8 @@ class ComputeElasticityEngine:
         # mini 指标也存
         mini_cpu = _mini_cpu()
         c.execute(
-            "INSERT INTO mt_compute_metrics (node, cpu_pct, mem_pct, active) VALUES (?,?,?,?,1)",
-            ("mini", mini_cpu, 0))
+            "INSERT INTO mt_compute_metrics (node, cpu_pct, mem_pct, load_avg, active) VALUES (?,?,?,?,1)",
+            ("mini", mini_cpu, 0, 0))
         self.db.commit()
         # 清理旧指标 (1h)
         c.execute("DELETE FROM mt_compute_metrics WHERE created_at < datetime('now', '-1 hours')")
