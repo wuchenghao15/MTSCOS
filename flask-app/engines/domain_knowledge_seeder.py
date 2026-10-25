@@ -153,13 +153,13 @@ def seed_all(db_path: Path = DB) -> dict:
         print(f"\n=== {domain}: {len(terms)} 术语 ===", flush=True)
         for item in terms:
             total += 1
-            h = hashlib.md5(f"{item['domain']}::{item['term']}".encode()).hexdigest()
+            h = hashlib.md5(f"{domain}::{item['term']}".encode()).hexdigest()
             c.execute("SELECT id FROM mt_domain_knowledge WHERE term_hash=?", (h,))
             if c.fetchone():
                 continue  # 已存在
 
-            # embed(term + definition → 更好语义)
-            text = f"{item['domain']}: {item['term']} — {item['definition']}"
+            # embed(domain + term + definition → 更好语义)
+            text = f"{domain}: {item['term']} — {item['definition']}"
             vec = embed(text)
             if not vec:
                 failed += 1
@@ -173,7 +173,7 @@ def seed_all(db_path: Path = DB) -> dict:
                 INSERT INTO mt_domain_knowledge
                 (domain, term, definition, source, context, embed, embed_dim, term_hash)
                 VALUES (?,?,?,?,?,?,?,?)""",
-                (item["domain"], item["term"], item["definition"],
+                (domain, item["term"], item["definition"],
                  item.get("source", ""), item.get("context", ""),
                  blob, len(vec), h))
             seeded += 1
