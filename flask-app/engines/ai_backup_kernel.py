@@ -98,22 +98,39 @@ class StrategyProvider:
         self.k = kernel
         self.conn = _db()
 
+    def _db_write(self, sql, params=None, retries=10):
+        """通用 retry SQL 写入 — 根治 Flask WAL 锁 race"""
+        for attempt in range(retries):
+            try:
+                self.conn.execute("PRAGMA busy_timeout=120000")
+                if params is None:
+                    self.conn.execute(sql)
+                else:
+                    self.conn.execute(sql, params)
+                return True
+            except sqlite3.OperationalError as e:
+                if ("locked" in str(e).lower() or "busy" in str(e).lower()) and attempt < retries - 1:
+                    time.sleep(0.5 * (attempt + 1))
+                    continue
+                return False
+            except Exception:
+                return False
+        return False
+
     def _lock_acquire(self):
-        try:
-            self.conn.execute("""INSERT OR REPLACE INTO mt_backup_strategy_lock
-                (strategy_type, node_name, status, acquired_at, pid)
-                VALUES (?,?,?,datetime('now','localtime'),?)""",
-                (self.STRATEGY_TYPE, self.NODE_NAME, "LOCKED", os.getpid()))
-            return True
-        except Exception: return False
+        ok = self._db_write(
+            """INSERT OR REPLACE INTO mt_backup_strategy_lock
+               (strategy_type, node_name, status, acquired_at, pid)
+               VALUES (?,?,?,datetime('now','localtime'),?)""",
+            (self.STRATEGY_TYPE, self.NODE_NAME, "LOCKED", os.getpid()))
+        return ok
 
     def _lock_release(self, status="DONE"):
-        try:
-            self.conn.execute("""UPDATE mt_backup_strategy_lock
-                SET status=?, released_at=datetime('now','localtime')
-                WHERE strategy_type=? AND node_name=?""",
-                (status, self.STRATEGY_TYPE, self.NODE_NAME))
-        except Exception: pass
+        self._db_write(
+            """UPDATE mt_backup_strategy_lock
+               SET status=?, released_at=datetime('now','localtime')
+               WHERE strategy_type=? AND node_name=?""",
+            (status, self.STRATEGY_TYPE, self.NODE_NAME))
 
     def _check_deps(self):
         """前置策略是否都 DONE 或 SKIPPED (跨节点匹配)"""
@@ -127,28 +144,24 @@ class StrategyProvider:
         return True, "OK"
 
     def _log_backup(self, ok, size=0, detail="", chain_depth=0, checksum=None):
-        try:
-            self.conn.execute("""INSERT INTO mt_backup_log
-                (action, detail, ok, size_bytes, elapsed_sec, strategy_type, node_name, checksum, interlock_status, chain_depth)
-                VALUES (?,?,?,?,?,?,?,?,?,?)""",
-                (self.STRATEGY_TYPE, detail, 1 if ok else 0, size, 0,
-                 self.STRATEGY_TYPE, self.NODE_NAME, checksum,
-                 "INTERLOCK" if self.DEPENDS_ON else "INDEPENDENT", chain_depth))
-        except Exception as e:
-            _log(f"  _log_backup err: {e}")
+        self._db_write(
+            """INSERT INTO mt_backup_log
+               (action, detail, ok, size_bytes, elapsed_sec, strategy_type, node_name, checksum, interlock_status, chain_depth)
+               VALUES (?,?,?,?,?,?,?,?,?,?)""",
+            (self.STRATEGY_TYPE, detail, 1 if ok else 0, size, 0,
+             self.STRATEGY_TYPE, self.NODE_NAME, checksum,
+             "INTERLOCK" if self.DEPENDS_ON else "INDEPENDENT", chain_depth))
 
     def _log_access(self, action_type, operator="ai_backup_kernel", target_path="",
                    before_hash=None, after_hash=None, ok=1, detail=""):
         """备份中心拐点动作记录 (授权/修改/调取/解锁/开仓关仓)"""
-        try:
-            self.conn.execute("""INSERT INTO mt_backup_access_log
-                (action_type, strategy_type, node_name, operator, target_path,
-                 before_hash, after_hash, ok, detail, signed_off)
-                VALUES (?,?,?,?,?,?,?,?,?,0)""",
-                (action_type, self.STRATEGY_TYPE, self.NODE_NAME, operator,
-                 target_path, before_hash, after_hash, ok, detail))
-        except Exception as e:
-            _log(f"  _log_access err: {e}")
+        self._db_write(
+            """INSERT INTO mt_backup_access_log
+               (action_type, strategy_type, node_name, operator, target_path,
+                before_hash, after_hash, ok, detail, signed_off)
+               VALUES (?,?,?,?,?,?,?,?,?,0)""",
+            (action_type, self.STRATEGY_TYPE, self.NODE_NAME, operator,
+             target_path, before_hash, after_hash, ok, detail))
 
     def run(self, chain_depth=0):
         """子类覆盖: 返回 (ok: bool, detail: str, size: int)"""
