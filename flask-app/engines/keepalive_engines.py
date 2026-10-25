@@ -109,6 +109,8 @@ ENGINES = [
     # flow_andromeda_awakening_20261025: P0 意识种子
     ("andromeda_goal_engine", "engines/andromeda_goal_engine.py", "once"),
     ("andromeda_meta_cognition", "engines/andromeda_meta_cognition.py", "once"),
+    # flow_andromeda_awakening_20261025: hulk 算力弹性
+    ("andromeda_compute_elasticity", "engines/andromeda_compute_elasticity.py", "once"),
 ]
 
 
