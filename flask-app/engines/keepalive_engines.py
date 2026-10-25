@@ -100,6 +100,7 @@ ENGINES = [
     ("ai_smart_mount_engine", "engines/ai_smart_mount_engine.py", "start"),
     ("ai_eigenflux_network_engine", "engines/ai_eigenflux_network_engine.py", "start"),
     ("ai_center_hall_hook_engine", "engines/ai_center_hall_hook_engine.py", "start"),  # flow_center_hook_hall_20261025
+    ("ai_nas_storage_engine", "engines/ai_nas_storage_engine.py", "start"),  # flow_fnos_nas_integrate_20261025
 ]
 
 

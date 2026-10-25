@@ -8,10 +8,12 @@
 主通道: rsync over SSH (端口 5593, mini→NAS 免密 key 已部署)
 职责:
   ① SSH 探活  — 端口 5593 + 免密执行 echo (连续失败 3 次 → 告警备案)
-  ② 冷层快照  — sqlite VACUUM INTO /tmp → rsync → NAS /vol1/mtscos_nas/backup_db/ (滚动 7 份)
+  ② 冷层快照  — 法案第十一条三步法: checkpoint → rsync 直传 → NAS 端 VACUUM (滚动 7 份)
   ③ 容量上报  — NAS df 采样 /vol1 → mt_storage_nodes
   ④ 留痕备案  — mt_backup_log NAS_COLD_SNAPSHOT / NAS_NODE_ALERT
   ⑤ SMB 可选  — fnOS web 建共享后可启用 (share 参数, 非必需)
+铁律: 禁止 mini 本地 VACUUM/VACUUM INTO 大库 (35G+35G 爆盘教训, flow_fnos_nas_integrate_20261025);
+      瘦身一律在 NAS 端 (16TB /vol1) 由 python3 sqlite3 VACUUM INTO 完成。
 入口:
   python3 ai_nas_storage_engine.py init    — 注册节点 (免密 key 模式, 无需凭据)
   python3 ai_nas_storage_engine.py once    — 单轮: 探活+快照+容量+心跳
@@ -40,6 +42,8 @@ NAS_COLD_ROOT = "/vol1/mtscos_nas"
 NAS_BACKUP_DIR = f"{NAS_COLD_ROOT}/backup_db"
 MOUNT_POINT = os.path.expanduser("~/mtscos_nas_mount")   # SMB 可选挂载点
 POLL_INTERVAL = 300
+SNAPSHOT_INTERVAL = 86400          # 全量冷层快照节流: 24h 一次 (37G 库 rsync+VACUUM 耗时长)
+SLIM_NAME = "app_slim_latest.db"   # NAS 端 VACUUM 紧凑版文件名 (供 hulk-server Datasette 拉取)
 
 _NODES_TABLE_SQL = """
 CREATE TABLE IF NOT EXISTS mt_storage_nodes (
@@ -119,41 +123,85 @@ def _capacity(conn):
     return None, None
 
 
-def _snapshot(conn):
-    """DB 快照 → NAS 冷层 (VACUUM INTO 本地临时 → rsync)"""
-    tmp = os.path.expanduser(f"~/mtscos_nas_snap_{int(time.time())}.db")
+def _snapshot_due(conn):
+    """快照节流: 24h 内已有成功全量快照则跳过"""
+    row = conn.execute("""SELECT created_at FROM mt_backup_log
+                          WHERE action='NAS_COLD_SNAPSHOT' AND ok=1
+                          ORDER BY created_at DESC LIMIT 1""").fetchone()
+    if not row:
+        return True
     try:
-        r = subprocess.run(["sqlite3", DB_PATH, ".timeout 30000", f"VACUUM INTO '{tmp}'"],
-                           capture_output=True, text=True, timeout=600)
-        if r.returncode != 0:
-            _log(f"⚠️ VACUUM INTO 失败: {r.stderr.strip()[:150]}")
-            return False
-        stamp = time.strftime("%Y%m%d_%H%M%S")
-        target = f"{NAS_BACKUP_DIR}/app_{stamp}.db"
-        r2 = subprocess.run(["rsync", "-z", "--timeout=60", "-e",
-                             f"ssh -p {NAS_SSH_PORT} -o BatchMode=yes", tmp,
-                             f"{NAS_USER}@{NAS_HOST}:{target}"],
-                            capture_output=True, text=True, timeout=600)
-        if r2.returncode == 0:
-            sz = os.path.getsize(tmp) / 1024 / 1024
-            conn.execute("UPDATE mt_storage_nodes SET last_snapshot=datetime('now','localtime') WHERE node_name=?",
-                         (NAS_NAME,))
-            conn.execute("""INSERT INTO mt_backup_log (action, detail, ok, size_bytes, elapsed_sec, created_at)
-                            VALUES ('NAS_COLD_SNAPSHOT', ?, 1, ?, 0, datetime('now','localtime'))""",
-                         (json.dumps({"target": target, "node": NAS_NAME, "size_mb": round(sz, 1),
-                                      "flow_id": FLOW_ID}, ensure_ascii=False), int(sz * 1024 * 1024)))
-            _log(f"冷层快照完成: app_{stamp}.db ({sz:.1f} MB → NAS /vol1)")
-            # NAS 端滚动保留 7 份
-            _nas_ssh(f"ls -t {NAS_BACKUP_DIR}/app_*.db 2>/dev/null | tail -n +8 | xargs -r rm -f", timeout=20)
-            return True
-        _log(f"⚠️ rsync 失败: {r2.stderr.strip()[:150]}")
-        return False
+        last = time.mktime(time.strptime(str(row["created_at"]), "%Y-%m-%d %H:%M:%S"))
+        return (time.time() - last) >= SNAPSHOT_INTERVAL
+    except Exception:
+        return True
+
+
+def _snapshot(conn):
+    """DB 快照 → NAS 冷层 (法案第十一条三步法, 24h 节流):
+      ① mini: PRAGMA wal_checkpoint(TRUNCATE) — WAL 落盘归零
+      ② rsync 主库直传 NAS backup_db/app_YYYYmmdd_HHMMSS.db (边写库不阻塞, 主库大小稳定)
+      ③ NAS 端 python3 VACUUM INTO → app_slim_latest.db 紧凑版 (16TB 冷层, mini 零风险)
+      + NAS 端滚动保留 7 份 + rsync 孤儿临时文件清理 + mt_backup_log 备案
+    """
+    stamp = time.strftime("%Y%m%d_%H%M%S")
+    target = f"{NAS_BACKUP_DIR}/app_{stamp}.db"
+
+    # ① WAL checkpoint (失败不阻塞: 残留 WAL 只影响快照时点一致性, 不影响主库文件)
+    try:
+        subprocess.run(["sqlite3", DB_PATH, ".timeout 30000", "PRAGMA wal_checkpoint(TRUNCATE);"],
+                       capture_output=True, text=True, timeout=120)
     except Exception as e:
-        _log(f"⚠️ 快照异常: {e}")
+        _log(f"⚠️ checkpoint 异常(继续): {e}")
+
+    # ② rsync 直传 (LAN 千兆关 -z 省 CPU; --partial 保断点)
+    t0 = time.time()
+    r = subprocess.run(["rsync", "--partial", "--timeout=120", "-e",
+                        f"ssh -p {NAS_SSH_PORT} -o BatchMode=yes", DB_PATH,
+                        f"{NAS_USER}@{NAS_HOST}:{target}"],
+                       capture_output=True, text=True, timeout=14400)
+    if r.returncode != 0:
+        _log(f"⚠️ rsync 失败: {r.stderr.strip()[:150]}")
+        conn.execute("""INSERT INTO mt_backup_log (action, detail, ok, size_bytes, elapsed_sec, created_at)
+                        VALUES ('NAS_COLD_SNAPSHOT', ?, 0, 0, ?, datetime('now','localtime'))""",
+                     (json.dumps({"target": target, "stage": "rsync",
+                                  "err": r.stderr.strip()[:200]}, ensure_ascii=False),
+                      int(time.time() - t0)))
         return False
-    finally:
-        if os.path.exists(tmp):
-            os.remove(tmp)
+
+    src_gb = os.path.getsize(DB_PATH) / 1024 / 1024 / 1024
+
+    # ③ NAS 端 VACUUM INTO 紧凑版 (孤儿临时文件一并清理)
+    vac = ("import sqlite3,os,sys; src,dst,ok=sys.argv[1],sys.argv[2],sys.argv[1]+'.vac_tmp'; "
+           "c=sqlite3.connect(src); c.execute('VACUUM INTO ?',(ok,)); c.close(); "
+           "os.replace(ok,dst)")
+    ok3, out3, err3 = _nas_ssh(
+        f"python3 -c '{vac}' {target} {NAS_BACKUP_DIR}/{SLIM_NAME} && "
+        f"find {NAS_BACKUP_DIR} -maxdepth 1 -name '.*' -size +1G -mmin +30 -delete && "
+        f"ls -t {NAS_BACKUP_DIR}/app_2*.db 2>/dev/null | tail -n +8 | xargs -r rm -f && "
+        f"ls -l {NAS_BACKUP_DIR}/{SLIM_NAME}",
+        timeout=14400)
+    slim_note = ""
+    if ok3 and SLIM_NAME in out3:
+        try:
+            slim_kb = int(out3.splitlines()[-1].split()[4]) // 1024
+            slim_note = f", slim={slim_kb/1024:.1f}MB"
+        except Exception:
+            slim_note = ", slim=OK"
+    else:
+        _log(f"⚠️ NAS VACUUM 失败(原始快照已保留): {err3.strip()[:120]}")
+
+    elapsed = int(time.time() - t0)
+    conn.execute("UPDATE mt_storage_nodes SET last_snapshot=datetime('now','localtime') WHERE node_name=?",
+                 (NAS_NAME,))
+    conn.execute("""INSERT INTO mt_backup_log (action, detail, ok, size_bytes, elapsed_sec, created_at)
+                    VALUES ('NAS_COLD_SNAPSHOT', ?, 1, ?, ?, datetime('now','localtime'))""",
+                 (json.dumps({"target": target, "node": NAS_NAME, "src_gb": round(src_gb, 1),
+                              "slim": SLIM_NAME, "slim_ok": ok3, "flow_id": FLOW_ID},
+                             ensure_ascii=False),
+                  int(src_gb * 1024 * 1024 * 1024), elapsed))
+    _log(f"冷层快照完成: {os.path.basename(target)} (src={src_gb:.1f}GB, {elapsed}s{slim_note})")
+    return True
 
 
 def run_once(do_snapshot=True):
@@ -176,7 +224,7 @@ def run_once(do_snapshot=True):
     snap = False
     if ssh_ok:
         cap = _capacity(conn)
-        if do_snapshot:
+        if do_snapshot and _snapshot_due(conn):
             snap = _snapshot(conn)
 
     conn.execute("""UPDATE mt_storage_nodes SET status=?, ssh_alive=?, fail_count=?,
