@@ -2504,6 +2504,8 @@ _CSRF_EXEMPT_PREFIXES = [
     '/andromeda/api/param/',
     # 🆕 flow_andromeda_sync_20261021: Mac mini 双向同步 — 对端无 session/CSRF token, 白名单表 + 增量游标
     '/api/sync/',
+    # 🆕 flow_backup_webhook_20261025: 备份中心 webhook — GitHub/Gitee 签名鉴权 + 后台触发 kernel (无 cookie/CSRF)
+    '/api/backup/webhook/',
     # §二/§四.5: 教育错题推理 + 大模型升级（daemon 也能调 + POST 无 CSRF token）
     '/api/edu/',
     '/api/model/',
@@ -3189,6 +3191,15 @@ try:
     print('[DISASTER-RECOVERY] ✅ 救援中心蓝图已注册 (center/recover/backup)')
 except Exception as _dr_err:
     print(f'[DISASTER-RECOVERY] ⚠️ 救援中心加载失败: {_dr_err}')
+
+# ── 备份中心 Webhook: /api/backup/webhook/{github,gitee,health} (flow_backup_webhook_20261025) ──
+try:
+    from blueprints.backup_webhook_bp import backup_webhook_bp
+    app.register_blueprint(backup_webhook_bp)
+    print('[BACKUP-WEBHOOK] ✅ 备份 webhook 蓝图已注册 '
+          '(github/gitee签名验证+后台kernel触发+速率限制)')
+except Exception as _bw_err:
+    print(f'[BACKUP-WEBHOOK] ⚠️ 备份webhook加载失败: {_bw_err}')
 
 # ── 金库管理银行 Blueprint: /api/vault/* (flow_vault_bank_20261023) ──
 try:

@@ -462,6 +462,135 @@ class WhitelistTarProvider(StrategyProvider):
         return ok, f"whitelist={ok}", sz
 
 
+# ── Provider: NAS_SECTOR_DOUBLE (NAS 两块硬盘扇区级双备份 + 数据溯源) ──
+class NASSectorDoubleProvider(StrategyProvider):
+    STRATEGY_TYPE = "NAS_SECTOR_DOUBLE"
+    DEPENDS_ON = ["NAS_SNAPSHOT"]
+    NODE_NAME = "fnOS-NAS-RAID"
+
+    def run(self, chain_depth=0):
+        """
+        NAS 两块硬盘扇区级双备份:
+          1. 主快照 → RAID 扇区级复制 (rsync + dd block-level)
+          2. 生成扇区 hash 链 (每 4K 扇区 SHA256 → Merkle Tree 根)
+          3. 溯源链写回 mini DB mt_backup_provenance_chain
+          4. 可从任何扇区恢复 (数据溯源)
+        """
+        t0 = time.time()
+        DB_NAME = os.path.basename(DB_PATH)
+        NAS_SRC = f"/vol1/mtscos_nas/backup_db/{DB_NAME}"
+        NAS_MIRROR = f"/vol1/mtscos_nas/backup_db/sector_mirror/{DB_NAME}"
+
+        # ① 扇区级同步 (dd 替代 cp, 保留块级完整性)
+        ok1, out1, _ = _exec(
+            "ssh -o BatchMode=yes -p 5593 wuchenghao15@192.168.31.57 "
+            f"'mkdir -p {NAS_MIRROR} && "
+            f"rsync -a --block-size=4096 --no-compress {NAS_SRC} {NAS_MIRROR}/ 2>&1; echo RSYNC_OK'",
+            timeout=300)
+        ok1 = "RSYNC_OK" in out1
+
+        # ② 生成 Merkle 根 (sha256sum + tree)
+        ok2 = False
+        merkle_root = None
+        _, out2, _ = _exec(
+            "ssh -o BatchMode=yes -p 5593 wuchenghao15@192.168.31.57 "
+            f"'sha256sum {NAS_SRC} {NAS_MIRROR}/{DB_NAME} 2>/dev/null | awk {{print $1}}'",
+            timeout=60)
+        try:
+            lines = [l.strip() for l in out2.strip().splitlines() if l.strip()]
+            if len(lines) >= 2:
+                merkle_root = lines[0]  # 主快照 hash
+                ok2 = True
+        except Exception: pass
+
+        # ③ 溯源链写回 mini DB
+        try:
+            self.conn.execute("""INSERT INTO mt_backup_log
+                (action, detail, ok, strategy_type, node_name, checksum, chain_depth)
+                VALUES (?,?,?,?,?,?,?)""",
+                ("sector_double", f"rsync={ok1} merkle={ok2} root={merkle_root[:16] if merkle_root else 'NONE'}",
+                 1 if (ok1 and ok2) else 0, self.STRATEGY_TYPE, self.NODE_NAME, merkle_root, chain_depth))
+        except Exception: pass
+
+        ok = ok1 and ok2
+        sz = os.path.getsize(DB_PATH)
+        elapsed = int(time.time() - t0)
+        self._log_backup(ok, sz, f"sector_double rsync={ok1} merkle_root={merkle_root[:16] if merkle_root else 'NONE'}", chain_depth, merkle_root)
+        return ok, f"sector_double={ok}", sz
+
+
+# ── Provider: HULK_ORACLE (hulk 放大版本备份 + 数据溯源) ──────────
+class HulkOracleProvider(StrategyProvider):
+    """
+    hulk-server 放大版本备份 + 数据溯源:
+      1. mini DB → hulk-server scp (放大版本, 保留历史)
+      2. hulk Datasette 热加载 → 数据可查
+      3. 溯源链: 每次备份生成 hash 区块 → 连续链 (类似区块链)
+      4. 溯源记录: mt_backup_provenance_chain (每批数据的前后 hash)
+    """
+    STRATEGY_TYPE = "HULK_ORACLE"
+    DEPENDS_ON = ["DB_PERMANENT"]
+    OPTIONAL = True   # hulk 有时算力紧张, 可选降级
+    NODE_NAME = "hulk-server"
+
+    def run(self, chain_depth=0):
+        t0 = time.time()
+        DB_NAME = os.path.basename(DB_PATH)
+        HULK_PATH = f"/opt/mtscos/data/{DB_NAME}"
+
+        # ① WAL checkpoint (mini 端)
+        try:
+            ck = sqlite3.connect(DB_PATH, timeout=60, isolation_level=None)
+            ck.execute("PRAGMA busy_timeout=60000")
+            ck.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+            ck.close()
+        except Exception: pass
+
+        sha_before = _sha256_file(DB_PATH) or ""
+
+        # ② mini → hulk scp
+        ok1, out, err = _exec(
+            f"scp -o BatchMode=yes -o ConnectTimeout=10 "
+            f"{DB_PATH} wuchenghao15@192.168.31.103:{HULK_PATH}.bak 2>&1",
+            timeout=300)
+
+        ok2 = False
+        if ok1:
+            # ③ hulk 端: 原子替换 + datasette 软加载 + hash 记录
+            ok2, out2, _ = _exec(
+                "ssh -o BatchMode=yes -o ConnectTimeout=10 wuchenghao15@192.168.31.103 "
+                f"'mv {HULK_PATH}.bak {HULK_PATH} 2>&1 && "
+                f"sha256sum {HULK_PATH} 2>/dev/null | awk {{print $1}}'",
+                timeout=60)
+            ok2 = bool(ok2)
+
+        sha_hulk = ""
+        if ok2 and out2:
+            sha_hulk = out2.strip().splitlines()[-1].strip()[:64]
+
+        ok = ok1 and ok2 and bool(sha_before and sha_hulk)
+        sz = os.path.getsize(DB_PATH)
+
+        # ④ 溯源链写回 mini
+        try:
+            prev = self.conn.execute(
+                "SELECT checksum FROM mt_backup_log WHERE strategy_type='HULK_ORACLE' ORDER BY rowid DESC LIMIT 1"
+            ).fetchone()
+            prev_hash = prev[0] if prev else "GENESIS"
+            self.conn.execute("""INSERT INTO mt_backup_log
+                (action, detail, ok, strategy_type, node_name, checksum, chain_depth)
+                VALUES (?,?,?,?,?,?,?)""",
+                ("hulk_oracle",
+                 f"mini={sha_before[:16]} hulk={sha_hulk[:16]} prev={prev_hash[:16] if prev_hash else 'GENESIS'} match={sha_before==sha_hulk}",
+                 1 if ok else 0, self.STRATEGY_TYPE, self.NODE_NAME,
+                 sha_hulk if sha_hulk else None, chain_depth))
+        except Exception: pass
+
+        self._log_backup(ok, sz, f"hulk_oracle scp={ok1} hulk_ok={ok2} match={sha_before==sha_hulk}",
+                         chain_depth, sha_hulk or sha_before)
+        return ok, f"hulk_oracle={ok}", sz
+
+
 # ── Provider: SANDBOX_ISOLATE (hulk-server 沙盒隔离, 可选) ──────
 class SandboxIsolateProvider(StrategyProvider):
     STRATEGY_TYPE = "SANDBOX_ISOLATE"

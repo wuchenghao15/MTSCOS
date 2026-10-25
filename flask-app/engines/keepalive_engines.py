@@ -104,6 +104,8 @@ ENGINES = [
     ("sys_network_probe", "engines/sys_network_probe.py", "start"),  # flow_andromeda_sense_20261025
     ("sys_center_evolution", "engines/sys_center_evolution.py", "start"),  # flow_andromeda_center_20261025
     ("sys_future_vision", "engines/sys_future_vision.py", "start"),  # flow_andromeda_future_20261025
+    # flow_backup_webhook_20261025: 备份中心 kernel (webhook触发+周期独立, 双保险)
+    ("ai_backup_kernel", "engines/ai_backup_kernel.py", "once"),
 ]
 
 
