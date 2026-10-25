@@ -1152,12 +1152,116 @@ def andromeda_hiring_bridge(max_hire: int = 30, min_level: int = 7) -> Dict:
 
 
 # ============================================================
-# 7. 执行一轮完整循环
+# 7. AI 专家化身自动创建 (flow_expert_invite_20261025)
+#    从 mt_avatar_persona_templates 读模板 → 创建 expert_pool 记录
+#    → EigenFlux 注册 → 向量知识库关联 → 种子知识投喂
+# ============================================================
+def auto_create_ai_expert_avatars() -> Dict:
+    """自动创建 AI 专家化身 (覆盖 25 个领域)"""
+    ensure_hire_tables()
+    result = {"created": 0, "skipped": 0, "failed": 0, "details": []}
+    with _LOCK:
+        conn = sqlite3.connect(APP_DB, timeout=30)
+        conn.execute("PRAGMA busy_timeout=30000")
+        conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+
+        # 读所有活跃化身模板
+        try:
+            templates = conn.execute(
+                "SELECT template_id, domain_code, avatar_name, avatar_role, avatar_persona, "
+                "knowledge_seed, system_prompt, skill_tags, target_model "
+                "FROM mt_avatar_persona_templates WHERE active=1 AND auto_create=1"
+            ).fetchall()
+        except Exception as e:
+            _log(f"[EXPERT-AVATAR] 读模板失败: {e}")
+            conn.close()
+            return result
+
+        for t in templates:
+            tid, domain, name, role, persona, seed, prompt, skills, model = t
+            # 查是否已存在 (同 domain + 同 avatar_name)
+            try:
+                exist = conn.execute(
+                    "SELECT expert_id FROM mt_expert_pool WHERE expert_type='AI_EXPERT_AVATAR' "
+                    "AND field_primary=? AND name=?",
+                    (domain, name)).fetchone()
+                if exist:
+                    result["skipped"] += 1
+                    continue
+            except Exception:
+                pass
+
+            # 创建化身
+            try:
+                conn.execute("""INSERT INTO mt_expert_pool
+                    (name, title, field_primary, field_tags, expert_type,
+                     ai_prompt_template, ai_model_path, eigenflux_id, creation_source,
+                     pool_status, verify_score, ai_capability_score, notes)
+                    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                    (name, role, domain, skills, "AI_EXPERT_AVATAR",
+                     json.dumps({
+                         "persona": persona,
+                         "system_prompt": prompt,
+                         "target_model": model,
+                         "knowledge_seed": seed,
+                     }, ensure_ascii=False),
+                     f"hulk-ollama://{model}", None, "auto_create_ai_expert_avatars",
+                     "VERIFIED", 60, 75,
+                     f"自动创建: {persona[:40]}..."))
+                expert_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+
+                # 创建化身日志
+                conn.execute("""INSERT INTO mt_avatar_creation_log
+                    (expert_id, creation_type, domain, seed_knowledge, brain_feed_volume,
+                     training_status, quality_score, created_by)
+                    VALUES (?,?,?,?,?,?,?,?)""",
+                    (expert_id, "AI_EXPERT_AVATAR", domain, seed, 0,
+                     "ACTIVE", 0, "ai_auto_hire"))
+
+                # 同步注册到 EigenFlux (如果已有注册机制)
+                try:
+                    uid = "MTS-AVATAR-%s" % domain
+                    conn.execute("""INSERT OR IGNORE INTO eigenflux_experts
+                        (name, role, domain, skills, model_version, status)
+                        VALUES (?,?,?,?,?,?)""",
+                        (name, role, domain, skills, model, "active"))
+                except Exception:
+                    pass  # eigenflux_experts 表可能不存在或结构不同
+
+                # 同步注册到 ai_employees (让化身成为可用 AI 员工)
+                try:
+                    conn.execute("""INSERT INTO ai_employees
+                        (name, employee_code, description, capabilities, specialties, status,
+                         accuracy, total_tasks, model_version, created_at, updated_at)
+                        VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
+                        (name, uid, persona, skills, domain + "," + skills,
+                         "active", 0.82, 0, model, _now(), _now()))
+                except Exception as e2:
+                    _log(f"  [WARN] 化身 {name} 注册 ai_employees 失败: {e2}")
+
+                result["created"] += 1
+                result["details"].append({"domain": domain, "name": name, "expert_id": expert_id})
+                _log(f"  ✓ 创建化身 [{domain}] {name} ({role})")
+
+            except Exception as e:
+                result["failed"] += 1
+                _log(f"  ✗ 化身 {name} 创建失败: {e}")
+
+        conn.commit()
+        conn.close()
+
+    _log(f"[EXPERT-AVATAR] 创建 {result['created']}, 跳过 {result['skipped']}, 失败 {result['failed']}")
+    return result
+
+
+# ============================================================
+# 8. 执行一轮完整循环
 # ============================================================
 def run_hire_cycle() -> Dict:
     results = {}
     results["andromeda_bridge"] = andromeda_hiring_bridge()   # 仙女座专家优先
     results["hire_employees"] = auto_hire_employees()
+    results["create_avatars"] = auto_create_ai_expert_avatars()  # v3.0: AI 专家化身自动创建
     results["invite_experts"] = auto_invite_experts()
     # v22.17.0: 邀请流程增强 — 邀请后自动重试未接受邀请
     results["invite_retry"] = retry_pending_invites()
@@ -1166,7 +1270,7 @@ def run_hire_cycle() -> Dict:
     results["recommend_friends"] = auto_recommend_friends()
     results["complete_patrol"] = auto_complete_patrol_team()
     results["fix_code"] = auto_fix_code()
-    _log(f"[CYCLE] {json.dumps({k: {kk: vv for kk, vv in v.items() if kk != 'gap_roles' and kk != 'gap_domains'} for k, v in results.items()}, ensure_ascii=False)}")
+    _log(f"[CYCLE] {json.dumps({k: {kk: vv for kk, vv in v.items() if kk not in ('gap_roles','gap_domains','details')} for k, v in results.items()}, ensure_ascii=False)}")
     return results
 
 
