@@ -20,7 +20,7 @@
 FLOW_ID: flow_andromeda_awakening_20261025
 """
 from __future__ import annotations
-import os, json, time, uuid, sqlite3, urllib.request, urllib.error, logging
+import os, json, time, uuid, sqlite3, urllib.request, urllib.error, socket, logging
 from pathlib import Path
 from threading import Lock
 
@@ -56,22 +56,30 @@ def _post(host: str, path: str, payload: dict) -> dict | None:
     url = _url(host, path)
     data = json.dumps(payload).encode()
     req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})
+    old_timeout = socket.getdefaulttimeout()
+    socket.setdefaulttimeout(READ_TIMEOUT)  # connect+read 统一超时
     try:
-        with urllib.request.urlopen(req, timeout=(CONNECT_TIMEOUT, READ_TIMEOUT)) as resp:
+        with urllib.request.urlopen(req, timeout=READ_TIMEOUT) as resp:
             return json.loads(resp.read().decode())
-    except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, OSError) as e:
+    except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, OSError, socket.timeout) as e:
         log.warning(f"ollama POST {url} fail: {e}")
         return None
+    finally:
+        socket.setdefaulttimeout(old_timeout)
 
 
 def _get(host: str, path: str) -> dict | None:
     url = _url(host, path)
+    old_timeout = socket.getdefaulttimeout()
+    socket.setdefaulttimeout(READ_TIMEOUT)
     try:
-        with urllib.request.urlopen(url, timeout=(CONNECT_TIMEOUT, READ_TIMEOUT)) as resp:
+        with urllib.request.urlopen(url, timeout=READ_TIMEOUT) as resp:
             return json.loads(resp.read().decode())
     except Exception as e:
         log.warning(f"ollama GET {url} fail: {e}")
         return None
+    finally:
+        socket.setdefaulttimeout(old_timeout)
 
 
 # ── 健康检查 ──
