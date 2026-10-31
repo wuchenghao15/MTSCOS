@@ -900,4 +900,52 @@ python3 engines/ai_cnkr_track_engine.py status   # 15 赛道题量/难度/正确
 
 ---
 
+## 21. 移动端历史档案馆（更新及时档案墙 · 历史档案中心）
+
+> flow_mobile_archive_20261031 · 2026-10-31 · 移动端档案馆与历史档案中心建设（任务大厅 7516）
+
+### 21.1 交付总览
+| 模块 | 路由 | 说明 |
+|------|------|------|
+| 移动端档案馆页 | GET /xiaolong/archive | 小龙 App 内模块（X-XL-Token / session 登录可用），移动端布局 |
+| 使用说明书页 | GET /xiaolong/archive/manual | 公开可达，下载中心配套引用 |
+| 档案墙摘要 API | GET /api/xiaolong-archive/summary | 总数 + 分类计数 + 最新 8 卷墙 + 服务端时间戳 |
+| 桌面端档案馆 | GET /andromeda/archive | 既有（flow_archive_20261022），已加移动端互链 |
+| 下载中心卡片 | /download | 「内置模块 · 移动端历史档案馆」卡 + info API modules 字段 |
+
+- **同宗不同源延续**：档案数据统一复用 `/api/archive/*` 单一后端（`iceberg_archive_bp` 函数级复用
+  `_overview/_timeline`），新蓝图 `xiaolong_archive_bp` 独立路由 / 独立移动端模板 / App 鉴权
+- **更新及时档案墙**：最新 8 卷横滑卡片墙，前端 30s 轮询 summary，新档案入库亮提示条点击刷新
+- **七类档案**：版本 / 演化 / 开发流程 / 任务归档 / 规则变更 / 升级报告 / 文案存档（跨主库 + engines 侧库聚合）
+
+### 21.2 历史档案中心与人员配置
+- `mt_lab_centers` 播种第 17 中心 **archive_hall 历史档案中心**（daemon_skill_lab_bp `_SEED_CENTERS` +
+  新蓝图 `_ensure_archive_center` 双保险，幂等）
+- **顾问委员会 5 席**（mt_center_committee_members，ADV_archive_hall）：馆长司马迁 98 / 副馆长班固 94 /
+  档案管理员刘歆 92 / 考据员纪晓岚 90 / 数字化专员王国维 89
+- **全中心缺员补齐机制**（新蓝图 `_init_staffing`，启动幂等执行）：任一 `ADV_{center_code}` 委员会 <3 席时，
+  从该中心历史认领（mt_lab_assignments）员工频次 Top3 补齐 主席/副主席/秘书长；补员后 16/17 中心委员会 ≥3 席，
+  仅监察大队无委员会（无历史认领记录，其本身即监察机构，合理状态）
+
+### 21.3 App 内入口与安装包配套
+- 小龙 App ☰ 抽屉菜单新增「🏛 历史档案馆」入口（templates/xiaolong_app.html）
+- /download 下载中心新增内置模块卡（App 内入口 / 档案墙 / 说明书 / 桌面端互链）
+- `/api/app-download/info` 的 install 新增 `modules` 数组（archive_hall 模块：entry/manual/desktop_entry/auth）
+
+### 21.4 部署与生产记录
+- commit **f971e1e**（已推 GitHub + Gitee）：7 文件 — 新蓝图 + 2 新模板（templates/* 被 .gitignore L125 忽略，需 `git add -f`）
+  + app_download_bp + xiaolong_app.html + iceberg_archive.html + server_real_db 注册块（[XLA-ARCHIVE]）
+- ⚠️ server_real_db.py **不可 scp 覆盖**：mini 生产版领先本地 91 行（P2-20261029 别名修复 / lang_pedagogy 等），
+  本次改用锚点植入（`[ARCHIVE] ⚠️` 行后插 XLA 块）；daemon_skill_lab_bp mini 生产版与本地基线一致可安全覆盖
+- 验收：公网 /xiaolong/archive 302→登录 / manual 200 / summary 200 / download 200 / andromeda/archive 200；
+  登录态 test client 200（档案墙/chips/轮询/说明书链接全在）；新 Flask PID 15475 [XLA-ARCHIVE] 注册日志
+
+### 21.5 数据库膨胀治理议题（历史档案中心首号台账）
+- 2026-10-31 磁盘 100% 满事故：`Database/app.db.nas_clean`（37G，10/27 清理副本残留）+
+  `app.db.scp_failed_*`（3.3G）已删除，释放 40.3G
+- **真凶（未治理，需轮转策略）**：`mt_ai_heartbeat_log` 17.2G（含索引）、`mt_token_wallets` 4.4G、
+  `mt_ai_eigenflux_messages` 3.9G — 心跳/钱包/磋商日志无限增长，建议后续加归档轮转 daemon（转存档案馆后清理）
+
+---
+
 *文档结束 - MTSCOS AI 智能考试系统 v7.2.0*
