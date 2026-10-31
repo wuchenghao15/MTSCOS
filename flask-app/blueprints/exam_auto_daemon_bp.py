@@ -193,14 +193,24 @@ def _run_virtual_exam(cursor, cycles=3):
     for _ in range(cycles):
         grade, subject = random.choice(_GRADE_SUBJECT)
 
-        # 抽题 (优先按 subject 匹配, 否则随机)
+        # 抽题 三级优先: ① grade=赛道精确匹配 (英语赛道引擎已按 grade=track 落库)
+        #               ② subject 模糊匹配
+        #               ③ 随机回退
         cursor.execute("""
             SELECT question_id, answer, content, difficulty
             FROM question_bank
-            WHERE status='published' AND subject LIKE ?
+            WHERE status='published' AND grade = ?
             ORDER BY RANDOM() LIMIT 20
-        """, (f"%{subject[:2]}%",))
+        """, (grade,))
         questions = cursor.fetchall()
+        if len(questions) < 5:
+            cursor.execute("""
+                SELECT question_id, answer, content, difficulty
+                FROM question_bank
+                WHERE status='published' AND subject LIKE ?
+                ORDER BY RANDOM() LIMIT 20
+            """, (f"%{subject[:2]}%",))
+            questions = cursor.fetchall()
         if len(questions) < 5:
             # 回退: 随机抽
             cursor.execute("""
@@ -317,7 +327,7 @@ def _generate_learning_recommendations(cursor, limit=50):
     recs = 0
     for r in rows:
         rec_types = ["question", "knowledge_point", "study_plan", "方向"]
-        rtype = rec_types[hashlib.md5(r["employee_code"].encode()).hexdigest()[0] % 4]
+        rtype = rec_types[int(hashlib.md5(r["employee_code"].encode()).hexdigest()[0], 16) % 4]
         if rtype == "question":
             content = f"针对 '{r['knowledge_point']}' 刷 10 道练习题"
         elif rtype == "knowledge_point":

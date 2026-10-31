@@ -701,6 +701,7 @@ except Exception:
 # ============================================================================
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+APP_DIR = BASE_DIR  # P2-20261029: 统一别名, 修复 CENTER-NODE 远程中心模块 name 'APP_DIR' is not defined
 sys.path.insert(0, BASE_DIR)
 
 try:
@@ -2412,6 +2413,10 @@ _CSRF_EXEMPT_PATHS = [
     '/auth/login',
     '/auth/register', '/logout', '/forgot_password', '/register',
     '/register',
+    # flow_lang_pedagogy_20261031: 多语种平台注册/登录 (guest 状态无 session csrf_token,
+    # 平台业务端点自带 X-Lang-Token 鉴权, 且仍受海关守卫管控)
+    '/api/lang-platform/auth/register',
+    '/api/lang-platform/auth/login',
     '/auth/session_health',
     '/forgot-password',
     '/auth/forgot_password',
@@ -2488,6 +2493,22 @@ _CSRF_EXEMPT_PREFIXES = [
     '/api/mobile/fingerprint/',
     # v22.25.27: 🐉 小龙 App/小程序 — 无浏览器 cookie, 用 X-XL-Token 头鉴权, CSRF 冗余
     '/api/xiaolong/',
+    # v25.7: 👑 SA Prime 旗舰指挥官聊天 — Bearer token 鉴权 (mt_app_token), CSRF 冗余 (TOOLCHAT-006)
+    '/api/sa-prime/',
+    # v25.8: 💬 聊天反馈闭环 — 小龙 PWA/小程序调用, 无浏览器 cookie, CSRF 冗余 (TOOLCHAT-008)
+    '/api/chat-feedback',
+    # flow_lang_pedagogy_20261031: 🌐 多语种平台学习者端点 — 无浏览器 cookie,
+    # 用 X-Lang-Token 头鉴权 (pbkdf2+token), CSRF 冗余; hire/demo 不豁免仍受 CSRF+大厅管控 (TH-20261031-0503)
+    '/api/lang-platform/auth/',
+    '/api/lang-platform/vocab/',
+    '/api/lang-platform/grammar/',
+    '/api/lang-platform/speaking/',
+    '/api/lang-platform/listening/',
+    '/api/lang-platform/community/',
+    '/api/lang-platform/path/',
+    '/api/lang-platform/test/',
+    '/api/lang-platform/tutor',
+    '/api/lang-platform/progress',
     # v25.6: 🌌 仙女座 OpenAI 兼容层 — 外部 IDE 用 Bearer key 鉴权, 无 cookie/无 CSRF token
     '/v1/',
     # v25.3: 📱 移动端主应用 (APK WebView 无跨域 cookie, 整个 /mobile/* 豁免)
@@ -2559,6 +2580,185 @@ _SA_ONLY_PATH_PREFIXES = (
     '/api/server/vikey-status', # VIKEY 状态查询
     '/admin_app/arduino_ide',  # Arduino IDE 管理 (SA 专属)
 )
+
+@app.before_request
+def _force_ai_unify_and_hall():
+    """🔧 flow_force_hall_unify_20261026: 两件硬约束
+    1. /local-chat* → 301 统一到 /ai (不得绕开仙女座)
+    2. 所有带 POST 操作类 API (非查询) → 强制进任务大厅 submit_to_hall()
+       拦截范围: /api/engine/* /api/daemon/* /api/andromeda/* (非 read-only)
+    """
+    from flask import redirect as _rd
+
+    # ── 1. URL 统一: /local-chat (页面) → /ai ──
+    # 只 redirect 页面路径, **绝对不能** redirect /api/local-chat (那是 chat API 前缀!)
+    _p = (request.path or '').rstrip('/')
+    if _p == '/local-chat':
+        # query string 保留, 不要带 trailing / (已 rstrip)
+        _qs = request.query_string.decode() if request.query_string else ''
+        return _rd(f'/ai{"?"+_qs if _qs else ""}', code=301)
+
+    # ── 2. 强制任务大厅拦截 ──
+    if request.method in ('POST', 'PUT', 'DELETE', 'PATCH'):
+        # 绕过白名单: 大厅自己、auth、csrf豁免、引擎内部 API、登录
+        # 🔧 P2 flow_hall_p0_fix_20261026: 移除死白名单 '/api/lab/task-hall' '/api/lab_task_hall'
+        #   (全库无任何路由注册, 纯残留; 白名单必须与真实路由一一对应)
+        _hall_whitelist = (
+            '/api/auth/', '/api/login', '/api/logout', '/api/session',
+            '/api/internal/',
+            '/api/local-chat', '/andromeda/api/persona_chat',  # chat API 放行 (用户消息不算操作改配置)
+            '/api/xiaolong/',  # 🆕 小龙 App 全套放行 (注册/token/heartbeat/chat)
+            '/api/lang-platform/auth/',  # 🌐 多语种平台注册/登录 (自带 token 鉴权, flow_lang_pedagogy_20261031)
+            '/api/lang-platform/vocab/', '/api/lang-platform/grammar/',  # 🌐 学习者交互端点 (X-Lang-Token 鉴权, TH-20261031-0503 用户批准)
+            '/api/lang-platform/speaking/', '/api/lang-platform/listening/',
+            '/api/lang-platform/community/', '/api/lang-platform/path/',
+            '/api/lang-platform/test/', '/api/lang-platform/tutor',
+            '/api/lang-platform/progress',
+            '/api/user-theme/',  # 🎨 用户个性化主题 (TOOLCHAT-003)
+            '/api/user-context/',  # 📦 用户数据空间载入 (TOOLCHAT-004)
+            '/api/sa-prime/',  # 👑 SA 旗舰指挥官聊天 (TOOLCHAT-006)
+            '/api/chat-feedback',  # 💬 聊天反馈闭环 (TOOLCHAT-008)
+            '/index', '/', '/ai', '/andromeda',
+        )
+        if any(_p.startswith(w) for w in _hall_whitelist):
+            return None
+
+        # 已登录用户: 弹大厅提示, 要求先 submit_to_hall
+        if getattr(session, 'get', lambda k: None)('user_id') or 'user_id' in (session or {}):
+            # 检查是否 SA (SA 有权直接操作)
+            try:
+                _uid = session.get('user_id') if session else None
+                if _uid and str(_uid).lower() in ('wuchenghao15', '1'):
+                    return None
+            except:
+                pass
+            # 普通用户: 拦截 + 引导大厅
+            if not _p.startswith('/api/local-chat'):  # chat 已在上面 redirect
+                # 前端 POST → JSON 提示; 浏览器直开 → 302 大厅
+                if request.headers.get('Accept', '').startswith('application/json') or request.path.startswith('/api/'):
+                    from flask import jsonify
+                    return jsonify({'success': False, 'error': 'MUST_SUBMIT_HALL',
+                        'message': '🏛️ 海关总署: 所有操作必须先进任务大厅通关! 请访问 /ai → 任务大厅 提交任务',
+                        'hall_url': '/ai'}), 403
+                return _rd('/ai?require_hall=1', code=302)
+
+    return None
+
+# ═══════════════════════════════════════════════════════════════════
+# flow_force_hall_unify_20261026 §B: 保安大队大厅门口 AI 哨兵
+# /api/security-brigade/gate → 给每个页面顶部的"入厅状态徽章"轮询
+# ═══════════════════════════════════════════════════════════════════
+@app.route('/api/security-brigade/gate', methods=['GET'])
+def api_security_brigade_gate():
+    """🛡️ 大厅门口 AI 哨兵 — 返回当前会话是否已提交大厅任务 + 安全状态
+    前端 /ai /index /andromeda 等所有页面右上角 badge 轮询此端点"""
+    try:
+        from flask import session as _sess
+        _uid = None
+        try: _uid = _sess.get('user_id')
+        except: pass
+        
+        # 查 mt_lab_task_hall 中该用户最近任务状态
+        import sqlite3
+        _c = sqlite3.connect(APP_DB, timeout=5)
+        _uid_str = str(_uid or '')
+        # 大厅状态 (今日新任务)
+        _today = _c.execute("""SELECT COUNT(*) FROM mt_lab_task_hall 
+                     WHERE DATE(created_at)=DATE('now','localtime') 
+                     AND (publisher=? OR publisher_role=?)""",
+                  (_uid_str, _uid_str)).fetchone()[0]
+        
+        # 大厅中未完成任务
+        _pending = _c.execute("""SELECT COUNT(*) FROM mt_lab_task_hall 
+                     WHERE status NOT IN ('DONE','VETOED','CANCELLED')
+                     AND (publisher=? OR publisher_role=?)""",
+                  (_uid_str, _uid_str)).fetchone()[0]
+        
+        # 保安大队今日拦截数
+        _rejected = _c.execute("""SELECT COUNT(*) FROM mt_hall_peacekeeper_review 
+                     WHERE DATE(reviewed_at)=DATE('now','localtime') AND decision='REJECTED'""").fetchone()[0]
+        _c.close()
+        
+        import json as _json
+        return jsonify({
+            'success': True,
+            'sentinel': {
+                'name': '保安大队·大厅门口 AI 哨兵',
+                'code': 'BRIGADE-GATE-001',
+                'status': 'ON_DUTY',
+            },
+            'hall_today': _today,
+            'hall_pending': _pending,
+            'brigade_rejected_today': _rejected,
+            'must_submit_hall': True,  # 硬约束: 所有操作必须先进大厅
+            'hall_url': '/ai',
+        })
+    except Exception as _e:
+        return jsonify({'success': False, 'error': str(_e)[:200]}), 500
+
+# ═══════════════════════════════════════════════════════════════════
+# flow_force_hall_unify_20261026 §C: 强制 submit_to_hall — 非大厅 POST 一律拦截
+# ═══════════════════════════════════════════════════════════════════
+@app.before_request
+def _brigade_force_submit_hall():
+    """🛡️ 保安大队大厅门口强制 submit_to_hall — 所有 POST/PUT/DELETE/PATCH (非白名单)
+    必须在 session 里有 submitted_task_mark 才放行, 否则 403 引导入厅"""
+    _p = (request.path or '').rstrip('/')
+    if request.method not in ('POST', 'PUT', 'DELETE', 'PATCH'):
+        return None
+
+    # 白名单: 大厅自身 + auth + 已在白名单里的
+    # 🔧 P2 flow_hall_p0_fix_20261026: 移除死白名单 '/api/lab/task-hall' '/api/lab_task_hall'
+    _hard_whitelist = (
+        '/api/security-brigade/',  # 哨兵端点
+        '/api/auth/', '/api/login', '/api/logout', '/api/session', '/api/vikey/',
+        '/api/internal/',
+        '/api/local-chat', '/andromeda/api/persona_chat',
+        '/api/xiaolong/',  # 🆕 小龙 App 全套放行
+        '/api/lang-platform/auth/',  # 🌐 多语种平台注册/登录 (自带 token 鉴权, flow_lang_pedagogy_20261031)
+        '/api/lang-platform/vocab/', '/api/lang-platform/grammar/',  # 🌐 学习者交互端点 (X-Lang-Token 鉴权, TH-20261031-0503 用户批准入厅)
+        '/api/lang-platform/speaking/', '/api/lang-platform/listening/',
+        '/api/lang-platform/community/', '/api/lang-platform/path/',
+        '/api/lang-platform/test/', '/api/lang-platform/tutor',
+        '/api/lang-platform/progress',
+        '/api/user-theme/',  # 🎨 用户个性化主题 (TOOLCHAT-003)
+        '/api/sa-prime/',  # 👑 SA 旗舰指挥官聊天 (TOOLCHAT-006)
+        '/api/chat-feedback',  # 💬 聊天反馈闭环 (TOOLCHAT-008)
+        '/api/user-context/',  # 📦 用户数据空间载入 (TOOLCHAT-004)
+        '/api/container/',  # heartbeat 等
+        '/api/andromeda/state',  # 状态查询
+    )
+    if any(_p.startswith(w) for w in _hard_whitelist):
+        return None
+    
+    # SA 放行
+    try:
+        import flask.session as _sess
+        _uid = _sess.get('user_id')
+        if _uid and str(_uid).lower() in ('wuchenghao15', '1'):
+            return None
+        # session 里有 submit_hall_mark 也放行 (说明已进大厅)
+        if _sess.get('submit_hall_mark'):
+            return None
+    except Exception:
+        pass
+    
+    # 拦截: 403 + 引导大厅
+    from flask import jsonify, session as _sess
+    # 清除已过期的 submit_hall_mark
+    if _sess.get('submit_hall_mark_expire') and _sess['submit_hall_mark_expire'] < time.time():
+        _sess.pop('submit_hall_mark', None)
+    
+    if request.headers.get('Accept', '').startswith('application/json') or _p.startswith('/api/'):
+        return jsonify({
+            'success': False,
+            'error': 'MUST_SUBMIT_HALL',
+            'message': '🏛️ 海关总署: 所有操作必须先进任务大厅通关! 请访问 /ai → 任务大厅 提交提案',
+            'hall_url': '/ai',
+            'customs_gate': 'CUSTOMS-GATE-001 ON_DUTY',
+        }), 403
+    from flask import redirect as _rd
+    return _rd('/ai?require_hall=1', code=302)
 
 @app.before_request
 def _sa_path_guard():
@@ -3159,6 +3359,14 @@ try:
 except Exception as _xl_err:
     print(f'[XIAOLONG] ⚠️ 小龙 App 模块加载失败: {_xl_err}')
 
+# ── SA Prime 旗舰聊天 Blueprint: /sa-prime + /api/sa-prime/* (TOOLCHAT-006) ──
+try:
+    from blueprints.sa_prime_bp import sa_prime_bp
+    app.register_blueprint(sa_prime_bp)
+    print('[SA-PRIME] ✅ SA 旗舰指挥官聊天 (/sa-prime · 全模型池+工具直通+指挥官面板) 已注册')
+except Exception as _sp_err:
+    print(f'[SA-PRIME] ⚠️ SA Prime 模块加载失败: {_sp_err}')
+
 # ── 冰山历史档案馆 Blueprint: /andromeda/archive + /api/archive/* (flow_archive_20261022) ──
 try:
     from blueprints.iceberg_archive_bp import archive_bp
@@ -3199,6 +3407,32 @@ try:
     print('[DISASTER-RECOVERY] ✅ 救援中心蓝图已注册 (center/recover/backup)')
 except Exception as _dr_err:
     print(f'[DISASTER-RECOVERY] ⚠️ 救援中心加载失败: {_dr_err}')
+
+# ── WHITEHAT 白帽猎捕系统: /whitehat (SA ONLY, flow_whitehat_hunt_20261027) ──
+try:
+    from blueprints.whitehat_hunt_bp import whitehat_bp
+    app.register_blueprint(whitehat_bp)
+    print('[WHITEHAT] ✅ 白帽猎捕系统已注册 (/whitehat · SA ONLY · 养冰山/仙女座)')
+except Exception as _wh_err:
+    print(f'[WHITEHAT] ⚠️ 白帽猎捕系统加载失败: {_wh_err}')
+
+# ── 数学题型解析教学法 API: /api/math-pedagogy/* (flow_math_pedagogy_20261027) ──
+try:
+    from blueprints.ai_math_pedagogy_bp import ai_math_pedagogy_bp
+    app.register_blueprint(ai_math_pedagogy_bp)
+    print('[MATH-PEDAGOGY] ✅ 数学教学中枢已注册 (solve/create/paper/grade/adapt/tutor/hire)')
+except Exception as _mp_err:
+    print(f'[MATH-PEDAGOGY] ⚠️ 数学教学中枢加载失败: {_mp_err}')
+
+# ── 多语种在线教育平台 API: /api/lang-platform/* (flow_lang_pedagogy_20261031) ──
+try:
+    from blueprints.ai_language_pedagogy_bp import ai_language_pedagogy_bp
+    app.register_blueprint(ai_language_pedagogy_bp)
+    print('[LANG-PLATFORM] ✅ 多语种教育平台已注册 '
+          '(auth/course/vocab/grammar/speaking/listening/progress/path/community/achievements/hire/demo)')
+except Exception as _lp_err:
+    print(f'[LANG-PLATFORM] ⚠️ 多语种教育平台加载失败: {_lp_err}')
+
 
 # ── 备份中心 Webhook: /api/backup/webhook/{github,gitee,health} (flow_backup_webhook_20261025) ──
 try:
@@ -4198,7 +4432,7 @@ _MT_HOTLINK_WHITELIST_PREFIXES = (
     # v22.10.20: 🧠 本地聊天 — 仙女座发散思维引擎页面
     '/local-chat', '/api/local-chat/',
     # v22.25.27: 🐉 小龙 App (PWA/小程序 WebView 无 Referer, /xiaolong* 直达放行)
-    '/xiaolong', '/api/xiaolong/',
+    '/xiaolong', '/api/xiaolong/', '/api/user-theme/',
     # v22.25.29: 🗄️ 冰山历史档案馆 (页面走 /andromeda/ 前缀, API 单独放行)
     '/api/archive/',
     # v22.10.22: 🎯 P1 核心独立页面 (用户可收藏/书签直达, 防盗链不拦截)
@@ -14782,3 +15016,148 @@ try:
     print('[RULE-COMMITTEE] ✅ /rule-committee + /api/rule-committee/* 制法委员会已注册')
 except Exception as _rc_err:
     print(f'[RULE-COMMITTEE] ⚠️ 制法委员会模块加载失败: {_rc_err}')
+
+# ──────────────────────────────────────────────────────────────────
+# 🆕🧠 远程中心 Agent 接口 (flow_center_remote_deploy_20261026)
+# 4 个轻量 REST 端点: register / log-batch / directions / heartbeat
+# 让 14 中心脱离开发机, 驻扎到远程服务器节点活起来
+# ──────────────────────────────────────────────────────────────────
+try:
+    # 建表
+    _hub_c = sqlite3.connect(os.path.join(APP_DIR, 'database', 'app.db'), timeout=15)
+    _hub_c.execute('PRAGMA busy_timeout=15000')
+    _hub_c.execute("""CREATE TABLE IF NOT EXISTS mt_center_node_registry (
+        node_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        agent_id TEXT UNIQUE NOT NULL,
+        agent_version TEXT,
+        flow_id TEXT,
+        center_name TEXT NOT NULL,
+        node_host TEXT,
+        node_ip TEXT,
+        node_port INTEGER DEFAULT 0,
+        platform TEXT,
+        python_ver TEXT,
+        hub_url TEXT,
+        duty TEXT,
+        pid INTEGER DEFAULT 0,
+        capabilities TEXT,
+        status TEXT DEFAULT 'REGISTERED',   -- REGISTERED / LIVE / OFFLINE / VETOED
+        registered_at TEXT,
+        last_heartbeat TEXT,
+        last_log_push TEXT,
+        logs_pushed INTEGER DEFAULT 0,
+        directions_fetched INTEGER DEFAULT 0,
+        UNIQUE(center_name, node_ip))""")
+    _hub_c.execute("""CREATE INDEX IF NOT EXISTS idx_cnr_center ON mt_center_node_registry(center_name)""")
+    _hub_c.execute("""CREATE INDEX IF NOT EXISTS idx_cnr_status ON mt_center_node_registry(status)""")
+    _hub_c.execute("""CREATE TABLE IF NOT EXISTS mt_center_node_log_stream (
+        stream_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        agent_id TEXT NOT NULL,
+        center_name TEXT,
+        action TEXT,
+        outcome TEXT,
+        detail TEXT,
+        remote_log_id INTEGER,
+        received_at TEXT DEFAULT (datetime('now','localtime')))""")
+    _hub_c.commit()
+    _hub_c.close()
+
+    # ① 注册接口
+    @app.route('/api/center-node/register', methods=['POST'])
+    def api_center_node_register():
+        try:
+            d = request.get_json(force=True)
+            agent_id = d.get('agent_id', 'UNKNOWN')
+            center = d.get('center_name', '')
+            node_ip = d.get('node_ip', '')
+            if not center:
+                return jsonify({'ok': False, 'err': 'center_name required'}), 400
+            conn = get_db()
+            conn.execute("""INSERT OR REPLACE INTO mt_center_node_registry
+                (agent_id, agent_version, flow_id, center_name, node_host, node_ip,
+                 node_port, platform, python_ver, hub_url, duty, pid, capabilities,
+                 status, registered_at, last_heartbeat)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,'LIVE',datetime('now','localtime'),datetime('now','localtime'))""",
+                (agent_id, d.get('agent_version','?'), d.get('flow_id','?'),
+                 center, d.get('node_host',''), node_ip, d.get('node_port',0),
+                 d.get('platform',''), d.get('python',''), d.get('hub_url',''),
+                 d.get('duty',''), d.get('pid',0),
+                 json.dumps(d.get('capabilities',[]), ensure_ascii=False)))
+            conn.commit()
+            print(f'[CENTER-NODE] 🧠 注册 agent={agent_id} center={center} node={node_ip} LIVE')
+            return jsonify({'ok': True, 'agent_id': agent_id, 'hub_ack': datetime.now().strftime('%H:%M:%S')})
+        except Exception as _e:
+            return jsonify({'ok': False, 'err': str(_e)[:100]}), 500
+
+    # ② 日志批量上报
+    @app.route('/api/center-node/log-batch', methods=['POST'])
+    def api_center_node_log_batch():
+        try:
+            d = request.get_json(force=True)
+            agent_id = d.get('agent_id', '')
+            batch = d.get('logs', [])
+            if not batch:
+                return jsonify({'ok': True, 'received': 0})
+            conn = get_db()
+            pushed = 0
+            for item in batch:
+                conn.execute("""INSERT OR IGNORE INTO mt_center_node_log_stream
+                    (agent_id, center_name, action, outcome, detail, remote_log_id)
+                    VALUES (?,?,?,?,?,?)""",
+                    (agent_id, item.get('center_name',''), item.get('action',''),
+                     item.get('outcome',''), item.get('detail',''), item.get('log_id',0)))
+                pushed += 1
+            conn.execute("""UPDATE mt_center_node_registry
+                SET last_log_push=datetime('now','localtime'),
+                    logs_pushed=logs_pushed+? WHERE agent_id=?""",
+                (pushed, agent_id))
+            conn.commit()
+            return jsonify({'ok': True, 'received': pushed})
+        except Exception as _e:
+            return jsonify({'ok': False, 'err': str(_e)[:100]}), 500
+
+    # ③ 拉方向种子
+    @app.route('/api/center-node/directions', methods=['GET'])
+    def api_center_node_directions():
+        try:
+            center = request.args.get('center', '')
+            conn = get_db()
+            rows = conn.execute("""SELECT direction_id, direction_title, seed, status, auto_spawned
+                FROM mt_center_direction_pool WHERE center_name=?
+                AND status IN ('SEED','ACTIVE')
+                ORDER BY priority DESC, ROWID DESC LIMIT 10""", (center,)).fetchall()
+            # 同时写 registry 的 directions_fetched++
+            agent_id = request.args.get('agent_id', '')
+            if agent_id:
+                conn.execute("""UPDATE mt_center_node_registry
+                    SET directions_fetched=directions_fetched+1,
+                        last_heartbeat=datetime('now','localtime') WHERE agent_id=?""", (agent_id,))
+                conn.commit()
+            return jsonify({
+                'ok': True, 'center': center,
+                'directions': [
+                    {'id': r[0], 'title': r[1], 'seed': r[2], 'status': r[3], 'auto_spawned': r[4]}
+                    for r in rows
+                ]
+            })
+        except Exception as _e:
+            return jsonify({'ok': False, 'err': str(_e)[:100]}), 500
+
+    # ④ 心跳
+    @app.route('/api/center-node/heartbeat', methods=['POST'])
+    def api_center_node_heartbeat():
+        try:
+            d = request.get_json(force=True)
+            agent_id = d.get('agent_id', '')
+            conn = get_db()
+            conn.execute("""UPDATE mt_center_node_registry
+                SET last_heartbeat=datetime('now','localtime'), status='LIVE'
+                WHERE agent_id=?""", (agent_id,))
+            conn.commit()
+            return jsonify({'ok': True})
+        except Exception as _e:
+            return jsonify({'ok': False, 'err': str(_e)[:100]}), 500
+
+    print('[CENTER-NODE] ✅ /api/center-node/* 远程中心 Agent 接口已注册 (register/log-batch/directions/heartbeat)')
+except Exception as _cn_err:
+    print(f'[CENTER-NODE] ⚠️ 远程中心 Agent 接口加载失败: {_cn_err}')
