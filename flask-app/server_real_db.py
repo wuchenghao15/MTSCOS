@@ -3367,6 +3367,14 @@ try:
 except Exception as _cnkr_err:
     print(f'[CNKR-TRACK] ⚠️ 汉语韩语赛道模块加载失败: {_cnkr_err}')
 
+# ── APP 下载中心 Blueprint: /download (flow_app_download_20261031) ──
+try:
+    from blueprints.app_download_bp import app_download_bp
+    app.register_blueprint(app_download_bp)
+    print('[APP-DOWNLOAD] ✅ 官网 APP 下载中心 (/download · 小龙 App 全平台安装引导) 已注册')
+except Exception as _adl_err:
+    print(f'[APP-DOWNLOAD] ⚠️ APP 下载中心模块加载失败: {_adl_err}')
+
 # ── 跨团队协作总线 Blueprint: /api/collab/* (flow_team_collab_20261022) ──
 try:
     from blueprints.team_collab_bp import team_collab_bp
@@ -4457,6 +4465,8 @@ _MT_HOTLINK_WHITELIST_PREFIXES = (
     '/local-chat', '/api/local-chat/',
     # v22.25.27: 🐉 小龙 App (PWA/小程序 WebView 无 Referer, /xiaolong* 直达放行)
     '/xiaolong', '/api/xiaolong/', '/api/user-theme/',
+    # flow_app_download_20261031: 📲 官网 APP 下载中心 (公开页, 用户收藏/分享直达)
+    '/download', '/api/app-download/',
     # v22.25.29: 🗄️ 冰山历史档案馆 (页面走 /andromeda/ 前缀, API 单独放行)
     '/api/archive/',
     # v22.10.22: 🎯 P1 核心独立页面 (用户可收藏/书签直达, 防盗链不拦截)
