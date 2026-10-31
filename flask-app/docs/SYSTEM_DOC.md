@@ -789,4 +789,89 @@ python3 engines/ai_english_track_engine.py status   # 15 赛道题量/难度/正
 
 ---
 
+## 18. 汉语·韩语考试赛道引擎（普通话/语文/HSK/TOPIK）
+
+> flow_cnkr_track_20261031 · 2026-10-31 上线 · 与 §17 英语赛道引擎同架构姊妹篇
+
+### 18.1 功能概述
+汉语韩语赛道引擎为「汉语类」与「韩语类」考试建立 15 条独立赛道：普通话水平测试 4 档、中学语文（中考/高考）、汉语水平考试 HSK 4-6 级、韩国语能力考试 TOPIK 1-6 级。每条赛道拥有独立考点知识库（PSC 读音辨析 / 语文文学常识 / HSK 词汇 / TOPIK 语法）与词汇库，本地零 token 造题、自动补题，并与考试院虚拟模考、语言教学平台三端联动。
+
+### 18.2 15 赛道矩阵
+| 族 | subject | 赛道 |
+|----|---------|------|
+| 普通话 PSC | 普通话 | 一级乙等 / 二级甲等 / 二级乙等 / 三级甲等 |
+| 中学语文 | 语文 | 中考语文 / 高考语文 |
+| HSK | 汉语 | HSK四级 / HSK五级 / HSK六级 |
+| TOPIK | 韩语 | TOPIK 1级 ~ 6级 |
+
+### 18.3 技术实现
+- 引擎文件：`engines/ai_cnkr_track_engine.py`（考点 KB 150 题 + 词汇库 150 词 + 变体扩充 + 选项洗牌）
+- 蓝图文件：`blueprints/cnkr_track_bp.py`
+- 双写联动：`question_bank`（subject=普通话/语文/汉语/韩语, grade=赛道名）+ `mt_lang_qbank`（language='zh'/'ko', topic=赛道）
+- 词汇题按族定制题干：普通话=字词分类判断（轻声/儿化/多音字/易误读）；语文=成语释义；HSK/TOPIK=词义选择
+- 幂等去重：`uniq_qb_content` 唯一索引；状态表 `mt_cnkr_tracks` + 日志 `mt_cnkr_track_log`
+- 抽题联动：考试院 `_GRADE_SUBJECT` 已含全部 15 赛道，`grade=赛道名` 精确抽题
+
+### 18.4 CLI 命令
+```bash
+python3 engines/ai_cnkr_track_engine.py init     # 建表 + 每赛道播种 30 题 + 课程挂接
+python3 engines/ai_cnkr_track_engine.py expand   # 弱赛道(<50题)补 12 题 + 随机 3 赛道补 6 题
+python3 engines/ai_cnkr_track_engine.py status   # 15 赛道题量/难度/正确率总览
+```
+
+### 18.5 API 接口
+| 接口 | 方法 | 说明 |
+|------|------|------|
+| /cnkr-tracks | GET | 赛道总览页面（与 /english-tracks 同风格） |
+| /api/cnkr-track/overview | GET | 15 赛道按族分组总览（题量/难度/正确率/healthy/语言） |
+| /api/cnkr-track/questions?track=高考语文&limit=10 | GET | 按赛道抽题（自动映射 subject） |
+| /api/cnkr-track/expand | POST | 指定赛道扩题（JSON: {"track": "..."}）或缺省跑一轮 daemon_cycle |
+
+### 18.6 自动补题守护
+- 守护线程：`cnkr-track-daemon`（server_real_db.py 启动时挂载）
+- 频率：每 30 分钟；题量 < 50 的弱赛道自动补 12 题，另随机 3 赛道各补 6 题
+- 课程挂接：`mt_lang_courses`（ZH-PSC1A…KO-TOPIK6）+ 每课程 4 课时
+
+### 18.7 生产状态（mini 舰队）
+- 15/15 赛道全 healthy（828 题），虚拟模考闭环实测：TOPIK 3级 ×2 + 高考语文 ×1 session，1000 条 exam_results，正确率 65.6%
+- 公网入口：`https://www.mtos.site/cnkr-tracks`
+- 交付记录：任务大厅 id=7513（TH-20261031-0901）DONE；commit 5eb9653 已推 GitHub + Gitee
+
+---
+
+## 19. 官网 APP 下载中心（/download · 小龙 App 全平台安装引导）
+
+> flow_app_download_20261031 · 2026-10-31 上线 · 小龙 App 官网唯一公开下载入口
+
+### 19.1 功能概述
+官网新增公开「APP 下载中心」页 `/download`，让所有用户通过官网下载、适配、安装和使用移动端 APP（小龙 · 仙女座聊天，PWA 形态，v22.25.42，无 APK 免商店上架）。页面按访问设备 UA 自动适配安装方式，并已加入防盗链公网直达白名单（免登录、可收藏/分享）。
+
+### 19.2 平台自适应矩阵
+| 平台 | 安装方式 |
+|------|---------|
+| Android（Chrome/Edge） | beforeinstallprompt 一键安装 + 菜单「安装应用/添加到主屏幕」步骤兜底 |
+| iPhone / iPad（Safari） | 「添加到主屏幕」四步图文引导（A2HS，苹果政策限制） |
+| 桌面（Chrome/Edge） | PWA 安装独立窗口运行 |
+| 微信 / QQ 内置浏览器 | 自动提示「在浏览器打开」后再安装 |
+
+### 19.3 技术实现
+- 蓝图文件：`blueprints/app_download_bp.py`（页面内联模板 + 信息 API，无外部依赖）
+- 注册点：`server_real_db.py` [APP-DOWNLOAD]
+- 公网放行：`/download` 与 `/api/app-download/` 加入 `_MT_HOTLINK_WHITELIST_PREFIXES`（无 Referer 直达）
+- 页面引用 `<link rel="manifest" href="/xiaolong/manifest">`，Chrome 在本页即可捕获 beforeinstallprompt 一键安装；安装成功后桌面图标直达 `/xiaolong`
+- 已安装检测：`display-mode: standalone` 时按钮切换为「已安装 · 点击打开」
+- APP 信息卡：小龙 App v22.25.42 · 入口 `/xiaolong` · 游客免登录畅聊 `/ai` · 四通道服务器地址（公网/Tailscale/局域网/同源）· 三层授权说明
+
+### 19.4 API 接口
+| 接口 | 方法 | 说明 |
+|------|------|------|
+| /download | GET | 下载中心页（公开，平台自适应安装引导） |
+| /api/app-download/info | GET | 下载信息 JSON（版本/入口/manifest/sw/icon/服务器列表/授权层/游客模式） |
+
+### 19.5 生产状态（mini 舰队）
+- mini `/download` 200、公网 `https://www.mtos.site/download` 200、`/xiaolong/manifest` 可拉取
+- 交付记录：任务大厅 id=7514（TH-20261031-0902）DONE；ir14_flow_id=flow_app_download_20261031
+
+---
+
 *文档结束 - MTSCOS AI 智能考试系统 v7.2.0*
