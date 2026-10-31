@@ -3343,6 +3343,18 @@ except Exception as _ex_err:
 except Exception as _ti_err:
     print(f'[THREAT-INTEL] ⚠️ 威胁情报模块加载失败: {_ti_err}')
 
+# ── 英语考试赛道 Blueprint: /english-tracks (flow_english_track_20261031) ──
+try:
+    from blueprints.english_track_bp import english_track_bp
+    app.register_blueprint(english_track_bp)
+    print('[ENG-TRACK] ✅ /english-tracks + /api/english-track/* 英语赛道已注册 (雅思/托福/新概念/四六级考研 15 赛道)')
+    # 🆕 全自动守护线程: 每 30min 自动补弱赛道题量 (零 token)
+    from engines.ai_english_track_engine import run_daemon_loop as _eng_daemon
+    threading.Thread(target=_eng_daemon, args=(1800,), daemon=True, name='eng-track-daemon').start()
+    print('[ENG-TRACK] 🛰️ eng-track-daemon 守护线程已启动 — 每 30min 自动补题 (全自动)')
+except Exception as _engtr_err:
+    print(f'[ENG-TRACK] ⚠️ 英语赛道模块加载失败: {_engtr_err}')
+
 # ── 跨团队协作总线 Blueprint: /api/collab/* (flow_team_collab_20261022) ──
 try:
     from blueprints.team_collab_bp import team_collab_bp
