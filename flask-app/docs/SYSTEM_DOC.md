@@ -741,4 +741,52 @@ python app.py --port 8888
 
 ---
 
+## 17. 英语考试赛道引擎（雅思/托福/新概念/四六级考研）
+
+> flow_english_track_20261031 · 2026-10-31 上线
+
+### 17.1 功能概述
+英语考试赛道引擎为英语类考试建立 15 条独立赛道，覆盖出国语言考试（雅思/托福）、经典教材（新概念英语 1-4 册）与国内应试（四级/六级/考研英语）。每条赛道拥有独立考点知识库与词汇库，本地零 token 自动造题、自动补题、自动校准难度，并与考试院虚拟模考联动。
+
+### 17.2 15 赛道矩阵
+| 族 | 赛道 |
+|----|------|
+| 雅思 IELTS | 雅思听力 / 雅思阅读 / 雅思写作 / 雅思口语 |
+| 托福 TOEFL | 托福阅读 / 托福听力 / 托福口语 / 托福写作 |
+| 新概念 NCE | 新概念第一册 / 第二册 / 第三册 / 第四册 |
+| 国内应试 | 英语四级 / 英语六级 / 考研英语 |
+
+### 17.3 技术实现
+- 引擎文件：`engines/ai_english_track_engine.py`（考点 KB + 词汇库 + 变体扩充 + 选项洗牌）
+- 蓝图文件：`blueprints/english_track_bp.py`
+- 双写联动：`question_bank`（subject='英语', grade=赛道名）+ `mt_lang_qbank`（language='en', topic=赛道）→ 考试院与语言教学平台共用
+- 幂等去重：`uniq_qb_content` 唯一索引，重复变体自动跳过
+- 抽题联动：考试院虚拟模考按 `grade=赛道名` 三级优先精确抽题（grade 匹配 → subject 模糊 → 随机回退）
+
+### 17.4 CLI 命令
+```bash
+python3 engines/ai_english_track_engine.py init     # 建表 + 每赛道播种 30 题 + 课程挂接
+python3 engines/ai_english_track_engine.py expand   # 弱赛道(<50题)补 12 题 + 随机 3 赛道补 6 题
+python3 engines/ai_english_track_engine.py status   # 15 赛道题量/难度/正确率总览
+```
+
+### 17.5 API 接口
+| 接口 | 方法 | 说明 |
+|------|------|------|
+| /english-tracks | GET | 赛道总览页面（与 /exam-auto 同风格） |
+| /api/english-track/overview | GET | 15 赛道按族分组总览（题量/难度/正确率/healthy） |
+| /api/english-track/questions?track=雅思听力&limit=10 | GET | 按赛道抽题 |
+| /api/english-track/expand | POST | 指定赛道扩题（JSON: {"track": "..."}）或缺省跑一轮 daemon_cycle |
+
+### 17.6 自动补题守护
+- 守护线程：`eng-track-daemon`（server_real_db.py 启动时挂载）
+- 频率：每 30 分钟；题量 < 50 的弱赛道自动补 12 题，另随机 3 赛道各补 6 题
+- 全操作留痕：`mt_eng_track_log` + `mt_eng_tracks` 状态表
+
+### 17.7 生产状态（mini 舰队）
+- 15/15 赛道全 healthy（各 54 题，共 810 题），虚拟考生正确率已回流（如雅思听力 63.4%、新概念第四册 66.0%）
+- 公网入口：`https://www.mtos.site/english-tracks`
+
+---
+
 *文档结束 - MTSCOS AI 智能考试系统 v7.2.0*
