@@ -47,6 +47,13 @@ def app_download_info():
             'page': '/download', 'app_entry': '/xiaolong', 'guest_entry': '/ai',
             'manifest': '/xiaolong/manifest', 'sw': '/xiaolong/sw.js',
             'icon': '/xiaolong/icon.svg',
+            'modules': [{
+                'key': 'archive_hall', 'name': '移动端历史档案馆',
+                'entry': '/xiaolong/archive', 'manual': '/xiaolong/archive/manual',
+                'desktop_entry': '/andromeda/archive', 'auth': 'login_or_xl_token',
+                'description': '7 类历史档案跨库聚合 · 更新及时档案墙 (30s 巡检) · 统一时间线/检索/详情',
+                'flow_id': 'flow_mobile_archive_20261031',
+            }],
         },
         'servers': [
             {'key': 'public', 'label': '公网 (全球可达)', 'base': 'https://mtos.site', 'priority': 1},
@@ -187,6 +194,17 @@ footer{text-align:center;color:rgba(154,163,199,.6);font-size:12px;margin-top:26
       <div class="step"><div class="n">2</div><div class="tx">地址栏右侧出现 <span class="kbd">⊕ 安装</span> 图标点击安装；或菜单 <span class="kbd">⋮</span> → <b>「投射、保存和分享」</b> → <b>「安装页面为应用」</b>。</div></div>
       <div class="step"><div class="n">3</div><div class="tx">安装后以 <b>独立窗口</b> 运行，可在 Dock / 开始菜单固定。</div></div>
     </div>
+  </div>
+
+  <div class="card">
+    <h3 class="sec">内置模块 · 移动端历史档案馆 🏛</h3>
+    <table class="srv">
+      <tr><td>App 内入口</td><td>小龙 App ☰ 菜单 → 「历史档案馆」，或 <a href="/xiaolong/archive" style="color:var(--cyan)">/xiaolong/archive</a></td></tr>
+      <tr><td>更新及时档案墙</td><td>最新归档卡片墙 · 每 30 秒自动巡检，新档案亮提示</td></tr>
+      <tr><td>使用说明书</td><td><a href="/xiaolong/archive/manual" style="color:var(--cyan)">/xiaolong/archive/manual</a>（安装引导 / 七类档案 / 检索方法 / FAQ）</td></tr>
+      <tr><td>桌面端互链</td><td><a href="/andromeda/archive" style="color:var(--cyan)">/andromeda/archive</a>（双端同宗同数据，合并历史档案中心）</td></tr>
+    </table>
+    <div class="note">跨库聚合 7 类历史档案：版本 / 演化 / 开发流程 / 任务归档 / 规则变更 / 升级报告 / 文案存档。</div>
   </div>
 
   <div class="card">

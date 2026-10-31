@@ -3407,6 +3407,14 @@ try:
 except Exception as _ar_err:
     print(f'[ARCHIVE] ⚠️ 历史档案馆模块加载失败: {_ar_err}')
 
+# ── 移动端历史档案馆 Blueprint: /xiaolong/archive (flow_mobile_archive_20261031) ──
+try:
+    from blueprints.xiaolong_archive_bp import xla_bp
+    app.register_blueprint(xla_bp)
+    print('[XLA-ARCHIVE] ✅ 移动端历史档案馆 (/xiaolong/archive · 档案墙/说明书/历史档案中心) 已注册')
+except Exception as _xla_err:
+    print(f'[XLA-ARCHIVE] ⚠️ 移动端历史档案馆模块加载失败: {_xla_err}')
+
 # ── 仙女座 · 聊天系统补全 Blueprint: /api/local-chat/* 增强 (flow_chat_complete_20261022) ──
 try:
     from blueprints.andromeda_chat_bp import chat_plus_bp

@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b1020">
+<title>历史档案馆 · 移动端 — MTSCOS 冰山</title>
+<style>
+:root{--bg:#0b1020;--panel:rgba(17,26,48,.82);--line:rgba(120,160,255,.18);
+--ink:#e6edff;--muted:#8fa3c8;--brand:#4f8cff;--brand2:#8b5cf6;--gold:#d8b45a;--ok:#10b981}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{background:radial-gradient(1100px 560px at 12% -8%,#1b2a52 0%,transparent 58%),
+     radial-gradient(900px 520px at 92% 108%,#2a1b52 0%,transparent 55%),var(--bg);
+color:var(--ink);font:14px/1.6 -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif;
+min-height:100vh;padding:max(12px,env(safe-area-inset-top)) 12px calc(24px + env(safe-area-inset-bottom))}
+.wrap{max-width:560px;margin:0 auto}
+.top{display:flex;align-items:center;gap:10px;padding:8px 2px 12px}
+.top .orb{width:38px;height:38px;border-radius:12px;flex:none;display:grid;place-items:center;
+background:linear-gradient(135deg,var(--brand),var(--brand2));box-shadow:0 6px 22px rgba(79,140,255,.4)}
+.top h1{font-size:17px;font-weight:700;letter-spacing:.3px}
+.top .sub{font-size:10.5px;color:var(--muted);margin-top:1px}
+.top .manual{margin-left:auto;font-size:11px;color:#9bb6ff;text-decoration:none;
+border:1px solid rgba(120,160,255,.3);border-radius:999px;padding:5px 11px}
+.fresh{display:none;margin:0 0 10px;padding:8px 12px;border-radius:12px;font-size:11.5px;
+background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.4);color:#6ee7b7;
+align-items:center;gap:8px;cursor:pointer}
+.fresh.show{display:flex}
+.fresh .dot{width:7px;height:7px;border-radius:50%;background:var(--ok);animation:pulse 1.4s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+.sec{font-size:12px;color:var(--gold);font-weight:600;letter-spacing:1px;margin:14px 2px 8px;
+display:flex;align-items:center;gap:6px}
+.sec small{color:var(--muted);font-weight:400;letter-spacing:0;margin-left:auto;font-size:10px}
+/* ── 档案墙: 横滑最新归档 ── */
+.wall{display:flex;gap:10px;overflow-x:auto;padding:2px 2px 10px;scroll-snap-type:x mandatory;
+-webkit-overflow-scrolling:touch}
+.wall::-webkit-scrollbar{display:none}
+.wcard{flex:0 0 200px;scroll-snap-align:start;background:var(--panel);border:1px solid var(--line);
+border-radius:14px;padding:11px 12px;cursor:pointer}
+.wcard .k{font-size:9.5px;display:inline-block;padding:1px 8px;border-radius:999px;
+border:1px solid rgba(120,160,255,.35);color:#9bb6ff}
+.wcard .d{font-size:9.5px;color:var(--muted);margin-top:6px;font-variant-numeric:tabular-nums}
+.wcard .t{font-size:12.5px;font-weight:600;margin-top:4px;display:-webkit-box;
+-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.45}
+.wcard .s{font-size:10px;color:var(--muted);margin-top:4px;overflow:hidden;
+text-overflow:ellipsis;white-space:nowrap}
+/* ── 总览统计 ── */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:9px 6px;text-align:center}
+.stat .v{font-size:17px;font-weight:700}
+.stat .k{font-size:9.5px;color:var(--muted);margin-top:2px}
+/* ── 分类 chips + 检索 ── */
+.chips{display:flex;gap:7px;overflow-x:auto;padding:2px 2px 8px}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;padding:6px 12px;border:1px solid var(--line);border-radius:999px;font-size:11.5px;
+color:var(--muted);background:rgba(255,255,255,.02);cursor:pointer;transition:.15s}
+.chip.active{background:linear-gradient(135deg,rgba(79,140,255,.3),rgba(139,92,246,.28));
+color:#fff;border-color:rgba(140,170,255,.6)}
+.chip b{color:#fff;margin-left:3px;font-weight:600}
+.search{display:flex;gap:8px;margin:4px 0 12px}
+.search input{flex:1;min-width:0;background:rgba(255,255,255,.05);border:1px solid var(--line);
+border-radius:11px;color:var(--ink);padding:9px 12px;font-size:13px;outline:none}
+.search input:focus{border-color:rgba(79,140,255,.6)}
+.search button{flex:none;border:0;border-radius:11px;color:#fff;padding:0 16px;font-size:12.5px;
+cursor:pointer;background:linear-gradient(135deg,var(--brand),var(--brand2))}
+/* ── 时间线 ── */
+.list{background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.item{display:flex;gap:10px;padding:12px 13px;border-bottom:1px solid rgba(120,160,255,.1);cursor:pointer}
+.item:active{background:rgba(79,140,255,.1)}
+.item:last-child{border-bottom:0}
+.item .date{width:76px;flex:none;color:var(--muted);font-size:10px;font-variant-numeric:tabular-nums;padding-top:2px}
+.item .kind{flex:none;font-size:9px;padding:1px 7px;border-radius:999px;height:17px;line-height:15px;
+border:1px solid rgba(120,160,255,.35);color:#9bb6ff;align-self:flex-start}
+.item .kind.version{border-color:rgba(16,185,129,.45);color:#34d399}
+.item .kind.evolution{border-color:rgba(139,92,246,.45);color:#a78bfa}
+.item .kind.task{border-color:rgba(245,158,11,.45);color:#fbbf24}
+.item .kind.rule{border-color:rgba(239,68,68,.45);color:#f87171}
+.item .kind.upgrade{border-color:rgba(79,140,255,.45);color:#60a5fa}
+.item .kind.copy{border-color:rgba(148,163,184,.5);color:#cbd5e1}
+.item .bd{flex:1;min-width:0}
+.item .t{font-size:12.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.item .s{font-size:10.5px;color:var(--muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.more{display:block;margin:12px auto;padding:8px 24px;border-radius:10px;border:1px solid var(--line);
+background:transparent;color:var(--muted);font-size:12px;cursor:pointer}
+.empty{padding:36px;text-align:center;color:var(--muted);font-size:12px}
+/* ── 详情弹层 ── */
+.mask{position:fixed;inset:0;background:rgba(4,8,18,.72);backdrop-filter:blur(6px);
+display:none;align-items:flex-end;justify-content:center;z-index:90}
+.mask.show{display:flex}
+.sheet{width:100%;max-width:560px;max-height:78vh;overflow-y:auto;background:#0e1730;
+border:1px solid rgba(120,160,255,.3);border-radius:20px 20px 0 0;padding:18px 16px 26px}
+.sheet h3{font-size:15px;font-weight:700;padding-right:30px;line-height:1.5}
+.sheet .meta{font-size:10.5px;color:var(--muted);margin:6px 0 12px}
+.sheet .bd{font-size:13px;color:#c9d6f2;white-space:pre-wrap;word-break:break-word;line-height:1.7}
+.sheet .x{position:absolute;right:14px;top:14px;width:28px;height:28px;border-radius:50%;
+border:1px solid var(--line);background:transparent;color:var(--muted);font-size:14px;cursor:pointer}
+.sheet{position:relative}
+.foot{text-align:center;font-size:10px;color:var(--muted);margin-top:18px;line-height:1.8}
+.foot a{color:#9bb6ff;text-decoration:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="orb">
+      <svg viewBox="0 0 32 32" width="20" height="20" xmlns="http://www.w3.org/2000/svg">
+        <polygon points="16,4 27,18 5,18" fill="#E0E7FF"/>
+        <polygon points="7,18 25,18 21,25 11,25" fill="#4338CA"/>
+        <polygon points="11,25 21,25 19,30 13,30" fill="#1E1B4B"/>
+      </svg>
+    </div>
+    <div>
+      <h1>历史档案馆</h1>
+      <div class="sub">移动端 · 历史档案中心 · {{ app_version }}</div>
+    </div>
+    <a class="manual" href="/xiaolong/archive/manual">说明书</a>
+  </div>
+
+  <div class="fresh" id="fresh"><span class="dot"></span><span id="freshTxt">有新档案入库</span></div>
+
+  <div class="sec">更新及时档案墙 <small id="wallTime">—</small></div>
+  <div class="wall" id="wall"><div class="empty" style="width:100%">档案墙加载中…</div></div>
+
+  <div class="sec">馆藏总览 <small id="ovTotal"></small></div>
+  <div class="stats" id="stats"></div>
+
+  <div class="sec">档案时间线 <small>跨库聚合 7 类</small></div>
+  <div class="chips" id="chips"></div>
+  <div class="search">
+    <input id="q" type="search" placeholder="跨档案检索: 版本号 / 任务 / 规则 / 关键词" enterkeyhint="search">
+    <button id="qBtn">检索</button>
+  </div>
+  <div class="list" id="list"><div class="empty">加载中…</div></div>
+  <button class="more" id="more" style="display:none">加载更多</button>
+
+  <div class="foot">
+    桌面端档案馆 <a href="/andromeda/archive">/andromeda/archive</a> ·
+    下载 App <a href="/download">/download</a><br>
+    历史档案中心 archive_hall · {{ flow_id }}
+  </div>
+</div>
+
+<div class="mask" id="mask">
+  <div class="sheet">
+    <button class="x" id="sheetX">✕</button>
+    <h3 id="shT">—</h3>
+    <div class="meta" id="shM">—</div>
+    <div class="bd" id="shB">—</div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var $ = function (s) { return document.querySelector(s); };
+  var KINDS = {{ kinds | tojson }};
+  var kind = 'all', page = 1, q = '', busy = false, hasMore = false;
+  var lastTop = '', lastTotal = null;
+
+  function esc(s){var d=document.createElement('div');d.textContent=s==null?'':String(s);return d.innerHTML;}
+  function kindLabel(k){return (KINDS[k]||k);}
+  function fmtDate(s){return (s||'').replace('T',' ').slice(0,16);}
+
+  // ── 档案墙 + 总览 ──
+  function loadSummary(first) {
+    fetch('/api/xiaolong-archive/summary').then(r=>r.json()).then(function (d) {
+      if (!d || !d.ok) return;
+      $('#wallTime').textContent = '更新于 ' + (d.server_time||'').slice(11,16);
+      $('#ovTotal').textContent = '共 ' + d.total + ' 卷';
+      var st = $('#stats'); st.innerHTML = '';
+      d.kinds.forEach(function (k) {
+        var el = document.createElement('div'); el.className = 'stat';
+        el.innerHTML = '<div class="v">'+k.count+'</div><div class="k">'+esc(k.label)+'</div>';
+        st.appendChild(el);
+      });
+      var w = $('#wall'); w.innerHTML = '';
+      (d.wall||[]).forEach(function (it) {
+        var el = document.createElement('div'); el.className = 'wcard';
+        el.innerHTML = '<span class="k">'+esc(kindLabel(it.kind))+'</span>'+
+          '<div class="d">'+esc(fmtDate(it.date))+'</div>'+
+          '<div class="t">'+esc(it.title)+'</div><div class="s">'+esc(it.subtitle||'')+'</div>';
+        el.onclick = function(){ openDetail(it); };
+        w.appendChild(el);
+      });
+      if (!w.children.length) w.innerHTML = '<div class="empty" style="width:100%">暂无档案</div>';
+      // 新档案检测: 总数变化或最新一条变化
+      var top = d.wall && d.wall.length ? (d.wall[0].kind+'|'+d.wall[0].id) : '';
+      if (!first && lastTotal !== null && (d.total > lastTotal || (top && lastTop && top !== lastTop))) {
+        var n = Math.max(0, d.total - lastTotal);
+        $('#freshTxt').textContent = (n > 0 ? n + ' 卷新档案入库 · ' : '') + '点击刷新档案墙';
+        $('#fresh').classList.add('show');
+      }
+      lastTotal = d.total; lastTop = top || lastTop;
+    }).catch(function(){});
+  }
+  $('#fresh').onclick = function () {
+    $('#fresh').classList.remove('show');
+    page = 1; loadSummary(true); loadList();
+  };
+
+  // ── 分类 chips ──
+  var chips = $('#chips');
+  var chipList = [{k:'all',label:'全部',count:''}].concat(
+    Object.keys(KINDS).map(function(k){return {k:k,label:KINDS[k],count:''};}));
+  chipList.forEach(function (c, i) {
+    var el = document.createElement('span');
+    el.className = 'chip' + (i === 0 ? ' active' : '');
+    el.innerHTML = esc(c.label) + '<b></b>';
+    el.onclick = function () {
+      kind = c.k; page = 1;
+      document.querySelectorAll('.chip').forEach(function(x){x.classList.remove('active');});
+      el.classList.add('active');
+      loadList();
+    };
+    chips.appendChild(el);
+  });
+
+  // ── 时间线 ──
+  function loadList() {
+    if (busy) return; busy = true;
+    var url = '/api/archive/timeline?kind=' + encodeURIComponent(kind) +
+      '&page=' + page + '&size=20' + (q ? '&q=' + encodeURIComponent(q) : '');
+    fetch(url).then(r=>r.json()).then(function (d) {
+      busy = false;
+      if (!d || !d.ok) { $('#list').innerHTML = '<div class="empty">加载失败</div>'; return; }
+      var L = $('#list');
+      if (page === 1) L.innerHTML = '';
+      (d.items||[]).forEach(function (it) {
+        var el = document.createElement('div'); el.className = 'item';
+        el.innerHTML = '<span class="date">'+esc(fmtDate(it.date))+'</span>'+
+          '<span class="kind '+esc(it.kind)+'">'+esc(kindLabel(it.kind))+'</span>'+
+          '<div class="bd"><div class="t">'+esc(it.title)+'</div><div class="s">'+esc(it.subtitle||'')+'</div></div>';
+        el.onclick = function(){ openDetail(it); };
+        L.appendChild(el);
+      });
+      if (page === 1 && !(d.items||[]).length) L.innerHTML = '<div class="empty">暂无匹配档案</div>';
+      hasMore = !!d.has_more;
+      $('#more').style.display = hasMore ? 'block' : 'none';
+    }).catch(function(){ busy = false; $('#list').innerHTML = '<div class="empty">网络错误</div>'; });
+  }
+  $('#more').onclick = function () { page += 1; loadList(); };
+  function doSearch() { q = $('#q').value.trim(); page = 1; loadList(); }
+  $('#qBtn').onclick = doSearch;
+  $('#q').addEventListener('keydown', function (e) { if (e.key === 'Enter') doSearch(); });
+
+  // ── 详情 ──
+  function openDetail(it) {
+    $('#shT').textContent = it.title || '—';
+    $('#shM').textContent = kindLabel(it.kind) + ' · ' + fmtDate(it.date) + ' · ' + (it.subtitle||'');
+    $('#shB').textContent = it.detail || '(暂无详情正文)';
+    $('#mask').classList.add('show');
+    // 拉完整详情
+    fetch('/api/archive/detail?kind=' + encodeURIComponent(it.kind) + '&id=' + encodeURIComponent(it.id))
+      .then(r=>r.json()).then(function (d) {
+        if (d && d.ok && d.record) {
+          var rec = d.record;
+          var detail = rec.detail || rec.changelog_summary || rec.deliverable || rec.commit_msg ||
+                       rec.change_summary || rec.archive_summary || rec.key_highlights ||
+                       rec.copy_content || rec.proposal_summary || it.detail || '';
+          if (typeof detail === 'object') detail = JSON.stringify(detail, null, 2);
+          $('#shB').textContent = String(detail).slice(0, 3000);
+          var extra = [];
+          Object.keys(rec).slice(0, 14).forEach(function (k) {
+            var v = rec[k];
+            if (v && typeof v !== 'object' && String(v).length < 160) extra.push(k + ': ' + v);
+          });
+          if (extra.length) $('#shB').textContent += '\n\n—— 档案字段 ——\n' + extra.join('\n');
+        }
+      }).catch(function(){});
+  }
+  $('#sheetX').onclick = function(){ $('#mask').classList.remove('show'); };
+  $('#mask').onclick = function(e){ if (e.target === $('#mask')) $('#mask').classList.remove('show'); };
+
+  // ── 启动 + 30s 更新及时轮询 ──
+  loadSummary(true);
+  loadList();
+  setInterval(function () { loadSummary(false); }, 30000);
+})();
+</script>
+</body>
+</html>
