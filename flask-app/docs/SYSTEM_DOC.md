@@ -874,4 +874,30 @@ python3 engines/ai_cnkr_track_engine.py status   # 15 赛道题量/难度/正确
 
 ---
 
+## 20. 聊天系统双端架构：网页版与小龙 App 同宗不同源
+
+> flow_chat_web_app_split_20261031 · 2026-10-31 · 网页版聊天与小龙 App 完全独立, 共用单一聊天后端
+
+### 20.1 架构原则
+| 维度 | 网页版聊天系统 | 小龙 App |
+|------|--------------|----------|
+| 入口 | /local-chat（登录）· /ai（游客） | /xiaolong（PWA） |
+| 蓝图 | chat_local_bp | xiaolong_app_bp |
+| 模板 | chat_login_guide.html 等 | xiaolong_app.html（独立壳） |
+| 鉴权 | session cookie | X-XL-Token 头 + 设备授权 |
+| 聊天后端 | **/api/local-chat/*（共用）** | **/api/local-chat/*（共用）** |
+
+- **同宗**：两端聊天对话统一走 `/api/local-chat/*` 单一后端 — 同引擎、同脑库、同数据、同额度
+- **不同源**：独立蓝图 / 独立模板 / 独立鉴权 / 独立入口，互不引流、互不重定向
+
+### 20.2 本次解耦（3 处交叉引用移除）
+1. `blueprints/xiaolong_app_bp.py`：移除 `/andromeda-chat` 别名路由（App 不再拥有网页式路由）
+2. `templates/chat_login_guide.html`：移除「打开小龙 App / 权限申请」链接（网页聊天引导页不再推广 App）
+3. 账号体系仍同宗共享（users 表统一），小龙账号仅聊天的 scope 管控保持不变（`mt_app_user_scope`）
+
+### 20.3 保留的门户级引用（非聊天系统耦合）
+- 首页 `/index`、下载中心 `/download`、站点地图对 /xiaolong 的入口链接属于门户/SEO 目录，不属于聊天系统本体
+
+---
+
 *文档结束 - MTSCOS AI 智能考试系统 v7.2.0*

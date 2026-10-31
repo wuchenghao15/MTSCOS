@@ -23,7 +23,6 @@ flow_xiaolong_app_20261022
 
 路由:
   GET  /xiaolong                  App 页面
-  GET  /andromeda-chat            别名 → /xiaolong
   GET  /xiaolong/manifest.json    PWA 清单
   GET  /xiaolong/sw.js            Service Worker
   GET  /xiaolong/icon.svg         App 图标
@@ -31,6 +30,13 @@ flow_xiaolong_app_20261022
   POST /api/xiaolong/device/register   设备授权绑定
   GET  /api/xiaolong/device/status     设备授权查询
   POST /api/xiaolong/heartbeat         设备心跳
+
+同宗不同源 (flow_chat_web_app_split_20261031):
+  本 App 与网页版聊天系统 (/local-chat, chat_local_bp) 完全独立 —
+  · 不同源: 独立蓝图 / 独立模板 / 独立鉴权 (App=X-XL-Token, 网页=session)
+    不设网页式别名路由, 网页聊天页不引流本 App
+  · 同宗:   聊天对话统一走 /api/local-chat/* 单一后端 (同引擎/同脑库/同数据),
+    本蓝图只负责 App 壳 (bootstrap/设备授权/心跳/scope)
 """
 from __future__ import annotations
 
@@ -262,11 +268,6 @@ def _node_info() -> dict:
 def xiaolong_page():
     """App 首页不强制登录: 页面自带登录/注册表单 (独立 App/小程序无网页会话)"""
     return render_template('xiaolong_app.html', app_version=APP_VERSION)
-
-
-@xiaolong_bp.route('/andromeda-chat', methods=['GET'])
-def andromeda_chat_alias():
-    return redirect('/xiaolong', code=302)
 
 
 @xiaolong_bp.route('/xiaolong/manifest', methods=['GET'])
