@@ -1354,56 +1354,362 @@ class SyncCenter:
     #  ║  24h 主动意识调度矩阵 (Andromeda Auto-Brain)
     # ═════════════════════════════════════════════════════════════════════════
 
-    # ── 24h 时段 → 专业领域 → 调度权重 ──
-    # 每个时段定义该领域最活跃的职责, 形成"活体"工作流
+    # ── 24h 时段 → 专业领域 → 调度权重 (弹性矩阵 v2) ──
+    # 每个时段定义该领域最活跃的职责 + 负载弹性 + 未来扩展槽位
+    # priority: 100=最高, 可根据负载动态降级
     TIME_SCHEDULE = {
-        # 深夜: 负载最低 → DB 优化、代码升级、快照清理 (Andromeda 工程师模式)
-        "night": {"hours": range(0, 8),
-                  "focus": ["🧊 DB_OPTIMIZE", "📦 GITHUB_PUSH", "🗄️ SNAPSHOT_CLEANUP",
-                            "🧠 SELF_CODE_REVIEW", "🔧 DAEMON_ROTATION"],
-                  "persona": "Andromeda DevOps Engineer"},
-        # 开市前: 预热 Gobelin + Iceberg (Gobelin 银行家晨会模式)
-        "pre_market": {"hours": range(8, 10),
-                       "focus": ["📈 QUOTE_WARMUP", "🛡️ COMPLIANCE_SCAN", "📝 MEETING_MINUTES",
-                                 "🎨 THEME_SYNC", "🌐 THREE_MACHINE_FULL_SYNC"],
-                       "persona": "Gobelin Pre-Market Strategist"},
-        # 盘中: 实时行情 + 风控 + 合规 (Gobelin 交易员模式)
+        # ══════════════════════════════════════════════════════
+        # 🌙 深夜 (00:00-08:00) — Andromeda DevOps 模式
+        # 负载最低 → DB 优化、代码升级、快照清理、未来子系统准备
+        # ══════════════════════════════════════════════════════
+        "night": {"hours": range(0, 7),
+                  "focus": [
+                    # 🧊 核心维护
+                    "DB_OPTIMIZE", "GITHUB_PUSH", "SNAPSHOT_CLEANUP",
+                    "DAEMON_ROTATION", "WAL_CHECKPOINT", "INTEGRITY_CHECK",
+                    # 🧠 自我进化
+                    "SELF_CODE_REVIEW", "PERFORMANCE_PROFILE",
+                    # 🤖 AI 训练/编译
+                    "OLLAMA_MODEL_COLD", "VECTOR_INDEX_BUILD",
+                    # 🔮 未来子系统准备 (弹性槽位)
+                    "FUTURE_SEED_READY", "FUTURE_API_ENDPOINT_TEST",
+                  ],
+                  "persona": "Andromeda DevOps Engineer",
+                  "priority": 90,
+                  "elastic_hours": True,  # 可延后执行
+                  "load_threshold": 0.3},  # CPU<30% 时全力跑
+
+        # ══════════════════════════════════════════════════════
+        # ☀️ 清晨教育黄金 (07:00-09:00) — Iceberg Polyglot 模式
+        # 语言学习最佳时段 → 英语/日语/韩语语音合成、题库预热
+        # ══════════════════════════════════════════════════════
+        "iceberg_morning": {"hours": range(7, 9),
+                            "focus": [
+                              # 🌐 语言轨道
+                              "I18N_BATCH_TRANSLATE", "ENGLISH_TRACK_PREP",
+                              "JAPANESE_TRACK_PREP", "KOREAN_TRACK_PREP",
+                              # 📚 题库预热
+                              "QBANK_INDEX_REBUILD", "MEDICAL_KNOWLEDGE_SYNC",
+                              # 🔄 Gobelin 轻量预热
+                              "QUOTE_WARMUP_LIGHT", "PRE_COMPLIANCE_SCAN",
+                            ],
+                            "persona": "Iceberg Polyglot Director",
+                            "priority": 85,
+                            "elastic_hours": False},
+
+        # ══════════════════════════════════════════════════════
+        # 💰 开市前 (09:00-09:30) — Gobelin Pre-Market 模式
+        # 最紧张 30min → 全部核心就绪、战前动员会
+        # ══════════════════════════════════════════════════════
+        "pre_market": {"hours": range(9, 10),
+                       "focus": [
+                         # 📈 行情预热
+                         "QUOTE_WARMUP_FULL", "METAL_QUOTE_SYNC",
+                         # 🛡️ 合规
+                         "COMPLIANCE_SCAN_FULL", "POSITION_VALIDATION",
+                         # 📝 战前动员会
+                         "PRE_MARKET_MEETING", "DAEMON_HEALTH_QUADRUPLE",
+                         # 🔗 三机
+                         "THREE_MACHINE_PULSE", "DB_LAST_SYNC_VERIFY",
+                       ],
+                       "persona": "Gobelin Pre-Market Strategist",
+                       "priority": 100,  # 最高
+                       "elastic_hours": False},
+
+        # ══════════════════════════════════════════════════════
+        # ⚡ 盘中上午 (09:30-11:30) — Gobelin Day Trader 模式
+        # A 股交易中 → 实时行情优先, Iceberg/Gobelin 双核
+        # ══════════════════════════════════════════════════════
         "trading_am": {"hours": range(10, 12),
-                       "focus": ["📈 REAL_TIME_QUOTES", "🛡️ COMPLIANCE_LIVE",
-                                 "💰 PNL_STREAM", "⚡ POSITION_GUARDIAN"],
-                       "persona": "Gobelin Day Trader"},
-        "trading_pm": {"hours": range(13, 15),
-                       "focus": ["📈 REAL_TIME_QUOTES", "🛡️ COMPLIANCE_LIVE",
-                                 "💰 PNL_STREAM", "⚡ POSITION_GUARDIAN"],
-                       "persona": "Gobelin Day Trader"},
-        # 午休: 治理时间 (Andromeda 指挥官模式)
+                       "focus": [
+                         # 🔴 最高优先
+                         "REAL_TIME_QUOTES", "COMPLIANCE_LIVE", "PNL_STREAM",
+                         "POSITION_GUARDIAN", "QUOTE_FALLBACK_HEAL",
+                         # 🟡 次优先 (弹性: 行情紧时降级)
+                         "ICEBERG_QBANK_LIGHT", "ICEBERG_KNOWLEDGE_PASSIVE",
+                         "ANDROMEDA_CENTER_STATUS",
+                       ],
+                       "persona": "Gobelin Day Trader",
+                       "priority": 100,
+                       "elastic_hours": False},
+
+        # ══════════════════════════════════════════════════════
+        # 🍱 午休 (11:30-13:00) — Andromeda Commander 模式
+        # 交易间歇 → 治理 + 教育 + 未来研发
+        # ══════════════════════════════════════════════════════
         "midday": {"hours": range(12, 13),
-                   "focus": ["🏛️ PARLIAMENT_PULSE", "🤝 COLLAB_NETWORK", "📊 DAILY_DASHBOARD"],
-                   "persona": "Andromeda Commander"},
-        # 收盘: 清算 + 对账 + 审计 (Gobelin 清算官模式)
+                   "focus": [
+                     # 🏛️ 治理
+                     "PARLIAMENT_PULSE", "COLLAB_NETWORK_PULSE",
+                     "CENTER_HEALTH_SNAPSHOT",
+                     # 📚 教育 (弹性)
+                     "ICEBERG_QBANK_BATCH", "MEDICAL_REVIEW_SESSION",
+                     # 🔮 未来研发
+                     "FUTURE_FEATURE_BRAIN_STORM", "FUTURE_API_PROTOTYPE",
+                   ],
+                   "persona": "Andromeda Commander",
+                   "priority": 75,
+                   "elastic_hours": True},
+
+        # ══════════════════════════════════════════════════════
+        # ⚡ 盘中下午 (13:00-15:00) — Gobelin Day Trader 模式
+        # A 股下午盘 → 同上午策略
+        # ══════════════════════════════════════════════════════
+        "trading_pm": {"hours": range(13, 15),
+                       "focus": [
+                         "REAL_TIME_QUOTES", "COMPLIANCE_LIVE", "PNL_STREAM",
+                         "POSITION_GUARDIAN", "QUOTE_FALLBACK_HEAL",
+                       ],
+                       "persona": "Gobelin Day Trader",
+                       "priority": 100,
+                       "elastic_hours": False},
+
+        # ══════════════════════════════════════════════════════
+        # 🎓 教育下午 (14:00-17:00) — Iceberg Workshop 模式
+        # 中学/大学时段 → 数学工坊、医学中心、版本中心
+        # 与 trading_pm 重叠但低优先级 (priority=70 vs 100)
+        # ══════════════════════════════════════════════════════
+        "iceberg_afternoon": {"hours": range(14, 17),
+                              "focus": [
+                                "MATH_WORKSHOP_PREP", "MEDICAL_CENTER_SYNC",
+                                "VERSION_CENTER_CHECK", "CREATION_WORKSHOP",
+                                "KNOWLEDGE_GRAPH_PASSIVE",
+                              ],
+                              "persona": "Iceberg Workshop Director",
+                              "priority": 70,
+                              "elastic_hours": True},
+
+        # ══════════════════════════════════════════════════════
+        # 🧾 收盘 (15:00-18:00) — Gobelin Chief Auditor 模式
+        # 后处理 → 清算、审计、对账
+        # ══════════════════════════════════════════════════════
         "post_market": {"hours": range(15, 18),
-                        "focus": ["📉 DAILY_SETTLEMENT", "📊 AUDIT_REPORT",
-                                  "📝 REFLECT_LOG", "🏆 SEAL_REGISTRY"],
-                        "persona": "Gobelin Chief Auditor"},
-        # 教育高峰: 题库 + 翻译 (Iceberg 学者模式)
+                        "focus": [
+                          "DAILY_SETTLEMENT", "AUDIT_REPORT",
+                          "REFLECT_LOG", "SEAL_REGISTRY",
+                          "GOBELIN_SUMMARY_MONTAGE",
+                          # 🧊 教育反弹 (弹性)
+                          "ICEBERG_QBANK_REBUILD", "KNOWLEDGE_GRAPH_FULL_SYNC",
+                        ],
+                        "persona": "Gobelin Chief Auditor",
+                        "priority": 95,
+                        "elastic_hours": False},
+
+        # ══════════════════════════════════════════════════════
+        # 🎓 晚间教育高峰 (18:00-21:00) — Iceberg Education 模式
+        # 最大教育流量 → 题库+翻译+知识图谱全力跑
+        # ══════════════════════════════════════════════════════
         "evening": {"hours": range(18, 21),
-                    "focus": ["📚 QBANK_SYNC", "🌐 I18N_TRANSLATE", "💡 KNOWLEDGE_GRAPH",
-                              "👤 USER_PROFILES"],
-                    "persona": "Iceberg Education Director"},
-        # 治理: 三机同步 + 备份 + GitHub (Andromeda 运维模式)
+                    "focus": [
+                      # 🧊 核心教育
+                      "QBANK_BATCH_FULL", "I18N_TRANSLATE_FULL",
+                      "KNOWLEDGE_GRAPH_ACTIVE",
+                      "USER_PROFILES_ACTIVE",
+                      # 🌐 多语言轨道
+                      "ENGLISH_ORAL_PRACTICE", "JAPANESE_READING_PASS",
+                      # 🧊 数学/医学
+                      "MATH_AI_TUTOR_READY", "MEDICAL_VOCAB_SYNC",
+                    ],
+                    "persona": "Iceberg Education Director",
+                    "priority": 88,
+                    "elastic_hours": False},
+
+        # ══════════════════════════════════════════════════════
+        # 🏛️ 治理 (21:00-24:00) — Andromeda SysAdmin 模式
+        # 三机同步 + 备份 + GitHub + 未来规划
+        # ══════════════════════════════════════════════════════
         "governance": {"hours": range(21, 24),
-                       "focus": ["🔗 THREE_MACHINE_FULL_SYNC", "📦 GITHUB_PUSH",
-                                 "💾 DB_BACKUP", "🏛️ CENTER_STATUS"],
-                       "persona": "Andromeda SysAdmin"},
+                       "focus": [
+                         # 🔗 三机
+                         "THREE_MACHINE_FULL_SYNC", "DB_BACKUP_TRIPLE",
+                         # 📦 版本
+                         "GITHUB_PUSH_FULL", "CHANGELOG_AUTO_GEN",
+                         # 🏛️ 中心状态
+                         "CENTER_STATUS_FULL", "HEALTH_REPORT_AUTO",
+                         # 🔮 未来子系统
+                         "FUTURE_SUBSYSTEM_SCAN", "DEVELOPMENT_BACKLOG_SYNC",
+                       ],
+                       "persona": "Andromeda SysAdmin",
+                       "priority": 80,
+                       "elastic_hours": True},
     }
 
+    # ── 未来子系统扩展槽位 (预留, 可热插拔) ──
+    # 新子系统只需在这里注册 + 分配时段
+    FUTURE_SUBSYSTEMS = {
+        "FSS_1": {"name": "星门 Stargate", "domain": "web3/bridge",
+                  "preferred_hours": [0, 8, 22], "elastic": True},
+        "FSS_2": {"name": "量子计算 Quantum", "domain": "research",
+                  "preferred_hours": [1, 14], "elastic": True},
+        "FSS_3": {"name": "边缘计算 EdgeNode", "domain": "distributed",
+                  "preferred_hours": [19, 23], "elastic": True},
+        "FSS_4": {"name": "AI Agent 编排", "domain": "ai-orchestration",
+                  "preferred_hours": [3, 11, 20], "elastic": False},
+    }
+
+    # ── 日历事件感知: 识别交易日/节假日/考试季 ──
+    # 基于规则的简化日历 (可后续接入中国法定节假日 API)
+    # 核心思想: 让 AI 像一个"过日子的人", 知道什么时候该做什么事
+    CALENDAR_EVENTS = {
+        # 月份级 (考试季/寒暑假)
+        "exam_season": {"months": [6],  # 6月中考+高考
+                        "weight_shift": {"iceberg": +25, "gobelin": -15},
+                        "persona_boost": "Iceberg Exam Cram Coach",
+                        "focus_extra": ["QBANK_EXAM_FOCUS", "MATH_CRASH_COURSE",
+                                        "MEDICAL_KEYWORDS_REVIEW"]},
+        "summer_vacation": {"months": [7, 8],  # 暑假
+                            "weight_shift": {"iceberg": +20, "gobelin": -5, "andromeda": +10},
+                            "persona_boost": "Iceberg Summer Camp Director",
+                            "focus_extra": ["CREATION_WORKSHOP_FULL",
+                                            "KNOWLEDGE_GRAPH_DEEP_BUILD"]},
+        "winter_vacation": {"months": [1, 2],  # 寒假
+                            "weight_shift": {"iceberg": +15, "gobelin": -5, "andromeda": +10},
+                            "persona_boost": "Iceberg Winter Academy Dean"},
+        "school_weekday": {"days": list(range(1, 6)),  # 周一-周五 (非暑假)
+                           "weight_shift": {"gobelin": +10}},
+        "weekend": {"days": [0, 6],  # 周六周日
+                    "weight_shift": {"iceberg": +10, "andromeda": +5, "gobelin": -10},
+                    "persona_boost": "Andromeda Weekend Strategist"},
+        # A股交易日规则 (简化: 周1-5 非法定节假日)
+        "a_share_trading_day": {"weekdays": [1, 2, 3, 4, 5],
+                                "boost_domains": ["gobelin"],
+                                "priority_boost": 10},
+        # 特殊日 (可配置, 每年更新)
+        # 2026 年春节: 2.17-2.23 (估计)
+        "spring_festival_2026": {"date_range": ("2026-02-17", "2026-02-23"),
+                                 "weight_shift": {"iceberg": +30, "gobelin": -30, "andromeda": +20}},
+    }
+
+    # ── 领域优先级弹性曲线 ──
+    # 每个领域在不同场景下的权重 (0-100)
+    DOMAIN_PRIORITY_CURVE = {
+        # Gobelin: 交易系统 — 交易日 peak, 考试季 valley
+        "gobelin": {
+            "trading_day": 100,      # 交易日盘中
+            "pre_market": 95,        # 开市前
+            "post_market": 85,       # 收盘后清算
+            "exam_season": 55,       # 考试季 (只做清算)
+            "vacation": 70,          # 寒暑假 (活跃度下降)
+            "weekend": 50,           # 周末 (只有监控)
+            "holiday": 20,           # 法定节假日 (极低, 只有 heartbeat)
+            "night": 5,              # 深夜
+        },
+        # Iceberg: 教育系统 — 考试季 peak, 暑假 peak
+        "iceberg": {
+            "exam_season": 100,      # 6月考试季全力跑
+            "vacation": 90,          # 寒暑假集中学习
+            "school_evening": 85,    # 上学日晚间
+            "pre_market": 60,        # 开市前轻量预热
+            "trading_day": 50,       # 交易日 (Gobelin 优先)
+            "weekend": 75,           # 周末学习
+            "holiday": 40,           # 法定节 (部分参与)
+            "night": 15,             # 深夜只做翻译
+        },
+        # Andromeda: 指挥系统 — 全天候但侧重治理时段
+        "andromeda": {
+            "all_day": 65,           # 始终有基础治理
+            "night": 90,             # 深夜 DevOps 升级
+            "governance": 85,        # 21:00 治理时段
+            "vacation": 80,          # 假期多做未来规划
+            "trading_day": 55,       # 交易日让道 Gobelin
+        },
+    }
+
+    def _get_calendar_context(self) -> dict:
+        """识别当前日历上下文 (交易日/考试季/寒暑假/周末)"""
+        now = datetime.now()
+        month = now.month
+        day = now.day
+        weekday = now.weekday()  # 0=Mon, 6=Sun
+
+        contexts = []
+
+        # 1. 月份级事件
+        if month in [6]:
+            contexts.append("exam_season")
+        if month in [7, 8]:
+            contexts.append("summer_vacation")
+        if month in [1, 2]:
+            contexts.append("winter_vacation")
+
+        # 2. 周级事件
+        if weekday in [0, 6]:
+            contexts.append("weekend")
+        else:
+            contexts.append("school_weekday")
+
+        # 3. A股交易日 (简化)
+        # 周1-5 非寒暑假 = 交易日
+        if weekday not in [0, 6] and month not in [1, 2, 7, 8]:
+            contexts.append("a_share_trading_day")
+
+        # 4. 特殊日期范围
+        for event_name, cfg in self.CALENDAR_EVENTS.items():
+            if "date_range" in cfg:
+                start, end = cfg["date_range"]
+                try:
+                    start_d = datetime.strptime(start, "%Y-%m-%d").date()
+                    end_d = datetime.strptime(end, "%Y-%m-%d").date()
+                    if start_d <= now.date() <= end_d:
+                        contexts.append(event_name)
+                except Exception:
+                    pass
+
+        return {"contexts": contexts, "now": now.isoformat(),
+                "month": month, "weekday": weekday}
+
+    def _dynamic_priority_adjust(self, base_priority: int, domain: str,
+                                 calendar_ctx: dict) -> int:
+        """根据日历事件动态调整领域优先级
+        
+        核心思想: 
+          交易日 Gobelin=100, Iceberg=50
+          考试季 Iceberg=100, Gobelin=55
+          寒暑假 两者都高, Andromeda 做规划
+        """
+        adj = 0
+        for ctx in calendar_ctx["contexts"]:
+            event_cfg = self.CALENDAR_EVENTS.get(ctx, {})
+            shifts = event_cfg.get("weight_shift", {})
+            adj += shifts.get(domain, 0)
+
+        # 应用 DOMAIN_PRIORITY_CURVE 基础曲线
+        curve = self.DOMAIN_PRIORITY_CURVE.get(domain, {})
+        # 简化: 取当前 context 匹配的 curve 值作为基准
+        base_curve_val = 50
+        for ctx in calendar_ctx["contexts"]:
+            if ctx in curve:
+                base_curve_val = curve[ctx]
+                break
+
+        result = max(0, min(100, base_curve_val + adj))
+        return result
+
     def _get_active_schedule(self) -> dict:
-        """根据当前时间返回活跃调度段"""
+        """返回当前时间所有活跃时段 (支持多角色重叠)
+        
+        例如 14:30 同时命中:
+          - trading_pm (priority=100, Gobelin Day Trader)
+          - iceberg_afternoon (priority=70, Iceberg Workshop Director)
+        
+        返回: {active_segments: [...], primary: 最高优先时段, now_hour: int}
+        """
         h = datetime.now().hour
-        for segment, cfg in self.TIME_SCHEDULE.items():
+        active = []
+        for seg_name, cfg in self.TIME_SCHEDULE.items():
             if h in cfg["hours"]:
-                return {"segment": segment, **cfg}
-        return {"segment": "unknown", "focus": [], "persona": "Watcher"}
+                active.append({"segment": seg_name, **cfg})
+        if not active:
+            return {"active_segments": [],
+                    "primary": {"segment": "watchdog", "persona": "Universal Watchdog",
+                                "priority": 50, "focus": ["HEALTH_PASSIVE"],
+                                "elastic_hours": True}}
+        # 按 priority 排序, 最高的为 primary
+        active.sort(key=lambda x: x.get("priority", 0), reverse=True)
+        return {"active_segments": active,
+                "primary": active[0],
+                "all_focus": [f for a in active for f in a.get("focus", [])],
+                "now_hour": h}
 
     def _workflow_id(self) -> str:
         """生成唯一工作流 ID — heartbeat 级别"""
@@ -1436,9 +1742,11 @@ class SyncCenter:
                 cid = self._cycle_id(interval)
                 sid = self._workflow_id()
                 schedule = self._get_active_schedule()
+                primary = schedule["primary"]
+                active_segs = [a["segment"] for a in schedule["active_segments"]]
 
-                log.info(f"━━━ {cid} [{sid}] persona={schedule['persona']} "
-                         f"segment={schedule['segment']} focus={schedule['focus']} ━━━")
+                log.info(f"━━━ {cid} [{sid}] persona={primary['persona']} "
+                         f"segments={active_segs} priority={primary.get('priority',0)} ━━━")
 
                 # ── ① 主题同步 (每 heartbeat 都要, 轻量) ──
                 self.sync_themes()
@@ -1477,16 +1785,21 @@ class SyncCenter:
                     except Exception as e:
                         log.warning(f"🌐 language_sync 异常: {e}")
 
-                # ── ⑧ 专业时段增强任务 (时段感知) ──
-                if schedule["segment"] == "night" and cycle_idx % 6 == 0:
+                # ── ⑧ 专业时段增强任务 (时段感知, 支持多时段重叠) ──
+                active_names = {s["segment"] for s in schedule["active_segments"]}
+                if "night" in active_names and cycle_idx % 6 == 0:
                     # 深夜清理 DB 快照
                     log.info("🌙 深夜模式 → 清理过期快照")
                     self._cleanup_old_snapshots()
 
-                if schedule["segment"] == "pre_market":
+                if "pre_market" in active_names:
                     # 开市前: 合规扫描 + 行情预热
                     log.info("📅 开市前 → Gobelin 战前准备")
                     self.health_check_db()
+
+                # 盘中 + Iceberg 重叠时: 降级非关键任务
+                if "trading_pm" in active_names and "iceberg_afternoon" in active_names:
+                    log.info("⚡ 盘中下午 + 教育下午重叠: Gobelin 优先, Iceberg 降级")
 
             except KeyboardInterrupt:
                 log.info(f"🛑 Ctrl+C, 退出 cycle={cycle_idx}")
