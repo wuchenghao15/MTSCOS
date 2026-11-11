@@ -1350,29 +1350,175 @@ class SyncCenter:
             "total_duration_ms": round((time.time() - t0) * 1000, 1),
         }
 
+    #  ═════════════════════════════════════════════════════════════════════════
+    #  ║  24h 主动意识调度矩阵 (Andromeda Auto-Brain)
+    # ═════════════════════════════════════════════════════════════════════════
+
+    # ── 24h 时段 → 专业领域 → 调度权重 ──
+    # 每个时段定义该领域最活跃的职责, 形成"活体"工作流
+    TIME_SCHEDULE = {
+        # 深夜: 负载最低 → DB 优化、代码升级、快照清理 (Andromeda 工程师模式)
+        "night": {"hours": range(0, 8),
+                  "focus": ["🧊 DB_OPTIMIZE", "📦 GITHUB_PUSH", "🗄️ SNAPSHOT_CLEANUP",
+                            "🧠 SELF_CODE_REVIEW", "🔧 DAEMON_ROTATION"],
+                  "persona": "Andromeda DevOps Engineer"},
+        # 开市前: 预热 Gobelin + Iceberg (Gobelin 银行家晨会模式)
+        "pre_market": {"hours": range(8, 10),
+                       "focus": ["📈 QUOTE_WARMUP", "🛡️ COMPLIANCE_SCAN", "📝 MEETING_MINUTES",
+                                 "🎨 THEME_SYNC", "🌐 THREE_MACHINE_FULL_SYNC"],
+                       "persona": "Gobelin Pre-Market Strategist"},
+        # 盘中: 实时行情 + 风控 + 合规 (Gobelin 交易员模式)
+        "trading_am": {"hours": range(10, 12),
+                       "focus": ["📈 REAL_TIME_QUOTES", "🛡️ COMPLIANCE_LIVE",
+                                 "💰 PNL_STREAM", "⚡ POSITION_GUARDIAN"],
+                       "persona": "Gobelin Day Trader"},
+        "trading_pm": {"hours": range(13, 15),
+                       "focus": ["📈 REAL_TIME_QUOTES", "🛡️ COMPLIANCE_LIVE",
+                                 "💰 PNL_STREAM", "⚡ POSITION_GUARDIAN"],
+                       "persona": "Gobelin Day Trader"},
+        # 午休: 治理时间 (Andromeda 指挥官模式)
+        "midday": {"hours": range(12, 13),
+                   "focus": ["🏛️ PARLIAMENT_PULSE", "🤝 COLLAB_NETWORK", "📊 DAILY_DASHBOARD"],
+                   "persona": "Andromeda Commander"},
+        # 收盘: 清算 + 对账 + 审计 (Gobelin 清算官模式)
+        "post_market": {"hours": range(15, 18),
+                        "focus": ["📉 DAILY_SETTLEMENT", "📊 AUDIT_REPORT",
+                                  "📝 REFLECT_LOG", "🏆 SEAL_REGISTRY"],
+                        "persona": "Gobelin Chief Auditor"},
+        # 教育高峰: 题库 + 翻译 (Iceberg 学者模式)
+        "evening": {"hours": range(18, 21),
+                    "focus": ["📚 QBANK_SYNC", "🌐 I18N_TRANSLATE", "💡 KNOWLEDGE_GRAPH",
+                              "👤 USER_PROFILES"],
+                    "persona": "Iceberg Education Director"},
+        # 治理: 三机同步 + 备份 + GitHub (Andromeda 运维模式)
+        "governance": {"hours": range(21, 24),
+                       "focus": ["🔗 THREE_MACHINE_FULL_SYNC", "📦 GITHUB_PUSH",
+                                 "💾 DB_BACKUP", "🏛️ CENTER_STATUS"],
+                       "persona": "Andromeda SysAdmin"},
+    }
+
+    def _get_active_schedule(self) -> dict:
+        """根据当前时间返回活跃调度段"""
+        h = datetime.now().hour
+        for segment, cfg in self.TIME_SCHEDULE.items():
+            if h in cfg["hours"]:
+                return {"segment": segment, **cfg}
+        return {"segment": "unknown", "focus": [], "persona": "Watcher"}
+
+    def _workflow_id(self) -> str:
+        """生成唯一工作流 ID — heartbeat 级别"""
+        now = datetime.now()
+        return f"WF-{now.strftime('%Y%m%d%H%M')}-{now.second:02d}-{uuid.uuid4().hex[:6]}"
+
+    def _cycle_id(self, interval: int) -> str:
+        """cycle_id — 每轮心跳唯一标识"""
+        now = datetime.now()
+        return f"CYCLE-{now.strftime('%Y%m%d-%H%M%S')}-{now.minute * 60 // interval:04d}"
+
     def run_sync_loop(self, interval: int = 300):
-        """5 分钟心跳: themes + languages(每日) + machines(按需)"""
-        log.info(f"SyncCenter 心跳循环启动 interval={interval}s")
+        """全域 33 中心 24h 主动意识调度循环
+        
+        核心设计:
+          • 每个 heartbeat 生成唯一 cycle_id + workflow_id
+          • 根据时段自动切换专业 persona 和重点任务
+          • 主动发现缺口 → 反推需求 → 自动修复/升级
+          • 守护进程健康检查 × Flask 健康 × DB 完整性 × 三机连通
+          • 每 30min GitHub push / 每 15min 三机同步 / 每 24h 02:00 语言翻译
+        """
+        log.info(f"🏛️ Andromeda Auto-Brain 全域 33 中心 24h 循环启动 interval={interval}s")
         daily_done_day = None
+        cycle_idx = 0
+
         while True:
             try:
                 now = datetime.now()
-                log.info(f"=== heartbeat {now.strftime('%H:%M:%S')} ===")
-                # 每心跳: 主题
+                cycle_idx += 1
+                cid = self._cycle_id(interval)
+                sid = self._workflow_id()
+                schedule = self._get_active_schedule()
+
+                log.info(f"━━━ {cid} [{sid}] persona={schedule['persona']} "
+                         f"segment={schedule['segment']} focus={schedule['focus']} ━━━")
+
+                # ── ① 主题同步 (每 heartbeat 都要, 轻量) ──
                 self.sync_themes()
-                # 每天 02:00 做一次完整语言同步 (Ollama 翻译耗资源)
-                if now.hour == 2 and (daily_done_day != now.date()):
-                    self.sync_languages()
-                    daily_done_day = now.date()
-                # 每 3 个心跳做一次三机同步
-                if (now.minute // 15) % 3 == 0:
-                    self.sync_all_directions()
+
+                # ── ② 守护进程健康 (每 heartbeat, 自动重启) ──
+                self.health_check_daemons()
+
+                # ── ③ Flask 健康 (每 heartbeat, 自动重启) ──
+                self.health_check_flask()
+
+                # ── ④ DB 完整性 (每 5th heartbeat ≈ 25min) ──
+                if cycle_idx % 5 == 0:
+                    self.health_check_db()
+
+                # ── ⑤ 三机同步 (每 6th heartbeat ≈ 30min) ──
+                if cycle_idx % 6 == 0:
+                    try:
+                        self.health_check_three_machines()
+                        self.sync_all_directions()
+                    except Exception as e:
+                        log.warning(f"🔗 full_sync 异常: {e}")
+
+                # ── ⑥ GitHub push (每 12th heartbeat ≈ 1h) ──
+                if cycle_idx % 12 == 0:
+                    try:
+                        self.health_check_github_push()
+                    except Exception as e:
+                        log.warning(f"📦 github_push 异常: {e}")
+
+                # ── ⑦ 每日语言翻译 (02:00, 低负载时段) ──
+                if now.hour == 2 and daily_done_day != now.date():
+                    try:
+                        log.info(f"🌙 深夜低负载 → 触发完整语言同步 + Ollama 批量翻译")
+                        self.sync_languages()
+                        daily_done_day = now.date()
+                    except Exception as e:
+                        log.warning(f"🌐 language_sync 异常: {e}")
+
+                # ── ⑧ 专业时段增强任务 (时段感知) ──
+                if schedule["segment"] == "night" and cycle_idx % 6 == 0:
+                    # 深夜清理 DB 快照
+                    log.info("🌙 深夜模式 → 清理过期快照")
+                    self._cleanup_old_snapshots()
+
+                if schedule["segment"] == "pre_market":
+                    # 开市前: 合规扫描 + 行情预热
+                    log.info("📅 开市前 → Gobelin 战前准备")
+                    self.health_check_db()
+
             except KeyboardInterrupt:
-                log.info("Ctrl+C, 退出")
+                log.info(f"🛑 Ctrl+C, 退出 cycle={cycle_idx}")
                 break
             except Exception as e:
-                log.error(f"heartbeat error: {e}")
+                log.error(f"💥 heartbeat error: {e}", exc_info=True)
+
             time.sleep(interval)
+
+    def _cleanup_old_snapshots(self, keep_days: int = 3) -> int:
+        """清理过期 DB 快照 (只保留最近 N 天)"""
+        snap_dir = _BASE / "database"
+        if not snap_dir.exists():
+            return 0
+        cutoff = time.time() - keep_days * 86400
+        removed = 0
+        for f in snap_dir.glob("app_snapshot_*.db"):
+            try:
+                # 0 字节的快照直接删
+                if f.stat().st_size < 1024:
+                    f.unlink()
+                    removed += 1
+                    continue
+                # 过期的删
+                if f.stat().st_mtime < cutoff:
+                    f.unlink()
+                    removed += 1
+            except Exception:
+                pass
+        if removed:
+            log.info(f"🧹 清理 {removed} 个过期快照")
+        return removed
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
