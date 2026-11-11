@@ -3,7 +3,12 @@
 # macOS 无 flock, 用 PID 文件防并发
 set -euo pipefail
 
-DB_DIR="/Users/wuchenghao/MTSCOS_AI_Project/flask-app/Database"
+DB_DIR="/Users/wuchenghao/MTSCOS_AI_Project/flask-app/database"
+# 兼容 OneDrive 同步大小写不一致: 自动探测实际路径
+if [ ! -d "$DB_DIR" ]; then
+  ALT=$(echo "$DB_DIR" | sed 's|database|Database|')
+  [ -d "$ALT" ] && DB_DIR="$ALT"
+fi
 MAIN="$DB_DIR/app.db"
 STANDBY="$DB_DIR/app_standby.db"
 PIDF="/tmp/.mtscos_standby_sync.pid"
