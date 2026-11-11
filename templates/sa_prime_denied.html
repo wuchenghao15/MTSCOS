@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head><meta charset="UTF-8"><title>SA Prime — 权限不足</title>
+<style>body{background:#0a0a0f;color:#e8e6e0;display:flex;align-items:center;justify-content:center;height:100dvh;font-family:-apple-system,"PingFang SC",sans-serif}
+.c{text-align:center}.c h1{color:#d4af37;font-size:22px;letter-spacing:3px}.c p{color:#8a8a96;margin-top:12px;font-size:13px}
+.c a{color:#d4af37;text-decoration:none}</style></head>
+<body><div class="c">
+<h1>👑 SA PRIME</h1>
+<p>此入口为超级管理员专属指挥官聊天系统。</p>
+<p>当前身份: {{request.args.get('u','普通用户')}} — 无 SA 权限。</p>
+<p><a href="/">← 返回常规聊天 (小龙)</a></p>
+</div>{# 🎨 冰山主题矩阵调度器 #}
+<script defer src="{{ url_for('static', filename='js/theme-manager.js') }}"></script>
+</body></html>

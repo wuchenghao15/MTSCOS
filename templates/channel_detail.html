@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>{{ cfg.icon }} {{ cfg.name }} · Gobelin 七大渠道</title>
+<style>
+:root{
+  --bg:#050a14; --panel:#0c1424; --panel2:#111c30;
+  --border:rgba(255,255,255,.08); --text:#e2e8f0; --sub:#7a8a9a;
+  --pos:#10b981; --neg:#ef4444; --accent:{{ cfg.color }};
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,'PingFang SC',sans-serif;min-height:100vh;display:flex;}
+a{color:var(--accent);text-decoration:none;}
+
+/* ─── Sidebar ─── */
+.sb{width:220px;background:var(--panel);border-right:1px solid var(--border);padding:20px 14px;flex-shrink:0;}
+.sb h2{font-size:12px;color:var(--sub);text-transform:uppercase;letter-spacing:2px;margin-bottom:14px;}
+.sb a.item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;margin-bottom:4px;color:var(--text);font-size:13px;transition:.15s;}
+.sb a.item:hover{background:var(--panel2);}
+.sb a.item.active{background:linear-gradient(90deg,{{ cfg.color }}33,transparent);border-left:3px solid {{ cfg.color }};}
+.sb .icon{font-size:16px;width:20px;text-align:center;}
+.sb .nm{flex:1;}
+.sb .mv{font-family:monospace;font-size:11px;color:var(--sub);}
+.sb .total-label{margin-top:20px;padding-top:12px;border-top:1px solid var(--border);font-size:11px;color:var(--sub);}
+.sb .total-val{font-family:monospace;font-size:16px;color:var(--text);}
+.back-btn{display:block;margin-bottom:20px;font-size:12px;color:var(--sub);}
+.back-btn:hover{color:var(--accent);}
+
+/* ─── Main ─── */
+.main{flex:1;padding:30px 40px;overflow-x:hidden;}
+.topbar{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:30px;}
+.topbar h1{font-size:28px;font-weight:700;}
+.topbar h1 .icon{margin-right:8px;}
+.topbar .ts{font-size:12px;color:var(--sub);font-family:monospace;}
+
+/* KPI Row */
+.kpi-row{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:28px;}
+.kpi{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:18px 20px;}
+.kpi .lbl{font-size:11px;color:var(--sub);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;}
+.kpi .val{font-size:22px;font-weight:600;font-family:monospace;}
+.kpi .sub{font-size:11px;color:var(--sub);margin-top:4px;font-family:monospace;}
+.pos{color:var(--pos);}
+.neg{color:var(--neg);}
+
+/* Compliance banner */
+.cmpl{background:linear-gradient(90deg,#f59e0b22,transparent);border-left:3px solid #f59e0b;padding:12px 18px;border-radius:8px;margin-bottom:24px;font-size:13px;color:#fbbf24;}
+.cmpl.green{background:linear-gradient(90deg,#10b98122,transparent);border-left-color:#10b981;color:#34d399;}
+
+/* Table */
+.card{background:var(--panel);border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+.card h3{font-size:14px;padding:16px 20px;border-bottom:1px solid var(--border);background:var(--panel2);}
+table{width:100%;border-collapse:collapse;}
+th{text-align:left;padding:12px 20px;font-size:11px;color:var(--sub);text-transform:uppercase;letter-spacing:1px;background:var(--panel2);border-bottom:1px solid var(--border);}
+td{padding:14px 20px;font-size:13px;border-bottom:1px solid var(--border);font-family:monospace;}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:var(--panel2);}
+td.num{text-align:right;}
+.sym{font-weight:600;color:var(--accent);font-family:monospace;}
+.name{color:var(--text);font-family:-apple-system;}
+.src-LIVE{color:#22c55e;font-size:10px;padding:1px 6px;border-radius:4px;background:#22c55e22;}
+.src-API{color:#3b82f6;font-size:10px;padding:1px 6px;border-radius:4px;background:#3b82f622;}
+.src-FALLBACK{color:#f59e0b;font-size:10px;padding:1px 6px;border-radius:4px;background:#f59e0b22;}
+
+.empty{text-align:center;padding:60px 20px;color:var(--sub);font-size:14px;}
+.empty .big-icon{font-size:48px;margin-bottom:12px;}
+</style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<nav class="sb">
+  <a href="/stock" class="back-btn">← 返回古灵阁总账</a>
+  <h2>七大渠道</h2>
+  {% for ch in all_channels %}
+  <a href="/governance/channel/{{ ch.code }}" class="item {{ 'active' if ch.active else '' }}"
+     style="--ch-color:{{ ch.color }}">
+    <span class="icon">{{ ch.icon }}</span>
+    <span class="nm">{{ ch.name }}</span>
+    {% if ch.mv > 0 %}
+    <span class="mv">¥{{ '%.0f'|format(ch.mv) }}</span>
+    {% endif %}
+  </a>
+  {% endfor %}
+  <div class="total-label">Gobelin 主账户</div>
+  <div class="total-val">¥{{ '%.0f'|format(acc.total_assets) }}</div>
+  <div style="font-size:11px;color:var(--sub);margin-top:4px;">
+    现金 ¥{{ '%.0f'|format(acc.cash_balance) }} · 初始金 ¥{{ '%.0f'|format(init_cash) }}
+  </div>
+</nav>
+
+<!-- Main -->
+<main class="main">
+  <div class="topbar">
+    <h1><span class="icon">{{ cfg.icon }}</span>{{ cfg.name }} · 渠道详情</h1>
+    <span class="ts">⏱ {{ now_str }} · 数据源: Gobelin DB 直读</span>
+  </div>
+
+  {% if compliance_flags %}
+  <div class="cmpl green">
+    ✅ 合规层: {% for f in compliance_flags %}{{ f }}{% if not loop.last %} · {% endif %}{% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- KPI Row -->
+  <div class="kpi-row">
+    <div class="kpi">
+      <div class="lbl">渠道市值</div>
+      <div class="val">¥{{ '%.0f'|format(channel_mv) }}</div>
+      <div class="sub">{{ '%.1f'|format(channel_mv / acc.total_assets * 100 if acc.total_assets else 0) }}% of 总账</div>
+    </div>
+    <div class="kpi">
+      <div class="lbl">渠道持仓数</div>
+      <div class="val">{{ channel_count }}</div>
+      <div class="sub">只</div>
+    </div>
+    <div class="kpi">
+      <div class="lbl">渠道成本</div>
+      <div class="val">¥{{ '%.0f'|format(channel_cost) }}</div>
+      <div class="sub">avg ¥{{ '%.2f'|format(channel_cost / channel_count if channel_count else 0) }}</div>
+    </div>
+    <div class="kpi">
+      <div class="lbl">渠道浮盈</div>
+      <div class="val {{ 'pos' if channel_pnl >= 0 else 'neg' }}">{{ '%.0f'|format(channel_pnl) }}</div>
+      <div class="sub">{{ '%.2f'|format(channel_pnl / channel_cost * 100 if channel_cost else 0) }}%</div>
+    </div>
+    <div class="kpi">
+      <div class="lbl">总账 PnL</div>
+      <div class="val {{ 'pos' if acc.unrealized_pnl + acc.realized_pnl >= 0 else 'neg' }}">
+        {{ '%.0f'|format(acc.unrealized_pnl + acc.realized_pnl) }}
+      </div>
+      <div class="sub">total_assets ¥{{ '%.0f'|format(acc.total_assets) }}</div>
+    </div>
+  </div>
+
+  <!-- Positions Table -->
+  <div class="card">
+    <h3>📊 {{ cfg.name }} 持仓明细 ({{ channel_count }} 只)</h3>
+    {% if positions %}
+    <table>
+      <thead>
+        <tr>
+          <th>代码</th>
+          <th>名称</th>
+          <th class="num">Qty</th>
+          <th class="num">成本</th>
+          <th class="num">现价</th>
+          <th class="num">市值</th>
+          <th class="num">浮盈</th>
+          <th class="num">涨跌幅</th>
+          <th>数据源</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in positions %}
+        <tr>
+          <td><span class="sym">{{ p.asset_code }}</span></td>
+          <td class="name">{{ p.asset_name }}</td>
+          <td class="num">{{ '%d'|format(p.qty) }}</td>
+          <td class="num">¥{{ '%.2f'|format(p.avg_cost_basis) }}</td>
+          <td class="num">¥{{ '%.2f'|format(p.real_price) }}</td>
+          <td class="num">¥{{ '%.0f'|format(p.market_value) }}</td>
+          <td class="num {{ 'pos' if p.unrealized_pnl >= 0 else 'neg' }}">
+            {{ '%+.0f'|format(p.unrealized_pnl) }}
+          </td>
+          <td class="num {{ 'pos' if p.pnl_pct_live >= 0 else 'neg' }}">
+            {{ '%+.2f'|format(p.pnl_pct_live) }}%
+          </td>
+          <td>
+            <span class="src-{{ p.src_label }}">{{ p.src_label }}</span>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty">
+      <div class="big-icon">{{ cfg.icon }}</div>
+      <p><strong>{{ cfg.name }} · 空仓</strong></p>
+      <p style="margin-top:8px;">Gobelin 主账户已重置到 ¥{{ '%.0f'|format(init_cash) }} 全现金</p>
+      <p style="margin-top:4px;font-size:12px;">
+        📅 明天 2026-11-12 (周四) 9:15 Guardian 首次提案 → 合规层校验 (T+1/涨跌停/整手) → 建仓
+      </p>
+      {% if cfg.code == 'CASH' %}
+      <p style="margin-top:12px;color:#22c55e;">✅ 可用现金 ¥{{ '%.0f'|format(acc.cash_balance) }} 随时等待 Guardian 调度</p>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+
+</main>
+</body>
+</html>

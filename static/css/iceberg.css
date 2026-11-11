@@ -1,0 +1,1207 @@
+/* ============================================================================
+   ICEBERG (冰山) — 极光紫玻璃态主题
+   AI 意识引擎 / 题库系统 / 知识图谱 / 仙女座守护
+   v4.0 — 2026-11-08 · 统一设计系统迁移
+   
+   依赖:  tokens.css (必须先加载, 所有 var(--*) 来源)
+   触发:  <body class="iceberg-theme">
+   
+   视觉语言: 极光紫 (Aurora Violet) × 冰川玻璃 (Glacier Glass)
+   差异化点:  ethereal / glowing / translucent / aurora-gradient
+   
+   保留兼容类 (来自 v3.0):
+     .iceberg-root / .iceberg-peak / .iceberg-spectrum / .iceberg-basement
+     .ice-cloud / .ice-seal / .ice-layer-title / .ice-tab
+     .andromeda-status-bar / .iol-panel / .council-badge
+   ============================================================================ */
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   §1  PAGE BACKGROUND — 极光渐变 + 浮动光斑
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+body.iceberg-theme {
+  background: var(--bg-pattern), var(--bg-app);
+  background-attachment: fixed;
+  min-height: 100vh;
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  overflow-x: hidden;
+}
+
+/* ─── 极光动画光斑 (positioned fixed, pointer-events none) ─── */
+.iceberg-aurora {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+.iceberg-aurora::before,
+.iceberg-aurora::after {
+  content: '';
+  position: absolute;
+  width: 600px;
+  height: 600px;
+  border-radius: 50%;
+  filter: blur(120px);
+  opacity: 0.35;
+  animation: aurora-float 22s ease-in-out infinite;
+}
+.iceberg-aurora::before {
+  background: radial-gradient(circle, var(--accent) 0%, transparent 70%);
+  top: -200px;
+  left: -150px;
+}
+.iceberg-aurora::after {
+  background: radial-gradient(circle, var(--accent-alt, #22D3EE) 0%, transparent 70%);
+  bottom: -200px;
+  right: -150px;
+  animation-delay: -11s;
+}
+@keyframes aurora-float {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50%      { transform: translate(80px, -60px) scale(1.15); }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   §2  GLASSMORPHISM CARDS — 冰川玻璃态
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.iceberg-card {
+  position: relative;
+  background: rgba(30, 27, 75, 0.5);
+  backdrop-filter: blur(var(--blur-md)) saturate(1.4);
+  -webkit-backdrop-filter: blur(var(--blur-md)) saturate(1.4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  box-shadow: var(--shadow-md), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  transition: transform var(--duration-base) var(--ease-out),
+              box-shadow var(--duration-base) var(--ease-out),
+              border-color var(--duration-base);
+  overflow: hidden;
+}
+.iceberg-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(167, 139, 250, 0.6), transparent);
+}
+.iceberg-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--border-hover);
+  box-shadow: var(--shadow-lg), 0 0 50px rgba(139, 92, 246, 0.22);
+}
+
+/* 小号紧凑玻璃卡 */
+.iceberg-card-sm {
+  background: rgba(30, 27, 75, 0.4);
+  backdrop-filter: blur(var(--blur-light));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   §3  TOP NAV — 极光玻璃顶栏
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.iceberg-topbar {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  height: var(--topbar-h);
+  background: rgba(11, 10, 30, 0.75);
+  backdrop-filter: blur(22px) saturate(1.5);
+  -webkit-backdrop-filter: blur(22px) saturate(1.5);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 var(--space-6);
+  gap: var(--space-4);
+}
+.iceberg-topbar .brand {
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  font-weight: 700;
+  letter-spacing: 3px;
+  background: var(--gradient-aurora);
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: gradient-shift 6s ease infinite;
+}
+@keyframes gradient-shift {
+  0%, 100% { background-position: 0% 50%; }
+  50%      { background-position: 100% 50%; }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   §4  AURORA BUTTONS — 极光渐变按钮
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.btn-iceberg {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-5);
+  background: var(--gradient-aurora);
+  background-size: 200% 200%;
+  color: white;
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: var(--text-base);
+  letter-spacing: 0.5px;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: transform var(--duration-base) var(--ease-out),
+              box-shadow var(--duration-base) var(--ease-out),
+              filter var(--duration-base);
+  animation: gradient-shift 5s ease infinite;
+  box-shadow: 0 4px 20px var(--accent-glow);
+}
+.btn-iceberg:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 35px var(--accent-glow);
+  filter: brightness(1.08);
+}
+.btn-iceberg:active {
+  transform: translateY(0) scale(0.98);
+}
+
+/* 冰川蓝次要按钮 */
+.btn-iceberg-alt {
+  background: linear-gradient(135deg, var(--accent-alt, #22D3EE) 0%, var(--accent) 100%);
+  box-shadow: 0 4px 20px var(--accent-alt-glow, var(--accent-glow));
+}
+.btn-iceberg-alt:hover {
+  box-shadow: 0 10px 35px var(--accent-alt-glow, var(--accent-glow));
+}
+
+/* 玻璃态 ghost 按钮 */
+.btn-iceberg-ghost {
+  background: rgba(139, 92, 246, 0.08);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  box-shadow: none;
+  animation: none;
+}
+.btn-iceberg-ghost:hover {
+  background: rgba(139, 92, 246, 0.18);
+  border-color: var(--border-hover);
+  color: var(--text-primary);
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.15);
+  transform: translateY(-1px);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   §5  ICEBERG PULSE — 意识脉搏环 (AI 意识中心视觉)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.iceberg-pulse {
+  position: relative;
+  width: 160px;
+  height: 160px;
+  margin: 0 auto;
+}
+.iceberg-pulse::before,
+.iceberg-pulse::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid var(--accent);
+  opacity: 0;
+  animation: pulse-ring 2.8s ease-out infinite;
+}
+.iceberg-pulse::after {
+  animation-delay: 1.4s;
+}
+@keyframes pulse-ring {
+  0%   { transform: scale(0.55); opacity: 0.9; }
+  100% { transform: scale(1.7);  opacity: 0; }
+}
+.iceberg-pulse .core {
+  position: absolute;
+  inset: 25%;
+  border-radius: 50%;
+  background: var(--gradient-aurora);
+  box-shadow: 0 0 60px var(--accent-glow);
+  animation: core-breathe 3.2s ease-in-out infinite;
+}
+@keyframes core-breathe {
+  0%, 100% { transform: scale(1);    opacity: 0.9; }
+  50%      { transform: scale(1.12); opacity: 1; }
+}
+
+/* 小尺寸 pulse (列表/卡片内) */
+.iceberg-pulse-sm {
+  width: 60px;
+  height: 60px;
+}
+.iceberg-pulse-sm .core {
+  inset: 22%;
+  box-shadow: 0 0 25px var(--accent-glow);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   §6  DOMAIN GRID — 题库域卡片
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.iceberg-domains {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--space-4);
+}
+.iceberg-domain {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: rgba(139, 92, 246, 0.06);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--duration-base) var(--ease-out);
+}
+.iceberg-domain:hover {
+  background: rgba(139, 92, 246, 0.16);
+  border-color: var(--border-hover);
+  transform: translateX(4px);
+  box-shadow: 0 0 25px rgba(139, 92, 246, 0.2);
+}
+.iceberg-domain .domain-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--gradient-aurora);
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: white;
+  flex-shrink: 0;
+}
+.iceberg-domain .domain-info { flex: 1; min-width: 0; }
+.iceberg-domain .domain-name {
+  font-weight: 600;
+  font-size: var(--text-base);
+  color: var(--text-primary);
+}
+.iceberg-domain .domain-desc {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   §7  ICEBERG THREE-LAYER SHELL (v3.0 兼容保留) — 2:3:5 Grid
+   ──  Peak     雪峰层 (顶部 Hero)
+   ──  Spectrum 光影层 (中间可视化)
+   ──  Basement 渊底层 (底部数据/Tab)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.iceberg-root {
+  display: grid;
+  grid-template-rows: auto auto auto;
+  min-height: 100dvh;
+  gap: 0;
+}
+
+/* 雪峰层 */
+.iceberg-peak {
+  position: relative;
+  padding: var(--space-7) var(--space-7);
+  background:
+    radial-gradient(circle at 20% 30%, rgba(167, 139, 250, 0.08) 0%, transparent 60%),
+    radial-gradient(circle at 80% 70%, rgba(34, 211, 238, 0.06) 0%, transparent 55%),
+    linear-gradient(180deg, rgba(30, 27, 75, 0.6) 0%, rgba(15, 23, 42, 0.8) 100%);
+  backdrop-filter: blur(var(--blur-md));
+  min-height: 180px;
+  color: var(--text-primary);
+}
+/* 金线分隔 — 峰底 */
+.iceberg-peak::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg,
+    transparent 0%, var(--accent-gold, var(--warning)) 20%,
+    var(--accent-gold, var(--warning)) 80%, transparent 100%);
+  opacity: 0.5;
+}
+
+/* 光影层 */
+.iceberg-spectrum {
+  position: relative;
+  padding: var(--space-6) var(--space-7);
+  background: var(--gradient-glacier);
+  min-height: 260px;
+  color: var(--text-primary);
+}
+/* 紫点飞溅装饰 */
+.iceberg-spectrum::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 15% 40%, rgba(139, 92, 246, 0.12) 1px, transparent 2px),
+    radial-gradient(circle at 85% 70%, rgba(34, 211, 238, 0.1) 1px, transparent 2px);
+  background-size: 120px 120px, 150px 150px;
+  opacity: 0.5;
+}
+/* 金线分隔 — 谱底 */
+.iceberg-spectrum::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg,
+    transparent 0%, var(--accent-gold, var(--warning)) 20%,
+    var(--accent-gold, var(--warning)) 80%, transparent 100%);
+  opacity: 0.4;
+}
+
+/* 渊底层 */
+.iceberg-basement {
+  padding: var(--space-6) var(--space-7);
+  background: linear-gradient(180deg, rgba(11, 10, 30, 0.9) 0%, rgba(4, 5, 20, 0.95) 100%);
+  color: var(--text-primary);
+  border-top: 1px solid var(--border);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   §8  CLOUD DRIFT — 云飘动画 (v3.0 兼容保留)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.ice-cloud {
+  position: absolute;
+  left: 0; right: 0;
+  height: 8px;
+  background: linear-gradient(90deg,
+    transparent, rgba(167, 139, 250, 0.35) 20%,
+    rgba(34, 211, 238, 0.35) 80%, transparent);
+  opacity: 0.25;
+  pointer-events: none;
+  animation: ice-cloud-drift 35s linear infinite;
+}
+.ice-cloud.cloud-1 { top: 25%; animation-duration: 18s; }
+.ice-cloud.cloud-2 { top: 50%; animation-duration: 50s; animation-delay: -15s; }
+.ice-cloud.cloud-3 { top: 70%; animation-duration: 65s; animation-delay: -30s; }
+@keyframes ice-cloud-drift {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   §9  KPI CARDS — 雪峰层 KPI 卡 (v3.0 兼容保留 + 玻璃态升级)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.iceberg-peak .ice-card {
+  background: rgba(30, 27, 75, 0.45);
+  backdrop-filter: blur(var(--blur-light)) saturate(1.3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  margin-bottom: var(--space-3);
+  box-shadow: var(--shadow-xs);
+  transition: border-color var(--duration-base),
+              box-shadow var(--duration-base),
+              transform var(--duration-base);
+}
+.iceberg-peak .ice-card:hover {
+  border-color: var(--border-hover);
+  box-shadow: var(--shadow-sm), 0 0 20px rgba(139, 92, 246, 0.15);
+  transform: translateY(-1px);
+}
+.iceberg-peak .ice-kpi-value {
+  font-family: var(--font-mono);
+  font-size: 28px;
+  font-weight: 700;
+  background: var(--gradient-aurora);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  line-height: 1.2;
+}
+.iceberg-peak .ice-kpi-label {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  letter-spacing: 0.5px;
+  margin-top: 2px;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   §10  LAYER TITLES — 层级标题 + 金线分隔 (v3.0 兼容保留)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.ice-layer-title {
+  font-family: var(--font-heading);
+  font-size: var(--text-2xl);
+  font-weight: 700;
+  letter-spacing: 2px;
+  display: inline-block;
+  padding-bottom: var(--space-2);
+  margin-bottom: var(--space-5);
+  position: relative;
+  color: var(--text-primary);
+}
+.ice-layer-title::after {
+  content: '';
+  position: absolute;
+  left: 0; bottom: 0;
+  width: 60%;
+  height: 1px;
+  background: linear-gradient(90deg, var(--accent-gold, var(--warning)), transparent);
+}
+.ice-layer-subtitle {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  margin-left: var(--space-3);
+  vertical-align: middle;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   §11  SEAL STAMP — 篆刻印章 (v3.0 兼容保留 + 极光化)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.ice-seal {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: var(--accent-sell, #F87171);
+  color: white;
+  font-family: var(--font-heading);
+  font-size: 11px;
+  font-weight: 900;
+  border-radius: var(--radius-xs);
+  transform: rotate(-3deg);
+  box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.3);
+  line-height: 1;
+}
+.ice-seal.corner {
+  position: absolute;
+  bottom: var(--space-4);
+  right: var(--space-4);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   §12  LIGHT LAYER FORCE GRAPH — 光影层力导向图 (v3.0 兼容保留)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.iceberg-spectrum .ice-graph {
+  width: 100%;
+  height: 100%;
+  min-height: 240px;
+}
+.iceberg-spectrum .ice-graph .ice-node circle {
+  transition: r var(--duration-base);
+}
+.iceberg-spectrum .ice-graph .ice-node:hover circle {
+  r: 12px;
+  filter: drop-shadow(0 0 8px var(--accent-glow));
+}
+.iceberg-spectrum .ice-graph .ice-link {
+  stroke: var(--accent-gold, var(--warning));
+  stroke-opacity: 0.4;
+}
+.iceberg-spectrum .ice-graph .ice-node-label {
+  fill: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  text-anchor: middle;
+  pointer-events: none;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   §13  BASEMENT TABS — 渊底层 Tab 折叠 (v3.0 兼容保留 + 极光化)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.iceberg-basement .ice-tabs {
+  display: flex;
+  gap: var(--space-1);
+  border-bottom: 1px solid var(--border);
+  margin-bottom: var(--space-4);
+}
+.iceberg-basement .ice-tab {
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--text-sm);
+  font-family: var(--font-heading);
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  opacity: 0.6;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all var(--duration-base);
+}
+.iceberg-basement .ice-tab:hover {
+  opacity: 0.9;
+  color: var(--text-primary);
+}
+.iceberg-basement .ice-tab.active {
+  opacity: 1;
+  border-bottom-color: var(--accent);
+  color: var(--accent);
+}
+.iceberg-basement .ice-tab-content {
+  display: none;
+  padding-top: var(--space-4);
+}
+.iceberg-basement .ice-tab-content.active {
+  display: block;
+}
+
+/* ─── 王安石拗相公 Tab (缺陷收集 · 红底) ─── */
+.iceberg-basement .ice-tab.aoxiang {
+  color: var(--danger);
+  border-bottom-color: var(--danger) !important;
+}
+.iceberg-basement .aoxiang-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  margin-bottom: var(--space-2);
+  border-left: 3px solid var(--danger);
+  background: rgba(248, 113, 113, 0.08);
+  border-radius: 0 var(--radius-xs) var(--radius-xs) 0;
+}
+.iceberg-basement .aoxiang-item .aoxiang-type {
+  font-size: var(--text-xs);
+  padding: 2px 8px;
+  border-radius: var(--radius-xs);
+  background: var(--danger);
+  color: white;
+  font-family: var(--font-mono);
+}
+.iceberg-basement .aoxiang-item .aoxiang-desc {
+  flex: 1;
+  font-size: var(--text-sm);
+}
+.iceberg-basement .aoxiang-item .aoxiang-severity {
+  font-size: var(--text-xs);
+  font-family: var(--font-mono);
+}
+
+/* ─── 渊底层表格 ─── */
+.iceberg-basement table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+.iceberg-basement th {
+  text-align: left;
+  padding: var(--space-2) var(--space-3);
+  font-family: var(--font-heading);
+  font-weight: 500;
+  background: rgba(139, 92, 246, 0.08);
+  color: var(--accent-gold, var(--warning));
+  border-bottom: 1px solid var(--border);
+}
+.iceberg-basement td {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--border);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   §14  PEAK SCORE — 雪峰层极简总分 (v3.0 兼容保留 + 极光化)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.iceberg-peak-score {
+  text-align: center;
+  padding: var(--space-6) var(--space-7);
+  max-width: 480px;
+  margin: 0 auto var(--space-5);
+}
+.ice-score-wrap {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  line-height: 1;
+}
+.ice-score-value {
+  font-family: var(--font-display);
+  font-size: 120px;
+  font-weight: 900;
+  letter-spacing: -4px;
+  background: var(--gradient-aurora);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  filter: drop-shadow(0 0 30px var(--accent-glow));
+}
+.ice-score-unit {
+  font-family: var(--font-mono);
+  font-size: var(--text-xl);
+  font-weight: 400;
+  color: var(--text-muted);
+}
+.ice-score-label {
+  font-family: var(--font-heading);
+  font-size: var(--text-2xl);
+  color: var(--accent);
+  margin-top: var(--space-1);
+  letter-spacing: 4px;
+}
+.ice-score-subtitle {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  letter-spacing: 2px;
+  margin-top: var(--space-1);
+  opacity: 0.7;
+}
+.ice-score-bar-wrap {
+  width: 100%;
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  margin: var(--space-3) 0 var(--space-2);
+  overflow: hidden;
+}
+.ice-score-bar {
+  height: 100%;
+  border-radius: 2px;
+  background: var(--gradient-aurora);
+  transition: width var(--duration-slow) var(--ease-out),
+              background var(--duration-slow);
+}
+.ice-score-meta {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-6);
+  font-size: var(--text-xs);
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+  margin-top: var(--space-3);
+}
+.ice-score-meta span { opacity: 0.75; }
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   §15  VEIL MODE — 西施面纱 (v3.0 兼容保留)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.iceberg-veil .ice-layer-spectrum,
+.iceberg-veil .ice-layer-basement {
+  opacity: 0;
+  max-height: 0;
+  overflow: hidden;
+  transition: opacity var(--duration-slow) var(--ease-out),
+              max-height 0.8s ease;
+}
+.iceberg-veil:not(.veil-reveal-spectrum):not(.veil-reveal-basement)
+  .ice-layer-spectrum,
+.iceberg-veil:not(.veil-reveal-spectrum):not(.veil-reveal-basement)
+  .ice-layer-basement {
+  opacity: 0;
+  max-height: 0;
+}
+.iceberg-veil.veil-reveal-spectrum .ice-layer-spectrum {
+  opacity: 1;
+  max-height: 600px;
+}
+.iceberg-veil.veil-reveal-basement .ice-layer-basement {
+  opacity: 1;
+  max-height: none;
+}
+
+.ice-veil-controls {
+  position: fixed;
+  bottom: var(--space-4);
+  right: var(--space-4);
+  display: flex;
+  gap: var(--space-2);
+  z-index: var(--z-modal);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+}
+.ice-veil-btn {
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--accent);
+  background: rgba(11, 10, 30, 0.85);
+  backdrop-filter: blur(var(--blur-light));
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: var(--radius-xs);
+  opacity: 0.7;
+  transition: all var(--duration-base);
+}
+.ice-veil-btn:hover { opacity: 1; color: var(--text-primary); }
+.ice-veil-btn.active {
+  background: var(--accent);
+  color: var(--text-inverse);
+  opacity: 1;
+}
+.ice-veil-timer {
+  position: fixed;
+  top: var(--space-3);
+  right: var(--space-4);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
+  z-index: var(--z-modal);
+  opacity: 0.6;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   §16  ANDROMEDA STATUS BAR — 守护进程状态条 (v3.0 兼容保留)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.andromeda-status-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  padding: var(--space-2) var(--space-5);
+  background: linear-gradient(90deg, rgba(15, 23, 42, 0.95), rgba(11, 10, 30, 0.95));
+  border-bottom: 2px solid var(--accent);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  box-shadow: var(--shadow-sm), 0 0 20px var(--accent-glow);
+}
+.asb-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-full);
+  background: rgba(139, 92, 246, 0.1);
+  border: 1px solid var(--border);
+  font-size: var(--text-xs);
+}
+.asb-pill .asb-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-muted);
+}
+.asb-pill.online .asb-dot {
+  background: var(--success);
+  box-shadow: 0 0 6px var(--success-glow);
+  animation: asb-pulse 2s infinite;
+}
+.asb-pill.warn .asb-dot {
+  background: var(--warning);
+  box-shadow: 0 0 6px var(--warning-glow);
+}
+.asb-pill.offline .asb-dot {
+  background: var(--danger);
+  box-shadow: 0 0 6px var(--danger-glow);
+}
+.asb-pill.iol .asb-dot {
+  background: var(--accent-gold, var(--warning));
+  box-shadow: 0 0 6px var(--warning-glow);
+}
+@keyframes asb-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.5; transform: scale(0.85); }
+}
+.asb-pill strong {
+  color: var(--accent-gold, var(--warning));
+  font-weight: 600;
+}
+.asb-theme-toggle {
+  margin-left: auto;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-full);
+  background: rgba(139, 92, 246, 0.08);
+  border: 1px solid var(--accent-gold, var(--warning));
+  color: var(--accent-gold, var(--warning));
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  transition: all var(--duration-base);
+}
+.asb-theme-toggle:hover {
+  background: var(--accent-gold, var(--warning));
+  color: var(--text-inverse);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   §17  IOL PANEL — 实时优化日志面板 (v3.0 兼容保留)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.iol-panel {
+  background: rgba(30, 27, 75, 0.45);
+  backdrop-filter: blur(var(--blur-light));
+  border-radius: var(--radius-md);
+  padding: var(--space-5);
+  border-left: 3px solid var(--accent-gold, var(--warning));
+  box-shadow: var(--shadow-sm);
+}
+.iol-hd {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-4);
+}
+.iol-hd h3 {
+  font-family: var(--font-heading);
+  font-size: var(--text-base);
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 2px;
+}
+.iol-hd h3::before {
+  content: '▲';
+  margin-right: var(--space-1);
+}
+
+.iol-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+.iol-stat {
+  text-align: center;
+  padding: var(--space-3) var(--space-2);
+  border-radius: var(--radius-sm);
+  background: rgba(139, 92, 246, 0.06);
+  border: 1px solid var(--border);
+}
+.iol-stat .n {
+  font-family: var(--font-display);
+  font-size: var(--text-2xl);
+  font-weight: 700;
+}
+.iol-stat .l {
+  font-size: var(--text-xs);
+  letter-spacing: 1px;
+  opacity: 0.7;
+  margin-top: var(--space-1);
+}
+.iol-stat.applied .n { color: var(--success); }
+.iol-stat.pending  .n { color: var(--accent); }
+.iol-stat.failed   .n { color: var(--danger); }
+.iol-stat.skipped  .n { color: var(--text-muted); }
+
+.iol-list {
+  max-height: 200px;
+  overflow-y: auto;
+}
+.iol-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-1);
+  border-bottom: 1px dashed var(--border);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+}
+.iol-row:last-child { border-bottom: none; }
+.iol-row .iol-func { flex: 1; color: var(--text-secondary); }
+.iol-row .iol-cat {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: var(--radius-xs);
+  background: rgba(139, 92, 246, 0.1);
+  color: var(--text-muted);
+}
+.iol-row .iol-att {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  width: 40px;
+  text-align: right;
+}
+.iol-row .iol-status {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  width: 60px;
+  text-align: right;
+}
+.iol-row .iol-status.APPLIED { color: var(--success); }
+.iol-row .iol-status.FAILED  { color: var(--danger); }
+.iol-row .iol-status.PENDING { color: var(--accent); }
+.iol-row .iol-status.SKIPPED { color: var(--text-muted); }
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   §18  SVG ICONS — 内联图标组件 (v3.0 兼容保留)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.ice-svg-icon {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: currentColor;
+  transition: transform var(--duration-base), filter var(--duration-base);
+}
+.ice-svg-icon:hover {
+  transform: scale(1.15);
+  filter: drop-shadow(0 0 6px var(--accent-glow));
+}
+.ice-svg-icon svg {
+  width: 100%;
+  height: 100%;
+  fill: currentColor;
+}
+
+.nav-icon-svg {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  background: var(--gradient-aurora);
+  color: white;
+  box-shadow: var(--shadow-sm);
+}
+.nav-icon-svg svg {
+  width: 22px;
+  height: 22px;
+}
+
+.council-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-full);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  background: rgba(139, 92, 246, 0.12);
+  color: var(--accent-gold, var(--warning));
+  border: 1px solid var(--accent-gold, var(--warning));
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   §19  INPUT & FORM — 极光表单控件
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.iceberg-input {
+  background: rgba(30, 27, 75, 0.4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  padding: var(--space-2) var(--space-3);
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  transition: border-color var(--duration-base),
+              box-shadow var(--duration-base);
+  width: 100%;
+}
+.iceberg-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+.iceberg-input::placeholder {
+  color: var(--text-muted);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   §20  BADGES & CHIPS — 状态徽章
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.iceberg-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 4px var(--space-3);
+  border-radius: var(--radius-full);
+  font-size: var(--text-sm);
+  font-family: var(--font-mono);
+  border: 1px solid var(--border);
+  background: rgba(139, 92, 246, 0.08);
+  color: var(--text-secondary);
+  transition: all var(--duration-base);
+  cursor: pointer;
+}
+.iceberg-chip:hover {
+  border-color: var(--border-hover);
+  color: var(--text-primary);
+}
+.iceberg-chip.active {
+  background: var(--gradient-aurora);
+  color: white;
+  border-color: transparent;
+  box-shadow: 0 0 15px var(--accent-glow);
+}
+
+.iceberg-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+.iceberg-badge-success { background: var(--success); color: white; }
+.iceberg-badge-danger  { background: var(--danger);  color: white; }
+.iceberg-badge-warning { background: var(--warning); color: var(--text-inverse); }
+.iceberg-badge-accent  { background: var(--accent);  color: var(--text-inverse); }
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   §21  DATA TABLE — 极光数据表格
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.iceberg-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+}
+.iceberg-table th {
+  padding: var(--space-3) var(--space-4);
+  text-align: left;
+  font-family: var(--font-heading);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: var(--accent);
+  background: rgba(139, 92, 246, 0.08);
+  border-bottom: 2px solid var(--border);
+  text-transform: uppercase;
+}
+.iceberg-table td {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border);
+  color: var(--text-secondary);
+}
+.iceberg-table tr:hover td {
+  background: rgba(139, 92, 246, 0.06);
+  color: var(--text-primary);
+}
+.iceberg-table td.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.iceberg-table td.up   { color: var(--success); }
+.iceberg-table td.down { color: var(--danger); }
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   §22  PROGRESS BARS — 极光进度条
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.iceberg-progress {
+  width: 100%;
+  height: 8px;
+  background: var(--border);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+.iceberg-progress-fill {
+  height: 100%;
+  background: var(--gradient-aurora);
+  border-radius: var(--radius-full);
+  transition: width var(--duration-slow) var(--ease-out);
+  box-shadow: 0 0 10px var(--accent-glow);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   §23  SCROLLBAR — 极光滚动条 (作用于 iceberg-theme 下全局)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+body.iceberg-theme ::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+body.iceberg-theme ::-webkit-scrollbar-track {
+  background: rgba(11, 10, 30, 0.5);
+}
+body.iceberg-theme ::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--accent), var(--accent-alt, #22D3EE));
+  border-radius: var(--radius-full);
+}
+body.iceberg-theme ::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, var(--accent-hover), var(--accent-alt-hover, #67E8F9));
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   §24  RESPONSIVE — 响应式断点
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 1024px) {
+  .iceberg-domains { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+  .ice-score-value { font-size: 80px; }
+  .iol-stats { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 768px) {
+  .iceberg-domains { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+  .iceberg-pulse { width: 120px; height: 120px; }
+  .ice-cloud { display: none; }
+  .ice-score-value { font-size: 60px; letter-spacing: -2px; }
+  .iceberg-spectrum,
+  .iceberg-basement,
+  .iceberg-peak { padding: var(--space-5) var(--space-4); }
+  .iol-stats { grid-template-columns: 1fr 1fr; }
+  .andromeda-status-bar { flex-wrap: wrap; gap: var(--space-2); padding: var(--space-2) var(--space-3); font-size: var(--text-xs); }
+  .asb-theme-toggle { margin-left: 0; margin-top: var(--space-1); }
+}
+
+@media (max-width: 480px) {
+  .iceberg-domains { grid-template-columns: 1fr; }
+  .ice-score-value { font-size: 48px; }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   §25  UTILITY — 辅助类 (v3.0 兼容保留)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.ice-gap-peak     { gap: var(--space-4); }
+.ice-gap-spectrum { gap: var(--space-3); }
+.ice-gap-basement { gap: var(--space-2); }
+.ice-float-seal   { position: absolute; bottom: var(--space-4); right: var(--space-4); }
+.ice-collapsible-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+  user-select: none;
+}
+
+
+/* ============================================================================
+   END OF iceberg.css — 极光紫玻璃态主题
+   所有颜色值均通过 var(--*) 引用 tokens.css 令牌
+   严禁在此文件中硬编码十六进制色值
+   ============================================================================ */

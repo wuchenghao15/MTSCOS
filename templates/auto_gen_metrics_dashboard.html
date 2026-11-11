@@ -1,0 +1,13 @@
+<!-- auto_gen_metrics_dashboard v6.0 -->
+<div id="auto-metrics">
+    <div class="metric"><b>CPU</b><span data-m="cpu">--</span>%</div>
+    <div class="metric"><b>daemon</b><span data-m="dc">--</span></div>
+</div>
+<script>
+setInterval(async () => {
+    try {
+        const r = await fetch("/api/metrics/system"); const d = await r.json();
+        document.querySelector('[data-m=cpu]').textContent = d.cpu;
+    } catch(e){}
+}, 5000);
+</script>

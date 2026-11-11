@@ -1,0 +1,40 @@
+{% extends 'base_layout.html' %}
+{% block title %}{{ t('admin_fallback.title', default='后台管理') }} — {{ name }}{% endblock %}
+{% block sidebar %}
+{% include '_partials/andromeda_sidebar.html' %}
+{% endblock %}
+
+{% block content %}
+<style>
+  /* v25.1 全盘布局修复 */
+  html,body{height:100%;min-height:100dvh;overflow:hidden;margin:0;padding:0}
+  *{box-sizing:border-box}
+  .container,.main,.content{flex:1;min-height:0;overflow-y:auto}
+/* v25.1 子页面内容滚动容器 */
+  .container{flex:1;min-height:0;overflow-y:auto}
+  [class*="main"]{min-height:0}
+  [class*="content"]{min-height:0}
+  .af-wrap{max-width:800px;margin:60px auto;padding:0 20px;text-align:center}
+  .af-icon{font-size:56px;color:#e5e7eb;margin-bottom:20px}
+  .af-card{background:#fff;border-radius:14px;padding:40px 32px;box-shadow:0 2px 16px rgba(0,0,0,.06)}
+  .af-name{font-family:monospace;background:#f0f4ff;color:#4a6cf7;padding:6px 14px;border-radius:20px;font-size:13px;display:inline-block;margin-bottom:16px}
+  .af-title{font-size:20px;font-weight:600;color:#2d3142;margin-bottom:8px}
+  .af-desc{color:#8b93a7;font-size:14px;margin-bottom:24px;line-height:1.7}
+  .af-btn{display:inline-flex;align-items:center;gap:6px;background:#4a6cf7;color:#fff;padding:10px 22px;border-radius:8px;text-decoration:none;font-size:14px;transition:.18s}
+  .af-btn:hover{background:#3b55d4;color:#fff;text-decoration:none}
+  .af-btn.g{background:#6366f1}.af-btn.g:hover{background:#4f46e5}
+</style>
+
+<div class="af-wrap">
+  <div class="af-icon">🚧</div>
+  <div class="af-card">
+    <div class="af-name">/admin_app/{{ name }}</div>
+    <div class="af-title">{{ t('admin_fallback.title', default='功能正在建设中') }}</div>
+    <div class="af-desc">{{ t('admin_fallback.desc', default='该模块的独立页面尚未完成开发，您的导航被兜底 catch-all 接住。吴美工 AI 14 套主题、仙女座自演化引擎、EigenFlux AI 专家团正在紧急补全，请稍候。') }}</div>
+    <div>
+      <a href="/admin_app/governance/dashboard" class="af-btn"><i class="fas fa-gauge-high"></i> {{ t('admin_fallback.go', default='回到治理中枢') }}</a>
+      <a href="/admin_center" class="af-btn g"><i class="fas fa-layer-group"></i> {{ t('admin_fallback.admin', default='超级管理台') }}</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

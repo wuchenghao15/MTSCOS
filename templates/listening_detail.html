@@ -1,0 +1,263 @@
+{% extends "base_unified.html" %}
+{% block title %}{{ item.title }} · 听力练习{% endblock %}
+{% block page_title %}{{ item.title }}{% endblock %}
+{% block extra_head %}
+<style>
+  /* v25.1 child page scroll fix */
+  body{min-height:0}
+  
+:root {
+    --lp-primary: {% if lang == 'en' %}#2E8B57{% else %}#C8102E{% endif %};
+    --lp-accent: {% if lang == 'en' %}#5BBF8A{% else %}#E74C6B{% endif %};
+    --lp-soft: {% if lang == 'en' %}rgba(46,139,87,.08){% else %}rgba(200,16,46,.08){% endif %};
+}
+.ld-back { margin-bottom:12px; font-size:13px; color:var(--mtscos-text-tertiary); }
+.ld-back a { color:var(--lp-primary); text-decoration:none; }
+.ld-profile-card {
+    background:var(--lp-soft); border:1px solid var(--lp-primary); border-radius:var(--mtscos-radius-lg);
+    padding:18px; margin-bottom:16px; display:flex; gap:20px; align-items:center; flex-wrap:wrap;
+}
+.ld-avatar { width:64px; height:64px; border-radius:50%; background:var(--lp-primary);
+    color:#fff; display:flex; align-items:center; justify-content:center; font-size:28px; font-weight:700; }
+.ld-profile-info { flex:1; min-width:200px; }
+.ld-profile-name { font-size:16px; font-weight:700; color:var(--lp-primary); margin-bottom:4px; }
+.ld-profile-meta { font-size:12px; color:var(--mtscos-text-secondary); line-height:1.6; }
+.ld-profile-meta span { display:inline-block; margin-right:12px; padding:2px 8px;
+    background:rgba(255,255,255,.6); border-radius:10px; font-weight:600; }
+
+.ld-audio-card {
+    background:var(--mtscos-bg-card); border:1px solid var(--mtscos-border-light);
+    border-radius:var(--mtscos-radius-lg); padding:20px; margin-bottom:16px;
+}
+.ld-audio-title { font-size:14px; font-weight:700; color:var(--lp-primary); margin-bottom:12px; }
+.ld-audio-player { width:100%; border-radius:8px; }
+.ld-audio-meta { font-size:11px; color:var(--mtscos-text-tertiary); margin-top:10px; display:flex; gap:16px; flex-wrap:wrap; }
+
+.ld-transcript-card {
+    background:var(--mtscos-bg-card); border:1px solid var(--mtscos-border-light);
+    border-radius:var(--mtscos-radius-lg); padding:20px; margin-bottom:16px;
+}
+.ld-transcript-title { font-size:14px; font-weight:700; color:var(--lp-primary); margin-bottom:12px;
+    display:flex; justify-content:space-between; align-items:center; }
+.ld-transcript-toggle { font-size:12px; cursor:pointer; color:var(--mtscos-text-secondary);
+    text-decoration:underline; }
+.ld-transcript-body {
+    font-size:15px; line-height:1.9; color:var(--mtscos-text-primary);
+    padding:16px; background:var(--lp-soft); border-radius:8px; border-left:3px solid var(--lp-primary);
+    max-height:200px; overflow:hidden; transition:max-height .3s;
+}
+.ld-transcript-body.expanded { max-height:2000px; }
+.ld-conversation-line { padding:4px 0; font-size:14px; }
+.ld-conv-speaker { font-weight:700; color:var(--lp-primary); margin-right:6px; }
+
+.ld-qa-card {
+    background:var(--mtscos-bg-card); border:1px solid var(--mtscos-border-light);
+    border-radius:var(--mtscos-radius-lg); padding:24px; margin-bottom:16px;
+}
+.ld-qa-title { font-size:14px; font-weight:700; color:var(--lp-primary); margin-bottom:16px; }
+.ld-q-block { margin-bottom:24px; padding-bottom:20px; border-bottom:1px dashed var(--mtscos-border-light); }
+.ld-q-block:last-child { border-bottom:none; margin-bottom:0; padding-bottom:0; }
+.ld-q-num { font-size:13px; font-weight:700; color:var(--lp-accent); margin-bottom:6px; }
+.ld-q-text { font-size:15px; font-weight:600; color:var(--mtscos-text-primary); margin-bottom:14px; line-height:1.5; }
+.ld-option {
+    display:block; padding:12px 16px; margin-bottom:8px; border:1px solid var(--mtscos-border-light); border-radius:8px;
+    cursor:pointer; font-size:14px; transition:all .15s; background:#fff;
+}
+.ld-option:hover { border-color:var(--lp-primary); background:var(--lp-soft); }
+.ld-option.selected { border-color:var(--lp-primary); background:var(--lp-soft); font-weight:600; }
+.ld-option.correct { border-color:#2a9d3f; background:rgba(42,157,63,.1); color:#2a9d3f; }
+.ld-option.wrong { border-color:#e74c3c; background:rgba(231,76,60,.1); color:#e74c3c; }
+
+.ld-submit-btn {
+    padding:14px 48px; background:var(--lp-primary); color:#fff; border:none;
+    border-radius:8px; cursor:pointer; font-size:15px; font-weight:700; margin-top:8px;
+    transition:all .15s;
+}
+.ld-submit-btn:hover { background:var(--lp-accent); }
+.ld-submit-btn:disabled { background:#ccc; cursor:not-allowed; }
+
+.ld-result { margin-top:20px; padding:20px; border-radius:10px; font-weight:700; font-size:18px; text-align:center; }
+.ld-result.ok { background:rgba(42,157,63,.1); color:#2a9d3f; border:1px solid rgba(42,157,63,.3); }
+.ld-result.bad { background:rgba(231,76,60,.1); color:#e74c3c; border:1px solid rgba(231,76,60,.3); }
+.ld-explanation { margin-top:10px; font-size:13px; font-weight:400; color:var(--mtscos-text-secondary); text-align:left; padding:12px;
+    background:rgba(0,0,0,.03); border-radius:6px; font-style:italic; }
+
+.ld-tag { display:inline-block; font-size:10px; padding:3px 10px; border-radius:12px; font-weight:600; margin-right:4px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="ld-back">
+    <a href="/listening?lang={{ lang }}">← 返回 {{ lang_label }} 听力列表</a>
+</div>
+
+<!-- 👤 说话人画像 -->
+{% if item.accent %}
+<div class="ld-profile-card">
+    <div class="ld-avatar">
+        {% if item.speaker_gender == 'M' %}♂️{% else %}♀️{% endif %}
+    </div>
+    <div class="ld-profile-info">
+        <div class="ld-profile-name">
+            {{ item.speaker_profession|title }}
+            <span style="font-weight:400;font-size:13px;color:var(--mtscos-text-tertiary)">
+                · {{ item.speaker_age_group }}
+            </span>
+        </div>
+        <div class="ld-profile-meta">
+            <span>🎙️ {{ item.accent }}</span>
+            <span>{% if item.speaker_gender=='M' %}👨 男声{% else %}👩 女声{% endif %}</span>
+            <span>📊 难度 {{ item.difficulty|default(3) }}/5</span>
+            {% if item.voice_profile_id %}<span>🔖 {{ item.voice_profile_id }}</span>{% endif %}
+        </div>
+        {% if item.k12_curriculum %}
+        <div style="margin-top:6px;font-size:11px;color:var(--mtscos-text-tertiary)">
+            📚 {{ item.k12_curriculum }}
+        </div>
+        {% endif %}
+        {% if item.education_reform %}
+        <div style="font-size:11px;color:var(--mtscos-text-tertiary)">
+            🎯 {{ item.education_reform }}
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+<!-- 🎧 音频播放 -->
+<div class="ld-audio-card">
+    <div class="ld-audio-title">🎧 听力音频 <span style="font-weight:400;font-size:12px;color:var(--mtscos-text-tertiary)">请先完整听一遍再答题</span></div>
+    {% if item.audio_url or item.audio_path %}
+    <audio controls class="ld-audio-player" preload="metadata">
+        <source src="{{ item.audio_url or item.audio_path }}" type="audio/mp4">
+        您的浏览器不支持音频播放
+    </audio>
+    {% else %}
+    <div style="color:var(--mtscos-text-tertiary);font-size:13px">音频文件暂不可用</div>
+    {% endif %}
+    <div class="ld-audio-meta">
+        <span>⏱️ {{ item.duration_sec }}秒</span>
+        <span>📝 {{ item.questions|length }} 道题目</span>
+        <span>{{ item.listening_type }}</span>
+    </div>
+</div>
+
+<!-- 📝 原文 (可折叠) -->
+<div class="ld-transcript-card">
+    <div class="ld-transcript-title">
+        📖 原文 Transcript
+        <span role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}" class="ld-transcript-toggle" onclick="toggleTranscript()">展开/折叠</span>
+    </div>
+    
+    {% if item.questions and item.questions|length > 0 and item.questions[0].get('conversations') %}
+    <div class="ld-transcript-body" id="transcript-body">
+        {% for line in item.questions[0].conversations %}
+        <div class="ld-conversation-line">
+            <span class="ld-conv-speaker">{{ line[0] }}:</span>{{ line[1] }}
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="ld-transcript-body" id="transcript-body">
+        {{ item.display_transcript|replace('\n', '<br>') }}
+    </div>
+    {% endif %}
+</div>
+
+<!-- ❓ 答题 -->
+{% if item.questions and item.questions|length > 0 %}
+<div class="ld-qa-card">
+    <div class="ld-qa-title">📝 选择题</div>
+    <form id="quiz-form">
+    {% for q in item.questions %}
+    <div class="ld-q-block" data-qidx="{{ loop.index0 }}" data-ans="{{ q.answer }}">
+        <div class="ld-q-num">第 {{ loop.index }} 题</div>
+        <div class="ld-q-text">{{ q.question }}</div>
+        {% if q.options and q.options|length > 0 %}
+        {% for opt in q.options %}
+        <label class="ld-option">
+            <input type="radio" name="q_{{ loop.parent.loop.index0 }}" 
+                   value="{{ loop.index0 }}" style="margin-right:10px">
+            {{ opt }}
+        </label>
+        {% endfor %}
+        {% else %}
+        <div style="font-size:13px;color:var(--mtscos-text-tertiary);font-style:italic">
+            听写/简答题: 请根据听到的内容在纸上作答
+        </div>
+        {% endif %}
+        <div class="ld-explanation" style="display:none" id="explain-{{ loop.index0 }}">
+            💡 <strong>解析:</strong> {{ q.explanation }}
+        </div>
+    </div>
+    {% endfor %}
+    <button type="button" class="ld-submit-btn" onclick="submitQuiz()">✅ 提交答案</button>
+    </form>
+    <div id="quiz-result" style="margin-top:16px"></div>
+</div>
+{% endif %}
+
+<script>
+function toggleTranscript() {
+    const el = document.getElementById('transcript-body');
+    el.classList.toggle('expanded');
+}
+
+function submitQuiz() {
+    const form = document.getElementById('quiz-form');
+    const blocks = form.querySelectorAll('.ld-q-block');
+    let correct = 0, answered = 0;
+    let allFilled = true;
+    
+    blocks.forEach(block => {
+        const ans = block.dataset.ans;
+        const radios = block.querySelectorAll('input[type="radio"]');
+        let selected = null;
+        radios.forEach(r => { if (r.checked) selected = r.value; });
+        
+        if (selected !== null) {
+            answered++;
+            // 显示正确/错误
+            block.querySelectorAll('.ld-option').forEach((opt, i) => {
+                opt.classList.remove('selected', 'correct', 'wrong');
+                if (String.fromCharCode(65 + i) === ans) {
+                    opt.classList.add('correct');
+                } else if (String(selected) === String(i)) {
+                    opt.classList.add('wrong');
+                }
+            });
+            if (String.fromCharCode(65 + parseInt(selected)) === ans) correct++;
+            document.getElementById('explain-' + block.dataset.qidx).style.display = 'block';
+        } else if (radios.length > 0) {
+            allFilled = false;
+        }
+    });
+    
+    if (!allFilled) {
+        if (!confirm('还有题目未作答, 确定要提交吗?')) return;
+    }
+    
+    // 隐藏提交按钮
+    document.querySelector('.ld-submit-btn').style.display = 'none';
+    
+    // 显示结果
+    const total = blocks.length;
+    const pct = total > 0 ? Math.round(correct / total * 100) : 0;
+    const resultDiv = document.getElementById('quiz-result');
+    resultDiv.className = 'ld-result ' + (pct >= 60 ? 'ok' : 'bad');
+    resultDiv.innerHTML = `
+        📊 得分: ${correct} / ${total} (${pct}%)<br>
+        <span style="font-size:13px;font-weight:400">
+            {% if lang == 'en' %}
+                ${pct >= 80 ? 'Excellent! Keep it up! 🎉' : pct >= 60 ? 'Good effort! Try again! 💪' : 'Don\'t give up! Practice makes perfect! 🔥'}
+            {% else %}
+                ${pct >= 80 ? '素晴らしい! この調子! 🎉' : pct >= 60 ? '頑張りました! もう一度! 💪' : '諦めないで! 練習あるのみ! 🔥'}
+            {% endif %}
+        </span>
+    `;
+    
+    // 滚动到结果
+    resultDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,195 @@
+{% extends "base_unified.html" %}
+{% block title %}{{ role_info.icon }} {{ role_info.label }} · 仙女座工作台{% endblock %}
+{% block extra_head %}
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink-deep:#0A2342;--ink-mid:#1E4A63;--ink-light:#2C5F7C;
+    --snow:#E8F0F2;--paper:#FFFFFF;
+    --gold:#C9A96E;--gold-bright:#E8C98A;
+    --seal-red:#B83A2F;
+    --text-primary:#1A2E3D;--text-secondary:#4A6572;--text-muted:#8EA4B3;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{
+    font-family:'Noto Serif SC',serif;background:var(--snow);color:var(--text-primary);min-height:100dvh;
+    background-image:radial-gradient(ellipse 900px 500px at 10% 15%,rgba(44,95,124,0.07),transparent 60%),
+                      radial-gradient(ellipse 700px 400px at 90% 85%,rgba(201,169,110,0.03),transparent 70%);
+  
+  .rw-container{max-width:1280px;margin:0 auto;padding:28px 36px 60px;}
+  .rw-header{display:flex;align-items:center;gap:20px;padding:22px 28px;background:linear-gradient(135deg,rgba(255,255,255,0.85),rgba(232,240,242,0.9));border-radius:16px;margin-bottom:22px;box-shadow:0 4px 16px rgba(10,35,66,0.08);border:1px solid rgba(10,35,66,0.06);}
+  .rw-avatar{font-size:3.2rem;line-height:1;}
+  .rw-title{flex:1;}
+  .rw-role-name{font-size:1.6rem;font-weight:900;color:var(--ink-deep);letter-spacing:0.1em;}
+  .rw-role-desc{font-size:0.78rem;color:var(--text-muted);margin-top:4px;letter-spacing:0.05em;}
+  .rw-iceberg-tag{display:inline-block;padding:4px 12px;border:1px solid var(--gold);border-radius:14px;font-size:0.68rem;color:var(--gold-deep);letter-spacing:1px;background:rgba(201,169,110,0.08);}
+  .rw-perm-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px;margin-bottom:22px;}
+  .rw-perm-card{padding:14px 16px;border-radius:12px;border:1px solid rgba(10,35,66,0.08);background:var(--paper);box-shadow:0 1px 3px rgba(10,35,66,0.04);}
+  .rw-perm-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
+  .rw-perm-icon{font-size:1.2rem;}
+  .rw-perm-name{font-size:0.85rem;font-weight:700;color:var(--ink-deep);}
+  .rw-perm-badge{font-size:0.65rem;padding:2px 8px;border-radius:10px;}
+  .rw-perm-badge.on{background:rgba(76,175,80,0.15);color:#2E7D32;}
+  .rw-perm-badge.off{background:rgba(244,67,54,0.1);color:#C62828;}
+  .rw-perm-desc{font-size:0.72rem;color:var(--text-muted);line-height:1.4;}
+  .rw-feature-section{margin-bottom:22px;}
+  .rw-section-title{font-size:0.78rem;color:var(--ink-mid);letter-spacing:2px;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:8px;}
+  .rw-section-title::before{content:"";width:24px;height:2px;background:var(--gold);}
+  .rw-feature-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;}
+  .rw-feature-card{padding:14px;border-radius:12px;background:linear-gradient(135deg,rgba(255,255,255,0.95),rgba(232,240,242,0.8));border:1px solid rgba(10,35,66,0.08);text-decoration:none;color:inherit;display:flex;align-items:center;gap:10px;transition:all 0.2s;cursor:pointer;}
+  .rw-feature-card:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(10,35,66,0.1);border-color:var(--gold);}
+  .rw-feature-icon{font-size:1.5rem;}
+  .rw-feature-name{font-size:0.82rem;font-weight:700;color:var(--ink-deep);}
+  .rw-feature-desc{font-size:0.68rem;color:var(--text-muted);margin-top:2px;}
+  .rw-nav-links{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:16px;}
+  .rw-nav-link{padding:6px 16px;border:1px solid var(--ink-wash,#5B8AA8);border-radius:20px;font-size:0.72rem;color:var(--text-secondary);text-decoration:none;transition:all 0.2s;}
+  .rw-nav-link:hover{border-color:var(--ink-light);background:rgba(44,95,124,0.04);color:var(--ink-mid);}
+  .rw-iceberg-section{padding:20px;border-radius:16px;background:linear-gradient(135deg,rgba(10,35,66,0.94),rgba(30,74,99,0.9));color:white;margin-bottom:22px;position:relative;overflow:hidden;}
+  .rw-iceberg-section::before{content:"❄";position:absolute;right:20px;top:10px;font-size:3rem;opacity:0.1;}
+  .rw-iceberg-label{font-size:0.68rem;letter-spacing:3px;color:rgba(232,201,138,0.6);}
+  .rw-iceberg-title{font-size:1.3rem;font-weight:900;color:var(--gold-bright);margin-top:6px;}
+  .rw-iceberg-desc{font-size:0.78rem;color:rgba(255,255,255,0.7);margin-top:6px;line-height:1.6;}
+  .rw-iceberg-bind{margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.1);font-size:0.7rem;color:rgba(232,201,138,0.5);letter-spacing:1px;}
+</style>
+{% endblock %}
+{% block page_title %}{{ role_info.icon }} {{ role_info.label }} 工作台{% endblock %}
+{% block content %}
+{% set sess_role = (session.get('role') or '').lower() %}
+
+<div class="rw-container">
+
+  <!-- 导航 -->
+  <div class="rw-nav-links">
+    <a href="/" class="rw-nav-link">🏠 首页</a>
+    <a href="/andromeda/iceberg_center" class="rw-nav-link">🏔️ 冰山中心</a>
+    {% if role_key == 'student' %}
+    <a href="/andromeda/wenquxing" class="rw-nav-link" style="background:#0A2342;color:#E8C98A;border-color:#0A2342;">📜 文曲星</a>
+    {% endif %}
+    {% if role_key in ('professor', 'super_admin') %}
+    <a href="/andromeda/eigenflux_council" class="rw-nav-link">✨ EigenFlux</a>
+    {% endif %}
+    {% if sess_role in ('admin', 'super_admin') %}
+    <a href="/admin" class="rw-nav-link">⚙️ 后台</a>
+    {% endif %}
+  </div>
+
+  <!-- 角色题头 -->
+  <div class="rw-header">
+    <div class="rw-avatar">{{ role_info.icon }}</div>
+    <div class="rw-title">
+      <div class="rw-role-name">{{ role_info.label }} · {{ role_info.label_en }}</div>
+      <div class="rw-role-desc">{{ role_info.desc }}</div>
+    </div>
+    <div style="text-align:right;">
+      <span class="rw-iceberg-tag">❄ 冰山域: {{ role_info.get('iceberg_domain', 'general') }}</span><br>
+      <span class="rw-iceberg-tag">🎯 {{ role_info.get('perm_level', 'login').upper() }}</span>
+    </div>
+  </div>
+
+  <!-- 冰山域绑定横幅 -->
+  <div class="rw-iceberg-section">
+    <div class="rw-iceberg-label">❄ 冰 山 域 绑 定</div>
+    <div class="rw-iceberg-title">{{ role_info.icon }} {{ role_info.label }} → {{ role_info.get('iceberg_domain', 'general') }}</div>
+    <div class="rw-iceberg-desc">此角色的所有功能、数据、API 均自动绑定到冰山 {{ role_info.get('iceberg_domain', 'general') }} 域. 仙女座守护进程实时同步域内状态与产出到 mt_iceberg_content_matrix, 冰山规则底座自动审计.</div>
+    <div class="rw-iceberg-bind">AUTO-BOUND · iceberg_domain={{ role_info.get('iceberg_domain', 'general') }} · rule_set=25-stars · daemon=sys_iceberg_sync</div>
+  </div>
+
+  <!-- 权限矩阵 -->
+  <div class="rw-feature-section">
+    <div class="rw-section-title">功 能 权 限 矩 阵</div>
+    <div class="rw-perm-grid">
+      {% set icon_map = {
+        'write_wenquxing': '📜 文曲星生文',
+        'view_iceberg': '🏔️ 冰山浏览',
+        'view_ai_workbench': '🧠 AI 工作台',
+        'view_daemon': '🔧 Daemon 状态',
+        'view_employee': '👥 AI 员工',
+        'view_brain': '💾 知识脑库',
+        'view_budget': '💰 算力预算',
+        'view_audit': '🔍 审计日志',
+        'manage_user': '👤 用户管理',
+        'manage_course': '📅 课程管理',
+        'manage_content': '📝 内容审批',
+        'manage_daemon': '⚙️ Daemon 启停',
+        'view_exam_result': '📊 考试成绩',
+        'view_student_list': '🎓 学生名单',
+      } %}
+      {% set desc_map = {
+        'write_wenquxing': '文曲星 AI 写作生成器 (学生专属)',
+        'view_iceberg': '冰山控制中心浏览',
+        'view_ai_workbench': '仙女座 AI 工作台 (教授/SA)',
+        'view_daemon': 'daemon 活率/心跳/状态',
+        'view_employee': 'AI 员工/天团/专家团队',
+        'view_brain': '知识脑库/脑库投喂记录',
+        'view_budget': '算力/Token 预算与消耗',
+        'view_audit': '权限审计日志',
+        'manage_user': '用户增删改/组别调整',
+        'manage_course': '课程/考试/作业管理',
+        'manage_content': '内容审批/发布',
+        'manage_daemon': 'daemon 启停/配置',
+        'view_exam_result': '考试成绩查看',
+        'view_student_list': '学生名单/分组',
+      } %}
+      {% for action, allowed in role_info.get('can', {}).items() %}
+      <div class="rw-perm-card">
+        <div class="rw-perm-head">
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span class="rw-perm-icon">{{ icon_map.get(action, '🔑') }}</span>
+            <span class="rw-perm-name">{{ icon_map.get(action, action) }}</span>
+          </div>
+          <span class="rw-perm-badge {{ 'on' if allowed else 'off' }}">{{ '✅' if allowed else '❌' }}</span>
+        </div>
+        <div class="rw-perm-desc">{{ desc_map.get(action, '') }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- 专属功能 (features) -->
+  {% if role_info.get('features') %}
+  <div class="rw-feature-section">
+    <div class="rw-section-title">专 属 功 能</div>
+    <div class="rw-feature-grid">
+      {% set feat_icon_map = {
+        'teacher_workbench': '📚', 'homework_assign': '📝', 'exam_create': '📋',
+        'exam_grade': '✅', 'student_progress_view': '📈',
+        'professor_workbench': '🎓', 'course_create': '📖', 'research_dashboard': '🔬',
+        'thesis_advise': '📄', 'ai_workbench_view': '🧠',
+        'counselor_workbench': '💬', 'attendance_view': '📅', 'class_notice': '📢',
+        'parent_comm': '👨‍👩‍👧', 'student_wellness': '💚',
+        'mentor_workbench': '🌟', 'mentee_tracker': '🎯', 'career_planning': '💼',
+        'project_review': '🔍',
+        'parent_portal': '🏠', 'my_child_grade': '📊', 'homework_view': '📝',
+      } %}
+      {% set feat_name_map = {
+        'teacher_workbench': '教师工作台', 'homework_assign': '布置作业',
+        'exam_create': '创建考试', 'exam_grade': '批改试卷',
+        'student_progress_view': '查看学生进度',
+        'professor_workbench': '教授工作台', 'course_create': '创建课程',
+        'research_dashboard': '科研仪表盘', 'thesis_advise': '论文指导',
+        'ai_workbench_view': 'AI 工作台视图',
+        'counselor_workbench': '导员工作台', 'attendance_view': '考勤查看',
+        'class_notice': '班级通知', 'parent_comm': '家校沟通',
+        'student_wellness': '学生心理健康',
+        'mentor_workbench': '导师工作台', 'mentee_tracker': '门徒追踪',
+        'career_planning': '职业规划', 'project_review': '项目评审',
+        'parent_portal': '家长门户', 'my_child_grade': '孩子成绩',
+        'homework_view': '查看作业',
+      } %}
+      {% for feat_key, enabled in role_info.features.items() %}
+      {% if enabled %}
+      <div role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}" class="rw-feature-card" onclick="alert('{{ feat_name_map.get(feat_key, feat_key) }} — 功能开发中')">
+        <div class="rw-feature-icon">{{ feat_icon_map.get(feat_key, '✨') }}</div>
+        <div>
+          <div class="rw-feature-name">{{ feat_name_map.get(feat_key, feat_key) }}</div>
+          <div class="rw-feature-desc">{{ role_info.iceberg_domain }}</div>
+        </div>
+      </div>
+      {% endif %}
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

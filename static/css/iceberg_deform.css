@@ -1,0 +1,71 @@
+/*
+ * iceberg_deform.css — 冰山全域页面形变阈值
+ * =========================================
+ * 2026-10-31 · SECURITY_ICEBERG_HARDEN
+ *
+ * 触发条件 (由 anti_devtools.js 添加 .__mtscos_deform_on class):
+ *   窗口 < 1024×600 (过小) 或 > 2560×1600 (过大)
+ *   或 DevTools 探测到 / 右键 / Ctrl+U 等
+ */
+
+/* ────────────────────────────────────────────────────────
+   阈值形变 — 正常态不生效
+   ──────────────────────────────────────────────────────── */
+html.__mtscos_deform_on {
+  --__mtscos_deform: 0.85;
+  --__mtscos_skew: 0.0;
+  transform: scale(var(--__mtscos_deform)) skewX(var(--__mtscos_skew));
+  transform-origin: center center;
+  filter: saturate(0.95) contrast(1.02);
+  transition: transform 0.3s ease-out, filter 0.3s ease-out;
+}
+
+html.__mtscos_deform_on body {
+  opacity: 0.92;
+}
+
+/* ────────────────────────────────────────────────────────
+   告警形变 — 被探测到攻击行为时触发
+   ──────────────────────────────────────────────────────── */
+html.__mtscos_deform_alert {
+  animation: __mtscos_deform_pulse 0.8s ease-in-out 2;
+  filter: blur(1px) hue-rotate(15deg) saturate(1.1);
+}
+
+@keyframes __mtscos_deform_pulse {
+  0%, 100% { transform: scale(0.85); opacity: 0.9; }
+  50%      { transform: scale(0.92); opacity: 0.85; }
+}
+
+/* ────────────────────────────────────────────────────────
+   防御模式 — 非浏览器 UA / 被 curl 访问时注入
+   (由后端 Flask 自动注入此 class, JS 不触发)
+   ──────────────────────────────────────────────────────── */
+html.__mtscos_shield_active body {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  user-select: none;
+}
+
+html.__mtscos_shield_active img {
+  -webkit-user-drag: none;
+  user-select: none;
+}
+
+/* ────────────────────────────────────────────────────────
+   小屏 (<1024px) 额外样式
+   ──────────────────────────────────────────────────────── */
+@media (max-width: 1023px) {
+  html.__mtscos_deform_on {
+    --__mtscos_deform: 0.75;
+  }
+}
+
+/* ────────────────────────────────────────────────────────
+   超大屏 (>2560px) 额外样式
+   ──────────────────────────────────────────────────────── */
+@media (min-width: 2561px) {
+  html.__mtscos_deform_on {
+    --__mtscos_deform: 0.9;
+  }
+}

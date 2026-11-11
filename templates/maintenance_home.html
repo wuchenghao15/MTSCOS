@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>MTSCOS AI · 开发机维护主页 (1988)</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','PingFang SC',sans-serif;
+         background:linear-gradient(135deg,#0B1F3A,#1E3A5F); min-height:100dvh; color:#e0e8f0; }
+  .wrap { max-width:1100px; margin:0 auto; padding:32px 28px; }
+  .hero { text-align:center; padding:48px 20px 32px; }
+  .hero h1 { font-size:28px; font-weight:800; background:linear-gradient(135deg,#9B59B6,#2E86DE); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+  .hero .sub { color:#7a8fa6; font-size:13px; margin-top:8px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:14px; margin-top:24px; }
+  .card { background:rgba(255,255,255,.04); border:1px solid rgba(155,89,182,.18); border-radius:14px;
+          padding:18px 20px; backdrop-filter:blur(6px); transition:transform .18s; cursor:pointer; }
+  .card:hover { transform:translateY(-2px); border-color:rgba(155,89,182,.4); }
+  .card .num { font-size:32px; font-weight:800; font-family:ui-monospace,monospace;
+               background:linear-gradient(135deg,#9B59B6,#2E86DE); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+  .card .lbl { font-size:12px; color:#7a8fa6; margin-top:6px; letter-spacing:.3px; }
+  .card .icon { font-size:22px; margin-bottom:8px; }
+  .footer { text-align:center; padding:32px; color:#4a5b6e; font-size:11px; }
+  .badge { display:inline-block; padding:2px 10px; border-radius:999px; font-size:10px; font-weight:700;
+           background:rgba(16,185,129,.15); color:#10B981; border:1px solid rgba(16,185,129,.3); }
+</style>
+<!-- MTSCOS Unified Design System -->
+<link rel="stylesheet" href="{{ url_for('static', filename='css/tokens.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/global_design_bridge.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/andromeda.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/gobelin.css') }}">
+
+</head>
+<body class="andromeda-theme">
+<div class="wrap">
+  <div class="hero">
+    <h1>🛠️ MTSCOS AI 维护主页</h1>
+    <div class="sub">开发机专用 · NODE_ROLE=DEV · 端口 1988 <span class="badge">ONLINE</span></div>
+  </div>
+
+  <div class="grid">
+    <div role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}" class="card" onclick="window.open('/andromeda/iceberg_center','_blank')">
+      <div class="icon">🏔️</div>
+      <div class="num">{{ stats.daemon_running|default(0) }}/{{ stats.daemon_total|default(0) }}</div>
+      <div class="lbl">Daemon 运行 / 总数 · 点击进入冰山中心</div>
+    </div>
+    <div role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}" class="card" onclick="window.open('/andromeda/iceberg_center?tab=engines','_blank')">
+      <div class="icon">🧠</div>
+      <div class="num">{{ stats.ai_employees|default(0) }}</div>
+      <div class="lbl">AI 员工总数</div>
+    </div>
+    <div role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}" class="card" onclick="window.open('/andromeda/eigenflux_network','_blank')">
+      <div class="icon">✦</div>
+      <div class="num">12</div>
+      <div class="lbl">EigenFlux 专家</div>
+    </div>
+    <div role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}" class="card" onclick="window.open('/admin/daemons','_blank')">
+      <div class="icon">🚀</div>
+      <div class="num">15</div>
+      <div class="lbl">守护进程 (smart_mount)</div>
+    </div>
+    <div role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}" class="card" onclick="window.open('/andromeda/local_inference','_blank')">
+      <div class="icon">⚡</div>
+      <div class="num">0</div>
+      <div class="lbl">本地推理 tokens 节省</div>
+    </div>
+    <div role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}" class="card" onclick="window.open('/admin/','_blank')">
+      <div class="icon">🔧</div>
+      <div class="num">Go</div>
+      <div class="lbl">进入管理后台</div>
+    </div>
+    <div role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}" class="card" onclick="window.open('/andromeda/rule_enforcer','_blank')">
+      <div class="icon">📐</div>
+      <div class="num">12</div>
+      <div class="lbl">规则文档 · 强制执行</div>
+    </div>
+    <div role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}" class="card" onclick="window.open('/andromeda/patrol','_blank')">
+      <div class="icon">🔍</div>
+      <div class="num">6</div>
+      <div class="lbl">源码巡逻队 AI</div>
+    </div>
+  </div>
+
+  <div class="footer">
+    MTSCOS AI · Maintenance Dashboard · 127.0.0.1:1988 only · 仙女座星系引擎
+  </div>
+</div>
+{# 🎨 冰山主题矩阵调度器 #}
+<script defer src="{{ url_for('static', filename='js/theme-manager.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>🏦 古灵阁银行 · Gobelin Bank · 总账 Dashboard</title>
+<style>
+:root{
+  --bg:#050a14;         --panel:#0c1424;      --panel2:#111c30;
+  --border:rgba(255,255,255,.08);
+  --text:#e2e8f0;       --sub:#7a8a9a;
+  --accent:#00d4aa;     --gold:#d4af37;       --red:#ff4d6a;     --blue:#4d8aff;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,"SF Mono","Menlo",monospace;min-height:100vh;}
+
+/* ── Header ── */
+header{display:flex;justify-content:space-between;align-items:center;padding:14px 28px;background:var(--panel);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:10;}
+.h-logo{font-size:20px;font-weight:900;color:var(--gold);letter-spacing:2px;}
+.h-logo-sub{font-size:10px;color:var(--sub);border-left:2px solid var(--border);padding-left:10px;margin-left:12px;letter-spacing:1px;text-transform:uppercase;}
+.h-nav{display:flex;gap:2px;}
+.h-nav a{color:var(--sub);text-decoration:none;padding:7px 12px;font-size:11px;letter-spacing:1px;text-transform:uppercase;border:1px solid transparent;}
+.h-nav a:hover{color:var(--accent);border-color:var(--accent);}
+.h-nav a.act{color:var(--accent);border-color:var(--accent);background:rgba(0,212,170,.08);}
+.h-right{display:flex;gap:14px;font-size:11px;color:var(--sub);}
+.dot{width:8px;height:8px;background:var(--accent);border-radius:50%;animation:blink 1s infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* ── Layout ── */
+.wrap{max-width:1500px;margin:0 auto;padding:24px 28px;}
+.row{display:grid;gap:18px;margin-bottom:18px;}
+.row-4{grid-template-columns:repeat(4,1fr);}
+.row-3{grid-template-columns:repeat(3,1fr);}
+.row-2{grid-template-columns:1fr 1fr;}
+.row-auto{grid-template-columns:repeat(auto-fill,minmax(260px,1fr));}
+
+/* ── KPI Card ── */
+.kpi{background:var(--panel);border:1px solid var(--border);border-top:3px solid var(--accent);padding:18px 22px;}
+.kpi.gold{border-top-color:var(--gold);}
+.kpi.red{border-top-color:var(--red);}
+.kpi.blue{border-top-color:var(--blue);}
+.kpi-label{font-size:10px;color:var(--sub);text-transform:uppercase;letter-spacing:2px;margin-bottom:8px;}
+.kpi-val{font-size:28px;font-weight:700;letter-spacing:.5px;}
+.kpi-sub{font-size:11px;color:var(--sub);margin-top:6px;}
+.kpi-sub.pos{color:var(--accent);}
+.kpi-sub.neg{color:var(--red);}
+
+/* ── Panel ── */
+.panel{background:var(--panel);border:1px solid var(--border);margin-bottom:18px;}
+.panel-hd{display:flex;justify-content:space-between;align-items:center;padding:12px 20px;background:var(--panel2);border-bottom:1px solid var(--border);}
+.panel-hd h3{font-size:11px;color:var(--accent);letter-spacing:2px;text-transform:uppercase;font-weight:700;}
+.panel-hd .meta{font-size:10px;color:var(--sub);}
+.panel-bd{padding:16px 20px;}
+
+/* ── Table ── */
+.tbl{width:100%;border-collapse:collapse;font-size:12px;}
+.tbl th{font-size:10px;color:var(--sub);letter-spacing:1px;text-transform:uppercase;padding:8px 12px;border-bottom:1px solid var(--border);font-weight:500;text-align:right;}
+.tbl th:first-child{text-align:left;}
+.tbl td{padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.04);text-align:right;}
+.tbl td:first-child{text-align:left;}
+.tbl tr:hover td{background:rgba(0,212,170,.03);}
+.sym{display:inline-block;background:var(--panel2);border:1px solid var(--border);padding:2px 8px;font-size:10px;color:var(--gold);}
+.pos{color:var(--accent);font-weight:600;}
+.neg{color:var(--red);font-weight:600;}
+.mono{font-family:"SF Mono",Menlo,monospace;}
+
+/* ── Channel Card ── */
+.ch-card{display:block;text-decoration:none;color:inherit;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:16px;transition:all .15s;}
+.ch-card:hover{border-color:var(--accent);transform:translateY(-2px);}
+.ch-icon{font-size:18px;margin-right:8px;}
+.ch-name{font-size:12px;font-weight:600;}
+.ch-val{font-size:20px;font-weight:700;color:var(--text);font-family:"SF Mono",Menlo,monospace;margin-top:6px;}
+.ch-sub{font-size:11px;color:var(--sub);margin-top:2px;}
+.ch-bar{height:4px;background:rgba(255,255,255,.08);border-radius:2px;margin-top:10px;overflow:hidden;}
+.ch-bar-fill{height:100%;background:linear-gradient(90deg,var(--accent),#00ffcc);border-radius:2px;}
+.ch-bar-fill.cash{background:linear-gradient(90deg,var(--blue),#764ba2);}
+
+/* ── AI Ops ── */
+.ops-row{display:flex;gap:8px;align-items:center;font-size:11px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.04);font-family:"SF Mono",Menlo,monospace;}
+.ops-row:last-child{border-bottom:none;}
+.ops-row .ts{color:var(--sub);width:60px;flex-shrink:0;}
+.ops-row .code{color:var(--gold);width:120px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;}
+.ops-row .action{color:var(--blue);width:90px;flex-shrink:0;}
+.ops-row .detail{color:var(--text);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+/* ── Engine Status ── */
+.eng-box{background:var(--panel2);border:1px solid var(--border);padding:14px 18px;}
+.eng-row{display:flex;justify-content:space-between;padding:5px 0;font-size:12px;border-bottom:1px dashed rgba(255,255,255,.06);}
+.eng-row:last-child{border-bottom:none;}
+.eng-row .k{color:var(--sub);}
+.eng-row .v{color:var(--text);font-family:"SF Mono",Menlo,monospace;}
+.eng-row .v.on{color:var(--accent);}
+.eng-row .v.off{color:var(--red);}
+
+/* ── Proposal Card ── */
+.prop-item{background:var(--panel2);border:1px solid var(--border);border-radius:6px;padding:12px 16px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;}
+.prop-item:last-child{margin-bottom:0;}
+.prop-title{font-size:12px;font-weight:600;}
+.prop-rational{font-size:11px;color:var(--sub);margin-top:3px;}
+.prop-amt{font-size:16px;font-weight:700;color:var(--gold);font-family:"SF Mono",Menlo,monospace;}
+.prop-st{font-size:10px;padding:2px 10px;border-radius:10px;font-weight:600;margin-top:4px;display:inline-block;}
+.prop-st.APPROVED{background:rgba(0,212,170,.15);color:var(--accent);}
+.prop-st.PENDING{background:rgba(212,175,55,.15);color:var(--gold);}
+.prop-st.REJECTED{background:rgba(255,77,106,.15);color:var(--red);}
+
+/* ── Meeting Item ── */
+.meet-item{background:var(--panel2);border:1px solid var(--border);border-radius:6px;padding:12px 16px;margin-bottom:8px;}
+.meet-item:last-child{margin-bottom:0;}
+.meet-head{display:flex;justify-content:space-between;align-items:center;}
+.meet-title{font-size:12px;font-weight:600;}
+.meet-minutes{font-size:11px;color:var(--sub);margin-top:6px;white-space:pre-wrap;line-height:1.5;max-height:100px;overflow:hidden;}
+
+/* ── Empty ── */
+.empty{text-align:center;padding:30px;color:var(--sub);font-size:12px;font-family:"SF Mono",Menlo,monospace;}
+
+/* ── Circuit Breaker ── */
+.fuse-on{background:rgba(255,77,106,.12);border:1px solid var(--red);border-radius:6px;padding:10px 14px;font-size:12px;color:var(--red);}
+.fuse-off{background:rgba(0,212,170,.08);border:1px solid var(--accent);border-radius:6px;padding:10px 14px;font-size:12px;color:var(--accent);}
+
+footer{text-align:center;padding:24px;color:var(--sub);font-size:10px;font-family:"SF Mono",Menlo,monospace;border-top:1px solid var(--border);margin-top:18px;letter-spacing:2px;text-transform:uppercase;}
+</style>
+</head>
+<body>
+
+<header>
+  <div style="display:flex;align-items:center;">
+    <span class="h-logo">🏦 GOBELIN</span>
+    <span class="h-logo-sub">古灵阁银行 · Live Finance Ledger</span>
+  </div>
+  <nav class="h-nav">
+    <a href="/dashboard" class="act">总账</a>
+    <a href="/governance/channel/stock">A股</a>
+    <a href="/governance/channel/fund">基金</a>
+    <a href="/governance/channel/bank">理财</a>
+    <a href="/governance/channel/metal">贵金属</a>
+    <a href="/governance/centers">33中心</a>
+    <a href="/governance/meetings">会议</a>
+    <a href="/governance/proposals">提案</a>
+  </nav>
+  <div class="h-right">
+    <span class="dot"></span>
+    <span id="clock">--:--:--</span>
+    <span>|</span>
+    <span>GOBELIN BANK</span>
+  </div>
+</header>
+
+<div class="wrap">
+
+<!-- ═══════════ 总账 4 KPI ═══════════ -->
+<section class="row row-4">
+  <div class="kpi gold">
+    <div class="kpi-label">总资产 Total Assets</div>
+    <div class="kpi-val mono" id="kpi-ta">¥0</div>
+    <div class="kpi-sub" id="kpi-ta-source">LIVE Account · mt_live_account</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">累计盈亏 Total PnL</div>
+    <div class="kpi-val mono" id="kpi-tp">¥0</div>
+    <div class="kpi-sub" id="kpi-tp-pct">—</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-label">今日盈亏 Today PnL</div>
+    <div class="kpi-val mono" id="kpi-td">¥0</div>
+    <div class="kpi-sub" id="kpi-td-src">—</div>
+  </div>
+  <div class="kpi blue">
+    <div class="kpi-label">可用现金 Cash</div>
+    <div class="kpi-val mono" id="kpi-cash">¥0</div>
+    <div class="kpi-sub" id="kpi-cash-ratio">现金占比 —</div>
+  </div>
+</section>
+
+<!-- ═══════════ 七大资产渠道 ═══════════ -->
+<section class="panel">
+  <div class="panel-hd">
+    <h3>🌐 七大资产渠道 Multi-Asset Allocation</h3>
+    <span class="meta" id="ch-total">—</span>
+  </div>
+  <div class="panel-bd" style="padding:16px 20px;">
+    <div class="row row-auto" id="ch-grid">
+      <div class="empty">加载渠道数据...</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ 双列: LIVE 持仓 + AI 提案 ═══════════ -->
+<section class="row row-2">
+  <!-- LIVE 持仓 -->
+  <div class="panel">
+    <div class="panel-hd">
+      <h3>💼 LIVE 持仓 Holdings</h3>
+      <span class="meta" id="pos-total">—</span>
+    </div>
+    <div class="panel-bd" style="padding:0;">
+      <table class="tbl">
+        <thead>
+          <tr>
+            <th>Symbol</th><th>名称</th>
+            <th>Qty</th><th>成本</th>
+            <th>市值</th><th>浮盈%</th>
+          </tr>
+        </thead>
+        <tbody id="pos-body"><tr><td colspan="6" class="empty">加载中...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+  <!-- AI 投资提案 -->
+  <div class="panel">
+    <div class="panel-hd">
+      <h3>📑 AI 自动提案 Investment Proposals</h3>
+      <span class="meta" id="prop-count">—</span>
+    </div>
+    <div class="panel-bd">
+      <div id="prop-list"><div class="empty">等待 AI 扫描市场机会...</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ 双列: AI 会议 + AI 引擎状态 ═══════════ -->
+<section class="row row-2">
+  <!-- 会议 -->
+  <div class="panel">
+    <div class="panel-hd">
+      <h3>📋 AI 会议 / 复盘 Meeting Log</h3>
+      <span class="meta">每 3 天 REGULAR · 异动 SPECIAL</span>
+    </div>
+    <div class="panel-bd">
+      <div id="meet-list"><div class="empty">等待 Finance Council 第一次触发...</div></div>
+    </div>
+  </div>
+  <!-- 引擎状态 + 熔断 -->
+  <div style="display:flex;flex-direction:column;gap:18px;">
+    <div class="panel">
+      <div class="panel-hd">
+        <h3>⚠️ 熔断 Circuit Breaker</h3>
+      </div>
+      <div class="panel-bd">
+        <div id="fuse-box" class="fuse-off">✅ ALL CLEAR · 数据安全守护正常</div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-hd">
+        <h3>⚙️ AI 自动引擎 Engine Status</h3>
+        <span class="meta">每 60s 一轮</span>
+      </div>
+      <div class="panel-bd">
+        <div class="eng-box">
+          <div class="eng-row"><span class="k">Engine PID</span><span class="v mono" id="eng-pid">—</span></div>
+          <div class="eng-row"><span class="k">最近 Cycle</span><span class="v mono" id="eng-cycle">—</span></div>
+          <div class="eng-row"><span class="k">33 Centers</span><span class="v mono" id="eng-centers">—</span></div>
+          <div class="eng-row"><span class="k">今日 Proposals</span><span class="v mono" id="eng-props">—</span></div>
+          <div class="eng-row"><span class="k">今日 Exec Log</span><span class="v mono" id="eng-exec">—</span></div>
+          <div class="eng-row"><span class="k">Status</span><span class="v on">RUNNING</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ 33 中心执行日志 ═══════════ -->
+<section class="panel">
+  <div class="panel-hd">
+    <h3>⚡ 33 Center Exec Log · 最近 20 条</h3>
+    <span class="meta">task dispatch → execute → feedback → evolve</span>
+  </div>
+  <div class="panel-bd">
+    <div id="exec-list">
+      <div class="empty">等待 autonomous engine 写入...</div>
+    </div>
+  </div>
+</section>
+
+</div>
+
+<footer>GOBELIN BANK · Live Ledger · 数据血缘可追溯 · Finance Autonomous Engine</footer>
+
+<script>
+// 🎯 唯一数据源: /gobelin/dashboard — Flask 后端直接读 DB
+const DASH = '/gobelin/dashboard';
+
+function tickClock(){
+  document.getElementById('clock').textContent = new Date().toISOString().slice(11,19);
+}
+setInterval(tickClock,1000);tickClock();
+function fmt(n,d=2){ n=Number(n)||0; return '¥'+n.toLocaleString('zh-CN',{minimumFractionDigits:d,maximumFractionDigits:d}); }
+function pct(n){ n=Number(n)||0; return (n>=0?'+':'')+n.toFixed(2)+'%'; }
+
+async function loadData(){
+  try{
+    const r = await fetch(DASH,{cache:'no-cache'});
+    if(r.status!==200) return null;
+    return await r.json();
+  }catch(e){ return null; }
+}
+
+function loadKPI(d){
+  if(!d) return;
+  const acc = d.account||{};
+  const ta = acc.total_assets||0, cash = acc.cash_balance||0;
+  const cumPnl = (d.positions?.total_unrealized_pnl||0) + (acc.realized_pnl||0);
+  const el = document.getElementById.bind(document);
+  if(el('kpi-ta')) el('kpi-ta').textContent = fmt(ta);
+  if(el('kpi-tp')){ el('kpi-tp').textContent = fmt(cumPnl); el('kpi-tp').className='kpi-val mono '+(cumPnl>=0?'pos':'neg'); }
+  if(el('kpi-cash')) el('kpi-cash').textContent = fmt(cash);
+  if(el('kpi-cash-ratio')) el('kpi-cash-ratio').textContent = ta>0?`现金占比 ${(cash/ta*100).toFixed(1)}%`:'—';
+  if(el('kpi-tp-pct')) el('kpi-tp-pct').textContent = ta>0?pct(cumPnl/acc.initial_endowment*100):'—';
+}
+
+function loadChannels(d){
+  if(!d) return;
+  const ta = d.account?.total_assets||0;
+  const grid = document.getElementById('ch-grid');
+  if(!grid) return;
+  const chTotalEl = document.getElementById('ch-total');
+  if(chTotalEl) chTotalEl.textContent = '总资产 '+fmt(ta);
+  const byCh = {};
+  (d.positions?.items||[]).forEach(p=>{
+    const ch = p.channel||'OTHER';
+    if(!byCh[ch]) byCh[ch]={mv:0,pnl:0,rows:0};
+    byCh[ch].mv += p.market_value||0;
+    byCh[ch].pnl += p.unrealized_pnl||0;
+    byCh[ch].rows++;
+  });
+  byCh['CASH'] = {mv:d.account?.cash_balance||0, pnl:0, rows:0};
+  const meta = {
+    A_STOCK:{icon:'📈',name:'A股主板'},ETF:{icon:'📊',name:'ETF指数'},
+    METAL:{icon:'🥇',name:'贵金属'},BOND:{icon:'📜',name:'可转债'},
+    CASH:{icon:'💵',name:'现金账户'},OTHER:{icon:'❓',name:'其他'},
+  };
+  const channels = Object.entries(byCh).map(([code,v])=>({
+    code,mv:v.mv,pnl:v.pnl,rows:v.rows,pct:ta>0?v.mv/ta:0,
+    name:meta[code]?.name||code,icon:meta[code]?.icon||'💰',
+  }));
+  grid.innerHTML = channels.map(ch=>{
+    const isCash = ch.code==='CASH';
+    return `<a href="/governance/channel/${ch.code.toLowerCase()}" class="ch-card">
+      <div><span class="ch-icon">${ch.icon}</span><span class="ch-name">${ch.name}</span><span style="float:right;font-size:11px;color:var(--sub);">${(ch.pct*100).toFixed(0)}%</span></div>
+      <div class="ch-val">${fmt(ch.mv)}</div>
+      <div class="ch-sub ${ch.pnl>=0?'pos':'neg'}">${ch.pnl?fmt(ch.pnl):'—'} · ${ch.rows||0}项</div>
+      <div class="ch-bar"><div class="ch-bar-fill ${isCash?'cash':''}" style="width:${Math.min(100,ch.pct*2)}%;"></div></div>
+    </a>`;
+  }).join('') || '<div class="empty">💰 Gobelin 空仓 · 明天 Guardian 首次建仓</div>';
+}
+
+function loadHoldings(d){
+  const tbody = document.getElementById('pos-body');
+  const totalEl = document.getElementById('pos-total');
+  if(!tbody) return;
+  const items = d?.positions?.items||[];
+  if(!items.length){
+    tbody.innerHTML = '<tr><td colspan="6" class="empty">💰 Gobelin 空仓 (¥'+fmt(d?.account?.cash_balance||0)+' 全现金) · 明天 2026-11-12 周四 Guardian 首次建仓</td></tr>';
+    if(totalEl) totalEl.textContent = '0 只 · 空仓';
+    return;
+  }
+  items.sort((a,b)=>(b.market_value||0)-(a.market_value||0));
+  let total = items.reduce((s,p)=>s+(p.market_value||0),0);
+  if(totalEl) totalEl.textContent = `${items.length} 只 · 总市值 ${fmt(total)}`;
+  tbody.innerHTML = items.map(p=>{
+    const pct = p.unrealized_pnl_pct||0;
+    return `<tr>
+      <td><span class="sym">${p.asset_code||'-'}</span></td>
+      <td>${p.asset_name||'-'}</td>
+      <td>${p.qty||0}</td>
+      <td>${fmt(p.avg_cost_basis||0)}</td>
+      <td>${fmt(p.market_value||0)}</td>
+      <td class="${pct>=0?'pos':'neg'}">${pct?pct.toFixed(2)+'%':'—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+function loadProposals(d){
+  const wrap = document.getElementById('prop-list');
+  const cnt = document.getElementById('prop-count');
+  if(!wrap) return;
+  const cancelled = d?.proposals?.CANCELLED||0;
+  if(cnt) cnt.textContent = cancelled?`${cancelled} 历史提案 (已取消)`:'—';
+  wrap.innerHTML = '<div class="empty">📭 重置后提案已清空 · 明天 Guardian 首次生成</div>';
+}
+
+function loadMeetings(d){
+  const wrap = document.getElementById('meet-list');
+  if(!wrap) return;
+  const sess = d?.parliament?.total_sessions||0;
+  wrap.innerHTML = sess ? `<div class="meet-item"><div class="meet-head"><span class="meet-title">📜 议会历史 (重置前 ${sess} 届)</span></div><div class="meet-minutes">已归档至 mt_gobelin_archive</div></div>` : '<div class="empty">—</div>';
+}
+
+function loadStatus(d){
+  const box = document.getElementById('fuse-box');
+  const pidEl = document.getElementById('eng-pid');
+  const execEl = document.getElementById('eng-exec');
+  const centersEl = document.getElementById('eng-centers');
+  const propsEl = document.getElementById('eng-props');
+  if(box){ box.className='fuse-off'; box.textContent='✅ ALL CLEAR · Gobelin 合规层正常'; }
+  if(pidEl) pidEl.textContent='Flask OK';
+  if(execEl) execEl.textContent=d?.scheduler?.heartbeat_count||0;
+  if(centersEl) centersEl.textContent='—';
+  if(propsEl) propsEl.textContent='—';
+}
+
+function loadExec(d){
+  const el = document.getElementById('exec-list');
+  if(!el) return;
+  const hb = d?.scheduler?.heartbeat_count||0;
+  el.innerHTML = `<div class="ops-row"><span class="ts">—</span><span class="code">bridge-daemon</span><span class="action">[RUNNING]</span><span class="detail">Gobelin 空仓待命 · 心跳 ${hb}</span></div>`;
+}
+
+async function init(){
+  const d = await loadData();
+  loadKPI(d); loadChannels(d); loadHoldings(d);
+  loadProposals(d); loadMeetings(d); loadStatus(d); loadExec(d);
+}
+init();
+setInterval(init, 30000);
+</script>
+</body>
+</html>

@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>📑 Gobelin Bank · 投资提案中心</title>
+<style>
+:root{--bg:#050a14;--panel:#0c1424;--border:rgba(255,255,255,0.08);--text:#e2e8f0;--sub:#7a8a9a;--accent:#38ef7d;--red:#ff4444;--gold:#ffd700;--blue:#667eea;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif;min-height:100vh;}
+.container{max-width:1200px;margin:0 auto;padding:24px;}
+.back-bar{display:flex;gap:12px;align-items:center;margin-bottom:20px;flex-wrap:wrap;}
+.back-btn{padding:10px 18px;background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:8px;color:var(--text);text-decoration:none;font-size:13px;}
+.back-btn:hover{background:rgba(255,255,255,0.1);}
+.back-btn.primary{background:linear-gradient(135deg,#11998e,#38ef7d);border:none;color:#000;font-weight:600;}
+.title{font-size:22px;font-weight:700;margin-bottom:4px;}
+.subtitle{color:var(--sub);font-size:12px;margin-bottom:24px;}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:16px;}
+.panel h3{font-size:14px;font-weight:600;margin-bottom:12px;color:var(--accent);}
+.chip{display:inline-block;padding:2px 10px;border-radius:12px;font-size:10px;font-weight:600;}
+.chip-green{background:rgba(56,239,125,0.15);color:var(--accent);}
+.chip-red{background:rgba(255,68,68,0.15);color:var(--red);}
+.chip-gray{background:rgba(255,255,255,0.08);color:var(--sub);}
+.chip-gold{background:rgba(255,215,0,0.15);color:var(--gold);}
+.chip-blue{background:rgba(102,126,234,0.15);color:var(--blue);}
+.proposal-item{background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:14px;}
+.proposal-item .amount{font-size:20px;font-weight:700;font-family:Menlo,monospace;color:var(--gold);}
+.proposal-item .meta{font-size:11px;color:var(--sub);margin:6px 0;}
+.proposal-item .rationale{font-size:12px;color:var(--text);background:rgba(0,0,0,0.2);padding:10px;border-radius:6px;margin-top:8px;line-height:1.6;}
+.proposal-item .expect{font-size:12px;color:var(--accent);margin-top:8px;}
+.empty{color:var(--sub);padding:40px;text-align:center;font-size:13px;}
+.grid-3{display:grid;gap:12px;grid-template-columns:repeat(3,1fr);}
+@media(max-width:900px){.grid-3{grid-template-columns:repeat(1,1fr);}}
+</style>
+</head>
+<body>
+<div class="container">
+
+<div class="back-bar">
+  <a href="/dashboard" class="back-btn primary">← 返回总账户 Dashboard</a>
+  <span style="color:var(--sub);font-size:12px;">Gobelin Bank · Proposal Center</span>
+</div>
+
+<div class="title">📑 投资提案中心</div>
+<div class="subtitle">Proposal Center · AI 研究 → Finance Council 投票 → 执行层落地</div>
+
+{% if proposals %}
+{% for p in proposals %}
+<div class="proposal-item">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+    <div>
+      <span class="chip chip-blue">{{ p['proposal_type'] or 'GENERAL' }}</span>
+      <span class="chip chip-gold" style="margin-left:4px;">{{ p['channel'] or '—' }}</span>
+      <span class="chip {{ 'chip-green' if p['status']=='APPROVED' else ('chip-red' if p['status']=='REJECTED' else ('chip-gold' if p['status']=='VOTING' else 'chip-gray')) }}" style="margin-left:4px;">{{ p['status'] }}</span>
+    </div>
+    <div class="amount">¥{{ "{:,.0f}".format(p['amount'] or 0) }}</div>
+  </div>
+  <div class="meta">
+    提案人: {{ p['proposer'] or 'ALPHA_CENTER' }} · 目标: {{ p['target_price'] or '—' }} · 预期收益: {{ p['expected_return'] or '—' }}%
+  </div>
+  {% if p['rationale'] %}
+  <div class="rationale">💡 {{ p['rationale'] }}</div>
+  {% endif %}
+  {% if p['risk_assessment'] %}
+  <div class="meta">⚠️ 风险评估: {{ p['risk_assessment'] }}</div>
+  {% endif %}
+  <div class="meta">创建: {{ p['created_at'] or '—' }} · 更新: {{ p['updated_at'] or '—' }}</div>
+</div>
+{% endfor %}
+{% else %}
+<div class="empty">⏳ 暂无投资提案 — AI Research Center 扫描市场机会后提交</div>
+{% endif %}
+
+<div class="back-bar" style="margin-top:24px;">
+  <a href="/dashboard" class="back-btn primary">← 返回总账户 Dashboard</a>
+  <a href="/governance/centers" class="back-btn">🏛️ 33 AI 中心</a>
+  <a href="/governance/meetings" class="back-btn">📋 会议中心</a>
+</div>
+
+</div>
+</body>
+</html>

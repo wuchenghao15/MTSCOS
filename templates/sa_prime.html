@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MTSCOS SA Prime — 指挥官聊天</title>
+<style>
+:root{--gold:#d4af37;--gold-soft:rgba(212,175,55,.12);--bg:#0a0a0f;--panel:#12121a;--panel2:#181824;--text:#e8e6e0;--dim:#8a8a96;--ok:#22c55e;--bad:#ef4444;--border:#2a2a3a}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,"PingFang SC",sans-serif;height:100dvh;display:flex;overflow:hidden}
+/* 三栏 */
+#sessions{width:220px;background:var(--panel);border-right:1px solid var(--border);display:flex;flex-direction:column}
+#chat{flex:1;display:flex;flex-direction:column}
+#panel{width:300px;background:var(--panel);border-left:1px solid var(--border);overflow-y:auto;padding:14px}
+h1{font-size:15px;padding:14px;background:linear-gradient(90deg,var(--gold-soft),transparent);border-bottom:1px solid var(--border);color:var(--gold);letter-spacing:2px}
+.sec{font-size:11px;color:var(--gold);text-transform:uppercase;letter-spacing:1px;margin:14px 0 6px;padding-bottom:4px;border-bottom:1px solid var(--gold-soft)}
+.sess-item{padding:8px 10px;border-radius:6px;cursor:pointer;font-size:12px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sess-item:hover,.sess-item.on{background:var(--gold-soft);color:var(--text)}
+#msgs{flex:1;overflow-y:auto;padding:20px 24px;display:flex;flex-direction:column;gap:14px}
+.msg{max-width:82%;padding:10px 14px;border-radius:10px;font-size:13.5px;line-height:1.65;white-space:pre-wrap;word-break:break-word}
+.msg.user{align-self:flex-end;background:#1e3a5f;border:1px solid #2d5480}
+.msg.assistant{align-self:flex-start;background:var(--panel2);border:1px solid var(--border)}
+.msg .meta{font-size:10px;color:var(--dim);margin-bottom:4px}
+#inputbar{padding:14px;background:var(--panel);border-top:1px solid var(--border);display:flex;gap:10px}
+#inp{flex:1;background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:11px 14px;font-size:14px;}
+#inp:focus{border-color:var(--gold)}
+button{background:var(--gold);color:#0a0a0f;border:none;border-radius:8px;padding:11px 20px;font-weight:700;cursor:pointer;font-size:13px}
+button.sec-btn{background:var(--panel2);color:var(--gold);border:1px solid var(--gold);padding:7px 12px;font-size:11px}
+button:hover{filter:brightness(1.12)}
+select{background:var(--panel2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:7px;font-size:12px;width:100%}
+.stat{display:flex;justify-content:space-between;font-size:12px;padding:5px 0;border-bottom:1px solid #1e1e2c}
+.stat b{color:var(--gold)}
+.tool-line{font-size:11px;padding:4px 8px;background:#1a1a26;border-radius:5px;margin:3px 0;color:var(--dim)}
+.tool-line.ok{border-left:2px solid var(--ok)}.tool-line.bad{border-left:2px solid var(--bad)}
+#typing{display:none;color:var(--gold);font-size:12px;padding:6px 14px;animation:pulse 1.2s infinite}
+@keyframes pulse{50%{opacity:.4}}
+.badge{display:inline-block;font-size:10px;padding:2px 8px;border-radius:10px;background:var(--gold-soft);color:var(--gold);margin-left:6px}
+</style>
+<style>/* a11y: 键盘焦点可见 */
+:focus-visible{outline:2px solid #c9a227;outline-offset:2px}
+</style>
+</head>
+<body>
+<div id="sessions">
+  <h1>👑 SA PRIME<span class="badge">指挥官</span></h1>
+  <div style="padding:10px"><button class="sec-btn" style="width:100%" onclick="newSession()">＋ 新会话</button></div>
+  <div style="font-size:11px;color:var(--gold);padding:4px 10px">会话</div>
+  <div id="sessList" style="flex:1;overflow-y:auto;padding:0 6px"></div>
+  <div style="padding:10px;border-top:1px solid var(--border);font-size:11px;color:var(--dim)">👤 {{username}}</div>
+</div>
+
+<div id="chat">
+  <div style="padding:10px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px">
+    <b style="color:var(--gold);font-size:14px">指挥官聊天台</b>
+    <span style="font-size:11px;color:var(--dim)">工具直通 · 全模型池 · full 上下文</span>
+  </div>
+  <div id="msgs"></div>
+  <div id="typing">⚡ 指挥官链路处理中…</div>
+  <div id="inputbar">
+    <input id="inp" placeholder="向指挥官助手下达指令 (开发/查询/修改/系统操作)…" onkeydown="if(event.key==='Enter')send()">
+    <button onclick="send()">发送</button>
+  </div>
+</div>
+
+<div id="panel">
+  <div class="sec">🧠 模型池</div>
+  <select id="modelSel" onchange="curModel=this.value"></select>
+  <div class="sec">🖥️ 指挥官面板 <button class="sec-btn" onclick="tickNow()" style="float:right">触发 tick</button></div>
+  <div id="sysBox"><div class="stat"><span>加载中…</span></div></div>
+  <div class="sec">🔧 工具舱 (18)</div>
+  <div id="toolBox" style="font-size:11px;color:var(--dim)">加载中…</div>
+  <div class="sec">🏢 租户 <button class="sec-btn" onclick="newTenant()" style="float:right">＋建</button></div>
+  <div id="tenantBox" style="font-size:11px;color:var(--dim)">加载中…</div>
+  <div class="sec">📋 审计流 <span id="opsTotal" style="color:var(--dim)"></span></div>
+  <div id="opsBox" style="font-size:11px;color:var(--dim);max-height:200px;overflow-y:auto">加载中…</div>
+  <div class="sec">📊 工具审计</div>
+  <div id="auditBox" style="font-size:11px;color:var(--dim)">加载中…</div>
+</div>
+
+<script>
+let curModel='qwen2.5:14b-q5_K_M', curSess=null;
+const $=id=>document.getElementById(id);
+function add(role,text,meta,withFb){
+  const d=document.createElement('div');d.className='msg '+role;
+  d.innerHTML=(meta?`<div class="meta">${meta}</div>`:'')+
+    '<span class="body"></span>';
+  d.querySelector('.body').innerHTML=
+    text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/\n/g,'<br>');
+  if(withFb&&role==='assistant'){
+    const fb=document.createElement('span');fb.style.cssText='float:right;margin-left:8px';
+    fb.innerHTML='<a href="javascript:void(0)" onclick="sendFb(this,\'up\')" title="有用">👍</a> <a href="javascript:void(0)" onclick="sendFb(this,\'down\')" title="不对">👎</a>';
+    d.appendChild(fb);
+  }
+  $('msgs').appendChild(d);$('msgs').scrollTop=1e9;return d;
+}
+let lastMsgId=null;
+async function sendFb(el,fb){
+  const r=await (await fetch('/api/chat-feedback',{method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({message_id:lastMsgId,feedback:fb})})).json();
+  el.parentElement.innerHTML=r.success?(fb==='down'?'👎 已反馈·质量工单已入厅':'👍 已反馈'):'反馈失败';
+}
+async function send(){
+  const t=$('inp').value.trim();if(!t)return;
+  $('inp').value='';add('user',t);$('typing').style.display='block';
+  // 流式消费 (SSE via fetch ReadableStream)
+  const d=add('assistant','','',false);
+  const bodyEl=d.querySelector('.body');
+  let buf='',finalMeta='';
+  try{
+    const resp=await fetch('/api/sa-prime/chat/stream',{method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({message:t,session_id:curSess,model:curModel})});
+    const reader=resp.body.getReader();
+    const dec=new TextDecoder();
+    let sbuf='';
+    curSess=curSess; // 保持
+    while(true){
+      const {done,value}=await reader.read();
+      if(done)break;
+      sbuf+=dec.decode(value,{stream:true});
+      const lines=sbuf.split('\n\n');sbuf=lines.pop();
+      for(const line of lines){
+        const m=line.match(/^data: (.*)$/s);if(!m)continue;
+        let ev;try{ev=JSON.parse(m[1])}catch(e){continue}
+        if(ev.type==='session'){curSess=ev.session_id}
+        else if(ev.type==='delta'){buf+=ev.text;bodyEl.innerHTML=fmt(buf)}
+        else if(ev.type==='tool_start'){buf='';finalMeta+=(finalMeta?' · ':'')+'🔧'+ev.tool;bodyEl.innerHTML=`<span style="color:var(--gold)">⚙️ ${ev.tool} 执行中…</span>`}
+        else if(ev.type==='tool_done'){buf='';finalMeta+=(finalMeta?' · ':'')+(ev.ok?'✅':'❌')+ev.tool;d.dataset.toollog=(d.dataset.toollog||'')+`🔧 ${ev.tool} ${ev.ok?'✅':'❌'} ${ev.summary||''}\n`}
+        else if(ev.type==='done'){
+          buf=ev.answer||buf;
+          bodyEl.innerHTML=fmt(buf)+(d.dataset.toollog?'<br><span style="color:var(--dim);font-size:11px;white-space:pre-wrap">'+d.dataset.toollog+'</span>':'');
+          d.querySelector('.meta')?.remove();
+          d.insertAdjacentHTML('afterbegin',`<div class="meta">${ev.model||curModel} · ${ev.rounds||0}轮</div>`);
+          lastMsgId=ev.message_id||lastMsgId;
+        }
+        else if(ev.type==='error'){bodyEl.innerHTML='❌ '+ev.error}
+        $('msgs').scrollTop=1e9;
+      }
+    }
+    // 反馈按钮 (流式 done 后补挂)
+    const fb=document.createElement('span');fb.style.cssText='float:right;margin-left:8px';
+    fb.innerHTML='<a href="javascript:void(0)" onclick="sendFb(this,\'up\')">👍</a> <a href="javascript:void(0)" onclick="sendFb(this,\'down\')">👎</a>';
+    d.appendChild(fb);
+    loadSessions();loadAudit();
+  }catch(e){$('typing').style.display='none';bodyEl.innerHTML='⚠️ '+e}
+  $('typing').style.display='none';
+}
+function fmt(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/\n/g,'<br>')}
+function newSession(){curSess=null;loadSessions();$('msgs').innerHTML='';add('assistant','👑 指挥官链路就绪。工具直通已开启, 可直接下指令: 查代码/修bug/换主题/改设置/查大厅/触发tick。')}
+async function loadSessions(){
+  const r=await (await fetch('/api/sa-prime/sessions')).json();
+  $('sessList').innerHTML=(r.sessions||[]).map(s=>
+    `<div role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}" class="sess-item${s.session_id===curSess?' on':''}" onclick="openSess('${s.session_id}')">${s.title} <span style="opacity:.5">(${s.msgs})</span></div>`).join('')||'<div style="padding:8px;font-size:11px;color:var(--dim)">暂无会话</div>';
+}
+async function openSess(sid){
+  curSess=sid;loadSessions();
+  const r=await (await fetch('/api/sa-prime/session/'+sid)).json();
+  $('msgs').innerHTML='';
+  (r.messages||[]).forEach(m=>add(m.role,m.content,m.at));
+}
+async function send(){
+  const t=$('inp').value.trim();if(!t)return;
+  $('inp').value='';add('user',t);$('typing').style.display='block';
+  try{
+    const r=await (await fetch('/api/sa-prime/chat',{method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({message:t,session_id:curSess,model:curModel})})).json();
+    $('typing').style.display='none';
+    if(r.success){curSess=r.session_id;add('assistant',r.reply,`${r.model} · ${r.rounds}轮`);loadSessions();loadAudit()}
+    else add('assistant','❌ '+r.error);
+  }catch(e){$('typing').style.display='none';add('assistant','⚠️ '+e)}
+}
+async function initPanel(){
+  const m=await (await fetch('/api/sa-prime/models')).json();
+  $('modelSel').innerHTML=(m.models||[]).map(x=>`<option value="${x.name}">${x.name} (${x.size_gb}G)</option>`).join('');
+  const me=await (await fetch('/api/sa-prime/me')).json();
+  $('toolBox').innerHTML=(me.tools||[]).map(t=>`<div class="tool-line ${t.ready?'ok':''}" title="${t.desc}">${t.ready?'✅':'⏳'} ${t.name}</div>`).join('');
+  loadSys();loadAudit();
+}
+async function loadSys(){
+  const s=await (await fetch('/api/sa-prime/system')).json();
+  const hall=Object.entries(s.hall||{}).map(([k,v])=>`<div class="stat"><span>${k}</span><b>${v}</b></div>`).join('');
+  const dir=Object.entries(s.directions||{}).map(([k,v])=>`<div class="stat"><span>方向:${k}</span><b>${v}</b></div>`).join('');
+  $('sysBox').innerHTML=`<div class="stat"><span>Flask</span><b>${s.flask_http}</b></div>
+    <div class="stat"><span>daemon进程</span><b>${s.daemon_procs}</b></div>
+    <div class="stat"><span>区块链高度</span><b>${s.blockchain||0}</b></div>${hall}${dir}`;
+}
+async function tickNow(){
+  const r=await (await fetch('/api/sa-prime/tick',{method:'POST'})).json();
+  add('assistant',r.success?`⚙️ tick 触发完成 (HTTP ${r.http})`:'❌ '+r.error);loadSys();
+}
+async function loadAudit(){
+  const a=await (await fetch('/api/sa-prime/audit')).json();
+  $('auditBox').innerHTML=`<div class="stat"><span>总调用</span><b>${a.total||0}</b></div>`+
+    (a.recent||[]).slice(0,8).map(t=>`<div class="tool-line ${t.ok?'ok':'bad'}">${t.tool} · ${t.ms}ms<br><span style="opacity:.6">${t.summary}</span></div>`).join('');
+  $('opsTotal').textContent=`(${a.ops_total||0})`;
+  $('opsBox').innerHTML=(a.ops||[]).slice(0,15).map(o=>
+    `<div class="tool-line ${String(o.action).includes('DENY')?'bad':'ok'}" title="${o.detail||''}">${o.ts} <b>${o.actor}</b> ${o.action}${o.tenant?' 🏢'+o.tenant:''}<br><span style="opacity:.55">${o.target} · ${o.ip} · ${o.via}</span></div>`).join('')
+    ||'暂无操作记录';
+}
+async function loadTenants(){
+  const t=await (await fetch('/api/sa-prime/tenants')).json();
+  $('tenantBox').innerHTML=(t.tenants||[]).map(x=>
+    `<div class="stat"><span title="${x.tenant_id}">🏢 ${x.name}</span><b>${x.members}人 · ${x.audit_events}审计</b></div>`).join('')
+    ||'暂无租户 — 点＋建创建';
+}
+async function newTenant(){
+  const name=prompt('租户名称:');if(!name)return;
+  const r=await (await fetch('/api/sa-prime/tenants',{method:'POST',
+    headers:{'Content-Type':'application/json'},body:JSON.stringify({name})})).json();
+  add('assistant',r.success?`🏢 ${r.message}`:'❌ '+r.error);loadTenants();
+}
+async function addMember(){
+  const tid=prompt('租户ID (t_xxxx):');if(!tid)return;
+  const uid=prompt('成员 user_id:');if(!uid)return;
+  const r=await (await fetch(`/api/sa-prime/tenants/${tid}/members`,{method:'POST',
+    headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:uid})})).json();
+  add('assistant',r.success?`👤 ${r.message}`:'❌ '+r.error);loadTenants();
+}
+newSession();initPanel();loadSessions();loadTenants();
+setInterval(loadSys,30000);setInterval(loadAudit,60000);
+</script>
+{# 🎨 冰山主题矩阵调度器 #}
+<script defer src="{{ url_for('static', filename='js/theme-manager.js') }}"></script>
+</body>
+</html>

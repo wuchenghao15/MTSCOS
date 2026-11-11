@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>🏛️ Gobelin Bank · 33 AI 中心治理层</title>
+<style>
+:root{--bg:#050a14;--panel:#0c1424;--border:rgba(255,255,255,0.08);--text:#e2e8f0;--sub:#7a8a9a;--accent:#38ef7d;--red:#ff4444;--gold:#ffd700;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif;min-height:100vh;}
+.container{max-width:1280px;margin:0 auto;padding:24px;}
+.back-bar{display:flex;gap:12px;align-items:center;margin-bottom:20px;flex-wrap:wrap;}
+.back-btn{padding:10px 18px;background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:8px;color:var(--text);text-decoration:none;font-size:13px;}
+.back-btn:hover{background:rgba(255,255,255,0.1);}
+.back-btn.primary{background:linear-gradient(135deg,#11998e,#38ef7d);border:none;color:#000;font-weight:600;}
+.title{font-size:22px;font-weight:700;margin-bottom:4px;}
+.subtitle{color:var(--sub);font-size:12px;margin-bottom:24px;}
+.grid{display:grid;gap:16px;}
+.grid-4{grid-template-columns:repeat(4,1fr);}
+.grid-3{grid-template-columns:repeat(3,1fr);}
+@media(max-width:900px){.grid-4,.grid-3{grid-template-columns:repeat(2,1fr);}}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:16px;}
+.panel h3{font-size:14px;font-weight:600;margin-bottom:12px;color:var(--accent);}
+table{width:100%;border-collapse:collapse;font-size:12px;}
+th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--border);}
+th{color:var(--sub);font-weight:500;font-size:11px;text-transform:uppercase;}
+.chip{display:inline-block;padding:2px 10px;border-radius:12px;font-size:10px;font-weight:600;}
+.chip-green{background:rgba(56,239,125,0.15);color:var(--accent);}
+.chip-red{background:rgba(255,68,68,0.15);color:var(--red);}
+.chip-gray{background:rgba(255,255,255,0.08);color:var(--sub);}
+.chip-gold{background:rgba(255,215,0,0.15);color:var(--gold);}
+.chip-blue{background:rgba(102,126,234,0.15);color:#667eea;}
+.center-card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px;}
+.center-card .code{font-family:Menlo,monospace;font-size:11px;color:var(--gold);}
+.center-card .name{font-size:13px;font-weight:600;margin:4px 0;}
+.center-card .desc{font-size:11px;color:var(--sub);line-height:1.5;}
+.kpi{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px;}
+.kpi-label{font-size:11px;color:var(--sub);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;}
+.kpi-val{font-size:22px;font-weight:700;font-family:Menlo,monospace;}
+.log-row{font-size:11px;font-family:Menlo,monospace;color:var(--sub);padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.04);}
+.log-row .ts{color:#555;margin-right:8px;}
+</style>
+</head>
+<body>
+<div class="container">
+
+<div class="back-bar">
+  <a href="/dashboard" class="back-btn primary">← 返回总账户 Dashboard</a>
+  <span style="color:var(--sub);font-size:12px;">Gobelin Bank · 33 AI Centers</span>
+</div>
+
+<div class="title">🏛️ 33 AI 中心治理层</div>
+<div class="subtitle">Andromeda AI 智能集群 · Finance Council 决策体系 · 任务自动路由</div>
+
+{% set ns = namespace(active=0, total=centers|length) %}
+{% for c in centers %}{% if c['status']=='ACTIVE' %}{% set ns.active = ns.active + 1 %}{% endif %}{% endfor %}
+<div class="grid grid-4" style="margin-bottom:16px;">
+  <div class="kpi"><div class="kpi-label">注册中心</div><div class="kpi-val">{{ centers|length }}</div></div>
+  <div class="kpi"><div class="kpi-label">ACTIVE</div><div class="kpi-val" style="color:var(--accent);">{{ ns.active }}</div></div>
+  <div class="kpi"><div class="kpi-label">任务队列</div><div class="kpi-val">{{ tasks|length }}</div></div>
+  <div class="kpi"><div class="kpi-label">执行日志</div><div class="kpi-val">{{ execs|length }}</div></div>
+</div>
+
+<div class="panel">
+  <h3>🧠 33 AI Centers</h3>
+  <div class="grid grid-3">
+    {% for c in centers %}
+    <div class="center-card">
+      <div class="code">{{ c['code'] }}</div>
+      <div class="name">{{ c['name'] or c['description'] }}</div>
+      <div class="desc">{{ c['description'] or '—' }}</div>
+      <div style="margin-top:8px;">
+        <span class="chip {{ 'chip-green' if c['status']=='ACTIVE' else 'chip-gray' }}">{{ c['status'] }}</span>
+        <span class="chip chip-blue" style="margin-left:4px;">{{ c['layer'] or 'L?' }}</span>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="panel">
+  <h3>📋 任务队列 ({{ tasks|length }})</h3>
+  {% if tasks %}
+  <table>
+    <thead><tr><th>ID</th><th>Type</th><th>From→To</th><th>Status</th><th>Created</th></tr></thead>
+    <tbody>
+    {% for t in tasks[:50] %}
+    <tr>
+      <td style="font-family:Menlo,monospace;">#{{ t['id'] }}</td>
+      <td>{{ t['task_type'] or t['type'] }}</td>
+      <td>{{ t['from_center'] or '?' }} → {{ t['to_center'] or '?' }}</td>
+      <td><span class="chip {{ 'chip-green' if t['status']=='DONE' else ('chip-gold' if t['status']=='PENDING' else 'chip-gray') }}">{{ t['status'] }}</span></td>
+      <td style="color:var(--sub);">{{ (t['created_at'] or '')[-16:] }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div style="color:var(--sub);padding:20px;text-align:center;">暂无任务</div>
+  {% endif %}
+</div>
+
+<div class="panel">
+  <h3>⚡ 最近执行日志 ({{ execs|length }})</h3>
+  {% for e in execs[:30] %}
+  <div class="log-row">
+    <span class="ts">{{ (e['created_at'] or '')[-12:] }}</span>
+    <span style="color:#667eea;">{{ e['center_code'] }}</span>
+    <span style="color:var(--gold);">[{{ e['action'] or '—' }}]</span>
+    {{ (e['detail'] or '')[:80] }}
+  </div>
+  {% endfor %}
+</div>
+
+<div class="back-bar" style="margin-top:24px;">
+  <a href="/dashboard" class="back-btn primary">← 返回总账户 Dashboard</a>
+  <a href="/governance/meetings" class="back-btn">📋 会议中心</a>
+  <a href="/governance/proposals" class="back-btn">📑 投资提案</a>
+</div>
+
+</div>
+</body>
+</html>

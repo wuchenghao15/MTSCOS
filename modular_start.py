@@ -1,0 +1,430 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+MTSCOS AI Flask 入口 (modular_start.py)
+被 sys_flask_server daemon 调用启动 Web 服务
+端口: 8888 (避免 macOS AirPlay 5000 端口冲突)
+"""
+import os
+import sys
+
+# 🆕 2026-09-17: Flask 模式 — 全局拦截后台守护线程创建
+# 所有模块级单例 (auto_routine_maintenance, AI_Cluster_Manager, comprehensive 等)
+# 在 import 时会创建 threading.Thread 启动后台线程, 永久持 DB 写锁 → Flask worker 被堵
+# 在 import 任何模块前 patch threading.Thread.__init__, 拦截可疑后台线程
+os.environ['MTSCOS_FLASK_MODE'] = '1'
+# ⚠️ 2026-11-10 根因修复: 之前没设 NODE_ROLE → server_real_db.py index() 走 else 分支
+# → render index.html (Jinja2 语法错误) → 500. 统一默认 DEVELOPER, SERVER 由 systemd 显式覆盖
+os.environ.setdefault('NODE_ROLE', 'DEVELOPER')
+# P1 修复 (2026-10-15): MTSCOS_DB_PATH fallback — Flask 后台进程有时 env 丢失,
+# 导致 db_path.get_db_path('app.db') 错误解析到 OneDrive 旧库 (disk I/O error),
+# 而 PROD DB (/Users/wuchenghao/MTSCOS_PROD/flask-app/database/app.db) 才是权威源
+if not os.environ.get('MTSCOS_DB_PATH'):
+    _prod_db = os.path.expanduser('~/MTSCOS_PROD/flask-app/database/app.db')
+    if os.path.exists(_prod_db) and os.path.getsize(_prod_db) > 1e9:
+        os.environ['MTSCOS_DB_PATH'] = _prod_db
+    else:
+        # 兜底: 本地 PROD 不存在时用本地 app.db
+        _local_db = os.path.join(os.path.dirname(__file__), 'database', 'app.db')
+        if os.path.exists(_local_db):
+            os.environ['MTSCOS_DB_PATH'] = _local_db
+import threading as _threading_flask
+
+# ===== flow_unified_ops_20261023 P1-2: 端口守卫 (单一拉起方) =====
+# mini 上有三个潜在拉起方: launchd com.mtscos.flask (KeepAlive) + cron keepalive + 手动启动.
+# 历史事故: pkill 重启 Flask 后 launchd 复活第二实例 → EADDRINUSE 崩溃循环.
+# 守卫: 端口已有健康服务 → 本实例立即安静退出 (在重模块导入之前执行, 零 DB 开销).
+if __name__ == '__main__':
+    _pg_port = 8888
+    for _pg_argv in sys.argv[1:]:
+        if _pg_argv.startswith("--port="):
+            try:
+                _pg_port = int(_pg_argv.split("=", 1)[1])
+            except ValueError:
+                pass
+            break
+    try:
+        import urllib.request as _pg_req
+        _pg_resp = _pg_req.urlopen(f'http://127.0.0.1:{_pg_port}/index', timeout=3)
+        _pg_status = getattr(_pg_resp, 'status', 0)
+        if _pg_status == 200:
+            sys.stderr.write(f'[PORT-GUARD] :{_pg_port} 已有健康 Flask 服务, 本实例退出 (单一拉起方守卫 P1-2)\n')
+            sys.exit(0)
+        # 🔧 2026-11-08: 更智能 — 端口在 LISTEN 但返回异常 (卡死进程), 允许新实例
+        sys.stderr.write(f'[PORT-GUARD] :{_pg_port} 返回 HTTP {_pg_status} (非200, 可能僵死), 允许新实例启动\n')
+    except SystemExit:
+        raise
+    except Exception as _pg_e:
+        # 🔧 2026-11-08: 3s timeout 也可能是僵死进程 (端口 LISTEN 但 accept 卡死)
+        _pg_err_str = str(_pg_e)
+        if 'timed out' in _pg_err_str or 'timeout' in _pg_err_str.lower():
+            sys.stderr.write(f'[PORT-GUARD] :{_pg_port} 响应超时 (>3s, 僵死进程), 允许新实例启动\n')
+        else:
+            sys.stderr.write(f'[PORT-GUARD] :{_pg_port} 不可达 ({_pg_e}), 正常启动\n')
+        pass  # 正常启动
+
+_ORIGINAL_THREAD_INIT = _threading_flask.Thread.__init__
+
+# ===== flow_unified_ops_20261023 P1-1b: sqlite3 连接注册表 (泄漏事务可发现性) =====
+# Python 3.9 的 sqlite3.Connection 不被 gc 跟踪 → gc.get_objects() 扫不到,
+# 必须在重模块导入前 monkey-patch sqlite3.connect 登记 weakref, 清道夫才能遍历.
+import sqlite3 as _sq_flask
+import weakref as _weakref_flask
+_SQLITE_CONN_REGISTRY = []
+_ORIG_SQLITE_CONNECT = _sq_flask.connect
+def _tracked_sqlite_connect(*args, **kwargs):
+    # 🔧 P1-1b: check_same_thread=False — 否则清道夫跨线程 commit 抛 ProgrammingError
+    # 被 except 静默吞掉, 泄漏事务永远清不掉 (实证: 代提交 0 次但锁持续被持).
+    # sqlite3 C 层有内部互斥, commit 单操作跨线程安全.
+    kwargs['check_same_thread'] = False
+    _conn = _ORIG_SQLITE_CONNECT(*args, **kwargs)
+    try:
+        _SQLITE_CONN_REGISTRY.append(_weakref_flask.ref(_conn))
+    except Exception:
+        pass
+    try:
+        # 🔧 2026-11-08: SQL-TRACE explosion 修复 — 从无条件 print 改成环境变量守卫
+        # 之前 710K 行 SQL trace 挤爆 /tmp/flask_5001.err.log, 每次查询都打 stderr
+        # 生产默认关闭, 需调试时 export SQL_TRACE=1 再启动
+        if os.environ.get('SQL_TRACE', '') == '1':
+            from datetime import datetime as _dt_trace
+            _cid = id(_conn) % 100000
+            _conn.set_trace_callback(
+                lambda stmt, _c=_cid: sys.stderr.write(
+                    f'[SQL-TRACE c{_c}] ' + _dt_trace.now().strftime('%H:%M:%S') + ' ' + str(stmt)[:140].replace('\n', ' ') + '\n'))
+    except Exception:
+        pass
+    return _conn
+_sq_flask.connect = _tracked_sqlite_connect
+# 覆盖 `from sqlite3.dbapi2 import connect` 等底层导入路径 (SQL-TRACE 实证有引擎绕过包级 patch)
+import sqlite3.dbapi2 as _sq_dbapi2_flask
+_sq_dbapi2_flask.connect = _tracked_sqlite_connect
+
+# P1-1b 取证: kill -USR1 <flask_pid> → dump 全线程 Python 栈 (定位持锁线程的精确文件:行号)
+try:
+    import faulthandler as _fh_flask
+    import signal as _sig_flask
+    _fh_flask.register(_sig_flask.SIGUSR1)
+except Exception:
+    pass
+
+_SKIP_KEYWORDS = (
+    # 原守护线程
+    'routine_maintenance', 'comprehensive_upgrader', 'system_upgrade',
+    'auto_repair', 'ai_inspection', 'auto_inspection', 'auto_patrol',
+    'auto_hire', 'file_organizer', 'rule_enforcer', 'auto_learning',
+    'monitoring', 'scheduler', 'heartbeat', 'watcher', 'health_check',
+    # 🆕 Flask 模式下不需要的后台 (由 smart_mount_engine 独立进程负责)
+    'archive', 'archiver', 'evolution', 'andromeda', 'autosync',
+    'normalize', 'idle_monitor', 'idlemonitor', 'idle.',
+    'patrol', 'eigenflux', 'brain_feed',
+    # 🆕 2026-11-02: 医疗中心 + 协作总线 + 市场雷达 + 股市沙盘
+    'medical-daemon', 'medical-subscribe', 'market-radar', 'collab-bus', 'stock-sandbox',
+)
+# 🆕 直接拦截所有后台线程 — Flask 进程只做 HTTP handler 请求
+# autosync daemon / ANDROMEDA 演化 / normalize_system / ai_archive 等
+# 全部改成 NOP 空跑, Flask 成纯 HTTP server
+def _patched_thread_init(self, *args, **kwargs):
+    target = kwargs.get('target') or (args[0] if args else None)
+    name = kwargs.get('name', '')
+    target_name = target.__name__.lower() if target else ''
+    qualname = getattr(target, '__qualname__', '').lower() if target else ''
+    name_lower = name.lower()
+    should_skip = any(kw in target_name or kw in qualname or kw in name_lower for kw in _SKIP_KEYWORDS)
+    # 🆕 同时拦截 Flask app.run() 之前启动的所有 daemon (除了 werkzeug 自己的)
+    # 只有 app.run() 后由 Flask 内部启动的 worker 线程放行
+    if should_skip:
+        kwargs['target'] = lambda: None
+        try:
+            _ORIGINAL_THREAD_INIT(self, *args, **kwargs)
+            return
+        except Exception:
+            pass
+    _ORIGINAL_THREAD_INIT(self, *args, **kwargs)
+_threading_flask.Thread.__init__ = _patched_thread_init
+sys.stderr.write("[FLASK-MODE] threading.Thread.__init__ 已 patch, 拦截 17 种后台线程关键字\n")
+
+_BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+if _BASE_DIR not in sys.path:
+    sys.path.insert(0, _BASE_DIR)
+
+try:
+    from core.db_path import patch_sqlite3_connect as _mtscos_patch
+    _mtscos_patch(verbose=False)
+except Exception as _e:
+    sys.stderr.write(f"[WARN] db_path patch failed: {_e}\n")
+
+# 🆕 NAS 路由器初始化 — 把脑库/沙盘缓存/临时文件/模型/备份全部指到 NAS
+try:
+    from engines.nas_path_router import ensure_ollama_env, nas_router
+    ensure_ollama_env()  # 注入 OLLAMA_MODELS 环境变量
+    _nas = nas_router.status()
+    if _nas['nas_available']:
+        sys.stderr.write(f"[NAS] ✅ 已就绪: {_nas['nas_root']}, 所有大数据量走 NAS\n")
+    else:
+        sys.stderr.write(f"[NAS] ⚠️ 未挂载, 降级本地: brain_feed/sandbox_cache/tmp/backup 均在 MTSCOS_LOCAL/\n")
+except Exception as _e:
+    sys.stderr.write(f"[NAS] 初始化失败 (非致命): {_e}\n")
+
+# Phase 7 局部 Factory: 显式调用 ensure_app_ready() 完成蓝图+API注册
+# 注: server_real_db 模块加载时也会自动调一次 ensure_app_ready(),
+#     但显式调用是 Factory 模式的推荐入口, 且 _app_initialized 防重入保证只执行一次
+from server_real_db import ensure_app_ready, app
+ensure_app_ready()  # 幂等, 即使模块加载时已执行过也不会重复注册
+
+# ===== autosync blueprint (两端 Flask 都注册, GUI 上下文有 TCC 访问 DB) =====
+try:
+    import autosync_andromeda as _sync
+    _sync.register_sync_routes(app)
+except Exception as _e:
+    sys.stderr.write(f"[AUTOSYNC] blueprint 注册失败 (非致命): {_e}\n")
+
+# ===== 系统正规化初始化 (放到后台线程, 不阻塞 Flask listen) =====
+# 之前同步执行卡死在 DB 锁 (系统升级 84 任务 + AI 巡检 7 阶段),
+# 导致 app.run() 永远不执行, 系统对外 HTTP 不可用.
+try:
+    import threading as _mt
+
+    def _normalize_async():
+        try:
+            from ai_engines.system_normalizer import normalize_system
+            _norm_report = normalize_system(app)
+            sys.stderr.write(
+                f"[SYS-NORM] 异步初始化完成: "
+                f"overall_ok={_norm_report.get('overall_ok')}, "
+                f"耗时={_norm_report.get('took_sec')}s\n"
+            )
+        except Exception as _e:
+            sys.stderr.write(f"[SYS-NORM] 异步初始化失败(非致命): {_e}\n")
+
+    _mt.Thread(target=_normalize_async, name='sys-norm-async', daemon=True).start()
+    sys.stderr.write("[SYS-NORM] 异步线程已提交 (不阻塞 Flask listen)\n")
+except Exception as _e:
+    sys.stderr.write(f"[SYS-NORM] 启动失败(非致命): {_e}\n")
+
+if __name__ == "__main__":
+    # ===== v6.2: 仙女座七阶段自演化后台线程 (自动联想→检索→衍生→强化→拓展→优化) =====
+    try:
+        import threading
+        import time as _time
+
+        def _andromeda_evolution_loop():
+            """
+            仙女座拉马努金式自演化循环.
+            每 600s 周期跑一轮, 或被 autosync 同步完 eigenflux 消息后立刻唤醒.
+            自举循环: AI 员工跨机讨论 → 同步 → 摄入脑库 → 关联图谱 → 衍生新知识 → 反向驱动新讨论
+            """
+            _time.sleep(180)  # 等 Flask + Ollama 完全就绪
+            sys.stderr.write("[ANDROMEDA-EVOL] 自演化后台线程启动 (cycle_interval=600s, autosync可唤醒)\n")
+            from engines.andromeda_auto_evolution import (
+                run_cycle, EVOLUTION_WAKEUP_EVENT, reset_evolution_event,
+            )
+            while True:
+                try:
+                    run_cycle()
+                except Exception as _e:
+                    sys.stderr.write(f"[ANDROMEDA-EVOL] cycle crashed: {_e}\n")
+                # 清唤醒信号 → wait 下一轮 (被唤醒则立刻跑, 否则等 600s)
+                reset_evolution_event()
+                _was_wakeup = EVOLUTION_WAKEUP_EVENT.wait(timeout=600)
+                if _was_wakeup:
+                    sys.stderr.write("[ANDROMEDA-EVOL] 🔔 被 autosync 唤醒, 提前跑下一轮\n")
+
+        _evol_thread = threading.Thread(
+            target=_andromeda_evolution_loop,
+            name='andromeda-auto-evolution',
+            daemon=True,
+        )
+        _evol_thread.start()
+        sys.stderr.write("[ANDROMEDA-EVOL] 后台线程已提交 (180s 后首次 cycle)\n")
+    except Exception as _e:
+        sys.stderr.write(f"[ANDROMEDA-EVOL] 后台线程启动失败 (非致命): {_e}\n")
+
+    # ===== v6.3: 仙女座双向同步后台线程 (自动发现 Mac mini → 双向 rsync + DB 合并) =====
+    try:
+        def _autosync_loop():
+            """后台双向同步循环: 直接调用 autosync_andromeda.main_loop()"""
+            sys.stderr.write("[AUTOSYNC] 双向同步后台线程启动\n")
+            import autosync_andromeda as _sync
+            _sync.main_loop()
+
+        _sync_thread = threading.Thread(
+            target=_autosync_loop,
+            name='andromeda-autosync',
+            daemon=True,
+        )
+        _sync_thread.start()
+        sys.stderr.write("[AUTOSYNC] 后台线程已提交 (自动发现 Mac mini → 双向同步)\n")
+    except Exception as _e:
+        sys.stderr.write(f"[AUTOSYNC] 后台线程启动失败 (非致命): {_e}\n")
+
+    # 🆕 2026-09-17: Flask 进程成为纯 HTTP server, 不启动任何后台守护线程
+    # Flask 进程内模块级单例 (auto_routine_maintenance, comprehensive_system_upgrader,
+    # AI_Cluster_Manager 等) 在 import 时会启动后台线程, 永久持写锁做长事务 →
+    # Flask worker 被堵 → HTTP timeout. 后台任务改由 smart_mount_engine (独立进程) 负责.
+    import os as _os_flask
+    _os_flask.environ['MTSCOS_FLASK_MODE'] = '1'
+    def _nop_start(self):
+        import sys as _sys
+        _sys.stderr.write(f"[FLASK-MODE] {type(self).__name__}.start() SKIPPED (Flask 纯 HTTP 模式)\n")
+    # Monkey-patch 所有已知会启动后台线程的单例
+    try:
+        from ai_engines.auto_routine_maintenance import auto_routine_maintenance_system
+        auto_routine_maintenance_system.start = lambda: None
+        print('[FLASK-MODE] ✅ auto_routine_maintenance patched')
+    except Exception as _e: pass
+    try:
+        from ai_engines.management.ai_cluster_manager import ai_cluster_manager
+        ai_cluster_manager._get_manager = lambda: type('Fake',(),{'_start_monitoring_thread':lambda self:None,'start':lambda self:None,'get_cluster_status':lambda self:{},'get_employee_status':lambda self:{}})()
+        print('[FLASK-MODE] ✅ ai_cluster_manager patched (lazy)')
+    except Exception as _e: pass
+    try:
+        # 跳过 comprehensive_system_upgrader / smart_auto_upgrade 的 start
+        import sys as _sys_flask
+        for _mod_name in list(_sys_flask.modules.keys()):
+            if 'upgrade' in _mod_name.lower() or 'upgrader' in _mod_name.lower() or 'maintenance' in _mod_name.lower() or 'inspection' in _mod_name.lower():
+                _mod = _sys_flask.modules[_mod_name]
+                for _attr_name in dir(_mod):
+                    if _attr_name.endswith('_system') or _attr_name.endswith('_manager') or _attr_name.endswith('_engine'):
+                        _obj = getattr(_mod, _attr_name, None)
+                        if _obj and hasattr(_obj, 'start') and callable(_obj.start):
+                            try:
+                                _obj.start = lambda *a, **kw: None
+                                print(f'[FLASK-MODE] ✅ {_mod_name}.{_attr_name}.start patched')
+                            except Exception: pass
+    except Exception as _e: pass
+    print('[FLASK-MODE] ✅ 所有后台守护线程 start() 已 patch 为 NOP')
+
+    # 🆕 Flask app.run() 前等待 5s 让模块级初始化建表事务跑完
+    # Thread patch 已经拦截了所有后台守护线程的 start, 但模块级单例的
+    # __init__ 里可能同步做一些轻量建表, 等 5s 让它们 commit
+    import time as _t_pre_run
+    sys.stderr.write("[BOOT] 等待 5s 让模块初始化 commit...\n")
+    _t_pre_run.sleep(5)
+    sys.stderr.write("[BOOT] Flask 开始 listen\n")
+
+    # flow_iceberg_saga_20261021: 支持 --port=N 覆盖 (smart_sync PROD :5001 启动),
+    # 默认仍 8888 (避免 macOS AirPlay 5000 冲突)
+    _mt_port = 8888
+    for _argv in sys.argv[1:]:
+        if _argv.startswith("--port="):
+            try:
+                _mt_port = int(_argv.split("=", 1)[1])
+                sys.stderr.write(f"[BOOT] 端口覆盖: {_mt_port}\n")
+            except ValueError:
+                pass
+            break
+    # ===== flow_unified_ops_20261023 P1-1b: WAL 泄漏事务清道夫 =====
+    # 实证: Flask 启动后 ~45s 内部某引擎连接 DML 后不 commit (常驻单例持有连接),
+    # WAL 写锁被永久占用 → 全舰队外部写 database is locked, Flask 其它连接也写不进.
+    # 清道夫: 每 20s 遍历连接注册表 (sqlite3.connect monkey-patch 登记, 见模块顶部),
+    # 对 in_transaction 的连接代为 commit (保留写意图, 释放写锁).
+    try:
+        import time as _t_reaper
+
+        def _wal_txn_reaper():
+            _n_total = 0
+            while True:
+                _t_reaper.sleep(20)
+                try:
+                    for _ref in list(_SQLITE_CONN_REGISTRY):
+                        _o = _ref()
+                        if _o is None:
+                            try:
+                                _SQLITE_CONN_REGISTRY.remove(_ref)
+                            except ValueError:
+                                pass
+                            continue
+                        try:
+                            if _o.in_transaction:
+                                _o.commit()
+                                _n_total += 1
+                                sys.stderr.write(
+                                    f'[WAL-REAPER] 已代提交泄漏事务 #{_n_total} (连接 {_o!r:.60})\n')
+                        except Exception as _e_r:
+                            # 🔧 不再静默: 记录失败原因 (check_same_thread / 锁 / 连接已关)
+                            sys.stderr.write(
+                                f'[WAL-REAPER] 代提交失败 (非致命): {type(_e_r).__name__}: {_e_r}\n')
+                except Exception:
+                    pass
+
+        _reaper_t = _threading_flask.Thread(target=_wal_txn_reaper, name='wal-txn-reaper', daemon=True)
+        _reaper_t.start()
+        sys.stderr.write("[WAL-REAPER] 泄漏事务清道夫已启动 (20s 周期)\n")
+    except Exception as _e:
+        sys.stderr.write(f"[WAL-REAPER] 启动失败(非致命): {_e}\n")
+
+    # 🆕 2026-11-02: 仙女座医疗中心 + 协作总线 + 市场雷达 启动
+    try:
+        # 1. 确保表初始化
+        def _init_all_tables():
+            sys.stderr.write("[INIT] 医疗中心 + 协作总线 + 版本中心 表初始化...\n")
+            try:
+                from engines.ai_medical_center_engine import ensure_medical_tables
+                ensure_medical_tables()
+                sys.stderr.write("[INIT] ✅ 医疗中心表初始化完成\n")
+            except Exception as _e_med:
+                sys.stderr.write(f"[INIT] 医疗中心表初始化失败: {_e_med}\n")
+            try:
+                from engines.collab_bus_engine import ensure_bus_tables, register_standard_subscribers
+                ensure_bus_tables()
+                register_standard_subscribers()
+                sys.stderr.write("[INIT] ✅ 协作总线表 + 5 标准订阅者初始化完成\n")
+            except Exception as _e_bus:
+                sys.stderr.write(f"[INIT] 协作总线初始化失败: {_e_bus}\n")
+            try:
+                from engines.ai_version_center_engine import ensure_version_tables
+                ensure_version_tables()
+                sys.stderr.write("[INIT] ✅ 版本中心表初始化完成\n")
+            except Exception as _e_ver:
+                sys.stderr.write(f"[INIT] 版本中心初始化失败: {_e_ver}\n")
+
+        _init_all_tables()
+
+        # 2. 启动医疗中心 daemon (仙女座+冰山三层体检)
+        def _start_medical_daemon():
+            time.sleep(8)  # 等 Flask + 表初始化完全就绪
+            try:
+                from engines.ai_medical_center_engine import get_medical_center
+                daemon = get_medical_center()
+                daemon.start()
+                sys.stderr.write("[MEDICAL] ✅ 仙女座+冰山 三层体检 daemon 已启动\n")
+            except Exception as _e:
+                sys.stderr.write(f"[MEDICAL] 启动失败(非致命): {_e}\n")
+
+        _med_t = _threading_flask.Thread(target=_start_medical_daemon, name='medical-daemon', daemon=True)
+        _med_t.start()
+
+        # 3. 启动市场雷达 daemon (5s poll 新浪行情)
+        def _start_radar_daemon():
+            time.sleep(10)
+            try:
+                from engines.collab_bus_engine import MarketRadarDaemon
+                radar = MarketRadarDaemon()
+                radar.start(cycle=5)
+                sys.stderr.write("[RADAR] ✅ 市场雷达 (5s poll) 已启动\n")
+            except Exception as _e:
+                sys.stderr.write(f"[RADAR] 启动失败(非致命): {_e}\n")
+
+        _radar_t = _threading_flask.Thread(target=_start_radar_daemon, name='market-radar', daemon=True)
+        _radar_t.start()
+
+        # 4. 启动股市沙盘 daemon (30s tick + 协作总线事件驱动)
+        def _start_sandbox_daemon():
+            time.sleep(15)  # 等 Flask + 雷达就绪
+            try:
+                from engines.ai_stock_sandbox_engine import get_stock_sandbox
+                sandbox = get_stock_sandbox()
+                sandbox.start_daemon(interval=30)
+                sys.stderr.write("[SANDBOX] ✅ 股市沙盘 daemon (30s tick + 协作总线订阅) 已启动\n")
+            except Exception as _e:
+                sys.stderr.write(f"[SANDBOX] 启动失败(非致命): {_e}\n")
+
+        _sx_t = _threading_flask.Thread(target=_start_sandbox_daemon, name='stock-sandbox', daemon=True)
+        _sx_t.start()
+
+        sys.stderr.write("[BOOT] ✅ 医疗中心 + 协作总线 + 市场雷达 + 股市沙盘 daemon 已提交 (等 Flask listen 后自动启动)\n")
+    except Exception as _e:
+        sys.stderr.write(f"[BOOT] 医疗/总线/雷达/沙盘 启动异常(非致命): {_e}\n")
+
+    app.run(host="0.0.0.0", port=_mt_port, debug=False, threaded=True)

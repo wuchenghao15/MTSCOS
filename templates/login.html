@@ -1,0 +1,727 @@
+{% extends "base_unified.html" %}
+{% block title %}{{ t("login.heading") }}{% endblock %}
+{% block page_title %}{{ t("login.heading") }}{% endblock %}
+
+{% block extra_head %}
+<style>
+/* ── 双系统分流登录页 v26.11 ── */
+.login-wrapper {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: #050a14;
+    color: #e2e8f0;
+    margin: 0 !important;
+    padding: 0 !important;
+    max-width: none !important;
+}
+
+/* 🌌 共享背景：仙女座银河 + 冰山 */
+.split-bg {
+    position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none;
+}
+.split-bg::before {
+    content: '';
+    position: absolute; inset: 0;
+    background:
+        radial-gradient(ellipse 80% 50% at 25% 30%, rgba(251,191,36,.08) 0%, transparent 70%),
+        radial-gradient(ellipse 80% 50% at 75% 60%, rgba(56,189,248,.08) 0%, transparent 70%),
+        radial-gradient(ellipse 120% 80% at 50% 50%, rgba(15,23,42,1) 0%, rgba(2,6,23,1) 100%);
+}
+.split-bg::after {
+    content: '';
+    position: absolute; inset: 0;
+    background-image:
+        radial-gradient(1px 1px at 10% 20%, rgba(255,255,255,.4), transparent),
+        radial-gradient(1px 1px at 30% 80%, rgba(255,255,255,.3), transparent),
+        radial-gradient(1px 1px at 50% 10%, rgba(255,255,255,.5), transparent),
+        radial-gradient(1px 1px at 70% 50%, rgba(255,255,255,.3), transparent),
+        radial-gradient(1px 1px at 90% 30%, rgba(255,255,255,.4), transparent),
+        radial-gradient(1px 1px at 15% 60%, rgba(255,255,255,.2), transparent),
+        radial-gradient(1px 1px at 40% 90%, rgba(255,255,255,.4), transparent),
+        radial-gradient(1px 1px at 85% 75%, rgba(255,255,255,.3), transparent);
+    opacity: .7;
+    animation: twinkle 4s ease-in-out infinite alternate;
+}
+@keyframes twinkle { 0% { opacity: .5; } 100% { opacity: .9; } }
+
+/* 顶部品牌栏 */
+.top-brand {
+    position: relative; z-index: 2;
+    padding: 20px 36px;
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid rgba(148,163,184,.15);
+    backdrop-filter: blur(8px);
+    background: rgba(2,6,23,.5);
+}
+.top-brand .logo {
+    display: flex; align-items: center; gap: 12px;
+}
+.top-brand .logo-mark {
+    width: 36px; height: 36px; border-radius: 10px;
+    background: linear-gradient(135deg, #9B59B6, #2E86DE);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; box-shadow: 0 0 20px rgba(155,89,182,.4);
+}
+.top-brand .logo-text {
+    font-weight: 800; font-size: 17px; letter-spacing: 1px;
+    background: linear-gradient(135deg, #e2e8f0, #94a3b8);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+.top-brand .logo-sub { font-size: 10px; color: #64748b; letter-spacing: 2px; text-transform: uppercase; }
+.top-brand .arch-tag {
+    font-size: 11px; color: #64748b; padding: 6px 14px; border-radius: 20px;
+    border: 1px solid rgba(148,163,184,.25); background: rgba(15,23,42,.6);
+}
+.top-brand .arch-tag strong { color: #9B59B6; font-weight: 700; }
+
+/* 主体：双子系统分栏 */
+.split-main {
+    position: relative; z-index: 2;
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    padding: 40px 20px; min-height: 560px;
+}
+
+/* 卡片堆叠容器 — 相对定位 */
+.card-stack {
+    position: relative; width: 960px; max-width: 100%; height: 560px;
+}
+
+/* 两张面板绝对定位, 可切换前后 */
+.panel-card {
+    position: absolute; top: 0; width: 88%; height: 100%;
+    border-radius: 24px;
+    transition: transform .55s cubic-bezier(.4,0,.2,1), opacity .4s ease, z-index 0s;
+    box-shadow: 0 30px 80px rgba(0,0,0,.5), 0 0 0 1px rgba(148,163,184,.08);
+    overflow: hidden;
+}
+
+/* 冰山在前 (默认态) */
+.panel-card.iceberg {
+    left: 0; transform: translateX(0); z-index: 2;
+}
+/* 古灵阁藏右后 (漏左边缘 ~60px) */
+.panel-card.gobelin {
+    right: 0; transform: translateX(30px); z-index: 1;
+    opacity: .72;
+    /* 让左侧 ~60px 成为可点击的"切换角" */
+    clip-path: inset(0 0 0 0);
+}
+
+/* 切换态: 古灵阁在前, 冰山藏左后 */
+.card-stack.switch-gobelin .panel-card.gobelin {
+    transform: translateX(0); z-index: 3; opacity: 1;
+    box-shadow: 0 30px 100px rgba(251,191,36,.15), 0 30px 80px rgba(0,0,0,.5);
+}
+.card-stack.switch-gobelin .panel-card.iceberg {
+    transform: translateX(-30px); z-index: 1; opacity: .65;
+}
+
+/* 面板内容 (绝对定位面板里的相对内容) */
+.panel-card .panel-inner {
+    height: 100%; display: flex; flex-direction: column;
+    padding: 48px 44px;
+}
+
+/* 切换角提示 (小标签) */
+.switch-hint {
+    position: absolute; right: 8px; top: 50%; transform: translateY(-50%) rotate(90deg);
+    font-size: 10px; letter-spacing: 3px; text-transform: uppercase;
+    color: rgba(251,191,36,.6);
+    pointer-events: none; z-index: 4;
+    writing-mode: horizontal-tb;
+}
+
+/* 精度条加载动画 */
+.accuracy-loader {
+    position: fixed; inset: 0; z-index: 100;
+    background: rgba(5, 10, 18, .92); backdrop-filter: blur(8px);
+    display: none; align-items: center; justify-content: center;
+    flex-direction: column; gap: 24px;
+}
+.accuracy-loader.active { display: flex; }
+.accuracy-loader .loader-title {
+    font-size: 28px; font-weight: 800;
+    background: linear-gradient(135deg, #fbbf24, #d97706);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    margin-bottom: 8px;
+}
+.accuracy-loader .loader-sub { font-size: 13px; color: #64748b; }
+.accuracy-bar-wrap {
+    width: 380px; height: 18px; border-radius: 9px;
+    background: rgba(30,41,59,.8); border: 1px solid rgba(251,191,36,.25);
+    overflow: hidden; position: relative;
+}
+.accuracy-bar-fill {
+    height: 100%; width: 0;
+    background: linear-gradient(90deg, #fbbf24, #f59e0b, #fbbf24);
+    box-shadow: 0 0 20px rgba(251,191,36,.5);
+    transition: width .25s ease-out;
+    position: relative;
+}
+.accuracy-bar-fill::after {
+    content: ''; position: absolute; right: 0; top: 0; bottom: 0; width: 30px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,.5), transparent);
+    animation: accuracyShine 1s linear infinite;
+}
+@keyframes accuracyShine {
+    0% { transform: translateX(-30px); }
+    100% { transform: translateX(380px); }
+}
+.accuracy-loader .loader-label {
+    font-family: ui-monospace, monospace; font-size: 14px;
+    color: #fbbf24; letter-spacing: 2px;
+}
+
+/* 古灵阁面板 — 暖金色 */
+.panel-gobelin {
+    position: relative;
+    display: flex; flex-direction: column;
+    padding: 48px 44px;
+    border-right: 1px solid rgba(251,191,36,.15);
+    background:
+        linear-gradient(135deg, rgba(251,191,36,.04) 0%, transparent 60%),
+        linear-gradient(180deg, transparent 0%, rgba(180,83,9,.06) 100%);
+}
+.panel-gobelin::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: linear-gradient(90deg, transparent, #fbbf24, transparent);
+    box-shadow: 0 0 20px rgba(251,191,36,.4);
+}
+
+/* 冰山面板 — 🌿 仙气渐变 Spring Green → Blue Gray */
+.panel-iceberg {
+    position: relative; overflow: hidden;
+    display: flex; flex-direction: column;
+    padding: 48px 44px;
+    background:
+        linear-gradient(160deg, rgba(207,255,189,.12) 0%, rgba(185,223,255,.10) 60%, transparent 100%),
+        radial-gradient(ellipse 80% 60% at 30% 20%, rgba(207,255,189,.10) 0%, transparent 60%),
+        radial-gradient(ellipse 70% 50% at 80% 80%, rgba(185,223,255,.12) 0%, transparent 60%),
+        #0a0f14;
+}
+/* 仙气 overlay — 左上淡绿云 → 右下淡蓝雾 */
+.panel-iceberg::after {
+    content: ''; position: absolute; inset: 0; pointer-events: none;
+    background:
+        linear-gradient(135deg, rgba(207,255,189,.08) 0%, transparent 45%),
+        linear-gradient(315deg, rgba(185,223,255,.10) 0%, transparent 45%);
+    animation: icebergDrift 12s ease-in-out infinite alternate;
+}
+@keyframes icebergDrift {
+    0%   { background-position: 0% 0%, 100% 100%; opacity: .85; }
+    100% { background-position: 5% 3%, 95% 97%; opacity: 1; }
+}
+.panel-iceberg::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: linear-gradient(90deg, transparent, #CFFFBD 30%, #B9DFFF 70%, transparent);
+    box-shadow: 0 0 24px rgba(207,255,189,.35), 0 0 24px rgba(185,223,255,.35);
+}
+
+/* 面板头 */
+.panel-head {
+    margin-bottom: 32px;
+}
+.panel-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase;
+    padding: 6px 14px; border-radius: 20px; margin-bottom: 14px;
+}
+.gobelin .panel-badge {
+    color: #fbbf24; background: rgba(251,191,36,.1);
+    border: 1px solid rgba(251,191,36,.3);
+}
+.iceberg .panel-badge {
+    color: #CFFFBD; background: rgba(207,255,189,.08);
+    border: 1px solid rgba(207,255,189,.25);
+}
+.panel-title {
+    font-size: 36px; font-weight: 800; letter-spacing: -1px; margin-bottom: 6px;
+}
+.gobelin .panel-title {
+    background: linear-gradient(135deg, #fbbf24, #f59e0b, #d97706);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+.iceberg .panel-title {
+    background: linear-gradient(135deg, #CFFFBD 0%, #A8E6CF 40%, #B9DFFF 70%, #8EC5FC 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+.panel-subtitle { color: #94a3b8; font-size: 13px; line-height: 1.7; }
+
+/* 服务器地址条 */
+.server-strip {
+    margin: 24px 0;
+    padding: 14px 18px; border-radius: 12px;
+    display: flex; align-items: center; gap: 14px;
+    font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 12px;
+}
+.gobelin .server-strip {
+    background: rgba(251,191,36,.06); border: 1px solid rgba(251,191,36,.2);
+}
+.iceberg .server-strip {
+    background: linear-gradient(135deg, rgba(207,255,189,.06), rgba(185,223,255,.06));
+    border: 1px solid rgba(207,255,189,.2);
+}
+.server-strip .serv-label { font-size: 10px; letter-spacing: 1px; color: #64748b; text-transform: uppercase; }
+.server-strip .serv-val { color: #e2e8f0; font-weight: 600; letter-spacing: .5px; }
+.server-strip .serv-val .port { color: #64748b; }
+.server-strip .serv-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+}
+.gobelin .serv-dot { background: #22c55e; box-shadow: 0 0 8px #22c55e; animation: pulseDot 2s ease-in-out infinite; }
+.iceberg .serv-dot { background: #22c55e; box-shadow: 0 0 8px #22c55e; animation: pulseDot 2s ease-in-out infinite; }
+@keyframes pulseDot { 0%,100% { opacity:1; } 50% { opacity:.4; } }
+
+/* 登录表单 */
+.login-form { flex: 1; display: flex; flex-direction: column; gap: 16px; }
+.login-form label {
+    font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+    color: #64748b; margin-bottom: 6px; display: block;
+}
+.login-form input {
+    width: 100%; padding: 14px 16px;
+    background: rgba(15,23,42,.6); border: 1px solid rgba(148,163,184,.2);
+    border-radius: 10px; color: #e2e8f0; font-size: 14px;
+    transition: border-color .2s, box-shadow .2s;
+    box-sizing: border-box;
+}
+.login-form input::placeholder { color: #475569; }
+.gobelin .login-form input:focus {
+    outline: none; border-color: rgba(251,191,36,.5);
+    box-shadow: 0 0 0 3px rgba(251,191,36,.15);
+}
+.iceberg .login-form input:focus {
+    outline: none; border-color: rgba(207,255,189,.5);
+    box-shadow: 0 0 0 3px rgba(207,255,189,.15), 0 0 20px rgba(185,223,255,.12);
+}
+.btn-panel {
+    margin-top: 8px; width: 100%; padding: 15px;
+    font-size: 15px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase;
+    border: none; border-radius: 10px; cursor: pointer; transition: all .25s;
+}
+.gobelin .btn-panel {
+    background: linear-gradient(135deg, #fbbf24, #f59e0b);
+    color: #1a1a1a; box-shadow: 0 4px 20px rgba(251,191,36,.3);
+}
+.gobelin .btn-panel:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(251,191,36,.45); }
+.iceberg .btn-panel {
+    background: linear-gradient(135deg, #CFFFBD 0%, #A8E6CF 40%, #B9DFFF 100%);
+    color: #0a0f14; box-shadow: 0 4px 24px rgba(207,255,189,.25), 0 4px 24px rgba(185,223,255,.25);
+}
+.iceberg .btn-panel:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 36px rgba(207,255,189,.4), 0 8px 36px rgba(185,223,255,.45);
+}
+.btn-panel:disabled { opacity: .5; cursor: not-allowed; transform: none !important; }
+
+/* 面板功能标签 */
+.panel-features { display: none; margin-top: 24px; padding-top: 20px;
+    border-top: 1px dashed rgba(148,163,184,.15);
+    display: flex; flex-wrap: wrap; gap: 8px;
+}
+.panel-features span {
+    font-size: 11px; padding: 4px 10px; border-radius: 6px;
+    font-family: ui-monospace, monospace;
+}
+.gobelin .panel-features span {
+    background: rgba(251,191,36,.08); color: #d4a017; border: 1px solid rgba(251,191,36,.15);
+}
+.iceberg .panel-features span {
+    background: rgba(207,255,189,.08); color: #CFFFBD; border: 1px solid rgba(207,255,189,.18);
+}
+
+/* 底部共享架构栏 */
+.shared-arch {
+    position: relative; z-index: 2;
+    padding: 16px 36px; text-align: center;
+    border-top: 1px solid rgba(155,89,182,.15);
+    background: rgba(15,23,42,.6); backdrop-filter: blur(8px);
+}
+.shared-arch .arch-line {
+    font-size: 11px; color: #64748b; letter-spacing: 3px; text-transform: uppercase;
+}
+.shared-arch .arch-line strong { color: #9B59B6; font-weight: 700; }
+.shared-arch .arch-line .sep { margin: 0 10px; color: #334155; }
+
+/* 中间分割线装饰 */
+.split-divider {
+    position: absolute; top: 10%; bottom: 10%; left: 50%; width: 2px;
+    transform: translateX(-50%);
+    background: linear-gradient(180deg, transparent, rgba(148,163,184,.3) 30%, rgba(155,89,182,.5) 50%, rgba(148,163,184,.3) 70%, transparent);
+    pointer-events: none; z-index: 3;
+}
+.split-divider .center-orb {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    width: 40px; height: 40px; border-radius: 50%;
+    background: radial-gradient(circle, #9B59B6 0%, #2E86DE 50%, transparent 70%);
+    box-shadow: 0 0 30px rgba(155,89,182,.6);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    animation: orbSpin 8s linear infinite;
+}
+@keyframes orbSpin { to { transform: translate(-50%, -50%) rotate(360deg); } }
+
+/* 响应式：窄屏改堆叠竖排 */
+@media (max-width: 900px) {
+    .card-stack { height: auto; }
+    .panel-card { position: relative; width: 100%; height: auto; transform: none !important; opacity: 1 !important; margin-bottom: 20px; }
+    .split-divider { display: none; }
+    .switch-hint { display: none; }
+}
+
+/* Flash / feedback */
+.panel-feedback {
+    padding: 10px 14px; border-radius: 8px; font-size: 13px; display: none;
+}
+.panel-feedback.error { display: block; background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.3); color: #f87171; }
+.panel-feedback.info { display: block; background: rgba(234,179,8,.1); border: 1px solid rgba(234,179,8,.3); color: #fbbf24; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="login-wrapper">
+    <div class="split-bg"></div>
+
+    <!-- 顶部品牌栏 -->
+    <header class="top-brand">
+        <div class="logo">
+            <div class="logo-mark">🌀</div>
+            <div>
+                <div class="logo-text">MTSCOS ANDROMEDA</div>
+                <div class="logo-sub">仙女座智能平台 · 双系统分流</div>
+            </div>
+        </div>
+        <div class="arch-tag">共享后端架构 · <strong>仙女座 AI</strong> · 多节点自治</div>
+    </header>
+
+    <!-- 双子系统卡片堆叠 -->
+    <main class="split-main">
+        <div class="card-stack" id="cardStack">
+
+            <!-- 🏔️ 冰山 Iceberg → mini (主面板在前, 默认显示) -->
+            <section class="panel-card panel-iceberg iceberg" id="icebergCard">
+                <div class="panel-inner">
+                    <div class="panel-head">
+                        <div class="panel-badge">🏔️ ICEBERG · 冰山</div>
+                        <h1 class="panel-title">仙女座 AI 门户</h1>
+                        <p class="panel-subtitle">
+                            面向本地 Ollama / 教育题库 / AI 教师 / EigenFlux / 脑库<br>
+                            Mac mini 推理 · 数据不出本机 · 私有化部署
+                        </p>
+                    </div>
+
+                    <!-- 服务器地址 -->
+                    <div class="server-strip">
+                        <span class="serv-dot"></span>
+                                                <span class="serv-val">mini.local<span class="port"> :5001</span></span>
+                    </div>
+
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% for category, msg in messages %}
+                            <div class="panel-feedback {{ 'error' if category == 'error' else 'info' }}">{{ msg }}</div>
+                        {% endfor %}
+                    {% endwith %}
+                    <div id="icebergFeedback" class="panel-feedback"></div>
+
+                    <form class="login-form" id="icebergForm" data-node="iceberg">
+                        <div>
+                            <label>Username</label>
+                            <input type="text" id="icebergUser" name="username" required
+                                   placeholder="输入冰山账号" autocomplete="username">
+                        </div>
+                        <div>
+                            <label>Password</label>
+                            <input type="password" id="icebergPass" name="password" required
+                                   placeholder="输入密码" autocomplete="current-password">
+                        </div>
+                        <button type="submit" class="btn-panel">🏔️ 进入冰山</button>
+                    </form>
+                </div>
+                <!-- 点击这个面板的右侧切换到古灵阁 -->
+                <div class="switch-hint" id="switchToGobelinHint">⚜️ 古灵阁 · 点击切换 →</div>
+            </section>
+
+            <!-- 🌕 古灵阁 Gobelin → hulk-server (藏在右后方, 漏左边缘) -->
+            <section class="panel-card panel-gobelin gobelin" id="gobelinCard">
+                <div class="panel-inner">
+                    <div class="panel-head">
+                        <div class="panel-badge">⚜️ GOBELIN · 古灵阁</div>
+                        <h1 class="panel-title">金融交易中心</h1>
+                        <p class="panel-subtitle">
+                            面向 stock / trading / gobelin-shield / 银行转账<br>
+                            金盾系统 29 维度安全审计 · 海关总署 · 协同总线
+                        </p>
+                    </div>
+
+                    <div class="server-strip">
+                        <span class="serv-dot"></span>
+                                                <span class="serv-val">hulk-server<span class="port"> :8888</span></span>
+                    </div>
+
+                    <div id="gobelinFeedback" class="panel-feedback"></div>
+
+                    <form class="login-form" id="gobelinForm" data-node="gobelin">
+                        <div>
+                            <label>Username</label>
+                            <input type="text" id="gobelinUser" name="username" required
+                                   placeholder="输入古灵阁账号" autocomplete="username">
+                        </div>
+                        <div>
+                            <label>Password</label>
+                            <input type="password" id="gobelinPass" name="password" required
+                                   placeholder="输入密码" autocomplete="current-password">
+                        </div>
+                        <button type="submit" class="btn-panel">⚜️ 进入古灵阁</button>
+                    </form>
+                </div>
+                <div class="switch-hint" id="switchToIcebergHint" style="transform:rotate(90deg) translateX(-320px);">← 冰山 · 点击切换 🏔️</div>
+            </section>
+
+        </div>
+    </main>
+
+    <!-- 精度条加载动画 (古灵阁登录成功时显示) -->
+    <div class="accuracy-loader" id="accuracyLoader">
+        <div>
+            <div class="loader-title">⚜️ 古灵阁 · 精度校验</div>
+            <div class="loader-sub">金盾系统 · 协同总线 · 海关总署 同步连接中</div>
+        </div>
+        <div class="accuracy-bar-wrap">
+            <div class="accuracy-bar-fill" id="accuracyBar"></div>
+        </div>
+        <div class="loader-label" id="accuracyLabel">CONNECTING...</div>
+    </div>
+
+    <!-- 底部共享架构声明 -->
+</div>
+
+<script>
+// ═══ v26.12 双子系统登录逻辑隔离 ═══
+// 每个面板直 POST 各自后端服务器, session/redirect 完全独立
+//
+//  古灵阁 ──► hulk-server  (mtos.site / 192.168.31.103:8888)
+//  冰  山 ──► mini        (当前 origin / mini.local:5001)
+//
+//  跨域凭证: credentials: 'include' + 后端 CORS Access-Control-Allow-Credentials
+
+(function(){
+    var _host = window.location.hostname.toLowerCase();
+    var _port = parseInt(window.location.port || '0', 10);
+    var _proto = window.location.protocol;
+
+    // ═══ 自动探测各自 BASE ═══
+    // 如果当前是 hulk-server, 冰山 BASE 指向 mini; 反之亦然
+    var IS_GOBELIN_HOST = /mtos\.site|192\.168\.31\.103|hulk-server/.test(_host) || _port === 8888;
+
+    var GOBELIN_BASE = IS_GOBELIN_HOST
+        ? _proto + '//' + window.location.host        // 自己就是 hulk-server
+        : (_proto === 'https:' ? 'https://www.mtos.site' : 'http://192.168.31.103:8888');
+
+    var ICEBERG_BASE = IS_GOBELIN_HOST
+        ? (_proto === 'https:' ? 'https://mini.local:5001' : 'http://192.168.31.247:5001')
+        : _proto + '//' + window.location.host;      // 自己就是 mini
+
+    // 如果当前 host 是 mini.local / 192.168.31.247 / port 5001 → 自己是 iceberg
+    var IS_ICEBERG_HOST = /mini\.local|192\.168\.31\.247|localhost|127\.0\.0\.1/.test(_host) || _port === 5001;
+    if (IS_ICEBERG_HOST && !IS_GOBELIN_HOST) {
+        ICEBERG_BASE = _proto + '//' + window.location.host;
+        GOBELIN_BASE = 'https://www.mtos.site';
+    }
+
+    // ═══ 面板 → 目标服务器映射 ═══
+    var NODE_CONFIG = {
+        gobelin: {
+            base: GOBELIN_BASE,
+            loginPath: '/auth/gobelin',
+            successRedirect: '/stock',
+            label: '古灵阁',
+            targetHost: GOBELIN_BASE.replace(/^https?:\/\//, '')
+        },
+        iceberg: {
+            base: ICEBERG_BASE,
+            loginPath: '/auth/iceberg',
+            successRedirect: '/index',
+            label: '冰山',
+            targetHost: ICEBERG_BASE.replace(/^https?:\/\//, '')
+        }
+    };
+
+    // 更新 panel 上的 target strip 显示真实服务器地址
+    document.addEventListener('DOMContentLoaded', function() {
+        document.getElementById('gobelinForm').dataset.server = GOBELIN_BASE;
+        document.getElementById('icebergForm').dataset.server  = ICEBERG_BASE;
+    });
+
+    function showFeedback(panel, msg, type) {
+        var fb = document.getElementById(panel + 'Feedback');
+        fb.textContent = msg || '';
+        fb.className = 'panel-feedback ' + (type || '');
+    }
+
+    function showPanelError(node, msg) {
+        showFeedback(node === 'gobelin' ? 'gobelin' : 'iceberg', msg, 'error');
+    }
+
+    // ═══ 卡片堆叠切换 ═══
+    const cardStack = document.getElementById('cardStack');
+    const icebergCard = document.getElementById('icebergCard');
+    const gobelinCard = document.getElementById('gobelinCard');
+    let currentFront = 'iceberg'; // 默认冰山在前
+
+    function switchTo(node) {
+        if (node === currentFront) return;
+        if (node === 'gobelin') {
+            cardStack.classList.add('switch-gobelin');
+            currentFront = 'gobelin';
+        } else {
+            cardStack.classList.remove('switch-gobelin');
+            currentFront = 'iceberg';
+        }
+    }
+
+    // 点击古灵阁藏面板的"漏角"区域 → 切到古灵阁
+    // 漏角是 gobelinCard 的左侧 ~60px (因为 transform: translateX(30px) + width 88%)
+    gobelinCard.addEventListener('click', function(e) {
+        if (currentFront === 'iceberg') {
+            // 只在冰山在前时才拦截
+            var rect = gobelinCard.getBoundingClientRect();
+            var clickX = e.clientX - rect.left;
+            // gobelinCard 宽 88%, 但右对齐右移 30px, 左侧 ~60px 是漏角
+            // 所以点击 x < 80px 才是"漏角"区域
+            if (clickX < 100) {
+                e.preventDefault(); e.stopPropagation();
+                switchTo('gobelin');
+            }
+        }
+    });
+
+    // 点击冰山面板的右侧 → 切到古灵阁
+    icebergCard.addEventListener('click', function(e) {
+        if (currentFront === 'iceberg') {
+            var rect = icebergCard.getBoundingClientRect();
+            var clickX = e.clientX - rect.left;
+            // 点击冰山右侧 20% → 切古灵阁 (用户意图)
+            if (clickX > rect.width * 0.85) {
+                e.preventDefault(); e.stopPropagation();
+                switchTo('gobelin');
+            }
+        }
+    });
+
+    // 键盘支持: Tab 在面板间切换, Ctrl+G/T 快速切换
+    document.addEventListener('keydown', function(e) {
+        if (e.ctrlKey && e.key === 'g') { switchTo('gobelin'); e.preventDefault(); }
+        if (e.ctrlKey && e.key === 't') { switchTo('iceberg'); e.preventDefault(); }
+    });
+
+    // ═══ 精度条加载动画 (古灵阁登录成功时) ═══
+    function playAccuracyLoader(done) {
+        var loader = document.getElementById('accuracyLoader');
+        var bar = document.getElementById('accuracyBar');
+        var label = document.getElementById('accuracyLabel');
+        var steps = [
+            { pct: 15, text: 'CONNECTING TO hulk-server :8888' },
+            { pct: 30, text: '金盾系统 · 29 维度安全审计 握手...' },
+            { pct: 55, text: '协同总线 · 海关总署 API 同步...' },
+            { pct: 75, text: 'KYC 身份校验 · 反洗钱规则引擎...' },
+            { pct: 92, text: '精度校准: 92.7% → OK' },
+            { pct: 100, text: '⚜️ ENTERING GOBELIN /stock' },
+        ];
+        loader.classList.add('active');
+        bar.style.width = '0%';
+        var i = 0;
+        function next() {
+            if (i >= steps.length) {
+                setTimeout(function() {
+                    loader.classList.remove('active');
+                    done && done();
+                }, 300);
+                return;
+            }
+            bar.style.width = steps[i].pct + '%';
+            label.textContent = steps[i].text;
+            i++;
+            setTimeout(next, 650 + Math.random() * 300);
+        }
+        next();
+    }
+
+    // ═══ 核心: 双面板各 POST 各的服务器 ═══
+    async function doLogin(formId, node) {
+        var cfg = NODE_CONFIG[node];
+        var form = document.getElementById(formId);
+        var panel = node === 'gobelin' ? 'gobelin' : 'iceberg';
+        var user = document.getElementById(panel + 'User').value.trim();
+        var pass = document.getElementById(panel + 'Pass').value;
+        var btn = form.querySelector('.btn-panel');
+        var orig = btn.textContent;
+
+        if (!user || !pass) {
+            showFeedback(panel, '请输入账号和密码', 'info');
+            return;
+        }
+
+        showFeedback(panel, '', '');
+        btn.disabled = true;
+        btn.textContent = '连接 ' + cfg.targetHost + ' ...';
+
+        try {
+            // ═══ 跨域 POST 到节点专属 auth endpoint ═══
+            var url = cfg.base + cfg.loginPath;
+            var isCrossOrigin = (cfg.base !== _proto + '//' + window.location.host);
+            var resp = await fetch(url, {
+                method: 'POST',
+                credentials: 'include',                    // 带 cookie, 跨域时需要 CORS 允许
+                headers: { 'Content-Type': 'application/json' },
+                mode: isCrossOrigin ? 'cors' : 'same-origin',
+                body: JSON.stringify({
+                    username: user,
+                    password: pass,
+                    remember_me: false,
+                    fingerprint_data: '',
+                    target_node: node
+                })
+            });
+
+            var data;
+            try { data = await resp.json(); } catch(e) { data = { success: false, message: '服务器返回格式异常' }; }
+
+            if (data.success) {
+                showFeedback(panel, '✓ ' + cfg.label + ' 认证成功', 'info');
+                if (node === 'gobelin') {
+                    // 古灵阁登录 → 精度条加载动画 → 跳转
+                    playAccuracyLoader(function() {
+                        window.location.href = cfg.base + cfg.successRedirect;
+                    });
+                } else {
+                    showFeedback(panel, '✓ ' + cfg.label + ' 认证成功, 跳转中...', 'info');
+                    window.location.href = cfg.base + cfg.successRedirect;
+                }
+            } else {
+                showFeedback(panel, data.message || '登录失败 (' + resp.status + ')', 'error');
+                btn.disabled = false;
+                btn.textContent = orig;
+            }
+        } catch(err) {
+            var hint = err.message || err;
+            if (hint.indexOf('Failed to fetch') >= 0) {
+                hint = '无法连接 ' + cfg.targetHost + ' — 检查跨域 CORS 或服务器是否在线';
+            }
+            showFeedback(panel, '网络错误: ' + hint, 'error');
+            btn.disabled = false;
+            btn.textContent = orig;
+        }
+    }
+
+    document.getElementById('gobelinForm').addEventListener('submit', function(e) {
+        e.preventDefault(); doLogin('gobelinForm', 'gobelin');
+    });
+    document.getElementById('icebergForm').addEventListener('submit', function(e) {
+        e.preventDefault(); doLogin('icebergForm', 'iceberg');
+    });
+
+    // 暴露给 console 调试
+    window.MTSCOS_NODE_CONFIG = NODE_CONFIG;
+})();
+</script>
+{% endblock %}

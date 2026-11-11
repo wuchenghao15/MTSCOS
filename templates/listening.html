@@ -1,0 +1,156 @@
+{% extends "base_unified.html" %}
+{% block title %}听力练习 · {{ lang_label }}{% endblock %}
+{% block page_title %}🎧 听力练习 · {{ lang_label }}{% endblock %}
+{% block extra_head %}
+<style>
+/* v25.1 子页面内容滚动容器 */
+  .container{flex:1;min-height:0;overflow-y:auto}
+  [class*="main"]{min-height:0}
+  [class*="content"]{min-height:0}
+:root {
+    --lp-primary: {% if lang == 'en' %}#2E8B57{% else %}#C8102E{% endif %};
+    --lp-accent: {% if lang == 'en' %}#5BBF8A{% else %}#E74C6B{% endif %};
+    --lp-soft: {% if lang == 'en' %}rgba(46,139,87,.08){% else %}rgba(200,16,46,.08){% endif %};
+}
+.lp-lang-switch { display:flex; gap:8px; margin-bottom:16px; }
+.lp-lang-btn { padding:6px 18px; border-radius:20px; border:1px solid var(--mtscos-border-light);
+    background:var(--mtscos-bg-card); font-size:13px; cursor:pointer; text-decoration:none;
+    color:var(--mtscos-text-secondary); font-weight:600; transition:all .15s; }
+.lp-lang-btn.active { background:var(--lp-primary); color:#fff; border-color:var(--lp-primary); }
+.lp-lang-btn:hover:not(.active) { border-color:var(--lp-primary); color:var(--lp-primary); }
+
+.lp-toolbar { display:flex; gap:10px; margin-bottom:20px; align-items:center; flex-wrap:wrap;
+    padding:14px 18px; background:var(--mtscos-bg-card); border:1px solid var(--mtscos-border-light); border-radius:var(--mtscos-radius-lg); }
+.lp-filter-group { display:flex; gap:6px; align-items:center; }
+.lp-filter-label { font-size:12px; color:var(--mtscos-text-tertiary); font-weight:600; margin-right:4px; }
+.lp-filter-btn { padding:4px 12px; border-radius:16px; border:1px solid var(--mtscos-border-light);
+    background:#fff; font-size:12px; cursor:pointer; color:var(--mtscos-text-secondary); text-decoration:none; }
+.lp-filter-btn.active { background:var(--lp-primary); color:#fff; border-color:var(--lp-primary); }
+.lp-filter-btn:hover:not(.active) { border-color:var(--lp-primary); color:var(--lp-primary); }
+.lp-stats { margin-left:auto; display:flex; gap:14px; font-size:12px; }
+.lp-stat-chip { padding:4px 12px; background:var(--lp-soft); border-radius:16px; color:var(--lp-primary); font-weight:600; }
+
+.lp-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(320px,1fr)); gap:16px; }
+.lp-card {
+    background:var(--mtscos-bg-card); border:1px solid var(--mtscos-border-light); border-radius:var(--mtscos-radius-lg);
+    padding:20px; transition:all .2s; cursor:pointer; position:relative; text-decoration:none; color:inherit; display:block;
+}
+.lp-card:hover { transform:translateY(-3px); box-shadow:0 8px 24px rgba(0,0,0,.08); border-color:var(--lp-primary); }
+.lp-card-badge { display:inline-flex; gap:4px; font-size:10px; padding:3px 10px; border-radius:12px; font-weight:600; margin-right:4px; }
+.lp-badge-accent { background:var(--lp-soft); color:var(--lp-primary); }
+.lp-badge-gender-m { background:rgba(46,134,222,.1); color:#2E86DE; }
+.lp-badge-gender-f { background:rgba(231,76,107,.1); color:#E74C6B; }
+.lp-badge-level { background:rgba(241,196,15,.15); color:#B7950B; }
+.lp-badge-type { background:rgba(142,68,173,.1); color:#8E44AD; }
+.lp-card-title { font-size:15px; font-weight:700; color:var(--mtscos-text-primary); margin:10px 0 6px; line-height:1.4; }
+.lp-card-meta { font-size:11px; color:var(--mtscos-text-tertiary); margin-bottom:8px; }
+.lp-card-excerpt { font-size:12px; color:var(--mtscos-text-secondary); line-height:1.6;
+    display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.lp-card-footer { display:flex; justify-content:space-between; align-items:center; margin-top:12px; padding-top:10px; border-top:1px solid var(--mtscos-border-light); font-size:11px; color:var(--mtscos-text-tertiary); }
+.lp-card-audio-icon { width:32px; height:32px; border-radius:50%; background:var(--lp-soft);
+    display:flex; align-items:center; justify-content:center; color:var(--lp-primary); font-size:14px; }
+
+.lp-empty { text-align:center; padding:80px 20px; color:var(--mtscos-text-tertiary); }
+.lp-empty-emoji { font-size:48px; margin-bottom:12px; }
+
+.lp-pagination { display:flex; gap:6px; justify-content:center; margin-top:24px; }
+.lp-page-btn { padding:6px 14px; border-radius:6px; border:1px solid var(--mtscos-border-light);
+    background:#fff; font-size:13px; cursor:pointer; text-decoration:none; color:var(--mtscos-text-secondary); }
+.lp-page-btn.active { background:var(--lp-primary); color:#fff; border-color:var(--lp-primary); }
+.lp-page-btn:hover:not(.active) { border-color:var(--lp-primary); }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- 语种切换 -->
+<div class="lp-lang-switch">
+    <a href="/listening?lang=ja" class="lp-lang-btn {% if lang=='ja' %}active{% endif %}">🇯🇵 日本語</a>
+    <a href="/listening?lang=en" class="lp-lang-btn {% if lang=='en' %}active{% endif %}">🌍 English</a>
+</div>
+
+<!-- 筛选工具栏 -->
+<div class="lp-toolbar">
+    <div class="lp-filter-group">
+        <span class="lp-filter-label">🎙️ 口音</span>
+        {% for val, label in accent_options %}
+        <a href="?lang={{ lang }}&accent={{ val }}&level={{ current_level }}&gender={{ current_gender }}"
+           class="lp-filter-btn {% if current_accent==val %}active{% endif %}">{{ label }}</a>
+        {% endfor %}
+    </div>
+    <div class="lp-filter-group">
+        <span class="lp-filter-label">📊 难度</span>
+        {% for val, label in level_options %}
+        <a href="?lang={{ lang }}&accent={{ current_accent }}&level={{ val }}&gender={{ current_gender }}"
+           class="lp-filter-btn {% if current_level==val %}active{% endif %}">{{ label }}</a>
+        {% endfor %}
+    </div>
+    <div class="lp-filter-group">
+        <span class="lp-filter-label">👤 性别</span>
+        <a href="?lang={{ lang }}&accent={{ current_accent }}&level={{ current_level }}&gender=ALL"
+           class="lp-filter-btn {% if current_gender=='ALL' %}active{% endif %}">全部</a>
+        <a href="?lang={{ lang }}&accent={{ current_accent }}&level={{ current_level }}&gender=M"
+           class="lp-filter-btn {% if current_gender=='M' %}active{% endif %}">👨 男</a>
+        <a href="?lang={{ lang }}&accent={{ current_accent }}&level={{ current_level }}&gender=F"
+           class="lp-filter-btn {% if current_gender=='F' %}active{% endif %}">👩 女</a>
+    </div>
+    <div class="lp-stats">
+        <span class="lp-stat-chip">📚 {{ total }} 题</span>
+        {% for acc, cnt in stats.accent_count.items() %}
+        <span class="lp-stat-chip">{{ acc }}: {{ cnt }}</span>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- 卡片网格 -->
+{% if items %}
+<div class="lp-grid">
+    {% for it in items %}
+    <a href="/listening/{{ it.listening_id }}?lang={{ lang }}" class="lp-card">
+        <div class="lp-card-badges">
+            <span class="lp-card-badge lp-badge-accent">{{ it.accent }}</span>
+            <span class="lp-card-badge {% if it.speaker_gender=='M' %}lp-badge-gender-m{% else %}lp-badge-gender-f{% endif %}">
+                {% if it.speaker_gender=='M' %}♂️ Male{% else %}♀️ Female{% endif %}
+            </span>
+            <span class="lp-card-badge lp-badge-level">
+                {% if it.level=='beginner' %}初级{% elif it.level=='intermediate' %}中级{% else %}高级{% endif %}
+            </span>
+            <span class="lp-card-badge lp-badge-type">
+                {% if it.listening_type=='short_dialogue' %}短对话
+                {% elif it.listening_type=='long_dialogue' %}长对话
+                {% elif it.listening_type=='monologue' %}独白
+                {% elif it.listening_type=='dictation' %}听写
+                {% else %}{{ it.listening_type }}{% endif %}
+            </span>
+        </div>
+        <div class="lp-card-title">{{ it.title }}</div>
+        <div class="lp-card-meta">
+            {{ it.speaker_profession }} · {{ it.speaker_age_group }} · 难度 {{ it.difficulty }}/5
+            {% if it.voice_profile_id %}<span style="color:var(--mtscos-text-tertiary)">· {{ it.voice_profile_id }}</span>{% endif %}
+        </div>
+        <div class="lp-card-excerpt">{{ it.display_transcript[:120] }}{% if it.display_transcript|length > 120 %}...{% endif %}</div>
+        <div class="lp-card-footer">
+            <span>⏱️ {{ it.duration_sec }}s · 📝 {{ it.questions|length }} 问</span>
+            <div class="lp-card-audio-icon">▶</div>
+        </div>
+    </a>
+    {% endfor %}
+</div>
+
+<!-- 分页 -->
+{% if total_pages > 1 %}
+<div class="lp-pagination">
+    {% for p in range(1, total_pages+1) %}
+    <a href="?lang={{ lang }}&accent={{ current_accent }}&level={{ current_level }}&gender={{ current_gender }}&page={{ p }}"
+       class="lp-page-btn {% if page==p %}active{% endif %}">{{ p }}</a>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% else %}
+<div class="lp-empty">
+    <div class="lp-empty-emoji">🎧</div>
+    <div>暂无符合条件的听力材料</div>
+    <div style="margin-top:8px;font-size:12px">试试调整筛选条件</div>
+</div>
+{% endif %}
+{% endblock %}

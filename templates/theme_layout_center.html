@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>系统主题与框架排列排版研究中心 · MTSCOS</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/mtscos_design_tokens.css') }}">
+<style>
+  :root {
+    --bg: var(--mtscos-bg-primary, #0b1020);
+    --panel: var(--mtscos-bg-secondary, #121a2e);
+    --line: var(--mtscos-border-color, #24304a);
+    --txt: var(--mtscos-text-primary, #e8edf7);
+    --sub: var(--mtscos-text-secondary, #94a3b8);
+    --acc: var(--mtscos-color-primary, #6366f1);
+    --ok: var(--mtscos-color-success, #22c55e);
+    --warn: var(--mtscos-color-warning, #fbbf24);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--txt); font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; padding: 24px; }
+  h1 { font-size: 22px; margin-bottom: 4px; }
+  .meta { color: var(--sub); font-size: 12px; margin-bottom: 20px; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .kpi { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
+  .kpi .num { font-size: 28px; font-weight: 700; }
+  .kpi .lbl { color: var(--sub); font-size: 12px; margin-top: 4px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 960px) { .grid { grid-template-columns: 1fr; } }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+  .panel h2 { font-size: 15px; margin-bottom: 12px; color: var(--acc); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+  th { color: var(--sub); font-weight: 500; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .bar { display: inline-block; height: 8px; border-radius: 4px; background: var(--acc); vertical-align: middle; margin-right: 6px; }
+  .swatch { display: inline-block; width: 14px; height: 14px; border-radius: 4px; border: 1px solid var(--line); vertical-align: middle; margin-right: 8px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip { display: inline-flex; align-items: center; background: rgba(99,102,241,.08); border: 1px solid var(--line); border-radius: 999px; padding: 4px 10px; font-size: 12px; }
+  .tag { display: inline-block; font-size: 11px; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--sub); margin-left: 6px; }
+  .err { color: var(--warn); font-size: 13px; }
+  .foot { color: var(--sub); font-size: 12px; margin-top: 16px; }
+</style>
+</head>
+<body>
+<h1>系统主题与框架排列排版研究中心</h1>
+<div class="meta">flow_theme_center_20261018 · v1.0.0 · 数据实时扫描磁盘模板与 url_map · 设计 token: mtscos_design_tokens.css</div>
+
+<div class="kpis" id="kpis">
+  <div class="kpi"><div class="num" id="k_tpl">—</div><div class="lbl">模板总数</div></div>
+  <div class="kpi"><div class="num" id="k_files">—</div><div class="lbl">含硬编码颜色文件</div></div>
+  <div class="kpi"><div class="num" id="k_hits">—</div><div class="lbl">硬编码命中次数</div></div>
+  <div class="kpi"><div class="num" id="k_tokens">—</div><div class="lbl">设计 Token 总数</div></div>
+  <div class="kpi"><div class="num" id="k_groups">—</div><div class="lbl">路由前缀组 / 路由总数</div></div>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>硬编码颜色 TOP 榜 <span class="tag">/api/theme-layout/scan</span></h2>
+    <table id="tbl_files"><thead><tr><th>模板</th><th class="num">命中</th><th>占比</th></tr></thead><tbody></tbody></table>
+  </div>
+  <div class="panel">
+    <h2>高频色值 → Token 映射建议 <span class="tag">TOP20</span></h2>
+    <div class="chips" id="chips_values"></div>
+  </div>
+</div>
+
+<div class="panel">
+  <h2>设计 Token 目录 <span class="tag">/api/theme-layout/tokens</span></h2>
+  <div id="token_groups"></div>
+</div>
+
+<div class="panel">
+  <h2>框架排列实况（路由前缀分组） <span class="tag">/api/theme-layout/routes</span></h2>
+  <table id="tbl_routes"><thead><tr><th>前缀</th><th class="num">路由数</th><th>样例</th></tr></thead><tbody></tbody></table>
+</div>
+
+<div class="foot" id="foot">MTSCOS AI · 主题与排版研究中心 · 生成于巡检数据 (flow_theme_center_20261018)</div>
+
+<script>
+function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML;}
+async function jget(u){const r=await fetch(u,{credentials:'same-origin'});if(!r.ok)throw new Error(u+' → '+r.status);return r.json();}
+
+async function loadScan(){
+  try{
+    const d=await jget('/api/theme-layout/scan');
+    document.getElementById('k_tpl').textContent=d.total_templates;
+    document.getElementById('k_files').textContent=d.files_with_hex;
+    document.getElementById('k_hits').textContent=d.total_hits;
+    const max=d.top_files.length?d.top_files[0].count:1;
+    document.querySelector('#tbl_files tbody').innerHTML=d.top_files.map(f=>
+      '<tr><td>'+esc(f.file)+'</td><td class="num">'+f.count+'</td><td><span class="bar" style="width:'+Math.round(f.count/max*80)+'px"></span>'+Math.round(f.count/d.total_hits*100)+'%</td></tr>').join('');
+    document.getElementById('chips_values').innerHTML=d.top_values.map(v=>
+      '<span class="chip"><span class="swatch" style="background:'+v.hex+'"></span>'+esc(v.hex)+' ×'+v.count+'</span>').join('');
+  }catch(e){document.getElementById('k_tpl').textContent='扫描失败';}
+}
+async function loadTokens(){
+  try{
+    const d=await jget('/api/theme-layout/tokens');
+    document.getElementById('k_tokens').textContent=d.total;
+    const names={mtscos:'MTSCOS Token',element:'Element Plus',other:'其他'};
+    document.getElementById('token_groups').innerHTML=Object.keys(d.groups).map(k=>{
+      const g=d.groups[k];
+      return '<div style="margin-bottom:10px"><b style="font-size:13px">'+names[k]+' <span class="tag">'+g.count+'</span></b><div class="chips" style="margin-top:6px">'+
+        g.items.map(i=>'<span class="chip" title="'+esc(i.value)+'">'+esc(i.name)+' = '+esc(i.value.slice(0,18))+'</span>').join('')+'</div></div>';
+    }).join('');
+  }catch(e){document.getElementById('token_groups').innerHTML='<div class="err">token 加载失败: '+esc(e.message)+'</div>';}
+}
+async function loadRoutes(){
+  try{
+    const d=await jget('/api/theme-layout/routes');
+    document.getElementById('k_groups').textContent=d.total_groups+' / '+d.total_routes;
+    document.querySelector('#tbl_routes tbody').innerHTML=d.groups.map(g=>
+      '<tr><td><b>'+esc(g.prefix)+'</b></td><td class="num">'+g.count+'</td><td style="color:var(--sub);font-size:12px">'+
+      g.samples.map(s=>esc(s.rule)).join(' · ')+'</td></tr>').join('');
+  }catch(e){document.getElementById('foot').innerHTML='<span class="err">路由加载失败: '+esc(e.message)+'</span>';}
+}
+loadScan();loadTokens();loadRoutes();
+</script>
+</body>
+</html>

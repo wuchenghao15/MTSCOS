@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex,nofollow">
+<title>WHITEHAT · 白帽猎捕系统 · SA ONLY</title>
+<link rel="stylesheet" href="/static/css/whitehat_design_system.css">
+<!-- MTSCOS Unified Design System -->
+<link rel="stylesheet" href="{{ url_for('static', filename='css/tokens.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/global_design_bridge.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/andromeda.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/gobelin.css') }}">
+
+</head>
+<body class="wh-body andromeda-theme">
+<div class="wh-shell">
+
+  <!-- 顶栏 -->
+  <header class="wh-topbar">
+    <div class="wh-brand">
+      <span class="wh-brand-sigil">⌖</span>
+      <span class="wh-brand-title">WHITEHAT <em>HUNT</em> SYSTEM</span>
+    </div>
+    <span class="wh-sa-badge">◈ SA ONLY</span>
+    <div class="wh-feed-pill">
+      <span class="wh-feed-dot"></span>
+      <span>喂养链路: 猎捕 → 任务大厅 → 冰山/仙女座</span>
+    </div>
+  </header>
+
+  <!-- 猎捕统计 -->
+  <div class="wh-section-title">HUNT METRICS · 猎捕指标</div>
+  <div class="wh-stats">
+    <div class="wh-stat">
+      <div class="wh-stat-label">Files Scanned</div>
+      <div class="wh-stat-value" id="st-files">—</div>
+    </div>
+    <div class="wh-stat">
+      <div class="wh-stat-label">Findings</div>
+      <div class="wh-stat-value is-warn" id="st-findings">—</div>
+    </div>
+    <div class="wh-stat">
+      <div class="wh-stat-label">Groups</div>
+      <div class="wh-stat-value is-cyan" id="st-groups">—</div>
+    </div>
+    <div class="wh-stat">
+      <div class="wh-stat-label">Fed To Hall</div>
+      <div class="wh-stat-value is-green" id="st-published">—</div>
+    </div>
+  </div>
+
+  <!-- 行动区 -->
+  <div class="wh-actions">
+    <button class="wh-btn wh-btn--primary" id="btn-hunt" onclick="doHunt()">
+      <span class="wh-btn-dot"></span> HUNT · 猎捕下发
+    </button>
+    <button class="wh-btn wh-btn--ghost" id="btn-scan" onclick="doScan()">
+      <span class="wh-btn-dot"></span> SCAN ONLY · 静默侦察
+    </button>
+  </div>
+
+  <!-- 喂养面板 -->
+  <div class="wh-section-title">FEED LINE · 喂养冰山 / 仙女座</div>
+  <div class="wh-feed-grid">
+    <div class="wh-feed-card wh-feed-card--iceberg">
+      <div class="wh-feed-name">🧊 冰山 ICEBERG</div>
+      <div class="wh-feed-role">漏洞知识沉淀 · 修复任务执行体 · 系统自愈内核</div>
+      <div class="wh-feed-metrics">
+        <div>
+          <div class="wh-feed-metric-value" id="fd-iceberg-tasks">—</div>
+          <div class="wh-feed-metric-label">累计猎捕任务</div>
+        </div>
+        <div>
+          <div class="wh-feed-metric-value" id="fd-iceberg-done">—</div>
+          <div class="wh-feed-metric-label">已消化结案</div>
+        </div>
+      </div>
+    </div>
+    <div class="wh-feed-card wh-feed-card--andromeda">
+      <div class="wh-feed-name">🌌 仙女座 ANDROMEDA</div>
+      <div class="wh-feed-role">安全情报大脑 · 协作磋商中枢 · 星系指挥层</div>
+      <div class="wh-feed-metrics">
+        <div>
+          <div class="wh-feed-metric-value" id="fd-andromeda-center">—</div>
+          <div class="wh-feed-metric-label">认领中心</div>
+        </div>
+        <div>
+          <div class="wh-feed-metric-value" id="fd-andromeda-active">—</div>
+          <div class="wh-feed-metric-label">在办任务</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 终端日志 -->
+  <div class="wh-section-title">HUNT CONSOLE · 猎捕终端</div>
+  <div class="wh-terminal">
+    <div class="wh-terminal-head">
+      <span class="wh-terminal-dot wh-terminal-dot--r"></span>
+      <span class="wh-terminal-dot wh-terminal-dot--y"></span>
+      <span class="wh-terminal-dot wh-terminal-dot--g"></span>
+      <span class="wh-terminal-title">whitehat@iceberg — /flask-app</span>
+    </div>
+    <div class="wh-terminal-body" id="term">
+      <div class="wh-log-line is-info">[WHITEHAT] 猎捕终端就绪. SA 会话已验证 ✓</div>
+      <div class="wh-log-line">[WHITEHAT] 目标: MTSCOS 自身代码库 · 规则库 8 类 (shell/eval/SQLi/DDL/hardcred...)</div>
+      <div class="wh-log-line">[WHITEHAT] 输出链路: findings → 任务大厅(vuln_scan) → 漏洞修复适配中心 → 冰山消化</div>
+      <div class="wh-log-line is-cmd">whitehat$ <span class="wh-cursor"></span></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+function log(msg, cls) {
+  const term = $('term');
+  const cur = term.querySelector('.wh-cursor'); if (cur) cur.parentElement.remove();
+  const div = document.createElement('div');
+  div.className = 'wh-log-line' + (cls ? ' is-' + cls : '');
+  div.textContent = msg;
+  term.appendChild(div);
+  term.scrollTop = term.scrollHeight;
+}
+function busy(on) {
+  $('btn-hunt').disabled = on; $('btn-scan').disabled = on;
+}
+
+async function loadStatus() {
+  try {
+    const r = await fetch('/whitehat/api/status', {credentials: 'include'});
+    const d = await r.json();
+    if (!d.success) { log('[AUTH] ' + (d.error || 'forbidden'), 'err'); return; }
+    $('st-files').textContent = d.last?.files ?? '—';
+    $('st-findings').textContent = d.last?.findings ?? '—';
+    $('st-groups').textContent = d.last?.groups ?? '—';
+    $('st-published').textContent = d.feed?.total_published ?? 0;
+    $('fd-iceberg-tasks').textContent = d.feed?.total_published ?? 0;
+    $('fd-iceberg-done').textContent = d.feed?.done ?? 0;
+    $('fd-andromeda-center').textContent = d.feed?.center ?? '—';
+    $('fd-andromeda-active').textContent = d.feed?.active ?? 0;
+    if (d.last) log(`[STATUS] 上次猎捕 ${d.last.finished_at} · files=${d.last.files} findings=${d.last.findings} published=${d.last.published}`, 'info');
+  } catch (e) { log('[ERR] status: ' + e, 'err'); }
+}
+
+async function doScan() {
+  busy(true); log('whitehat$ whitehat scan --silent', 'cmd');
+  try {
+    const r = await fetch('/whitehat/api/scan', {method: 'POST', credentials: 'include'});
+    const d = await r.json();
+    if (!d.success) { log('[DENIED] ' + (d.error || 'forbidden'), 'err'); return; }
+    log(`[SCAN] 文件 ${d.files} · 发现 ${d.findings} · 分组 ${d.groups} · 错误 ${d.errors}`, d.findings > 0 ? 'warn' : 'ok');
+    log('[SCAN] 静默侦察完成 — 未写入大厅 (scan_only)', 'ok');
+    loadStatus();
+  } catch (e) { log('[ERR] scan: ' + e, 'err'); }
+  busy(false);
+  const term = $('term');
+  const div = document.createElement('div');
+  div.className = 'wh-log-line is-cmd';
+  div.innerHTML = 'whitehat$ <span class="wh-cursor"></span>';
+  term.appendChild(div);
+}
+
+async function doHunt() {
+  busy(true); log('whitehat$ whitehat hunt --dispatch --max 12', 'cmd');
+  try {
+    const r = await fetch('/whitehat/api/hunt', {method: 'POST', credentials: 'include',
+      headers: {'Content-Type': 'application/json'}, body: '{}'});
+    const d = await r.json();
+    if (!d.success) { log('[DENIED] ' + (d.error || 'forbidden'), 'err'); return; }
+    log(`[HUNT] 文件 ${d.files} · 发现 ${d.findings} · 分组 ${d.groups}`, 'info');
+    (d.published || []).forEach(p => {
+      log(`  ├─ [${(p.severity || '').toUpperCase()}] ${p.hall_code} → ${p.center || '派单中'} (${p.count} 处)`, p.severity === 'critical' ? 'err' : 'ok');
+    });
+    if (d.skipped_existing) log(`[HUNT] 去重跳过 ${d.skipped_existing} 组 (已在厅)`, 'info');
+    if (d.capped) log(`[HUNT] 节流排队 ${d.capped} 组 (daemon 60min 自动补发)`, 'warn');
+    log(`[HUNT] ✓ 猎捕完成 · ${d.published?.length || 0} 单已入任务大厅 → 喂养冰山/仙女座`, 'ok');
+    loadStatus();
+  } catch (e) { log('[ERR] hunt: ' + e, 'err'); }
+  busy(false);
+  const term = $('term');
+  const div = document.createElement('div');
+  div.className = 'wh-log-line is-cmd';
+  div.innerHTML = 'whitehat$ <span class="wh-cursor"></span>';
+  term.appendChild(div);
+}
+
+loadStatus();
+</script>
+</body>
+</html>

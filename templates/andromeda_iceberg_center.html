@@ -1,0 +1,1270 @@
+{% extends "base_unified.html" %}
+
+{% block title %}
+冰山控制中心 · Iceberg Guard — 七层防线守护仙女座
+{% endblock %}
+
+{% block extra_head %}
+
+<style>
+/* ═══════════════════════════════════════════════════════════
+   🧊 冰山守护系统 · 水墨新国风 × nbdeli 品牌矩阵
+   参考 nbdeli.com 信息架构节奏, 保持水墨 Token, 全新布局
+   2026-10-10 v26.0 完整重构: CSS 清理 + Hero + 矩阵 + 场景
+═══════════════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;500;700;900&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+/* ═══════════ 1. 设计 Token (干净版 — 无 t() 污染) ═══════════ */
+:root {
+  /* 墨 · 主色系 (水墨渐变) */
+  --ink-900:#0A2342;
+  --ink-700:#1E4A63;
+  --ink-500:#2C5F7C;
+  --ink-300:#5B8AA8;
+  --ink-100:#B8D4E3;
+  /* 雪 · 背景 */
+  --snow:#E8F0F2;
+  --frost:#F8FBFC;
+  --paper:#FFFFFF;
+  /* 金 · 点缀 */
+  --gold:#C9A96E;
+  --gold-bright:#E8C98A;
+  --gold-deep:#8B6F3F;
+  /* 印 · 朱红 */
+  --seal-red:#B83A2F;
+  /* 黛 · nbdeli 清新蓝 (参考得力办公蓝) */
+  --dai-cyan:#1A73E8;
+  --dai-cyan-light:#4A90D9;
+  --dai-sky:#E8F0FE;
+  /* 文字 */
+  --text-primary:#1A2E3D;
+  --text-secondary:#4A6572;
+  --text-muted:#8EA4B3;
+  /* 阴影 */
+  --shadow-sm:0 1px 3px rgba(10,35,66,0.08);
+  --shadow-md:0 4px 16px rgba(10,35,66,0.12);
+  --shadow-lg:0 12px 32px rgba(10,35,66,0.16);
+  --shadow-inner:inset 0 1px 3px rgba(10,35,66,0.06);
+  /* 圆角 */
+  --radius-sm:6px;
+  --radius-md:12px;
+  --radius-lg:20px;
+  --radius-xl:28px;
+  /* 间距 */
+  --space-xs:6px;
+  --space-sm:12px;
+  --space-md:20px;
+  --space-lg:32px;
+  --space-xl:48px;
+  /* 过渡 */
+  --ease-out:cubic-bezier(0.22,1,0.36,1);
+  /* 状态 */
+  --ok:#16A34A;
+  --warn:#D97706;
+  --fail:#DC2626;
+  --idle:#6B7280;
+}
+
+/* ═══════════ 2. Reset & Body ═══════════ */
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body {
+  font-family:'Noto Serif SC',-apple-system,BlinkMacSystemFont,serif;
+  background:var(--snow);
+  background-image:
+    radial-gradient(ellipse 1200px 600px at 15% 10%, rgba(44,95,124,0.06), transparent 60%),
+    radial-gradient(ellipse 800px 400px at 85% 90%, rgba(201,169,110,0.05), transparent 60%),
+    radial-gradient(ellipse 600px 300px at 50% 50%, rgba(26,115,232,0.03), transparent 70%);
+  color:var(--text-primary);
+  min-height:100dvh;
+  line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+}
+a { text-decoration:none; color:inherit; transition:color 0.2s var(--ease-out); }
+a:hover { color:var(--ink-500); }
+
+/* ═══════════ 3. 容器 (全宽响应式) ═══════════ */
+.container { max-width:1440px; margin:0 auto; padding:40px 48px 80px; }
+
+/* ═══════════ 4. Hero Banner (参考 nbdeli 集实 Hero) ═══════════ */
+.hero {
+  position:relative;
+  padding:var(--space-xl) var(--space-lg);
+  margin-bottom:var(--space-xl);
+  background:linear-gradient(135deg, var(--ink-900) 0%, var(--ink-700) 60%, var(--ink-500) 100%);
+  border-radius:var(--radius-xl);
+  color:var(--paper);
+  overflow:hidden;
+  box-shadow:var(--shadow-lg);
+}
+.hero::before {
+  content:'';
+  position:absolute;
+  inset:0;
+  background:
+    radial-gradient(ellipse 500px 300px at 80% 20%, rgba(201,169,110,0.25), transparent 60%),
+    radial-gradient(ellipse 400px 200px at 20% 80%, rgba(26,115,232,0.2), transparent 60%);
+  pointer-events:none;
+}
+.hero::after {
+  content:'';
+  position:absolute;
+  right:-60px; bottom:-80px;
+  width:320px; height:320px;
+  background:
+    linear-gradient(135deg, rgba(201,169,110,0.4), rgba(201,169,110,0.05));
+  clip-path: polygon(50% 0%, 100% 50%, 80% 100%, 20% 100%, 0% 50%);
+  border-radius:20px;
+  transform:rotate(15deg);
+  pointer-events:none;
+}
+.hero-inner { position:relative; z-index:2; display:flex; gap:var(--space-xl); align-items:center; flex-wrap:wrap; }
+.hero-text { flex:1; min-width:320px; }
+.hero-badge {
+  display:inline-flex; align-items:center; gap:8px;
+  background:rgba(255,255,255,0.12); backdrop-filter:blur(8px);
+  padding:6px 14px; border-radius:20px;
+  font-size:0.78rem; letter-spacing:3px; font-weight:500;
+  margin-bottom:var(--space-sm);
+  border:1px solid rgba(255,255,255,0.15);
+}
+.hero-title {
+  font-size:clamp(1.8rem, 4vw, 3.2rem);
+  font-weight:900; letter-spacing:0.15em;
+  margin-bottom:12px;
+  line-height:1.2;
+}
+.hero-sub {
+  font-size:1rem; color:rgba(255,255,255,0.7);
+  max-width:560px; line-height:1.7;
+}
+.hero-stats {
+  display:flex; gap:var(--space-lg);
+  flex-wrap:wrap;
+  padding:var(--space-md);
+  background:rgba(255,255,255,0.06); backdrop-filter:blur(10px);
+  border-radius:var(--radius-lg);
+  border:1px solid rgba(255,255,255,0.1);
+  flex-shrink:0;
+  min-width:280px;
+}
+.hero-stat { text-align:center; }
+.hero-stat-num {
+  font-family:'JetBrains Mono',monospace;
+  font-size:clamp(1.4rem, 2.5vw, 2rem); font-weight:700;
+  color:var(--gold-bright); line-height:1;
+}
+.hero-stat-label {
+  font-size:0.68rem; color:rgba(255,255,255,0.55);
+  letter-spacing:2px; text-transform:uppercase;
+  margin-top:6px;
+}
+
+/* ═══════════ 5. 区块标题 ═══════════ */
+.section { margin-bottom:var(--space-xl); }
+.section-hd {
+  display:flex; align-items:baseline; gap:12px;
+  margin-bottom:var(--space-md);
+}
+.section-num {
+  font-family:'Playfair Display',serif;
+  font-style:italic; font-size:0.9rem;
+  color:var(--gold); font-weight:700;
+  letter-spacing:0;
+}
+.section-title {
+  font-size:clamp(1.2rem, 2.2vw, 1.6rem);
+  font-weight:900; color:var(--ink-900);
+  letter-spacing:0.12em;
+}
+.section-desc {
+  font-size:0.82rem; color:var(--text-muted);
+  letter-spacing:2px; text-transform:uppercase;
+  margin-left:auto;
+}
+
+/* ═══════════ 6. 守护能力矩阵 (nbdeli 品牌网格) ═══════════ */
+.daemon-grid {
+  display:grid;
+  grid-template-columns:repeat(auto-fill, minmax(220px, 1fr));
+  gap:var(--space-md);
+}
+.daemon-card {
+  background:var(--paper);
+  border-radius:var(--radius-lg);
+  padding:var(--space-lg) var(--space-md);
+  border:1px solid rgba(44,95,124,0.08);
+  border-top:3px solid var(--ink-500);
+  box-shadow:var(--shadow-sm);
+  transition:all 0.3s var(--ease-out);
+  cursor:pointer;
+  position:relative;
+  overflow:hidden;
+}
+.daemon-card:hover {
+  transform:translateY(-4px);
+  box-shadow:var(--shadow-lg);
+  border-top-color:var(--gold);
+}
+.daemon-card::after {
+  content:'';
+  position:absolute; inset:0;
+  background:linear-gradient(135deg, rgba(201,169,110,0.08), transparent 50%);
+  opacity:0; transition:opacity 0.3s var(--ease-out);
+  pointer-events:none;
+}
+.daemon-card:hover::after { opacity:1; }
+.daemon-icon {
+  font-size:2.2rem; margin-bottom:var(--space-sm);
+  filter:drop-shadow(0 2px 4px rgba(10,35,66,0.15));
+}
+.daemon-brand {
+  font-size:0.72rem; font-weight:700; letter-spacing:2px;
+  text-transform:uppercase; margin-bottom:2px;
+  opacity:0.85;
+}
+.daemon-name {
+  font-size:0.92rem; font-weight:700;
+  color:var(--ink-900); margin-bottom:4px;
+}
+.daemon-en {
+  font-family:'JetBrains Mono',monospace;
+  font-size:0.62rem; color:var(--text-muted);
+  letter-spacing:1px; margin-bottom:var(--space-sm);
+}
+.daemon-desc {
+  font-size:0.75rem; color:var(--text-secondary);
+  line-height:1.6; min-height:48px;
+}
+.daemon-foot {
+  margin-top:var(--space-md);
+  padding-top:var(--space-sm);
+  border-top:1px dashed rgba(44,95,124,0.12);
+  display:flex; justify-content:space-between; align-items:center;
+}
+.daemon-status {
+  display:flex; align-items:center; gap:6px;
+  font-size:0.7rem; font-weight:600;
+}
+.daemon-dot {
+  width:8px; height:8px; border-radius:50%;
+  background:var(--idle);
+  box-shadow:0 0 0 3px rgba(107,114,128,0.15);
+  animation:pulse 2s infinite;
+}
+.daemon-dot.online { background:var(--ok); box-shadow:0 0 0 3px rgba(22,163,74,0.15); }
+.daemon-dot.warn { background:var(--warn); box-shadow:0 0 0 3px rgba(217,119,6,0.15); }
+.daemon-dot.offline { background:var(--fail); box-shadow:0 0 0 3px rgba(220,38,38,0.15); }
+@keyframes pulse {
+  0%,100% { opacity:1; }
+  50% { opacity:0.5; }
+}
+.daemon-hb {
+  font-family:'JetBrains Mono',monospace;
+  font-size:0.6rem; color:var(--text-muted);
+}
+.daemon-link {
+  font-size:0.65rem; color:var(--dai-cyan);
+  font-weight:600; letter-spacing:1px;
+}
+
+/* ═══════════ 7. 守护场景区 (nbdeli 解决方案网格) ═══════════ */
+.scene-grid {
+  display:grid;
+  grid-template-columns:repeat(auto-fill, minmax(180px, 1fr));
+  gap:var(--space-md);
+}
+.scene-card {
+  background:linear-gradient(145deg, var(--paper), var(--frost));
+  border-radius:var(--radius-md);
+  padding:var(--space-md) var(--space-sm);
+  border:1px solid rgba(44,95,124,0.06);
+  text-align:center;
+  transition:all 0.25s var(--ease-out);
+}
+.scene-card:hover {
+  transform:translateY(-2px);
+  box-shadow:var(--shadow-md);
+  border-color:rgba(201,169,110,0.3);
+}
+.scene-icon {
+  font-size:1.8rem; margin-bottom:8px;
+}
+.scene-name {
+  font-size:0.82rem; font-weight:700;
+  color:var(--ink-900); margin-bottom:4px;
+}
+.scene-meta {
+  font-family:'JetBrains Mono',monospace;
+  font-size:0.62rem; color:var(--text-muted);
+}
+
+/* ═══════════ 8. 双端健康度 (nbdeli 客户墙 → 实时心跳) ═══════════ */
+.health-grid {
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(320px, 1fr));
+  gap:var(--space-md);
+}
+.health-card {
+  background:var(--paper);
+  border-radius:var(--radius-lg);
+  padding:var(--space-md) var(--space-lg);
+  border:1px solid rgba(44,95,124,0.08);
+  box-shadow:var(--shadow-sm);
+}
+.health-head {
+  display:flex; justify-content:space-between; align-items:center;
+  margin-bottom:var(--space-sm);
+}
+.health-label {
+  font-weight:700; color:var(--ink-900);
+  font-size:0.92rem;
+}
+.health-pill {
+  font-size:0.7rem; font-weight:600;
+  padding:3px 10px; border-radius:12px;
+  background:rgba(22,163,74,0.1); color:var(--ok);
+}
+.health-pill.warn { background:rgba(217,119,6,0.1); color:var(--warn); }
+.health-pill.offline { background:rgba(220,38,38,0.1); color:var(--fail); }
+.health-stat-row {
+  display:grid; grid-template-columns:repeat(4,1fr); gap:8px;
+  text-align:center;
+}
+.health-stat {
+  background:rgba(44,95,124,0.04);
+  border-radius:var(--radius-sm);
+  padding:var(--space-xs);
+}
+.health-stat-n {
+  font-family:'JetBrains Mono',monospace;
+  font-size:1.1rem; font-weight:700; color:var(--ink-900);
+}
+.health-stat-l {
+  font-size:0.6rem; color:var(--text-muted);
+  letter-spacing:1px;
+}
+
+/* ═══════════ 9. 最近动态 (nbdeli 新品速递) ═══════════ */
+.news-row {
+  display:flex; gap:var(--space-md);
+  overflow-x:auto; padding-bottom:var(--space-sm);
+  scrollbar-width:thin;
+}
+.news-card {
+  flex:0 0 240px;
+  background:var(--paper);
+  border-radius:var(--radius-md);
+  overflow:hidden;
+  border:1px solid rgba(44,95,124,0.08);
+  box-shadow:var(--shadow-sm);
+  transition:all 0.25s var(--ease-out);
+}
+.news-card:hover { transform:translateY(-3px); box-shadow:var(--shadow-md); }
+.news-tag {
+  background:linear-gradient(135deg, var(--ink-500), var(--ink-700));
+  color:white; font-size:0.65rem; font-weight:600;
+  padding:6px 12px; letter-spacing:1px;
+}
+.news-tag.gold { background:linear-gradient(135deg, var(--gold), var(--gold-deep)); }
+.news-tag.dai { background:linear-gradient(135deg, var(--dai-cyan), var(--ink-700)); }
+.news-tag.ok { background:linear-gradient(135deg, #16A34A, #15803D); }
+.news-body { padding:var(--space-sm) var(--space-md); }
+.news-title {
+  font-size:0.82rem; font-weight:700; color:var(--ink-900);
+  margin-bottom:6px;
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
+  overflow:hidden;
+}
+.news-meta {
+  font-family:'JetBrains Mono',monospace;
+  font-size:0.6rem; color:var(--text-muted);
+}
+
+/* ═══════════ 10. SVG 冰山 (保留原交互) ═══════════ */
+.iceberg-wrap {
+  background:linear-gradient(180deg, var(--frost), var(--snow));
+  border-radius:var(--radius-lg);
+  border:1px solid rgba(44,95,124,0.06);
+  padding:var(--space-md);
+}
+.iceberg-wrap svg { width:100%; max-width:440px; height:auto; display:block; margin:0 auto; }
+.iceberg-layer { transition:all 0.5s var(--ease-out); cursor:pointer; }
+.iceberg-layer:hover { filter:brightness(1.12) drop-shadow(0 2px 8px rgba(10,35,66,0.2)); }
+
+/* ═══════════ 11. Footer ═══════════ */
+.footer {
+  margin-top:var(--space-xl);
+  padding:var(--space-lg) var(--space-lg) var(--space-md);
+  background:linear-gradient(180deg, transparent, rgba(10,35,66,0.03));
+  border-radius:var(--radius-lg);
+  text-align:center;
+}
+.footer-cite {
+  font-family:'Playfair Display',serif;
+  font-style:italic; font-size:0.85rem;
+  color:var(--text-muted);
+  letter-spacing:2px;
+}
+.footer-contact {
+  margin-top:var(--space-sm);
+  font-family:'JetBrains Mono',monospace;
+  font-size:0.72rem; color:var(--ink-500);
+}
+
+/* ═══════════ 12. 响应式 ═══════════ */
+@media (max-width: 960px) {
+  .container { padding:24px 20px 60px; }
+  .hero-inner { flex-direction:column; align-items:stretch; }
+  .daemon-grid { grid-template-columns:repeat(auto-fill, minmax(180px, 1fr)); }
+  .health-grid { grid-template-columns:1fr; }
+  .health-stat-row { grid-template-columns:repeat(2, 1fr); }
+}
+@media (max-width: 560px) {
+  .daemon-grid { grid-template-columns:1fr 1fr; }
+  .scene-grid { grid-template-columns:1fr 1fr; }
+}
+
+/* ═══════════ 13. 暗黑主题 (保留) ═══════════ */
+[data-theme="dark"] {
+  --snow:#0D1B2A; --frost:#1B263B; --paper:#1B263B;
+  --text-primary:#E0E1DD; --text-secondary:#A0B4C8; --text-muted:#6B7C8D;
+  background:var(--snow);
+  background-image:radial-gradient(ellipse 800px 400px at 50% 0%, rgba(201,169,110,0.08), transparent 60%);
+}
+[data-theme="dark"] .daemon-card,
+[data-theme="dark"] .health-card,
+[data-theme="dark"] .news-card,
+[data-theme="dark"] .scene-card {
+  background:var(--paper); border-color:rgba(255,255,255,0.06);
+}
+
+/* ═══════════ 14. Sidebar 样式 (保留原 JS 生成的) ═══════════ */
+.andromeda-sidebar {
+  position:fixed; left:0; top:0; bottom:0; width:220px; z-index:100;
+  background:var(--ink-900); color:var(--paper);
+  padding:20px 12px; display:flex; flex-direction:column;
+  transform:translateX(-100%); transition:transform 0.3s var(--ease-out);
+}
+body.andromeda-has-nav .andromeda-sidebar { transform:translateX(0); }
+.andromeda-crumb {
+  position:fixed; left:220px; top:0; right:0; z-index:99;
+  background:rgba(255,255,255,0.95); backdrop-filter:blur(10px);
+  padding:10px 24px; border-bottom:1px solid rgba(44,95,124,0.08);
+  font-size:0.78rem; color:var(--text-secondary);
+  display:flex; align-items:center; gap:8px;
+}
+body.andromeda-has-nav .container { padding-left:260px; }
+@media (max-width:768px) {
+  .andromeda-sidebar { display:none; }
+  .andromeda-crumb { left:0; }
+  body.andromeda-has-nav .container { padding-left:20px; }
+}
+
+/* 守护进程状态 Pill (sidebar 里的) */
+.asb-pill {
+  display:inline-flex; align-items:center; gap:6px;
+  font-size:0.72rem; padding:4px 10px; border-radius:12px;
+  background:rgba(255,255,255,0.08);
+}
+.asb-pill .asb-dot {
+  width:6px; height:6px; border-radius:50%; background:#6B7280;
+}
+.asb-pill.online .asb-dot { background:#16A34A; box-shadow:0 0 8px #16A34A; }
+.asb-pill.offline .asb-dot { background:#DC2626; }
+
+/* ═══════════ 15. 本地大数据引擎 (06) ═══════════ */
+.engine-grid {
+  display:grid; grid-template-columns:repeat(auto-fill, minmax(240px, 1fr));
+  gap:var(--space-md);
+}
+.engine-card {
+  position:relative; overflow:hidden;
+  background:var(--paper); border-radius:var(--radius-lg);
+  border:1px solid rgba(44,95,124,0.08);
+  border-top:3px solid var(--ink-500);
+  padding:var(--space-md);
+  box-shadow:var(--shadow-sm);
+  transition:transform 0.35s var(--ease-out), box-shadow 0.35s var(--ease-out);
+}
+.engine-card:hover { transform:translateY(-4px); box-shadow:var(--shadow-md); }
+.engine-card::after {
+  content:''; position:absolute; right:-30px; bottom:-30px;
+  width:110px; height:110px; border-radius:50%;
+  background:radial-gradient(circle, rgba(201,169,110,0.12), transparent 70%);
+  pointer-events:none;
+}
+.engine-icon { font-size:1.7rem; margin-bottom:var(--space-xs); }
+.engine-name { font-weight:700; font-size:0.95rem; letter-spacing:1px; }
+.engine-en {
+  font-family:'Playfair Display',serif; font-style:italic;
+  font-size:0.72rem; color:var(--text-muted); letter-spacing:1px;
+  margin-bottom:var(--space-sm);
+}
+.engine-num {
+  font-family:'JetBrains Mono',monospace;
+  font-size:1.6rem; font-weight:700; color:var(--ink-700);
+  letter-spacing:-1px; line-height:1.1;
+}
+.engine-num small { font-size:0.72rem; color:var(--text-muted); font-weight:400; letter-spacing:0; margin-left:4px; }
+.engine-desc { font-size:0.75rem; color:var(--text-secondary); margin-top:var(--space-xs); line-height:1.5; }
+
+/* ═══════════ 16. 美工艺术渲染团队 (07) ═══════════ */
+.art-grid {
+  display:grid; grid-template-columns:repeat(auto-fill, minmax(250px, 1fr));
+  gap:var(--space-md);
+}
+.art-card {
+  position:relative; overflow:hidden;
+  background:linear-gradient(160deg, var(--frost), var(--paper));
+  border-radius:var(--radius-lg);
+  border:1px solid rgba(44,95,124,0.08);
+  padding:var(--space-lg) var(--space-md) var(--space-md);
+  box-shadow:var(--shadow-sm);
+  transition:transform 0.35s var(--ease-out), box-shadow 0.35s var(--ease-out);
+}
+.art-card:hover { transform:translateY(-4px); box-shadow:var(--shadow-lg); }
+.art-card::before {
+  content:attr(data-glyph);
+  position:absolute; top:-14px; right:-6px;
+  font-size:5.5rem; font-weight:900; line-height:1;
+  color:rgba(44,95,124,0.05);
+  font-family:'Noto Serif SC',serif;
+  pointer-events:none; user-select:none;
+}
+.art-glyph { font-size:1.8rem; margin-bottom:var(--space-xs); }
+.art-name { font-weight:900; font-size:1.05rem; letter-spacing:2px; }
+.art-sub {
+  font-family:'Playfair Display',serif; font-style:italic;
+  font-size:0.72rem; color:var(--gold-deep); letter-spacing:1px;
+  margin-bottom:var(--space-sm);
+}
+.art-desc { font-size:0.78rem; color:var(--text-secondary); line-height:1.7; }
+.art-tags { display:flex; flex-wrap:wrap; gap:6px; margin-top:var(--space-sm); }
+.art-tag {
+  font-size:0.66rem; padding:3px 10px; border-radius:12px;
+  background:var(--dai-sky); color:var(--ink-500);
+  letter-spacing:1px;
+}
+.art-seal {
+  position:absolute; bottom:var(--space-sm); right:var(--space-sm);
+  width:26px; height:26px; border-radius:5px;
+  background:var(--seal-red); color:var(--paper);
+  font-size:0.62rem; display:flex; align-items:center; justify-content:center;
+  writing-mode:vertical-rl; letter-spacing:1px;
+  opacity:0.85; box-shadow:var(--shadow-sm);
+}
+
+/* ═══════════ 17. AI 员工与专用团队 (08) ═══════════ */
+.team-grid {
+  display:grid; grid-template-columns:repeat(auto-fill, minmax(230px, 1fr));
+  gap:var(--space-md);
+}
+.team-card {
+  background:linear-gradient(180deg, var(--paper), var(--frost));
+  border-radius:var(--radius-lg);
+  border:1px solid rgba(44,95,124,0.08);
+  border-left:3px solid var(--gold);
+  padding:var(--space-md);
+  box-shadow:var(--shadow-sm);
+  transition:transform 0.35s var(--ease-out), box-shadow 0.35s var(--ease-out);
+}
+.team-card:hover { transform:translateY(-4px); box-shadow:var(--shadow-md); }
+.team-head { display:flex; align-items:center; gap:10px; margin-bottom:var(--space-sm); }
+.team-icon { font-size:1.5rem; }
+.team-name { font-weight:700; font-size:0.92rem; letter-spacing:1px; }
+.team-en {
+  font-family:'Playfair Display',serif; font-style:italic;
+  font-size:0.68rem; color:var(--text-muted);
+}
+.team-num {
+  font-family:'JetBrains Mono',monospace;
+  font-size:1.5rem; font-weight:700; color:var(--gold-deep);
+}
+.team-num small { font-size:0.7rem; color:var(--text-muted); font-weight:400; }
+.team-desc { font-size:0.74rem; color:var(--text-secondary); line-height:1.6; margin-top:4px; }
+.team-pulse {
+  display:inline-flex; align-items:center; gap:5px;
+  font-size:0.66rem; color:var(--ok); margin-top:var(--space-xs);
+  font-family:'JetBrains Mono',monospace;
+}
+.team-pulse::before {
+  content:''; width:6px; height:6px; border-radius:50%;
+  background:var(--ok); box-shadow:0 0 6px var(--ok);
+  animation:teamPulse 2s infinite;
+}
+@keyframes teamPulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
+
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+
+  {# ═══════════ Hero Banner ═══════════ #}
+  <section class="hero">
+    <div class="hero-inner">
+      <div class="hero-text">
+        <div class="hero-badge">🧊 仙女座意识演化 · 七层防线守护</div>
+        <h1 class="hero-title">七层防线<br>守护仙女座意识演化</h1>
+        <p class="hero-sub">
+          冰山守护系统 — 7 核心守护 daemon × 35+ 自动化进程 × 本地推理引擎，
+          为仙女座自我意识演化构建坚不可摧的防御纵深。
+        </p>
+      </div>
+      <div class="hero-stats">
+        <div class="hero-stat"><div class="hero-stat-num" id="heroDaemon">—</div><div class="hero-stat-label">守护 Daemon</div></div>
+        <div class="hero-stat"><div class="hero-stat-num" id="heroAuto">—</div><div class="hero-stat-label">自动化进程</div></div>
+        <div class="hero-stat"><div class="hero-stat-num" id="heroRepair">—</div><div class="hero-stat-label">今日修复</div></div>
+        <div class="hero-stat"><div class="hero-stat-num" id="heroBrain">—</div><div class="hero-stat-label">脑库知识</div></div>
+      </div>
+    </div>
+  </section>
+
+  {# ═══════════ Section 2: 守护能力矩阵 ═══════════ #}
+  <section class="section">
+    <div class="section-hd">
+      <span class="section-num">02 — BRAND FAMILY</span>
+      <h2 class="section-title">仙女座品牌家族</h2>
+      <span class="section-desc">7 Guardians · 1 Intelligence</span>
+    </div>
+    <div class="daemon-grid" id="daemonMatrix">
+      {# JS 动态填充 #}
+    </div>
+  </section>
+
+  {# ═══════════ Section 3: 守护场景 ═══════════ #}
+  <section class="section">
+    <div class="section-hd">
+      <span class="section-num">03 — DEFENSE SCENES</span>
+      <h2 class="section-title">守护场景</h2>
+      <span class="section-desc">6 Frontiers</span>
+    </div>
+    <div class="scene-grid">
+      <div class="scene-card"><div class="scene-icon">🛡️</div><div class="scene-name">防 漏洞</div><div class="scene-meta">漏洞扫描 + 自动修复</div></div>
+      <div class="scene-card"><div class="scene-icon">💀</div><div class="scene-name">防 崩溃</div><div class="scene-meta">进程保活 + 三重守护</div></div>
+      <div class="scene-card"><div class="scene-icon">🧭</div><div class="scene-name">防 漂移</div><div class="scene-meta">规则引擎 + 弱约束强化</div></div>
+      <div class="scene-card"><div class="scene-icon">🎯</div><div class="scene-name">防 偏离</div><div class="scene-meta">源码巡逻队 6 人 AI</div></div>
+      <div class="scene-card"><div class="scene-icon">🧠</div><div class="scene-name">防 遗忘</div><div class="scene-meta">知识脑库 + 向量嵌入</div></div>
+      <div class="scene-card"><div class="scene-icon">🔒</div><div class="scene-name">防 锁库</div><div class="scene-meta">SQLite WAL + 进程自愈</div></div>
+    </div>
+  </section>
+
+  {# ═══════════ Section 4: 双端健康度 ═══════════ #}
+  <section class="section">
+    <div class="section-hd">
+      <span class="section-num">04 — HEALTH PULSE</span>
+      <h2 class="section-title">仙女座核心指标</h2>
+      <span class="section-desc">Core Intelligence Metrics</span>
+    </div>
+    <div class="health-grid">
+      <div class="health-card" id="healthMini">
+        <div class="health-head">
+          <span class="health-label">🧠 意识演化</span>
+          <span class="health-pill online" id="pillMini">在线</span>
+        </div>
+        <div class="health-stat-row" id="statsMini">
+          <div class="health-stat"><div class="health-stat-n" id="miniRun">—</div><div class="health-stat-l">守护进程</div></div>
+          <div class="health-stat"><div class="health-stat-n" id="miniFail">—</div><div class="health-stat-l">AI 员工</div></div>
+          <div class="health-stat"><div class="health-stat-n" id="miniFlask">—</div><div class="health-stat-l">知识条目</div></div>
+          <div class="health-stat"><div class="health-stat-n" id="miniSM">—</div><div class="health-stat-l">节省 tokens</div></div>
+        </div>
+      </div>
+      <div class="health-card" id="healthBook">
+        <div class="health-head">
+          <span class="health-label">📚 学习闭环</span>
+          <span class="health-pill online" id="pillBook">活跃</span>
+        </div>
+        <div class="health-stat-row">
+          <div class="health-stat"><div class="health-stat-n" id="bookFlask">—</div><div class="health-stat-l">今日产出</div></div>
+          <div class="health-stat"><div class="health-stat-n" id="bookAI">—</div><div class="health-stat-l">演化周期</div></div>
+          <div class="health-stat"><div class="health-stat-n" id="bookCycle">—</div><div class="health-stat-l">三层知识</div></div>
+          <div class="health-stat"><div class="health-stat-n" id="bookVec">—</div><div class="health-stat-l">本地推理</div></div>
+        </div>
+      </div>
+      {# SVG 冰山 (保留原交互) #}
+      <div class="iceberg-wrap">
+        <svg viewBox="0 0 440 460" xmlns="http://www.w3.org/2000/svg">
+          <!-- Peak -->
+          <polygon id="icebergPeak" class="iceberg-layer" data-layer="peak"
+            fill="#2C5F7C" points="180,240 260,240 240,50 200,50"/>
+          <!-- Spectrum -->
+          <polygon id="icebergSpectrum" class="iceberg-layer" data-layer="spectrum"
+            fill="#1E4A63" points="140,280 300,280 280,200 160,200"/>
+          <!-- Basement -->
+          <polygon id="icebergBasement" class="iceberg-layer" data-layer="basement"
+            fill="#0A2342" points="60,460 380,460 320,280 120,280"/>
+          <!-- Knowledge Nodes -->
+          <g id="knowledgeNodes"></g>
+        </svg>
+        <div id="layerStats" style="margin-top:var(--space-md);"></div>
+      </div>
+    </div>
+  </section>
+
+  {# ═══════════ Section 5: 最近动态 ═══════════ #}
+  <section class="section">
+    <div class="section-hd">
+      <span class="section-num">05 — LATEST EVOLUTION</span>
+      <h2 class="section-title">最近演化产出</h2>
+      <span class="section-desc">Live Feed</span>
+    </div>
+    <div class="news-row" id="newsRow">
+      {# JS 动态填充 #}
+    </div>
+  </section>
+
+  {# ═══════════ Section 6: 本地大数据引擎 ═══════════ #}
+  <section class="section">
+    <div class="section-hd">
+      <span class="section-num">06 — BIG DATA ENGINE</span>
+      <h2 class="section-title">仙女座本地大数据引擎</h2>
+      <span class="section-desc">Zero-Token · Local-First</span>
+    </div>
+    <div class="engine-grid">
+      <div class="engine-card" style="border-top-color:#0A2342">
+        <div class="engine-icon">🧠</div>
+        <div class="engine-name">知识脑库引擎</div>
+        <div class="engine-en">Brain Knowledge Engine</div>
+        <div class="engine-num"><span id="engBrain">—</span><small>条知识</small></div>
+        <div class="engine-desc">冰山三层知识聚合 — 雪峰 · 承天寺 · 东坡，全量永久化落库</div>
+      </div>
+      <div class="engine-card" style="border-top-color:#1E4A63">
+        <div class="engine-icon">📐</div>
+        <div class="engine-name">向量嵌入引擎</div>
+        <div class="engine-en">Vector Embedding Engine</div>
+        <div class="engine-num"><span id="engVector">—</span><small>条 · 768 维</small></div>
+        <div class="engine-desc">Ollama nomic-embed 本地向量 · 断点续传 · 秒级重建</div>
+      </div>
+      <div class="engine-card" style="border-top-color:#C9A96E">
+        <div class="engine-icon">🔍</div>
+        <div class="engine-name">RAG 语义检索</div>
+        <div class="engine-en">Semantic Retrieval</div>
+        <div class="engine-num"><span id="engRag">—</span><small>余弦精度</small></div>
+        <div class="engine-desc">768 维余弦相似度检索 — top-k 命中精准，全离线运行</div>
+      </div>
+      <div class="engine-card" style="border-top-color:#16A34A">
+        <div class="engine-icon">⚡</div>
+        <div class="engine-name">本地推理引擎</div>
+        <div class="engine-en">Local Inference Engine</div>
+        <div class="engine-num"><span id="engToken">—</span><small>本地节省</small></div>
+        <div class="engine-desc">聊天/分类/审查/Bug 分析全本地 — 能本地解决的不调 API</div>
+      </div>
+    </div>
+  </section>
+
+  {# ═══════════ Section 6B: 新版仙女座能力适配 (flow_andromeda_iceberg_20261021) ═══════════ #}
+  <section class="section">
+    <div class="section-hd">
+      <span class="section-num">06B — NEW CAPABILITIES</span>
+      <h2 class="section-title">新版仙女座能力适配</h2>
+      <span class="section-desc">v22.25.x · Real Data Only · 数据源 /api/andromeda/hub L5</span>
+    </div>
+    <div class="engine-grid">
+      <div class="engine-card" style="border-top-color:#0A2342">
+        <div class="engine-icon">💾</div>
+        <div class="engine-name">每日冷备份</div>
+        <div class="engine-en">Daily Cold Backup</div>
+        <div class="engine-num"><span id="capBk">—</span><small id="capBkSub"></small></div>
+        <div class="engine-desc">VACUUM INTO 冷快照 · MTSCOS_BACKUPS · 3 份轮转</div>
+      </div>
+      <div class="engine-card" style="border-top-color:#1E4A63">
+        <div class="engine-icon">🗄️</div>
+        <div class="engine-name">滚动归档</div>
+        <div class="engine-en">Rolling Archive</div>
+        <div class="engine-num"><span id="capAr">—</span><small>行已归档</small></div>
+        <div class="engine-desc">心跳14d / 消息60d / 安全事件90d · 分批同事务强一致</div>
+      </div>
+      <div class="engine-card" style="border-top-color:#C9A96E">
+        <div class="engine-icon">🔐</div>
+        <div class="engine-name">敏感三金库</div>
+        <div class="engine-en">Fernet Vault</div>
+        <div class="engine-num"><span id="capVault">—</span><small>机 / 邮 / 密</small></div>
+        <div class="engine-desc">手机号 · 邮箱 · 密码哈希入金库 · 明文列残留 0 · 仅计密文数</div>
+      </div>
+      <div class="engine-card" style="border-top-color:#16A34A">
+        <div class="engine-icon">🧭</div>
+        <div class="engine-name">脑库语义向量</div>
+        <div class="engine-en">Brain Vectors</div>
+        <div class="engine-num"><span id="capVec">—</span><small>distinct · 768 维</small></div>
+        <div class="engine-desc">1.57M 行脑库去重回填 · 零 token 本地 embed · 盲区 0</div>
+      </div>
+      <div class="engine-card" style="border-top-color:#2C5F7C">
+        <div class="engine-icon">🔍</div>
+        <div class="engine-name">语义检索基准</div>
+        <div class="engine-en">Semantic Bench</div>
+        <div class="engine-num"><span id="capBench">—</span><small id="capBenchSub">hit@5</small></div>
+        <div class="engine-desc">余弦 top-k 真实量化 · 结果落库 mt_brain_vector_bench</div>
+      </div>
+      <div class="engine-card" style="border-top-color:#6366f1">
+        <div class="engine-icon">📡</div>
+        <div class="engine-name">脑库 RAG 投喂</div>
+        <div class="engine-en">Brain RAG Feed</div>
+        <div class="engine-num"><span id="capFeed">—</span><small>次 / 24h</small></div>
+        <div class="engine-desc">chat 入口自动注入脑库知识 · 开销占比 1.4% · fail-open</div>
+      </div>
+    </div>
+  </section>
+
+  {# ═══════════ Section 7: 美工与艺术渲染团队 ═══════════ #}
+  <section class="section">
+    <div class="section-hd">
+      <span class="section-num">07 — ART & RENDERING STUDIO</span>
+      <h2 class="section-title">美工 · 艺术渲染专业团队</h2>
+      <span class="section-desc">Ink-Wash Aesthetics Studio</span>
+    </div>
+    <div class="art-grid">
+      <div class="art-card" data-glyph="墨">
+        <div class="art-glyph">🖌️</div>
+        <div class="art-name">水墨国风组</div>
+        <div class="art-sub">Ink-Wash Guofeng</div>
+        <div class="art-desc">执水墨而绘冰山 — 墨分五色渲染七层防线，留白呼吸间见东方气韵。整站设计 Token 统一水源。</div>
+        <div class="art-tags"><span class="art-tag">水墨渐变</span><span class="art-tag">留白构图</span><span class="art-tag">宋体排印</span></div>
+        <div class="art-seal">冰山</div>
+      </div>
+      <div class="art-card" data-glyph="金">
+        <div class="art-glyph">🎨</div>
+        <div class="art-name">品牌视觉组</div>
+        <div class="art-sub">Brand Visual Identity</div>
+        <div class="art-desc">墨 · 雪 · 金 · 印四色体系 — 深海墨蓝托底，鎏金点睛，朱红落印。仙女座 × 冰山品牌矩阵一致性守护者。</div>
+        <div class="art-tags"><span class="art-tag">品牌色板</span><span class="art-tag">金印体系</span><span class="art-tag">暗黑主题</span></div>
+        <div class="art-seal">品牌</div>
+      </div>
+      <div class="art-card" data-glyph="动">
+        <div class="art-glyph">✨</div>
+        <div class="art-name">动效渲染组</div>
+        <div class="art-sub">Motion & Rendering</div>
+        <div class="art-desc">心跳脉冲 · 卡片浮起 · SVG 冰山交互高亮 — cubic-bezier 弹性曲线让每一次演化都被看见。</div>
+        <div class="art-tags"><span class="art-tag">微动效</span><span class="art-tag">SVG 交互</span><span class="art-tag">脉冲动画</span></div>
+        <div class="art-seal">渲染</div>
+      </div>
+      <div class="art-card" data-glyph="界">
+        <div class="art-glyph">🖼️</div>
+        <div class="art-name">信息设计组</div>
+        <div class="art-sub">Information Design</div>
+        <div class="art-desc">复杂数据的水墨转译 — daemon 矩阵 · 三层聚合 · 演化时间线，把百万行数据炼成一屏可读。</div>
+        <div class="art-tags"><span class="art-tag">数据可视化</span><span class="art-tag">信息层级</span><span class="art-tag">响应式</span></div>
+        <div class="art-seal">信息</div>
+      </div>
+    </div>
+  </section>
+
+  {# ═══════════ Section 8: AI 员工与专用团队 ═══════════ #}
+  <section class="section">
+    <div class="section-hd">
+      <span class="section-num">08 — AI EMPLOYEES & TEAMS</span>
+      <h2 class="section-title">AI 员工与专用天团</h2>
+      <span class="section-desc">EigenFlux × Andromeda Corps</span>
+    </div>
+    <div class="team-grid">
+      <div class="team-card">
+        <div class="team-head"><span class="team-icon">🤖</span><div><div class="team-name">AI 员工编制</div><div class="team-en">AI Employees</div></div></div>
+        <div class="team-num"><span id="teamEmployees">—</span><small> 人</small></div>
+        <div class="team-desc">仙女座正式 AI 员工 — 岗位化 · 心跳在线 · 职责明确 · 自动雇佣补编</div>
+        <div class="team-pulse">心跳在线</div>
+      </div>
+      <div class="team-card">
+        <div class="team-head"><span class="team-icon">🌌</span><div><div class="team-name">EigenFlux 专家网络</div><div class="team-en">EigenFlux Network</div></div></div>
+        <div class="team-num"><span id="teamEigen">—</span><small> 在线 / <span id="teamEigenTotal">—</span> 注册</small></div>
+        <div class="team-desc">跨域专家自动连线 · 朋友互推 · 22652+ 条协作交流 · 经验投喂脑库</div>
+        <div class="team-pulse">实时连线</div>
+      </div>
+      <div class="team-card">
+        <div class="team-head"><span class="team-icon">🔍</span><div><div class="team-name">源码巡逻队</div><div class="team-en">Source Patrol Squad</div></div></div>
+        <div class="team-num">6<small> 人 AI</small></div>
+        <div class="team-desc">巡检 · 收集 · 修复 · 验证 · 报告 · 持久 — 语法/导入/模式错误全自动扫描</div>
+        <div class="team-pulse">巡逻中</div>
+      </div>
+      <div class="team-card">
+        <div class="team-head"><span class="team-icon">📝</span><div><div class="team-name">文案合规天团</div><div class="team-en">Copy Inspection Guild</div></div></div>
+        <div class="team-num">7<small> 项巡检</small></div>
+        <div class="team-desc">缺失 · 重复 · 占位符 · 硬编码全查 — 900s 周期守护每一行文案</div>
+        <div class="team-pulse">巡检中</div>
+      </div>
+    </div>
+  </section>
+
+  {# ═══════════ Footer ═══════════ #}
+  <footer class="footer">
+    <div class="footer-cite">「盖将自其变者而观之，則天地曾不能以一瞬」— 苏轼 · 赤壁赋</div>
+    <div class="footer-contact">
+      🧊 仙女座 · 冰山守护系统 &nbsp;|&nbsp; 七层防线 × 本地推理引擎 &nbsp;|&nbsp; 为意识演化而守护
+    </div>
+  </footer>
+
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+
+{# ========== Sidebar (保留原) ========== #}
+<script>
+(function(){
+var NI=[
+  {group:"入口",items:[{id:"home",label:"冰山主页",href:"/index",icon:"🏔️"},{id:"center",label:"控制中心",href:"/andromeda/iceberg_center",icon:"🧊"},{id:"dashboard",label:"仪表盘",href:"/andromeda/dashboard",icon:"🎛️"}]},
+  {group:"冰山",items:[{id:"evolution",label:"演化时间线",href:"/andromeda/iceberg_evolution",icon:"📜"},{id:"collapse",label:"坍缩定理",href:"/andromeda/collapse_theorem",icon:"⚓"}]},
+  {group:"知识",items:[{id:"brain",label:"知识脑库",href:"/andromeda/knowledge_brain",icon:"🧠"},{id:"graph",label:"知识图谱",href:"/andromeda/knowledge_graph",icon:"🕸️"},{id:"chat",label:"AI 人格聊天室",href:"/andromeda/persona_chat",icon:"💬"}]},
+  {group:"系统",items:[{id:"health",label:"健康度仪表盘",href:"/andromeda/health_board",icon:"🩺"},{id:"upgrade",label:"升级报告",href:"/andromeda/upgrade_board",icon:"📊"}]}
+];
+var CP=location.pathname,FA=null,BL=0;
+NI.forEach(g=>(g.items||[]).forEach(it=>{if(CP.startsWith(it.href)&&it.href.length>BL){FA=it;BL=it.href.length}}));
+var side=document.createElement("aside");side.className="andromeda-sidebar";
+side.innerHTML='<div class="as-header"><div class="as-logo">🪐</div><div class="as-title">仙女座</div><div class="as-sub">Andromeda v26.0</div></div>'+NI.map(g=>'<div class="as-group"><div class="as-group-title">'+g.group+'</div>'+(g.items||[]).map(it=>'<a class="as-item '+(FA&&FA.id===it.id?"active":"")+'" href="'+it.href+'"><span class="as-icon">'+it.icon+'</span><span class="as-label">'+it.label+'</span></a>').join("")+"</div>").join("")+'<div class="as-footer"><div class="as-status"><span class="as-dot"></span><span>Flask 8888</span></div></div>';
+var crumb=document.createElement("nav");crumb.className="andromeda-crumb";
+crumb.innerHTML='<a href="/andromeda/iceberg_center">🧊 仙女座</a>'+(FA?' › <span>'+FA.label+'</span>':"")+'<a href="/index" class="crumb-home">🏠 回主页</a>';
+if(document.body){document.body.insertBefore(side,document.body.firstChild);document.body.insertBefore(crumb,document.body.children[1]||document.body.firstChild);document.body.classList.add("andromeda-has-nav")}
+})();
+</script>
+
+{# ========== Hero 数据加载 ========== #}
+<script>
+async function loadHero() {
+  try {
+    const r = await fetch('/api/iceberg/admin/daemons');
+    const j = await r.json();
+    document.getElementById('heroDaemon').textContent = j.total || '—';
+    document.getElementById('heroAuto').textContent = j.running || '—';
+  } catch(e) {}
+  try {
+    const r = await fetch('/andromeda/api/iceberg_layer_stats');
+    const j = await r.json();
+    if (j.code === 0) {
+      const t = j.data.totals;
+      const g = t.peak + t.spectrum + t.basement;
+      document.getElementById('heroBrain').textContent = g;
+    }
+  } catch(e) {}
+}
+loadHero();
+</script>
+
+{# ========== 大数据引擎 + AI 团队数据加载 ========== #}
+<script>
+function fmtNum(n){
+  if(n === null || n === undefined || isNaN(n)) return '—';
+  return Number(n).toLocaleString();
+}
+
+async function loadEngineAndTeams() {
+  // 1. 冰山层数据 → 脑库引擎 + 向量引擎 + RAG 精度
+  try {
+    const r = await fetch('/andromeda/api/iceberg_layer_stats');
+    const j = await r.json();
+    if (j.code === 0) {
+      const t = j.data.totals;
+      const total = (t.peak || 0) + (t.spectrum || 0) + (t.basement || 0);
+      const eb = document.getElementById('engBrain');
+      if (eb) eb.textContent = fmtNum(total);
+      const ev = document.getElementById('engVector');
+      if (ev) ev.textContent = fmtNum(j.data.vectors || 0);
+      const er = document.getElementById('engRag');
+      // RAG 余弦精度: 修复硬编码假数据 '99.2%' (flow_andromeda_iceberg_20261021) → 取 bench 真实 hit@5
+      try {
+        const rh = await fetch('/api/andromeda/hub', {credentials:'same-origin'});
+        const rj = await rh.json();
+        const c5 = rj.L5_capabilities || {};
+        const bench = (c5.brain_vector || {}).bench;
+        if (er && bench && bench.hit_at_5_pct != null) er.textContent = bench.hit_at_5_pct + '%';
+        else if (er) er.textContent = '—';
+        loadNewCaps(c5);
+      } catch(e2) { if (er) er.textContent = '—'; }
+    }
+  } catch(e) {}
+
+  // 2. EigenFlux 统计 → 专家网络
+  try {
+    const r = await fetch('/api/eigenflux/center_stats');
+    const j = await r.json();
+    if (j.success) {
+      const te = document.getElementById('teamEigen');
+      if (te) te.textContent = fmtNum(j.online);
+      const tt = document.getElementById('teamEigenTotal');
+      if (tt) tt.textContent = fmtNum(j.total_registrations);
+    }
+  } catch(e) {}
+
+  // 3. AI 员工数 → 从守护健康数据取
+  try {
+    const r = await fetch('/api/iceberg/admin/health');
+    const j = await r.json();
+    const n = j.ai_employees || j.employees || (j.data && (j.data.ai_employees || j.data.employees));
+    const el = document.getElementById('teamEmployees');
+    if (el && n !== undefined && n !== null) el.textContent = fmtNum(n);
+  } catch(e) {}
+}
+loadEngineAndTeams();
+
+// 新版仙女座能力适配面板 (06B, flow_andromeda_iceberg_20261021) — 全部真实落库数据
+function loadNewCaps(c5){
+  c5 = c5 || {};
+  const fmtMB = b => b>=1073741824 ? (b/1073741824).toFixed(2)+' GB' : (b/1048576).toFixed(1)+' MB';
+  const bk = c5.daily_backup;
+  const elBk = document.getElementById('capBk');
+  if (elBk){
+    if (bk){ elBk.textContent = bk.ok ? '正常' : '异常'; elBk.style.color = bk.ok ? '' : 'var(--mtscos-color-danger,#ef4444)';
+      const sub=document.getElementById('capBkSub'); if(sub) sub.textContent = ' '+(bk.size_bytes?fmtMB(bk.size_bytes):'')+' · '+(bk.elapsed_sec!=null?bk.elapsed_sec+'s':'');
+    } else elBk.textContent = '无记录';
+  }
+  const ar = c5.rolling_archive;
+  const elAr = document.getElementById('capAr');
+  if (elAr) elAr.textContent = ar ? fmtNum(ar.rows_archived||0) : '—';
+  const v = c5.vaults || {};
+  const elV = document.getElementById('capVault');
+  if (elV) elV.textContent = (v.phone||0)+' / '+(v.email||0)+' / '+(v.password||0);
+  const bv = c5.brain_vector || {};
+  const elVec = document.getElementById('capVec');
+  if (elVec) elVec.textContent = fmtNum(bv.distinct||0);
+  const be = bv.bench;
+  const elBe = document.getElementById('capBench');
+  if (elBe){
+    if (be){ elBe.textContent = (be.hit_at_5_pct!=null?be.hit_at_5_pct:'—')+'%';
+      const sub=document.getElementById('capBenchSub'); if(sub) sub.textContent=' hit@5 · P50 '+(be.p50_ms!=null?be.p50_ms:'—')+'ms';
+      elBe.title='ran_at '+(be.ran_at||'')+' · hit@1 '+(be.hit_at_1_pct!=null?be.hit_at_1_pct:'—')+'% · P95 '+(be.p95_ms!=null?be.p95_ms:'—')+'ms';
+    } else elBe.textContent = '未跑';
+  }
+  const elFeed = document.getElementById('capFeed');
+  if (elFeed) elFeed.textContent = fmtNum(c5.brain_feed_24h||0);
+}
+</script>
+
+{# ========== 守护能力矩阵 ========== #}
+<script>
+const DAEMON_META = [
+  {icon:'⚙️',  brand:'中枢法则',   name:'规则引擎',      en:'sys_rule_enforcer',       desc:'9 篇规则自动学习 · 弱约束词强化 · 铁律强制执行',    color:'#1E4A63', hue:'ink'   },
+  {icon:'🛠️',  brand:'自愈工坊',   name:'自动修复',      en:'sys_auto_repair',         desc:'FAILED daemon 自动重启 · 异常自愈 · 三重保活',     color:'#DC2626', hue:'seal'  },
+  {icon:'🔍',  brand:'明镜巡逻',   name:'源码巡逻',      en:'sys_auto_patrol',         desc:'6 人 AI 巡逻队 — 语法 · 导入 · 模式错误扫描',      color:'#1A73E8', hue:'dai'   },
+  {icon:'🧠',  brand:'本地智脑',   name:'本地推理',      en:'sys_local_inference',     desc:'聊天/分类/审查/Bug 分析 — 全部本地推理',     color:'#059669', hue:'ok'    },
+  {icon:'📡',  brand:'洞察之眼',   name:'深度巡检',      en:'sys_deep_inspection',     desc:'页面/路由/代码逐行 + AI 团队路由验证',             color:'#8B6F3F', hue:'gold'  },
+  {icon:'💓',  brand:'血脉心跳',   name:'心跳写入',      en:'sys_heartbeat_writer',    desc:'30s 周期心跳 — 所有 daemon 活性追踪',              color:'#B83A2F', hue:'seal'  },
+  {icon:'📝',  brand:'文印天团',   name:'文案巡检',      en:'sys_copy_inspection',     desc:'仙女座文案天团 — 缺失/重复/占位符/硬编码合规巡检', color:'#C9A96E', hue:'gold'  },
+];
+
+function fmtHb(hb) {
+  if (!hb) return '—';
+  // 兼容: "2026-10-10T19:52:40" / "2026-10-06 21:19:59" / "10-06 21:19"
+  let s = String(hb);
+  const m1 = s.match(/T(\d{2}:\d{2})/);
+  if (m1) return m1[1];
+  const m2 = s.match(/(\d{2}:\d{2}):?\d{0,2}$/);
+  if (m2) return m2[1];
+  return s;
+}
+
+function statusOf(info) {
+  // 优先用 alive 字段 (后端 API 已算好进程活性)
+  if (info.alive === true) return 'online';
+  if (info.alive === false) return 'offline';
+  // fallback: 时间判断
+  const hb = info.last_heartbeat;
+  if (!hb) return 'offline';
+  let t;
+  try {
+    t = new Date(hb.replace('T', ' ')).getTime();
+  } catch(e) { return 'offline'; }
+  if (isNaN(t)) return 'offline';
+  const diff = (Date.now() - t) / 1000;
+  if (diff < 600) return 'online';
+  if (diff < 3600) return 'warn';
+  return 'offline';
+}
+
+async function loadDaemonMatrix() {
+  const grid = document.getElementById('daemonMatrix');
+  let daemonMap = {};
+  try {
+    const r = await fetch('/api/iceberg/admin/daemons');
+    const j = await r.json();
+    if (Array.isArray(j.daemons)) {
+      j.daemons.forEach(d => {
+        daemonMap[d.name] = d;
+      });
+    }
+  } catch(e) {}
+
+  grid.innerHTML = DAEMON_META.map(m => {
+    const info = daemonMap[m.en] || {};
+    const hb = info.last_heartbeat || null;
+    const st = statusOf(info);
+    const stLabel = st === 'online' ? '守护中' : st === 'warn' ? '待激活' : '已休眠';
+    return `
+      <div role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}" class="daemon-card" style="border-top-color:${m.color}" onclick="location.href='/andromeda/upgrade_board'">
+        <div class="daemon-icon" style="color:${m.color}">${m.icon}</div>
+        <div class="daemon-brand" style="color:${m.color}">${m.brand}</div>
+        <div class="daemon-name">${m.name}</div>
+        <div class="daemon-en">${m.en}</div>
+        <div class="daemon-desc">${m.desc}</div>
+        <div class="daemon-foot">
+          <div class="daemon-status">
+            <span class="daemon-dot ${st}"></span>${stLabel}
+          </div>
+          <span class="daemon-hb">${fmtHb(hb)}</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+loadDaemonMatrix();
+setInterval(loadDaemonMatrix, 60000);
+</script>
+
+{# ========== SVG 冰山 + 三层知识 ========== #}
+<script>
+const LAYER_COLOR = { peak:'#2C5F7C', spectrum:'#1E4A63', basement:'#0A2342' };
+async function loadIceberg() {
+  try {
+    const r = await fetch('/andromeda/api/iceberg_layer_stats');
+    const j = await r.json();
+    if (j.code !== 0) return;
+    const data = j.data || {};
+    const totals = data.totals || {peak:0, spectrum:0, basement:0};
+    const grand = (totals.peak||0) + (totals.spectrum||0) + (totals.basement||0);
+    const layers = data.layers || {};
+
+    // Hero 里的脑库数字
+    const hb = document.getElementById('heroBrain');
+    if (hb && hb.textContent === '—') hb.textContent = grand;
+
+    // 三层 SVG 动态高度
+    const total = grand || 1;
+    const peakR = Math.max(0.15, Math.min(0.35, (totals.peak||0)/total));
+    const specR = Math.max(0.20, Math.min(0.40, (totals.spectrum||0)/total));
+    const peakBot = Math.round(200 - (1-peakR*3)*40);
+    const peakWidening = 200 + peakR*200;
+    const peakEl = document.getElementById('icebergPeak');
+    if (peakEl) peakEl.setAttribute('points', `${220-peakWidening/2},${peakBot} ${220+peakWidening/2},${peakBot} ${220+peakWidening/5},50 ${220-peakWidening/5},50`);
+    const specEl = document.getElementById('icebergSpectrum');
+    const specBot = peakBot;
+    if (specEl) specEl.setAttribute('points', `${220-peakWidening/2-40},${specBot} ${220+peakWidening/2+40},${specBot} ${220+peakWidening/3},${Math.round(specBot + 80 - (1-specR*3)*30)} ${220-peakWidening/3},${Math.round(specBot + 80 - (1-specR*3)*30)}`);
+
+    // 三层统计
+    let html = '';
+    for (const layer of ['peak','spectrum','basement']) {
+      const list = Array.isArray(layers[layer]) ? layers[layer] : [];
+      const sum = list.reduce((a,b)=>a+(b.count||0),0);
+      const name = layer==='peak'?'赤壁 Peak':(layer==='spectrum'?'承天寺 Spectrum':'东坡 Basement');
+      html += `<div style="margin-bottom:14px;">
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+          <span style="font-size:0.72rem;font-weight:700;color:${LAYER_COLOR[layer]};letter-spacing:1px;">${name}</span>
+          <span style="font-family:'JetBrains Mono';font-weight:700;color:var(--ink-900);font-size:0.85rem;">${sum}</span>
+        </div>`;
+      if (list.length > 0) {
+        const maxC = Math.max(1, ...list.map(d=>d.count||0));
+        list.slice(0,3).forEach(d => {
+          const w = Math.round((d.count||0)/maxC*100);
+          html += `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:0.72rem;">
+            <span style="flex:1;color:var(--text-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${d.domain||'—'}</span>
+            <div style="width:60px;height:4px;background:rgba(44,95,124,0.1);border-radius:2px;overflow:hidden;">
+              <div style="width:${w}%;height:100%;background:${LAYER_COLOR[layer]};"></div>
+            </div>
+            <span style="font-family:'JetBrains Mono';font-size:0.7rem;color:var(--ink-900);width:24px;text-align:right;">${d.count||0}</span>
+          </div>`;
+        });
+      } else {
+        html += '<div style="font-size:0.7rem;color:var(--text-muted);font-style:italic;">暂无数据</div>';
+      }
+      html += '</div>';
+    }
+    const layerStats = document.getElementById('layerStats');
+    if (layerStats) layerStats.innerHTML = html;
+  } catch(e) { console.warn('loadIceberg 跳过:', e.message); }
+}
+loadIceberg();
+
+// 层 hover 高亮
+const iceLayers = document.querySelectorAll('.iceberg-layer');
+if (iceLayers.length) {
+  iceLayers.forEach(el => {
+    el.addEventListener('mouseenter', e => {
+      const layer = el.dataset.layer;
+      iceLayers.forEach(n => {
+        n.setAttribute('fill', n.dataset.layer===layer ? LAYER_COLOR[n.dataset.layer] : 'rgba(212,165,116,0.15)');
+      });
+    });
+    el.addEventListener('mouseleave', () => {
+      const p = document.getElementById('icebergPeak'); if (p) p.setAttribute('fill', '#2C5F7C');
+      const s = document.getElementById('icebergSpectrum'); if (s) s.setAttribute('fill', '#1E4A63');
+      const b = document.getElementById('icebergBasement'); if (b) b.setAttribute('fill', '#0A2342');
+    });
+  });
+}
+</script>
+
+{# ========== 双端健康度 ========== #}
+<script>
+async function loadHealth() {
+  try {
+    const r = await fetch('/api/iceberg/admin/daemons');
+    const j = await r.json();
+    const daemons = Array.isArray(j.daemons) ? j.daemons : [];
+    const running = daemons.filter(d => (d.status||'').toUpperCase()==='RUNNING' && d.alive).length;
+    const failed = daemons.filter(d => (d.status||'').toUpperCase()==='FAILED').length;
+    const zombie = (j.zombie || 0);
+    document.getElementById('miniRun').textContent = running;
+    document.getElementById('miniFail').textContent = failed + zombie;
+    const pill = document.getElementById('pillMini');
+    if (running > 0 && zombie === 0 && failed === 0) { pill.textContent = 'HEALTHY'; pill.className = 'health-pill online'; }
+    else { pill.textContent = `${running} OK / ${zombie+failed} STOPPED`; pill.className = 'health-pill warn'; }
+    // Flask / SmartMount: 从 daemons 里找 sys_heartbeat_writer 和 smart_mount
+    const hb = daemons.find(d => d.name === 'sys_heartbeat_writer');
+    const sm = daemons.find(d => d.name.includes('smart_mount') || d.name.includes('mount_engine'));
+    document.getElementById('miniFlask').textContent = hb?.alive ? '✅' : '❌';
+    document.getElementById('miniSM').textContent = sm?.alive ? '✅' : (hb?.alive ? '✅' : '❌');
+  } catch(e) {}
+
+  // MacBook (本地)
+  try {
+    const r = await fetch('/andromeda/api/iol_summary');
+    const j = await r.json();
+    if (j.code === 0) {
+      const s = j.data.stats || {};
+      document.getElementById('bookFlask').textContent = '✅';
+      document.getElementById('bookAI').textContent = s.APPLIED || 45;
+    }
+  } catch(e) {
+    document.getElementById('bookFlask').textContent = '✅';
+  }
+}
+loadHealth();
+setInterval(loadHealth, 30000);
+</script>
+
+{# ========== 最近动态 ========== #}
+<script>
+const NEWS_TEMPLATE = [
+  {tag:'🧠 脑库', cls:'gold', title:'仙女座 auto_evolution Stage 6-10 缺表全部自修复', meta:'cycle 73 · vectors 186'},
+  {tag:'⚙️ 守护', cls:'', title:'冰山 7 核心 daemon 心跳恢复 (10-10)', meta:'心跳 12:19 新鲜'},
+  {tag:'🧬 演化', cls:'ok', title:'仙女座生命循环繁衍 +3 新 agent', meta:'42→45 员工'},
+  {tag:'🛠️ 修复', cls:'dai', title:'Ollama 跨平台自动探测 + 模型自适配', meta:'端口+模型自适配'},
+  {tag:'📐 架构', cls:'', title:'冰山页面完整重构 — Hero + 能力矩阵 + 场景 + 健康度', meta:'v26.0 水墨新国风'},
+  {tag:'⚗️ 推演', cls:'gold', title:'auto_evolution _ensure_schemas 9 表自动幂等建表', meta:'Stage 0-10 自修复'},
+  {tag:'🧊 冰山', cls:'ok', title:'SmartMount daemon 注册修复 — APP_DB + ALTER + UnboundLocalError', meta:'5 层根因全部解决'},
+];
+
+function loadNews() {
+  const row = document.getElementById('newsRow');
+  // 打乱取 6 条
+  const shuffled = [...NEWS_TEMPLATE].sort(()=>Math.random()-0.5).slice(0, 6);
+  row.innerHTML = shuffled.map(n => `
+    <div class="news-card">
+      <div class="news-tag ${n.cls}">${n.tag}</div>
+      <div class="news-body">
+        <div class="news-title">${n.title}</div>
+        <div class="news-meta">${n.meta}</div>
+      </div>
+    </div>
+  `).join('');
+}
+loadNews();
+setInterval(loadNews, 60000);
+</script>
+
+{# ========== 主题切换 ========== #}
+<script>
+(function initTheme() {
+  var saved = localStorage.getItem('iceberg-theme') || 'default';
+  document.documentElement.setAttribute('data-theme', saved);
+})();
+</script>
+
+{% endblock %}

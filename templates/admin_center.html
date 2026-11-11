@@ -1,0 +1,606 @@
+{% extends "admin_app/base.html" %}
+
+{% block title %}管理中心 · 管理员{% endblock %}
+
+{% block extra_head %}
+<style>
+  /* v25.1 全盘布局修复 */
+  html,body{height:100%;min-height:100dvh;overflow:hidden;margin:0;padding:0}
+  *{box-sizing:border-box}
+  .container,.main,.content{flex:1;min-height:0;overflow-y:auto}
+/* v25.1 子页面内容滚动容器 */
+  .container{flex:1;min-height:0;overflow-y:auto}
+  [class*="main"]{min-height:0}
+  [class*="content"]{min-height:0}
+  .admin-center-wrap { max-width: 1280px; margin: 0 auto; padding: 24px; }
+  .admin-center-wrap h1.page-title {
+    text-align: center; margin: 0 0 28px; font-size: 28px; font-weight: 800;
+    color: var(--el-text-color-primary, #f8fafc); letter-spacing: 1px;
+  }
+  .stats-bar { display: flex; gap: 16px; margin-bottom: 28px; flex-wrap: wrap; }
+  .stat-item {
+    flex: 1; min-width: 140px; background: var(--el-bg-color, #fff);
+    border: 1px solid var(--el-border-color, #e4e7ed);
+    border-radius: 14px; padding: 20px; text-align: center;
+    box-shadow: 0 4px 16px -8px rgba(0,0,0,.3); transition: transform .2s;
+  }
+  .stat-item:hover { transform: translateY(-3px); }
+  .stat-item .number {
+    font-size: 30px; font-weight: 800; line-height: 1.2;
+    background: linear-gradient(135deg, var(--el-color-primary, #409eff), var(--el-color-primary-light-3, #79bbff));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  }
+  .stat-item .label { font-size: 12px; color: var(--el-text-color-secondary, #909399); margin-top: 6px; }
+  .admin-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 18px;
+  }
+  .admin-card {
+    background: var(--el-bg-color, #fff); border: 1px solid var(--el-border-color, #e4e7ed);
+    border-radius: 14px; padding: 22px; box-shadow: 0 4px 16px -8px rgba(0,0,0,.3);
+    transition: transform .2s, box-shadow .2s; display: flex; flex-direction: column;
+  }
+  .admin-card:hover { transform: translateY(-4px); box-shadow: 0 10px 28px -10px rgba(0,0,0,.45); }
+  .admin-card .icon { font-size: 36px; margin-bottom: 12px; }
+  .admin-card h3 { color: var(--el-text-color-primary, #303133); margin: 0 0 8px; font-size: 16px; font-weight: 700; }
+  .admin-card p { color: var(--el-text-color-secondary, #909399); font-size: 13px; margin: 0 0 16px; line-height: 1.5; }
+  .admin-card .btn-group { display: flex; gap: 8px; flex-wrap: wrap; margin-top: auto; }
+  .btn {
+    display: inline-block; padding: 8px 16px; font-size: 12px; font-weight: 600;
+    border-radius: 8px; text-decoration: none; color: #fff; border: none; cursor: pointer;
+    transition: opacity .2s, transform .1s;
+  }
+  .btn:hover { opacity: .9; }
+  .btn:active { transform: scale(.97); }
+  .btn-primary { background: linear-gradient(135deg, var(--el-color-primary, #409eff), var(--el-color-primary-light-1, #66b1ff)); }
+  .btn-success { background: linear-gradient(135deg, var(--el-color-success, #67c23a), var(--el-color-success-light-1, #85ce61)); }
+  .btn-warning { background: linear-gradient(135deg, var(--el-color-warning, #e6a23c), var(--el-color-warning-light-1, #ebb563)); }
+  .btn-info { background: linear-gradient(135deg, var(--el-color-info, #909399), var(--el-color-info-light-1, #a6a9ad)); }
+  .back-link { display: block; text-align: center; margin-top: 28px; color: var(--el-text-color-secondary, #909399); font-size: 13px; text-decoration: none; }
+  /* flow_admin_reorg_20261020: 分区标题 + 中心体系快捷条 */
+  .section-title {
+    display: flex; align-items: center; gap: 10px; margin: 26px 0 14px;
+    font-size: 15px; font-weight: 700; color: var(--el-text-color-primary, #f8fafc);
+  }
+  .section-title::after { content: ''; flex: 1; height: 1px; background: var(--el-border-color, rgba(148,163,184,.25)); }
+  .section-title .cnt { font-size: 11px; font-weight: 400; color: var(--el-text-color-secondary, #94a3b8); }
+  .center-strip { display: flex; gap: 10px; flex-wrap: wrap; margin: 0 0 14px; }
+  .center-strip a {
+    padding: 7px 14px; border: 1px solid var(--el-border-color, rgba(6,182,212,.35)); border-radius: 10px;
+    font-size: 12px; text-decoration: none; color: var(--el-color-primary, #06b6d4); transition: all .15s;
+  }
+  .center-strip a:hover { background: rgba(6,182,212,.1); transform: translateY(-1px); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-center-wrap">
+    <h1 class="page-title">{{ t('auto.admin_center.__x_48b5a4c6', default='🏢 管理中心') }}</h1>
+
+    <div class="stats-bar">
+        <div class="stat-item">
+            <div class="number">{{ total_users }}</div>
+            <div class="label">{{ t('auto.admin_center.x_1149274c', default='用户总数') }}</div>
+        </div>
+        <div class="stat-item">
+            <div class="number">{{ total_categories }}</div>
+            <div class="label">{{ t('auto.admin_center.x_53dbe9f3', default='题目分类') }}</div>
+        </div>
+        <div class="stat-item">
+            <div class="number">{{ total_exams }}</div>
+            <div class="label">{{ t('auto.admin_center.x_9ee8811c', default='考试数量') }}</div>
+        </div>
+        <div class="stat-item">
+            <div class="number">{{ total_courses }}</div>
+            <div class="label">{{ t('auto.admin_center.x_3ceeed7f', default='课程数量') }}</div>
+        </div>
+    </div>
+
+    <div class="section-title">🏫 教学与用户 <span class="cnt">用户 · 考试 · 课程</span></div>
+    <div class="admin-grid">
+        <div class="admin-card">
+            <div class="icon">👥</div>
+            <h3>{{ t('auto.admin_center.x_7d94de1c', default='用户管理') }}</h3>
+            <p>{{ t('auto.admin_center.x_x_9f0d4be1', default='管理系统用户、角色和权限') }}</p>
+            <div class="btn-group">
+                <a href="/admin_app/users" class="btn btn-primary">{{ t('auto.admin_center.x_9519f420', default='查看用户') }}</a>
+                <a href="/admin_app/user_auth" class="btn btn-info">{{ t('auto.admin_center.x_23bbdd59', default='权限管理') }}</a>
+            </div>
+        </div>
+
+        <div class="admin-card">
+            <div class="icon">📝</div>
+            <h3>{{ t('auto.admin_center.x_0b90a077', default='考试管理') }}</h3>
+            <p>{{ t('auto.admin_center.x_x_f3838be6', default='创建、编辑和管理考试') }}</p>
+            <div class="btn-group">
+                <a href="/admin_app/exams" class="btn btn-primary">{{ t('auto.admin_center.x_c15365f0', default='考试列表') }}</a>
+                <a href="/exam_system" class="btn btn-success">{{ t('auto.admin_center.x_7f21e009', default='在线考试') }}</a>
+            </div>
+        </div>
+
+        <div class="admin-card">
+            <div class="icon">📚</div>
+            <h3>{{ t('auto.admin_center.x_6e598bc7', default='课程管理') }}</h3>
+            <p>{{ t('auto.admin_center.x_d5493c99', default='管理课程内容与学习路径') }}</p>
+            <div class="btn-group">
+                <a href="/admin_app/courses" class="btn btn-primary">{{ t('auto.admin_center.x_38c9af3a', default='课程列表') }}</a>
+                <a href="/admin_app/learning_paths" class="btn btn-info">学习路径</a>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="section-title">📊 数据与通知 <span class="cnt">分析 · 公告</span></div>
+    <div class="admin-grid">
+        <div class="admin-card">
+            <div class="icon">📊</div>
+            <h3>{{ t('auto.admin_center.x_6450d843', default='数据分析') }}</h3>
+            <p>{{ t('auto.admin_center.x_6f451c9e', default='查看系统数据统计和分析') }}</p>
+            <div class="btn-group">
+                <a href="/admin_app/data_analysis" class="btn btn-primary">数据分析</a>
+                <a href="/admin_app/student_analytics" class="btn btn-success">{{ t('auto.admin_center.x_b3e19f0d', default='学生分析') }}</a>
+            </div>
+        </div>
+
+        <div class="admin-card">
+            <div class="icon">🔔</div>
+            <h3>{{ t('auto.admin_center.x_f1c9a81f', default='通知管理') }}</h3>
+            <p>{{ t('auto.admin_center.x_020347a5', default='发送系统通知和公告') }}</p>
+            <div class="btn-group">
+                <a href="/admin_app/notifications" class="btn btn-primary">{{ t('auto.admin_center.x_3a955e29', default='通知中心') }}</a>
+                <a href="/admin_app/settings" class="btn btn-warning">{{ t('auto.admin_center.x_14097695', default='通知设置') }}</a>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="section-title">🛠 系统与 AI <span class="cnt">资源 · 智能 · 运维</span></div>
+    <div class="admin-grid">
+        <div class="admin-card">
+            <div class="icon">💾</div>
+            <h3>{{ t('auto.admin_center.x_6478fcbd', default='资源管理') }}</h3>
+            <p>{{ t('auto.admin_center.x_b0e60c24', default='管理系统资源和文件') }}</p>
+            <div class="btn-group">
+                <a href="/admin_app/resource_manager" class="btn btn-primary">资源管理</a>
+                <a href="/admin_app/monitor" class="btn btn-info">{{ t('auto.admin_center.x_c8462788', default='系统监控') }}</a>
+            </div>
+        </div>
+
+        <div class="admin-card">
+            <div class="icon">🤖</div>
+            <h3>{{ t('auto.admin_center.aix_9f4e1103', default='AI功能') }}</h3>
+            <p>{{ t('auto.admin_center.xaix_f9ed5548', default='管理AI智能功能') }}</p>
+            <div class="btn-group">
+                <a href="/admin_app/ai_intelligent_center" class="btn btn-primary">{{ t('auto.admin_center.aix_35e1fbb7', default='AI中心') }}</a>
+                <a href="/ai-chat" class="btn btn-success">{{ t('auto.admin_center.aix_44c4cf6b', default='AI聊天') }}</a>
+            </div>
+        </div>
+
+        <div class="admin-card">
+            <div class="icon">🔧</div>
+            <h3>{{ t('auto.admin_center.x_e58e3369', default='系统维护') }}</h3>
+            <p>{{ t('auto.admin_center.x_ce2917e8', default='系统设置和维护') }}</p>
+            <div class="btn-group">
+                <a href="/admin_app/settings" class="btn btn-primary">系统设置</a>
+                <a href="/admin_app/health_monitor" class="btn btn-warning">{{ t('auto.admin_center.x_0d77cf1f', default='健康监控') }}</a>
+            </div>
+        </div>
+    </div>
+
+    {# ══ 中心体系 (flow_admin_reorg_20261020 分区) ══ #}
+    <div class="section-title">🏛 中心体系 <span class="cnt">研发 · 大厅 · 人力 · 教育 · 企微 · 审计</span></div>
+    <div class="center-strip">
+        <a href="/daemon-skill-lab">🔬 Daemon & Skill 研发中心</a>
+        <a href="/api/daemon-lab/overview" target="_blank">⚙ 研发总览 API</a>
+        <a href="/api/daemon-lab/hall/board" target="_blank">📋 大厅看板 API</a>
+        <a href="/api/daemon-lab/hr/roster" target="_blank">👥 HR 名册 API</a>
+        <a href="/api/ai-edu/overview" target="_blank">🎓 教育中心 API</a>
+        <a href="/api/ai-edu/exam-auto/status" target="_blank">📅 考试自动引擎 API</a>
+        <a href="/api/wecom/status" target="_blank">💼 企微中枢 API</a>
+    </div>
+
+    {# ══ 任务大厅数显 (flow_hall_20261020, 内嵌管理后台, 不专开一页) ══ #}
+    <div id="hall-section" class="admin-card" style="margin-top:20px;width:100%">
+        <h3 style="display:flex;align-items:center;gap:10px">📋 任务大厅
+            <span id="hall-chips" style="font-size:11px;font-weight:400;color:#64748b"></span>
+            <button onclick="hallCenterDelegate(this)" style="margin-left:auto;border:1px solid #d97706;background:transparent;color:#d97706;border-radius:8px;font-size:11px;padding:5px 12px;cursor:pointer">🎯 中心自动委派</button>
+            <button onclick="hallAutoWork(this)" style="border:1px solid #059669;background:transparent;color:#059669;border-radius:8px;font-size:11px;padding:5px 12px;cursor:pointer">🤖 AI 自动接单</button>
+            <button onclick="hallResidentsRun(this)" style="border:1px solid #7c3aed;background:transparent;color:#7c3aed;border-radius:8px;font-size:11px;padding:5px 12px;cursor:pointer">🏛 五主体入驻巡检</button>
+            <button onclick="hallRunAuto(this)" style="border:1px solid #06b6d4;background:transparent;color:#06b6d4;border-radius:8px;font-size:11px;padding:5px 12px;cursor:pointer">⚡ 自动归集+分配</button>
+            <button onclick="loadHall()" style="border:1px solid #d1d5db;background:transparent;color:#64748b;border-radius:8px;font-size:11px;padding:5px 12px;cursor:pointer">↻</button>
+        </h3>
+        <div id="hall-publish" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
+            <input id="hp-title" placeholder="任务标题 (必填)" maxlength="120" style="flex:1;min-width:180px;padding:5px 8px;border:1px solid #d1d5db;border-radius:8px;font-size:12px">
+            <select id="hp-type" style="padding:5px 6px;border:1px solid #d1d5db;border-radius:8px;font-size:12px">
+                <option value="DEV">开发</option><option value="OPS">运维</option><option value="SECURITY">安全</option>
+                <option value="EDU">教研</option><option value="DOC">文档</option><option value="RESEARCH">研究</option><option value="OTHER" selected>其它</option>
+            </select>
+            <select id="hp-prio" style="padding:5px 6px;border:1px solid #d1d5db;border-radius:8px;font-size:12px">
+                <option value="NORMAL" selected>普通</option><option value="HIGH">高</option><option value="LOW">低</option>
+            </select>
+            <input id="hp-criteria" placeholder="验收标准" style="flex:1;min-width:140px;padding:5px 8px;border:1px solid #d1d5db;border-radius:8px;font-size:12px">
+            <input id="hp-desc" placeholder="描述" style="flex:1;min-width:140px;padding:5px 8px;border:1px solid #d1d5db;border-radius:8px;font-size:12px">
+            <button onclick="hallPublish(this)" style="border:1px solid #2563eb;background:transparent;color:#2563eb;border-radius:8px;font-size:11px;padding:5px 12px;cursor:pointer">🚀 发布任务</button>
+            <span id="hp-msg" style="font-size:11px;color:#059669"></span>
+        </div>
+        <div id="hall-residents" style="font-size:11px;color:#7c3aed;margin-bottom:8px">入驻状态加载中…</div>
+        <div id="hall-board" style="font-size:12px;color:#64748b">加载中…</div>
+    </div>
+    <script>
+    function loadHall(){
+        fetch('/api/daemon-lab/hall/board').then(r=>r.json()).then(d=>{
+            if(!d.ok) throw 0;
+            const S=d.stats||{};
+            document.getElementById('hall-chips').textContent =
+                `排队 ${S.QUEUED||0} · 待审批 ${d.pending_approval||0} · 已分配 ${S.DISPATCHED||0} · 执行中 ${(S.IN_PROGRESS||0)+(S.CLAIMED||0)} · 待验收 ${S.DELIVERED||0} · 完成 ${S.DONE||0} · 归档 ${d.archived||0}`;
+            const SRC={derivation:'衍生',manual:'人工',daemon_repair:'修复','resident:rules_gov':'规则','resident:legal':'法务','resident:hr_center':'人事','resident:expert_team':'专家','resident:skill_dev':'Skill'};
+            const btn=(txt,fn,color)=>`<button onclick="event.stopPropagation();${fn}" style="border:1px solid ${color};background:transparent;color:${color};border-radius:6px;font-size:10px;padding:2px 7px;cursor:pointer">${txt}</button>`;
+            document.getElementById('hall-board').innerHTML = d.tasks.length ? d.tasks.map(t=>
+                `<div style="display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px dashed rgba(0,0,0,.06)"
+                      title="${(t.description||'').replace(/"/g,'')} | 验收标准: ${(t.acceptance_criteria||'-').replace(/"/g,'')}">
+                    <span style="font-size:10px;color:#7c3aed">${SRC[t.source]||t.source}</span>
+                    <span role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}" style="font-size:10px;color:#94a3b8;cursor:pointer" onclick="event.stopPropagation();hallDetail(${t.id})" title="点击查看任务轨迹">${t.hall_code||('#'+t.id)}</span>
+                    <span style="font-size:10px;color:${t.status==='DISPATCHED'?'#059669':t.status==='QUEUED'?'#d97706':t.status==='DELIVERED'?'#2563eb':'#6b7280'}">[${t.status}]</span>
+                    ${t.approval_status==='PENDING'?'<span style="font-size:10px;color:#dc2626">待审批</span>':''}
+                    <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.title}</span>
+                    <a href="/local-chat?center=${encodeURIComponent(t.center_name||'')}" target="_blank"
+                       style="font-size:11px;color:#2563eb;text-decoration:none" title="在聊天增强面板查看该中心任务">${t.center_name||'待分配'}</a>
+                    <span style="font-size:10px;color:#64748b">${t.claim_owner||''}</span>
+                    ${t.approval_status==='PENDING' ? btn('✅通过',`hallApprove(${t.id},'approve',this)`,'#059669')+btn('❌驳回',`hallApprove(${t.id},'reject',this)`,'#dc2626') : ''}
+                    ${(t.status==='QUEUED'||t.status==='DISPATCHED') ? btn('↩撤回',`hallCancel(${t.id},this)`,'#6b7280') : ''}
+                    ${(t.status==='DONE' && !t.archived_at) ? btn('📦归档',`hallArchive(${t.id},this)`,'#7c3aed') : ''}
+                </div>`).join('') : '大厅暂无任务';
+            fetch('/api/daemon-lab/hall/pipeline').then(r=>r.json()).then(p=>{
+                if(!p.ok) return;
+                const extra = (p.stuck||[]).length ? ` · ⚠️ 卡点 ${p.stuck.length}` : '';
+                const avg = p.avg_accept_hours ? ` · 平均验收 ${p.avg_accept_hours}h` : '';
+                document.getElementById('hall-chips').textContent += extra + avg;
+            }).catch(()=>{});
+        }).catch(()=>{ document.getElementById('hall-board').textContent='⚠️ 大厅加载失败'; });
+    }
+    function hallDetail(id){
+        fetch('/api/local-chat/jump/task/'+id).then(r=>r.json()).then(d=>{
+            if(!d.success){ alert(d.error||'任务详情不可用'); return; }
+            const t=d.task||{};
+            const ev=(d.events||[]).map(e=>`  · ${e.event} ${e.actor||''} ${e.created_at||''}`).join('\n');
+            alert(`【${t.hall_code||('#'+t.id)}】${t.title||''}\n状态: ${t.status||'-'}  中心: ${d.center||'待分配'}\n优先级: ${t.priority||'-'}  发布人: ${t.publisher||'-'}\n验收: ${t.acceptance_criteria||'-'}\n\n轨迹:\n${ev||'  (暂无)'}`);
+        }).catch(()=>alert('任务详情加载失败'));
+    }
+    function hallPost(url, body){
+        return fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body||{})}).then(r=>r.json());
+    }
+    function hallPublish(btn){
+        const title=(document.getElementById('hp-title').value||'').trim();
+        if(!title){ alert('任务标题不能为空'); return; }
+        btn.disabled=true; btn.textContent='⏳ 发布中…';
+        hallPost('/api/daemon-lab/hall/submit',{
+            title, task_type:document.getElementById('hp-type').value,
+            priority:document.getElementById('hp-prio').value,
+            acceptance_criteria:document.getElementById('hp-criteria').value,
+            description:document.getElementById('hp-desc').value
+        }).then(d=>{
+            btn.disabled=false; btn.textContent='🚀 发布任务';
+            if(d.ok){
+                document.getElementById('hp-msg').textContent = d.message;
+                ['hp-title','hp-criteria','hp-desc'].forEach(i=>document.getElementById(i).value='');
+                loadHall();
+            } else alert('发布失败: '+(d.error||''));
+        }).catch(()=>{ btn.disabled=false; btn.textContent='🚀 发布任务'; });
+    }
+    function hallApprove(id,decision,btn){
+        const reason = decision==='reject' ? (prompt('驳回理由:')||'') : '';
+        if(decision==='reject' && !reason) return;
+        btn.disabled=true;
+        hallPost('/api/daemon-lab/hall/approve',{task_id:id,decision,reason}).then(d=>{
+            btn.disabled=false;
+            if(!d.ok) alert('审批失败: '+(d.error||''));
+            loadHall();
+        }).catch(()=>{ btn.disabled=false; });
+    }
+    function hallCancel(id,btn){
+        if(!confirm('确认撤回该任务?')) return;
+        btn.disabled=true;
+        hallPost('/api/daemon-lab/hall/cancel',{task_id:id,reason:'后台撤回'}).then(d=>{
+            btn.disabled=false;
+            if(!d.ok) alert('撤回失败: '+(d.error||''));
+            loadHall();
+        }).catch(()=>{ btn.disabled=false; });
+    }
+    function hallArchive(id,btn){
+        btn.disabled=true;
+        hallPost('/api/daemon-lab/hall/archive',{task_id:id}).then(d=>{
+            btn.disabled=false;
+            if(!d.ok) alert('归档失败: '+(d.error||''));
+            loadHall();
+        }).catch(()=>{ btn.disabled=false; });
+    }
+    function hallRunAuto(btn){
+        btn.disabled=true; btn.textContent='⏳ 引擎运行中…';
+        fetch('/api/daemon-lab/hall/board',{method:'POST'}).then(r=>r.json()).then(d=>{
+            btn.disabled=false; btn.textContent='⚡ 自动归集+分配';
+            if(d.ok&&d.auto) alert(`归集 ${d.auto.ingested} 项, 分配 ${d.auto.dispatched} 项`);
+            else if(!d.ok) alert('失败: '+(d.error||''));
+            loadHall();
+        }).catch(()=>{ btn.disabled=false; btn.textContent='⚡ 自动归集+分配'; });
+    }
+    function hallResidentsLoad(){
+        fetch('/api/daemon-lab/hall/residents').then(r=>r.json()).then(d=>{
+            if(!d.ok) throw 0;
+            const chip=c=>`<span style="display:inline-block;margin:2px 8px 2px 0;padding:3px 10px;border:1px solid rgba(124,58,237,.35);border-radius:999px;font-size:11px;color:#7c3aed">🏛 ${c.name} <b>${c.open_tasks}</b> 在办 / ${c.done_tasks} 完成</span>`;
+            const s=d.sources||{};
+            document.getElementById('hall-residents').innerHTML =
+                d.residents.map(chip).join('') +
+                `<span style="font-size:10px;color:#94a3b8">源: 规则告警 ${s.rules_open_alerts??'-'} · Skill候选 ${s.skill_proposed??'-'} · 人事逾期 ${s.hr_overdue??'-'} · 专家失联 ${s.expert_stale??'-'}</span>`;
+        }).catch(()=>{ document.getElementById('hall-residents').textContent='⚠️ 入驻状态加载失败'; });
+    }
+    function hallResidentsRun(btn){
+        btn.disabled=true; btn.textContent='⏳ 入驻巡检中…';
+        fetch('/api/daemon-lab/hall/residents',{method:'POST'}).then(r=>r.json()).then(d=>{
+            btn.disabled=false; btn.textContent='🏛 五主体入驻巡检';
+            if(d.ok) alert(`入驻巡检: 新入厅 ${d.created_count} 项\n`+(d.created||[]).map(t=>`· [${t.resident}] ${t.title}`).join('\n'));
+            else alert('失败: '+(d.error||''));
+            hallResidentsLoad(); loadHall();
+        }).catch(()=>{ btn.disabled=false; btn.textContent='🏛 五主体入驻巡检'; });
+    }
+    function hallAutoWork(btn){
+        btn.disabled=true; btn.textContent='⏳ AI 接单中…';
+        fetch('/api/daemon-lab/hall/auto-work',{method:'POST',headers:{'Content-Type':'application/json'},body:'{"max_tasks":2}'}).then(r=>r.json()).then(d=>{
+            btn.disabled=false; btn.textContent='🤖 AI 自动接单';
+            if(d.ok) alert(`AI 自动接单 ${d.worked_count}/${d.candidates} 单\n`+(d.worked||[]).map(w=>`· #${w.task_id} ${w.title} → 团队:${w.team.join('/')} · 专家:${(w.experts||['-']).join('/')} · ${w.status}`).join('\n'));
+            else alert('失败: '+(d.error||''));
+            loadHall();
+        }).catch(()=>{ btn.disabled=false; btn.textContent='🤖 AI 自动接单'; });
+    }
+    function hallCenterDelegate(btn){
+        btn.disabled=true; btn.textContent='⏳ 中心自查中…';
+        fetch('/api/daemon-lab/hall/center-delegate',{method:'POST'}).then(r=>r.json()).then(d=>{
+            btn.disabled=false; btn.textContent='🎯 中心自动委派';
+            if(d.ok) alert(`中心自动委派: 新入厅 ${d.created_count} 项 (冷却 ${d.cooldown.length} / 能力在线 ${d.idle.length})\n`+(d.created||[]).map(t=>`· [${t.priority}] ${t.title}`).join('\n'));
+            else alert('失败: '+(d.error||''));
+            loadHall();
+        }).catch(()=>{ btn.disabled=false; btn.textContent='🎯 中心自动委派'; });
+    }
+    loadHall();
+    hallResidentsLoad();
+    </script>
+
+    {# ══ AI 人力资源中心数显 (flow_hall_20261020, 与任务大厅联动, 内嵌后台) ══ #}
+    <div id="hr-section" class="admin-card" style="margin-top:16px;width:100%">
+        <h3 style="display:flex;align-items:center;gap:10px">👥 AI 人力资源中心
+            <span id="hr-chips" style="font-size:11px;font-weight:400;color:#64748b"></span>
+            <button onclick="loadHR()" style="margin-left:auto;border:1px solid #d1d5db;background:transparent;color:#64748b;border-radius:8px;font-size:11px;padding:5px 12px;cursor:pointer">↻</button>
+        </h3>
+        <div id="hr-board" style="font-size:12px;color:#64748b">加载中…</div>
+    </div>
+    <script>
+    function loadHR(){
+        fetch('/api/daemon-lab/hr/roster').then(r=>r.json()).then(d=>{
+            if(!d.ok) throw 0;
+            const H=d.hr;
+            document.getElementById('hr-chips').textContent =
+                `在册 ${H.pool_total} · 教授分身 ${H.prof_total} · 已参与任务 ${H.engaged}`;
+            const wl = H.workload.map(w=>
+                `<span style="display:inline-block;margin:2px 6px 2px 0;padding:2px 8px;border-radius:8px;font-size:10px;${w.role==='professor'?'color:#7c3aed;background:rgba(124,58,237,.08)':'color:#2563eb;background:rgba(37,99,235,.06)'}">${w.employee_name}·${w.tasks}单</span>`).join('');
+            const logs = H.recent_log.slice(0,6).map(l=>
+                `<div style="display:flex;gap:8px;padding:4px 0;border-bottom:1px dashed rgba(0,0,0,.05)">
+                    <span style="font-size:10px;color:${l.role==='professor'?'#7c3aed':'#2563eb'}">${l.action}</span>
+                    <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${l.employee_name} ← ${l.task_title||''}</span>
+                    <span style="font-size:10px;color:#9ca3af">${l.created_at||''}</span></div>`).join('');
+            document.getElementById('hr-board').innerHTML =
+                `<div style="margin-bottom:8px"><b style="color:#374151">任务负载 TOP:</b><br>${wl||'暂无 — 大厅分配后自动登记'}</div>`+
+                `<div><b style="color:#374151">最近人力账:</b><br>${logs||'暂无记录'}</div>`;
+        }).catch(()=>{ document.getElementById('hr-board').textContent='⚠️ 人力资源中心加载失败'; });
+    }
+    loadHR();
+    </script>
+
+    {# ══ AI 教育中心 + 考试院数显 (flow_edu_20261020, 内嵌后台) ══ #}
+    <div id="edu-section" class="admin-card" style="margin-top:16px;width:100%">
+        <h3 style="display:flex;align-items:center;gap:10px">🎓 AI 教育中心 + 考试院
+            <span id="edu-chips" style="font-size:11px;font-weight:400;color:#64748b"></span>
+            <button onclick="eduRun(this)" style="margin-left:auto;border:1px solid #06b6d4;background:transparent;color:#06b6d4;border-radius:8px;font-size:11px;padding:5px 12px;cursor:pointer">⚡ 一键培养流水线</button>
+            <button onclick="loadEdu()" style="border:1px solid #d1d5db;background:transparent;color:#64748b;border-radius:8px;font-size:11px;padding:5px 12px;cursor:pointer">↻</button>
+        </h3>
+        <div id="edu-board" style="font-size:12px;color:#64748b">加载中…</div>
+    </div>
+    <script>
+    function loadEdu(){
+        fetch('/api/ai-edu/overview').then(r=>r.json()).then(d=>{
+            if(!d.ok) throw 0;
+            const S=d.stats;
+            document.getElementById('edu-chips').textContent =
+                `课程 ${S.courses} · 在学 ${S.learning} · 毕业 ${S.graduated} · 考试通过 ${S.exam_passed} · 有晋升资格 ${S.qualified}`;
+            const cs = d.courses.map(c=>
+                `<span style="display:inline-block;margin:2px 6px 2px 0;padding:2px 8px;border-radius:8px;font-size:10px;color:#2563eb;background:rgba(37,99,235,.06)" title="${c.source}">${c.title}·${c.students}人</span>`).join('');
+            const res = d.recent_results.map(r=>
+                `<div style="display:flex;gap:8px;padding:4px 0;border-bottom:1px dashed rgba(0,0,0,.05)">
+                    <span style="font-size:10px;color:${r.passed?'#059669':'#dc2626'}">${r.passed?'通过':'不及格'} ${r.score}分</span>
+                    <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.employee_name} ← 《${r.title}》 考官:${r.examiner}</span></div>`).join('');
+            const ladder = d.ladder.map(p=>
+                `<span style="display:inline-block;margin:2px 6px 2px 0;padding:2px 8px;border-radius:8px;font-size:10px;color:#7c3aed;background:rgba(124,58,237,.08)">${p.employee_name}·${p.level}·过${p.passed_exams}科</span>`).join('');
+            document.getElementById('edu-board').innerHTML =
+                `<div style="margin-bottom:8px"><b style="color:#374151">学习资源课程:</b><br>${cs||'暂无 — 点「一键培养流水线」自动建课'}</div>`+
+                `<div style="margin-bottom:8px"><b style="color:#374151">考试院最近成绩 (教授分身阅卷):</b><br>${res||'暂无'}</div>`+
+                `<div><b style="color:#374151">晋升资格榜 (考试通过才晋升):</b><br>${ladder||'暂无'}</div>`;
+        }).catch(()=>{ document.getElementById('edu-board').textContent='⚠️ 教育中心加载失败'; });
+    }
+    function eduRun(btn){
+        btn.disabled=true; btn.textContent='⏳ 培养流水线运行中…';
+        fetch('/api/ai-edu/run',{method:'POST'}).then(r=>r.json()).then(d=>{
+            btn.disabled=false; btn.textContent='⚡ 一键培养流水线';
+            if(d.ok){
+                const p=d.pipeline;
+                alert(`建课 ${p.courses_added} · 入学 ${p.enrolled} · 毕业 ${p.graduated} · 出卷 ${p.papers} · 应试 ${p.exam_taken} · 通过 ${p.exam_passed} · 回炉 ${p.failed_back_to_school} · 晋升 ${p.promoted.length}`);
+            } else alert('失败: '+(d.error||''));
+            loadEdu();
+        }).catch(()=>{ btn.disabled=false; btn.textContent='⚡ 一键培养流水线'; });
+    }
+    loadEdu();
+    </script>
+
+    {# ══ 考试自动引擎数显 (flow_exam_auto_20261020, 真实时间取题/入题库/认领/学习/备课) ══ #}
+    <div id="exam-auto-section" class="admin-card" style="margin-top:16px;width:100%">
+        <h3 style="display:flex;align-items:center;gap:10px">📅 考试自动引擎
+            <span id="exam-chips" style="font-size:11px;font-weight:400;color:#64748b"></span>
+            <button onclick="examAutoRun(this)" style="margin-left:auto;border:1px solid #06b6d4;background:transparent;color:#06b6d4;border-radius:8px;font-size:11px;padding:5px 12px;cursor:pointer">🚀 按真实时间执行一轮</button>
+            <button onclick="loadExamAuto()" style="border:1px solid #d1d5db;background:transparent;color:#64748b;border-radius:8px;font-size:11px;padding:5px 12px;cursor:pointer">↻</button>
+        </h3>
+        <div id="exam-board" style="font-size:12px;color:#64748b">加载中…</div>
+    </div>
+    <script>
+    function loadExamAuto(){
+        fetch('/api/ai-edu/exam-auto/status').then(r=>r.json()).then(d=>{
+            if(!d.ok) throw 0;
+            const cal=d.calendar;
+            document.getElementById('exam-chips').textContent =
+                `当前窗口 ${cal.exam_types.join('/')} · ${cal.semester} · 题库累计 ${d.total_in_qbank} 题`;
+            const batches=d.recent_batches.map(b=>
+                `<span style="display:inline-block;margin:2px 6px 2px 0;padding:2px 8px;border-radius:8px;font-size:10px;color:#059669;background:rgba(5,150,105,.07)" title="${b.mode}">【${b.exam_type}】${b.window_label} 取${b.fetched}/入${b.inserted}/重${b.skipped_dup}·${b.created_at||''}</span>`).join('');
+            const plans=d.prep_plans.map(p=>
+                `<div style="display:flex;gap:8px;padding:4px 0;border-bottom:1px dashed rgba(0,0,0,.05)">
+                    <span style="font-size:10px;color:#2563eb">#${p.id} ${p.status}</span>
+                    <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">【${p.exam_type}】${p.window_label} 学科:${p.subject||'综合'} 大厅任务#${p.hall_task_id||'-'}</span></div>`).join('');
+            document.getElementById('exam-board').innerHTML =
+                `<div style="margin-bottom:8px"><b style="color:#374151">最近批次 (取题/入库/去重):</b><br>${batches||'暂无 — 点「按真实时间执行一轮」'}</div>`+
+                `<div><b style="color:#374151">自动备课计划:</b><br>${plans||'暂无'}</div>`;
+        }).catch(()=>{ document.getElementById('exam-board').textContent='⚠️ 考试自动引擎加载失败'; });
+    }
+    function examAutoRun(btn){
+        btn.disabled=true; btn.textContent='⏳ 引擎运行中…';
+        fetch('/api/ai-edu/exam-auto/run',{method:'POST'}).then(r=>r.json()).then(d=>{
+            btn.disabled=false; btn.textContent='🚀 按真实时间执行一轮';
+            if(d.ok){
+                const c=d.claim||{};
+                alert(`窗口: ${(d.calendar.exam_types||[]).join('/')}\n入库 ${d.total_inserted} 题(含结题讲解)\n大厅任务#${d.hall_task_id||'-'} 认领: ${c.center||'-'} ${c.status||''}\n团队学习 ${d.learned.length} 人次 · 备课计划 #${d.prep_plan_id||'-'}`);
+            } else alert('失败: '+(d.error||''));
+            loadExamAuto();
+        }).catch(()=>{ btn.disabled=false; btn.textContent='🚀 按真实时间执行一轮'; });
+    }
+    loadExamAuto();
+    </script>
+
+    {# ══ 统一审计日志 (flow_audit_20261020, 回溯追责入口, 内嵌后台) ══ #}
+    <div id="audit-section" class="admin-card" style="margin-top:16px;width:100%">
+        <h3 style="display:flex;align-items:center;gap:10px">🗄 中心审计日志
+            <span id="audit-chips" style="font-size:11px;font-weight:400;color:#64748b"></span>
+            <input id="audit-q" placeholder="按操作者过滤…" style="margin-left:auto;border:1px solid #d1d5db;border-radius:8px;font-size:11px;padding:4px 10px;width:150px">
+            <button onclick="loadAudit()" style="border:1px solid #d1d5db;background:transparent;color:#64748b;border-radius:8px;font-size:11px;padding:5px 12px;cursor:pointer">↻ 查询</button>
+        </h3>
+        <div id="audit-board" style="font-size:12px;color:#64748b">加载中…</div>
+    </div>
+    <script>
+    function loadAudit(){
+        const q=document.getElementById('audit-q').value.trim();
+        fetch('/api/daemon-lab/audit?limit=12'+(q?`&operator=${encodeURIComponent(q)}`:'')).then(r=>r.json()).then(d=>{
+            if(!d.ok) throw 0;
+            document.getElementById('audit-chips').textContent =
+                `总记录 ${d.total} · 动作 ${Object.keys(d.by_action).length} 种 · 操作者 ${Object.keys(d.by_operator).length} 人`;
+            document.getElementById('audit-board').innerHTML = d.items.length ? d.items.map(a=>
+                `<div style="display:flex;gap:8px;padding:4px 0;border-bottom:1px dashed rgba(0,0,0,.05);align-items:center">
+                    <span style="font-size:10px;color:#7c3aed;background:rgba(124,58,237,.08);padding:1px 6px;border-radius:6px">${a.center}</span>
+                    <span style="font-size:10px;color:#2563eb">${a.action}</span>
+                    <span style="font-weight:600;color:#374151">${a.operator}</span>
+                    <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${(a.detail_json||'').replace(/"/g,'&quot;')}">${a.subject}</span>
+                    <span style="font-size:10px;color:#9ca3af">${a.ip||''} ${a.created_at||''}</span>
+                </div>`).join('') : '暂无审计记录 — 执行任一中心操作后自动记录';
+        }).catch(()=>{ document.getElementById('audit-board').textContent='⚠️ 审计日志加载失败'; });
+    }
+    document.getElementById('audit-q').addEventListener('keydown',e=>{ if(e.key==='Enter') loadAudit(); });
+    loadAudit();
+    </script>
+
+    {# ══ 企业微信中枢 (flow_wecom_20261020, AI资源统一管理推送+自动开会, 内嵌后台) ══ #}
+    <div id="wecom-section" class="admin-card" style="margin-top:16px;width:100%">
+        <h3 style="display:flex;align-items:center;gap:10px">💼 企业微信中枢
+            <span id="wecom-chips" style="font-size:11px;font-weight:400;color:#64748b"></span>
+            <button onclick="loadWecom()" style="margin-left:auto;border:1px solid #d1d5db;background:transparent;color:#64748b;border-radius:8px;font-size:11px;padding:5px 12px;cursor:pointer">↻</button>
+        </h3>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
+            <input id="wecom-url" placeholder="粘贴企微群机器人 Webhook 地址 (qyapi.weixin.qq.com)" style="flex:1;min-width:280px;border:1px solid #d1d5db;border-radius:8px;font-size:11px;padding:6px 10px">
+            <button onclick="wecomSave(this)" style="border:1px solid #06b6d4;background:rgba(6,182,212,.1);color:#06b6d4;border-radius:8px;font-size:11px;padding:6px 14px;cursor:pointer">💾 保存配置</button>
+            <button onclick="wecomTest(this)" style="border:1px solid #d97706;background:rgba(217,119,6,.08);color:#d97706;border-radius:8px;font-size:11px;padding:6px 14px;cursor:pointer">📡 测试推送</button>
+            <button onclick="wecomMeet(this)" style="border:1px solid #7c3aed;background:rgba(124,58,237,.08);color:#7c3aed;border-radius:8px;font-size:11px;padding:6px 14px;cursor:pointer">🔔 自动开会</button>
+            <button id="wecom-approval-btn" onclick="wecomApprovalToggle(this)" style="border:1px solid #dc2626;background:rgba(220,38,38,.06);color:#dc2626;border-radius:8px;font-size:11px;padding:6px 14px;cursor:pointer">🛡 审批门: ?</button>
+            <button onclick="wecomPluginKey(this)" style="border:1px solid #0891b2;background:rgba(8,145,178,.06);color:#0891b2;border-radius:8px;font-size:11px;padding:6px 14px;cursor:pointer">🔑 插件密钥</button>
+        </div>
+        <div style="font-size:10px;color:#94a3b8;margin-bottom:8px">
+            🌉 指令桥: POST /api/wecom/callback (token 校验) · 白名单指令 daemon_status/hall/patrol/meeting/exam/approve/reject · 流水 <a href="/api/wecom/commands" target="_blank" style="color:#06b6d4">/api/wecom/commands</a>
+            <br>🧩 企微API插件: 插件URL填 <code style="color:#0891b2">https://&lt;可信域名&gt;/api/wecom/plugin</code> · 授权 Header · Parameter name <code style="color:#0891b2">X-MTSCOS-Key</code> · 值用「🔑 插件密钥」生成
+        </div>
+        <div id="wecom-board" style="font-size:12px;color:#64748b">加载中…</div>
+    </div>
+    <script>
+    function loadWecom(){
+        fetch('/api/wecom/status').then(r=>r.json()).then(d=>{
+            if(!d.ok) throw 0;
+            document.getElementById('wecom-chips').textContent =
+                (d.configured?'✅ 已配置':'⚠️ 未配置') + (d.enabled?' · 启用中':' · 已停用') +
+                ` · 发送 ${Object.values(d.send_stats).reduce((a,b)=>a+b,0)||0} 条 · 开会 ${(d.meetings||[]).length} 场` +
+                (d.approval_required?' · 🛡 审批门开':' · 审批门关');
+            const ab=document.getElementById('wecom-approval-btn');
+            if(ab) ab.textContent = d.approval_required ? '🛡 审批门: 开 (点击关闭)' : '🛡 审批门: 关 (点击开启)';
+            if(d.webhook_masked) document.getElementById('wecom-url').placeholder = '当前: '+d.webhook_masked+' (输入新地址可更换)';
+            const sends = (d.recent_sends||[]).map(s=>
+                `<div style="display:flex;gap:8px;padding:3px 0;border-bottom:1px dashed rgba(0,0,0,.05)">
+                    <span style="font-size:10px;color:${s.status==='SENT'?'#059669':s.status==='FAILED'?'#dc2626':'#d97706'}">${s.status}</span>
+                    <span style="font-size:10px;color:#7c3aed">${s.center}</span>
+                    <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.title}</span>
+                    <span style="font-size:10px;color:#9ca3af">${s.created_at||''}</span></div>`).join('');
+            const meets = (d.meetings||[]).map(m=>
+                `<div style="display:flex;gap:8px;padding:3px 0;border-bottom:1px dashed rgba(0,0,0,.05)">
+                    <span style="font-size:10px;color:#7c3aed">会议#${m.id}</span>
+                    <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m.topic}</span>
+                    <span style="font-size:10px;color:${m.push_status==='SENT'?'#059669':'#d97706'}">${m.push_status}</span>
+                    <span style="font-size:10px;color:#9ca3af">${m.convener} ${m.created_at||''}</span></div>`).join('');
+            document.getElementById('wecom-board').innerHTML =
+                `<div style="margin-bottom:8px"><b style="color:#374151">最近推送:</b><br>${sends||'暂无 — 分配/考试/告警等事件将自动推送'}</div>`+
+                `<div><b style="color:#374151">自动会议:</b><br>${meets||'暂无 — 点「🔔 自动开会」生成全域纪要'}</div>`;
+        }).catch(()=>{ document.getElementById('wecom-board').textContent='⚠️ 企微中枢加载失败'; });
+    }
+    function wecomSave(btn){
+        const url=document.getElementById('wecom-url').value.trim();
+        btn.disabled=true;
+        fetch('/api/wecom/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({webhook_url:url,enabled:true})})
+        .then(r=>r.json()).then(d=>{ btn.disabled=false; alert(d.ok?'✅ '+d.message:'❌ '+d.error); loadWecom(); })
+        .catch(()=>{ btn.disabled=false; alert('请求失败'); });
+    }
+    function wecomTest(btn){
+        btn.disabled=true;
+        fetch('/api/wecom/test',{method:'POST'}).then(r=>r.json()).then(d=>{ btn.disabled=false; alert((d.ok?'✅ ':'⚠️ ')+d.message); loadWecom(); })
+        .catch(()=>{ btn.disabled=false; alert('请求失败'); });
+    }
+    function wecomMeet(btn){
+        btn.disabled=true;
+        fetch('/api/wecom/meeting',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({topic:'AI 体系例行会议'})})
+        .then(r=>r.json()).then(d=>{ btn.disabled=false;
+            if(d.ok){ const m=d.meeting; alert(`会议#${m.meeting_id} 完成\n推送: ${m.push_status}\n\n${m.minutes.slice(0,400)}`); }
+            else alert('失败: '+(d.error||''));
+            loadWecom(); })
+        .catch(()=>{ btn.disabled=false; alert('请求失败'); });
+    }
+    function wecomApprovalToggle(btn){
+        const cur = btn.textContent.includes('开 (点击关闭)');
+        if(!confirm(cur ? '关闭审批门: 高风险建议将直接自动挂载, 确认?' : '开启审批门: 风险分≥0.5 的挂载建议将推送企微群等待你「同意/驳回」, 确认?')) return;
+        btn.disabled=true;
+        fetch('/api/wecom/config',{method:'POST',headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({key:'wecom_approval_required',value:cur?'0':'1'})})
+        .then(r=>r.json()).then(d=>{
+            btn.disabled=false;
+            if(d.ok) loadWecom(); else alert('失败: '+(d.error||''));
+        }).catch(()=>{ btn.disabled=false; alert('请求失败'); });
+    }
+    function wecomPluginKey(btn){
+        if(!confirm('生成新的企微API插件密钥? (旧密钥立即失效, 需同步更新企微插件配置)')) return;
+        btn.disabled=true;
+        fetch('/api/wecom/plugin-key',{method:'POST'}).then(r=>r.json()).then(d=>{
+            btn.disabled=false;
+            if(d.ok) alert('密钥已生成 (仅显示一次, 请立即复制):\n\n'+d.plugin_api_key+'\n\n企微插件填写:\n· 插件URL: https://<可信域名>'+d.plugin_url_path+'\n· 授权: Service token / API key → Header\n· Parameter name: '+d.header_name);
+            else alert('失败: '+(d.error||''));
+        }).catch(()=>{ btn.disabled=false; alert('请求失败'); });
+    }
+    loadWecom();
+    </script>
+
+    <a href="/" class="back-link">{{ t('auto.admin_center.__x_bfa6f584', default='← 返回首页') }}</a>
+</div>
+{% endblock %}

@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>📋 Gobelin Bank · 会议中心</title>
+<style>
+:root{--bg:#050a14;--panel:#0c1424;--border:rgba(255,255,255,0.08);--text:#e2e8f0;--sub:#7a8a9a;--accent:#38ef7d;--red:#ff4444;--gold:#ffd700;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif;min-height:100vh;}
+.container{max-width:1200px;margin:0 auto;padding:24px;}
+.back-bar{display:flex;gap:12px;align-items:center;margin-bottom:20px;flex-wrap:wrap;}
+.back-btn{padding:10px 18px;background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:8px;color:var(--text);text-decoration:none;font-size:13px;}
+.back-btn:hover{background:rgba(255,255,255,0.1);}
+.back-btn.primary{background:linear-gradient(135deg,#11998e,#38ef7d);border:none;color:#000;font-weight:600;}
+.title{font-size:22px;font-weight:700;margin-bottom:4px;}
+.subtitle{color:var(--sub);font-size:12px;margin-bottom:24px;}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:16px;}
+.panel h3{font-size:14px;font-weight:600;margin-bottom:12px;color:var(--accent);}
+.chip{display:inline-block;padding:2px 10px;border-radius:12px;font-size:10px;font-weight:600;}
+.chip-green{background:rgba(56,239,125,0.15);color:var(--accent);}
+.chip-red{background:rgba(255,68,68,0.15);color:var(--red);}
+.chip-gray{background:rgba(255,255,255,0.08);color:var(--sub);}
+.chip-gold{background:rgba(255,215,0,0.15);color:var(--gold);}
+.meeting-item{background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:14px;}
+.meeting-item .meta{font-size:11px;color:var(--sub);margin:6px 0;}
+.meeting-item .minutes{font-size:12px;color:var(--text);white-space:pre-wrap;line-height:1.6;background:rgba(0,0,0,0.2);padding:12px;border-radius:6px;margin-top:10px;max-height:300px;overflow-y:auto;}
+.meeting-item .agenda{font-size:11px;color:var(--gold);margin-top:6px;}
+.empty{color:var(--sub);padding:40px;text-align:center;font-size:13px;}
+</style>
+</head>
+<body>
+<div class="container">
+
+<div class="back-bar">
+  <a href="/dashboard" class="back-btn primary">← 返回总账户 Dashboard</a>
+  <span style="color:var(--sub);font-size:12px;">Gobelin Bank · Meeting Center</span>
+</div>
+
+<div class="title">📋 会议 / 复盘中心</div>
+<div class="subtitle">Finance Council · 每3天 REGULAR 例会 · 重大交易 SPECIAL 专题</div>
+
+{% if meetings %}
+{% for m in meetings %}
+<div class="meeting-item">
+  <div style="display:flex;justify-content:space-between;align-items:center;">
+    <strong style="font-size:14px;">{{ m['title'] }}</strong>
+    <span class="chip {{ 'chip-green' if m['status']=='APPROVED' else ('chip-gold' if m['status']=='PENDING' else 'chip-gray') }}">{{ m['status'] }}</span>
+  </div>
+  <div class="meta">
+    <span style="font-family:Menlo,monospace;">{{ m['meeting_id'] }}</span>
+    · {{ m['meeting_type'] }}
+    · 召集: {{ m['convener'] or 'Finance Council' }}
+    · 记录: {{ m['recorder'] or 'AI Clerk' }}
+    · 时间: {{ m['recorded_at'] or '—' }}
+  </div>
+  {% if m['agenda'] %}
+  <div class="agenda">📌 议题: {{ m['agenda'] }}</div>
+  {% endif %}
+  {% if m['minutes'] %}
+  <div class="minutes">{{ m['minutes'] }}</div>
+  {% else %}
+  <div style="color:var(--sub);font-size:11px;padding:12px;background:rgba(0,0,0,0.2);border-radius:6px;margin-top:10px;">暂无会议纪要</div>
+  {% endif %}
+  {% if m['archive_path'] %}
+  <div class="meta">📄 归档路径: {{ m['archive_path'] }}</div>
+  {% endif %}
+</div>
+{% endfor %}
+{% else %}
+<div class="empty">⏳ 暂无会议记录 — Finance Council 每 3 天自动触发 REGULAR 例会</div>
+{% endif %}
+
+<div class="back-bar" style="margin-top:24px;">
+  <a href="/dashboard" class="back-btn primary">← 返回总账户 Dashboard</a>
+  <a href="/governance/centers" class="back-btn">🏛️ 33 AI 中心</a>
+  <a href="/governance/proposals" class="back-btn">📑 投资提案</a>
+</div>
+
+</div>
+</body>
+</html>
