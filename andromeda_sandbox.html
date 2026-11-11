@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>仙女座操盘沙盘 · ANDROMEDA SANDBOX</title>
+<script>
+// ECharts 加载: 本地优先 → cdnjs → bootcdn → jsdelivr → unpkg
+(function(){
+  var cdns=[
+    '/static/echarts.min.js',
+    'https://cdnjs.cloudflare.com/ajax/libs/echarts/5.5.0/echarts.min.js',
+    'https://cdn.bootcdn.net/ajax/libs/echarts/5.5.0/echarts.min.js',
+    'https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js',
+    'https://unpkg.com/echarts@5.5.0/dist/echarts.min.js'
+  ];
+  function load(i){
+    if(i>=cdns.length){console.error('[Sandbox] ECharts 所有 CDN 均失败');return;}
+    var s=document.createElement('script');
+    s.src=cdns[i];
+    s.onload=function(){
+      if(typeof echarts!=='undefined'){
+        console.log('[Sandbox] ✅ ECharts loaded from '+cdns[i]);
+        if(typeof initAllCharts==='function')initAllCharts();
+      }else{console.warn('[Sandbox] CDN '+cdns[i]+' loaded but echarts undefined');load(i+1);}
+    };
+    s.onerror=function(){console.warn('[Sandbox] CDN failed: '+cdns[i]+' → fallback');load(i+1);};
+    document.head.appendChild(s);
+  }
+  load(0);
+})();
+</script>
+<style>
+:root{--bg:#0c0f14;--bg2:#12161e;--card:#161b24;--border:#2a3240;--bgold:#5a4a2a;--gold:#c9a84c;--gold-l:#e8c86a;--gold-d:rgba(201,168,76,.12);--red:#e85a4f;--green:#4ec9a0;--text:#d4d8e0;--dim:#7a8499}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,'SF Pro SC','PingFang SC',sans-serif;padding:24px;min-height:100vh}
+h1{font-size:22px;color:var(--gold);letter-spacing:3px;font-weight:700;display:flex;align-items:center;gap:10px}
+h1::before{content:'◆';font-size:14px;color:var(--gold-l)}
+.sub{color:var(--dim);font-size:12px;margin:4px 0 20px}
+.sub b{color:var(--gold)}
+.grid{display:grid;gap:16px;grid-template-columns:repeat(12,1fr)}
+.card{background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.ch{padding:14px 18px;border-bottom:1px solid var(--border);background:linear-gradient(180deg,var(--bg2),var(--card));display:flex;justify-content:space-between;align-items:center}
+.ct{font-size:13px;color:var(--gold);font-weight:600;letter-spacing:1px;display:flex;align-items:center;gap:8px}
+.ct::before{content:'▸';font-size:10px}
+.cb{padding:12px}
+.c8{grid-column:span 8}.c6{grid-column:span 6}.c4{grid-column:span 4}.c12{grid-column:span 12}
+.tabs{display:flex;gap:4px;background:var(--bg2);padding:4px;border-radius:6px}
+.tab{padding:5px 12px;font-size:12px;color:var(--dim);cursor:pointer;border-radius:4px;transition:.2s}
+.tab.a{background:var(--gold-d);color:var(--gold);border:1px solid var(--bgold)}
+.tab:hover{color:var(--text)}
+#kline{width:100%;height:440px}#tree{width:100%;height:340px}#bar{width:100%;height:240px}
+#scenario{width:100%;height:160px;margin-top:10px}#timeline{width:100%;height:170px}
+.sb{background:var(--bg2);border:1px solid var(--bgold);border-radius:12px;padding:16px}
+.sb-h{font-size:13px;color:var(--gold);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.sb-h::before{content:'⟐';font-size:15px}
+.sr{display:flex;align-items:center;gap:12px;margin:10px 0}
+.sl{font-size:11px;color:var(--dim);min-width:70px}
+input[type=range]{flex:1;-webkit-appearance:none;height:3px;background:linear-gradient(90deg,var(--gold-d),var(--gold));border-radius:2px}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;background:var(--gold-l);border-radius:50%;cursor:pointer;box-shadow:0 0 6px rgba(201,168,76,.4)}
+.sv{font-size:12px;color:var(--gold);min-width:72px;text-align:right;background:var(--card);padding:3px 8px;border-radius:4px;border:1px solid var(--bgold);font-family:monospace}
+.rg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+.rb{background:var(--card);border:1px solid var(--border);border-radius:6px;padding:8px;text-align:center}
+.rb.l{font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px}
+.rb.v{font-size:14px;font-weight:600;font-family:monospace}.rb.v.g{color:var(--gold-l)}.rb.v.r{color:var(--red)}.rb.v.e{color:var(--green)}
+.bg{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;margin:2px;background:var(--gold-d);color:var(--gold);border:1px solid var(--bgold)}
+.bg.g{background:rgba(78,201,160,.12);color:var(--green);border-color:rgba(78,201,160,.3)}
+.bg.r{background:rgba(232,90,79,.12);color:var(--red);border-color:rgba(232,90,79,.3)}
+.metrics{display:flex;gap:8px;flex-wrap:wrap}
+.mt{font-size:10px;font-family:monospace;padding:3px 8px;border-radius:4px;background:var(--bg2);border:1px solid var(--border);color:var(--dim)}
+.mt.g{border-color:var(--bgold);color:var(--gold)}.mt.r{color:var(--red)}.mt.e{color:var(--green)}
+.rev{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px;margin-top:10px}
+.rev-t{font-size:13px;color:var(--gold);margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.rev-t::before{content:'▣';font-size:10px}
+.rev-g{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
+.rev-i{background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:10px}
+.rev-i h4{font-size:11px;color:var(--gold);margin-bottom:4px}
+.rev-i p{font-size:12px;color:var(--dim);line-height:1.5}
+.act{display:flex;gap:8px;margin-top:10px}
+.btn{padding:7px 14px;font-size:12px;border-radius:6px;cursor:pointer;border:1px solid var(--border);background:var(--bg2);color:var(--text);transition:.2s;font-family:inherit}
+.btn:hover{background:var(--card2);border-color:var(--gold)}
+.btn.p{background:var(--gold-d);border-color:var(--bgold);color:var(--gold)}
+.log{font-family:monospace;font-size:11px;color:var(--dim);background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px;margin-top:10px;max-height:150px;overflow-y:auto;line-height:1.6}
+.log .t{color:var(--gold);margin-right:6px}
+.ec{background:linear-gradient(135deg,rgba(201,168,76,.12),transparent);border:1px solid var(--bgold);border-radius:8px;padding:12px;margin-top:10px}
+.ec h4{color:var(--gold);font-size:12px;margin-bottom:6px}
+.ec .e{font-size:12px;color:var(--text);line-height:1.5}
+.ec .e::before{content:'💡 '}
+@media(max-width:1024px){.c8,.c6,.c4{grid-column:span 12}}
+</style>
+</head>
+<body>
+<h1>仙女座操盘沙盘 · ANDROMEDA SANDBOX</h1>
+<div class="sub">真实行情 <b>2026-10-31 (周五)</b> · 十专家 6/10 · 推演 + 复盘 + 经验沉淀 v1.0</div>
+<div class="grid">
+  <div class="card c8"><div class="ch"><div class="ct">K线图 · Candlestick (MA5/10/20 + 成交量)</div><div class="tabs" id="tk"><div class="tab a" data-k="idx_sh">上证</div><div class="tab" data-k="idx_kc">科创50</div><div class="tab" data-k="stk_300750">宁德时代</div><div class="tab" data-k="stk_688981">中芯国际</div><div class="tab" data-k="stk_600519">贵州茅台</div><div class="tab" data-k="stk_688256">寒武纪</div></div></div><div class="cb"><div id="kline"></div></div></div>
+  <div class="card c4"><div class="ch"><div class="ct">沙盘推演 · Sandbox</div></div><div class="cb">
+    <div class="sb"><div class="sb-h">宁德时代 300750 · 周一策略</div>
+      <div class="sr"><span class="sl">入场价</span><input type="range" id="s-entry" min="200" max="260" step="0.5" value="230"><span class="sv" id="v-entry">¥230</span></div>
+      <div class="sr"><span class="sl">止损%</span><input type="range" id="s-stop" min="1" max="10" step="0.1" value="5"><span class="sv" id="v-stop">5.0%</span></div>
+      <div class="sr"><span class="sl">目标%</span><input type="range" id="s-target" min="2" max="20" step="0.5" value="8.7"><span class="sv" id="v-target">8.7%</span></div>
+      <div class="sr"><span class="sl">仓位%</span><input type="range" id="s-pos" min="1" max="30" step="1" value="10"><span class="sv" id="v-pos">10%</span></div>
+      <div class="sr"><span class="sl">本金(k)</span><input type="range" id="s-cap" min="100" max="2000" step="50" value="1000"><span class="sv" id="v-cap">¥1M</span></div>
+      <div class="rg">
+        <div class="rb"><div class="l">入场</div><div class="v g" id="r-entry">¥230</div></div>
+        <div class="rb"><div class="l">止损</div><div class="v r" id="r-stop">¥218.5</div></div>
+        <div class="rb"><div class="l">目标</div><div class="v e" id="r-target">¥250</div></div>
+        <div class="rb"><div class="l">盈亏比</div><div class="v g" id="r-rr">1.76</div></div>
+        <div class="rb"><div class="l">最大亏损</div><div class="v r" id="r-loss">-4.9k</div></div>
+        <div class="rb"><div class="l">目标盈利</div><div class="v e" id="r-profit">+8.7k</div></div>
+      </div>
+      <div id="scenario"></div>
+      <div id="b-badges" style="margin-top:8px"></div>
+    </div></div></div>
+  <div class="card c6"><div class="ch"><div class="ct">板块资金树状图 · Treemap</div><div class="metrics"><span class="mt e">白酒 +5.15%</span><span class="mt e">防御 +82亿</span><span class="mt r">半导体 -4.17%</span></div></div><div class="cb"><div id="tree"></div></div></div>
+  <div class="card c6"><div class="ch"><div class="ct">涨跌横向对比 · Bar</div><div class="tabs"><div class="tab a" data-bar="idx">指数</div><div class="tab" data-bar="sec">板块</div></div></div><div class="cb"><div id="bar"></div></div></div>
+  <div class="card c12"><div class="ch"><div class="ct">上证 60 日趋势 · Timeline</div><div class="metrics"><span class="mt">连跌 6 天 3735→3599</span><span class="mt g">空头排列</span><span class="mt e">防御逆势</span></div></div><div class="cb"><div id="timeline"></div></div></div>
+  <div class="card c12"><div class="ch"><div class="ct">沙盘推演复盘 · Auto Review & Experience Bank</div><div class="metrics"><span class="mt g">推演 <b id="rv-c">0</b></span><span class="mt">经验 <b id="rv-e">0</b></span></div></div><div class="cb">
+    <div class="rev"><div class="rev-t">推演参数 & 自动复盘</div>
+      <div class="rev-g" id="rv-sum"></div>
+      <div class="act">
+        <button class="btn p" onclick="runReview()">🔍 执行推演复盘</button>
+        <button class="btn" onclick="saveExp()">💾 沉淀经验</button>
+        <button class="btn" onclick="runOrder()">📰 模拟下单入厅</button>
+        <button class="btn" onclick="localStorage.removeItem('andromeda_exp');document.getElementById('rv-exp').innerHTML='';document.getElementById('rv-e').textContent='0'">🗑️ 清空</button>
+      </div>
+    </div>
+    <div id="rv-log" class="log"></div>
+    <div id="rv-exp"></div>
+  </div></div>
+</div>
+<script>
+// ====== 运行时数据 (初始为空, 从API加载) ======
+var DATA = {};
+var TREE = [];
+var BAR_IDX = [];
+var BAR_SEC = [];
+var PREV_CLOSE = 0;
+var EXP = JSON.parse(localStorage.getItem('andromeda_exp') || '[]');
+function $(id){return document.getElementById(id);}
+var C = {};
+
+
+// ====== API 数据加载 ======
+async function loadSandboxData(){
+  try{
+    var r = await fetch('/sa/trading/api/sandbox-data');
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    var j = await r.json();
+    if(!j.success) throw new Error('API 未就绪');
+    var d = j.data;
+
+    // key 重映射 (API code → HTML tab key)
+    var remap = {
+      'idx_000001':'idx_sh',
+      'idx_000688':'idx_kc',
+      'idx_399006':'idx_cyb',
+      'stk_000001':'stk_688256'
+    };
+    DATA = {};
+    for(var k in d){
+      if(['indices_realtime','sectors','_meta'].indexOf(k)>=0) continue;
+      DATA[remap[k]||k] = d[k];
+    }
+
+    // PREV_CLOSE from 宁德时代 last close
+    if(DATA.stk_300750 && DATA.stk_300750.kdata && DATA.stk_300750.kdata.ohlc){
+      var last = DATA.stk_300750.kdata.ohlc;
+      PREV_CLOSE = last[last.length-1][1];
+    }
+
+    // TREE from sectors
+    TREE = (d.sectors||[]).map(function(s){
+      var clr = s.change_pct>=0 ? '#e8c86a' : s.change_pct<-2 ? '#8b3a3a' : '#5a6a8a';
+      var node = {name:s.name, value:Math.abs(s.net_inflow_yi||0)*10, itemStyle:{color:clr}, pct:s.change_pct, inflow:s.net_inflow_yi||0};
+      if(s.children && s.children.length){
+        node.children = s.children.map(function(c){
+          var cc = c.change_pct>=0 ? '#e8c86a' : '#8b3a3a';
+          return {name:c.name, value:Math.abs(c.change_pct||0)*10, itemStyle:{color:cc}, pct:c.change_pct};
+        });
+      }
+      return node;
+    });
+
+    // BAR_IDX from indices_realtime
+    BAR_IDX = (d.indices_realtime||[]).map(function(i){return {name:i.name, pct:i.change_pct};});
+
+    // BAR_SEC from sectors
+    BAR_SEC = (d.sectors||[]).map(function(s){return {name:s.name, pct:s.change_pct};});
+
+    // Update sub-header date
+    if(d._meta && d._meta.generated_at){
+      var sub = document.querySelector('.sub b');
+      if(sub) sub.textContent = d._meta.generated_at;
+    }
+
+    window.__loaded = true;
+    window.__lastHallCode = null;
+    initAllCharts();
+  }catch(e){
+    console.warn('[Sandbox] API load failed, fallback to empty:', e);
+    window.__loaded = false;
+    initAllCharts();
+    var log = document.getElementById('rv-log');
+    if(log){
+      log.innerHTML += '<div><span class="t">' + new Date().toLocaleTimeString() + '</span>⚠️ API加载失败: ' + e.message + '</div>';
+    }
+  }
+}
+
+
+// ====== K线 option builder (不可修改) ======
+
+function kOpt(kd, n){return{
+  backgroundColor:'transparent',animation:false,
+  tooltip:{trigger:'axis',axisPointer:{type:'cross'},backgroundColor:'#1a1d24',borderColor:'#2a3240',textStyle:{color:'#d4d8e0',fontSize:11}},
+  grid:[{left:50,right:10,top:25,height:'55%'},{left:50,right:10,top:'72%',height:'18%'}],
+  xAxis:[{type:'category',data:kd.dates,axisLine:{lineStyle:{color:'#2a3240'}},axisLabel:{color:'#7a8499',fontSize:9},splitLine:{show:false}},{type:'category',gridIndex:1,data:kd.dates,axisLabel:{show:false},axisTick:{show:false},splitLine:{show:false}}],
+  yAxis:[{scale:true,axisLine:{lineStyle:{color:'#2a3240'}},axisLabel:{color:'#7a8499',fontSize:9},splitLine:{lineStyle:{color:'#1c2230'}}},{scale:true,gridIndex:1,axisLabel:{color:'#7a8499',fontSize:9},splitLine:{show:false}}],
+  dataZoom:[{type:'inside',xAxisIndex:[0,1],start:40,end:100},{show:true,xAxisIndex:[0,1],type:'slider',bottom:4,height:14,start:40,end:100,borderColor:'#2a3240',fillerColor:'rgba(201,168,76,.1)',handleStyle:{color:'#c9a84c'},textStyle:{color:'#7a8499',fontSize:9}}],
+  series:[
+    {name:n,type:'candlestick',data:kd.ohlc,itemStyle:{color:'#4ec9a0',color0:'#e85a4f',borderColor:'#4ec9a0',borderColor0:'#e85a4f'}},
+    {name:'MA5',type:'line',data:kd.ma5,smooth:true,symbol:'none',lineStyle:{width:1,color:'#e8c86a'}},
+    {name:'MA10',type:'line',data:kd.ma10,smooth:true,symbol:'none',lineStyle:{width:1,color:'#c9a84c'}},
+    {name:'MA20',type:'line',data:kd.ma20,smooth:true,symbol:'none',lineStyle:{width:1,color:'#5a4a2a',type:'dashed'}},
+    {name:'量',type:'bar',xAxisIndex:1,yAxisIndex:1,data:kd.volumes,itemStyle:{color:function(p){return p.data[2]>0?'rgba(78,201,160,.5)':'rgba(232,90,79,.5)'}}}
+  ]
+};}
+
+
+// ====== 图表初始化 ======
+var __charts_inited = false;
+function initAllCharts(){
+  if(typeof echarts==='undefined'){
+    console.error('[Sandbox] echarts not loaded, retry in 500ms');
+    setTimeout(initAllCharts,500);
+    return;
+  }
+  if(__charts_inited){
+    console.log('[Sandbox] charts already inited → refresh data');
+    // 刷新已有图表的数据 (不用 notMerge, 保留原有 axis/grid 配置)
+    try{
+      if(C.k && DATA.idx_sh) C.k.setOption(kOpt(DATA.idx_sh.kdata,DATA.idx_sh.name));
+      if(C.tl && DATA.idx_sh){
+        var sk=DATA.idx_sh;
+        C.tl.setOption({
+          backgroundColor:'transparent',grid:{left:55,right:15,top:15,bottom:25},
+          tooltip:{trigger:'axis',backgroundColor:'#1a1d24',borderColor:'#2a3240',textStyle:{color:'#d4d8e0'}},
+          xAxis:{type:'category',data:sk.kdata.dates,axisLine:{lineStyle:{color:'#2a3240'}},axisLabel:{color:'#7a8499',fontSize:9,formatter:function(v){return v.slice(5);}},splitLine:{show:false}},
+          yAxis:{scale:true,axisLine:{lineStyle:{color:'#2a3240'}},axisLabel:{color:'#7a8499',fontSize:9},splitLine:{lineStyle:{color:'#1c2230'}}},
+          series:[{
+            name:'上证',type:'line',data:sk.kdata.ohlc.map(function(o){return o[1];}),smooth:true,symbol:'none',lineStyle:{width:2,color:'#c9a84c'},
+            areaStyle:{color:new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(201,168,76,.18)'},{offset:1,color:'rgba(201,168,76,0)'}])},
+            markLine:{symbol:'none',lineStyle:{color:'#e85a4f',type:'dashed',width:1},data:[{xAxis:sk.kdata.dates[Math.max(0,sk.kdata.dates.length-6)],label:{show:true,color:'#e85a4f',fontSize:9,formatter:'连跌起点'}},{xAxis:sk.kdata.dates[sk.kdata.dates.length-1],label:{show:true,color:'#c9a84c',fontSize:9,formatter:'最新'}}]}
+          }]
+        });
+      }
+      if(C.t) C.t.setOption({series:[{data:TREE}]});
+      if(C.b) C.b.setOption({series:[{data:(BAR_IDX.slice().sort(function(a,b){return a.pct-b.pct;})).map(function(i){return{value:i.pct,itemStyle:{color:i.pct>=0?'#4ec9a0':'#e85a4f',borderRadius:i.pct>=0?[0,4,4,0]:[4,0,0,4]},label:{show:true,position:'right',color:'#d4d8e0',fontSize:10,formatter:function(p){return(p.value>=0?'+':'')+p.value.toFixed(2)+'%';}}}})}]});
+      if(C.s && typeof rs==='function'){
+        var e=parseFloat($$('s-entry').value),sp=parseFloat($$('s-stop').value)/100,tp=parseFloat($$('s-target').value)/100;
+        rs(e,e*(1-sp),e*(1+tp));
+      }
+    }catch(e){console.warn('[Sandbox] refresh err:',e);}
+    return;
+  }
+  __charts_inited = true;
+  try{
+    C.k = echarts.init($('kline'));
+    window.rk = function(k){var d=DATA[k];if(!d)return;C.k.setOption(kOpt(d.kdata,d.name));}
+    window.rk('idx_sh');
+    
+    // 树状图
+    C.t = echarts.init($('tree'));
+    C.t.setOption({
+      backgroundColor:'transparent',tooltip:{trigger:'item',backgroundColor:'#1a1d24',borderColor:'#2a3240',textStyle:{color:'#d4d8e0'},formatter:function(p){return '<b>'+p.name+'</b><br/>涨跌: '+(p.data.pct?.toFixed(2)||'-')+'%<br/>净流入: '+(p.data.inflow?.toFixed(1)||'-')+'亿';}},
+      series:[{name:'板块',type:'treemap',roam:false,nodeClick:false,breadcrumb:{show:false},label:{show:true,formatter:function(p){return p.name;},color:'#d4d8e0',fontSize:11},itemStyle:{borderColor:'#0c0f14',borderWidth:2,gapWidth:2,borderRadius:4},data:TREE}]
+    });
+    
+    // 条状图
+    C.b = echarts.init($('bar'));
+    window.rb = function(t){
+      var items = (t==='idx'?BAR_IDX:BAR_SEC).slice().sort(function(a,b){return a.pct-b.pct;});
+      C.b.setOption({
+        backgroundColor:'transparent',grid:{left:70,right:40,top:10,bottom:20},
+        xAxis:{type:'value',axisLine:{show:false},splitLine:{lineStyle:{color:'#1c2230'}},axisLabel:{color:'#7a8499',formatter:'{value}%'}},
+        yAxis:{type:'category',data:items.map(function(i){return i.name;}),axisLine:{lineStyle:{color:'#2a3240'}},axisLabel:{color:'#d4d8e0',fontSize:11},inverse:true},
+        tooltip:{trigger:'axis',backgroundColor:'#1a1d24',borderColor:'#2a3240',textStyle:{color:'#d4d8e0'}},
+        series:[{type:'bar',data:items.map(function(i){return{value:i.pct,itemStyle:{color:i.pct>=0?'#4ec9a0':'#e85a4f',borderRadius:i.pct>=0?[0,4,4,0]:[4,0,0,4]},label:{show:true,position:'right',color:'#d4d8e0',fontSize:10,formatter:function(p){return(p.value>=0?'+':'')+p.value.toFixed(2)+'%';}}}}),barWidth:16}]
+      });
+    }
+    window.rb('idx');
+    
+    // 推演情景图
+    C.s = echarts.init($('scenario'));
+    window.rs = function(e,s,t){
+      if(!C.s)return;
+      var l=((s-e)/e*100).toFixed(1), g=((t-e)/e*100).toFixed(1);
+      C.s.setOption({
+        backgroundColor:'transparent',grid:{left:55,right:100,top:5,bottom:15},
+        xAxis:{type:'value',min:e*0.85,max:e*1.15,axisLine:{lineStyle:{color:'#2a3240'}},splitLine:{lineStyle:{color:'#1c2230'}},axisLabel:{color:'#7a8499',fontSize:9,formatter:function(v){return '¥'+v;}}},
+        yAxis:{type:'category',data:['止损','入场','目标'],axisLabel:{color:['#e85a4f','#c9a84c','#4ec9a0'],fontSize:11,fontWeight:600}},
+        series:[{type:'bar',barWidth:22,data:[
+          {value:s,itemStyle:{color:'#e85a4f',borderRadius:[0,4,4,0]},label:{show:true,position:'right',color:'#e85a4f',formatter:'¥'+s.toFixed(2)+' ('+l+'%)'}},
+          {value:e,itemStyle:{color:'#c9a84c',borderRadius:[0,4,4,0]},label:{show:true,position:'right',color:'#c9a84c',formatter:'¥'+e.toFixed(2)}},
+          {value:t,itemStyle:{color:'#4ec9a0',borderRadius:[0,4,4,0]},label:{show:true,position:'right',color:'#4ec9a0',formatter:'¥'+t.toFixed(2)+' (+'+g+'%)'}}
+        ]}]
+      });
+    };
+    
+    // 时间轴
+    C.tl = echarts.init($('timeline'));
+    var sk = DATA.idx_sh;
+    if(sk){
+      C.tl.setOption({
+        backgroundColor:'transparent',grid:{left:55,right:15,top:15,bottom:25},
+        tooltip:{trigger:'axis',backgroundColor:'#1a1d24',borderColor:'#2a3240',textStyle:{color:'#d4d8e0'}},
+        xAxis:{type:'category',data:sk.kdata.dates,axisLine:{lineStyle:{color:'#2a3240'}},axisLabel:{color:'#7a8499',fontSize:9,formatter:function(v){return v.slice(5);}},splitLine:{show:false}},
+        yAxis:{scale:true,axisLine:{lineStyle:{color:'#2a3240'}},axisLabel:{color:'#7a8499',fontSize:9},splitLine:{lineStyle:{color:'#1c2230'}}},
+        series:[{
+          name:'上证',type:'line',data:sk.kdata.ohlc.map(function(o){return o[1];}),smooth:true,symbol:'none',lineStyle:{width:2,color:'#c9a84c'},
+          areaStyle:{color:new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(201,168,76,.18)'},{offset:1,color:'rgba(201,168,76,0)'}])},
+          markLine:{symbol:'none',lineStyle:{color:'#e85a4f',type:'dashed',width:1},data:[{xAxis:sk.kdata.dates[Math.max(0,sk.kdata.dates.length-6)],label:{show:true,color:'#e85a4f',fontSize:9,formatter:'连跌起点'}},{xAxis:sk.kdata.dates[sk.kdata.dates.length-1],label:{show:true,color:'#c9a84c',fontSize:9,formatter:'最新'}}]}
+        }]
+      });
+    }
+    
+    // Tab
+    document.querySelectorAll('#tk .tab').forEach(function(t){t.onclick=function(){document.querySelectorAll('#tk .tab').forEach(function(x){x.classList.remove('a');});t.classList.add('a');window.rk(t.dataset.k);};});
+    document.querySelectorAll('.tabs .tab[data-bar]').forEach(function(t){t.onclick=function(){var par=t.closest('.ch');par.querySelectorAll('.tab').forEach(function(x){x.classList.remove('a');});t.classList.add('a');window.rb(t.dataset.bar);};});
+    window.addEventListener('resize',function(){Object.values(C).forEach(function(c){if(c&&c.resize)c.resize();});});
+    
+    // 图表初始化完成后立即触发 updateSB (需要 rs 已定义)
+    updateSB();
+  }catch(e){
+    console.error('[Sandbox] initAllCharts err:', e);
+  }
+}
+
+// ═══ 沙盘推演 ═══
+function $$(id){return document.getElementById(id);}
+function updateSB(){
+  var e=parseFloat($$('s-entry').value),sp=parseFloat($$('s-stop').value)/100,tp=parseFloat($$('s-target').value)/100,pos=parseFloat($$('s-pos').value)/100,cap=parseFloat($$('s-cap').value)*1000;
+  var st=e*(1-sp),tg=e*(1+tp);
+  var inv=cap*pos,shares=Math.floor(inv/e/100)*100,amt=shares*e,loss=shares*(st-e),profit=shares*(tg-e),rr=tp/sp,rsk=Math.abs(loss)/cap*100;
+  $$('v-entry').textContent='¥'+e.toFixed(2);
+  $$('v-stop').textContent=(sp*100).toFixed(1)+'%';
+  $$('v-target').textContent=(tp*100).toFixed(1)+'%';
+  $$('v-pos').textContent=(pos*100).toFixed(0)+'%';
+  $$('v-cap').textContent='¥'+(cap/1000).toFixed(0)+'k';
+  $$('r-entry').textContent='¥'+e.toFixed(2);
+  $$('r-stop').textContent='¥'+st.toFixed(2)+' ('+(sp*100).toFixed(1)+'%)';
+  $$('r-target').textContent='¥'+tg.toFixed(2)+' (+'+(tp*100).toFixed(1)+'%)';
+  $$('r-rr').textContent=rr.toFixed(2);
+  $$('r-loss').textContent='-¥'+Math.round(Math.abs(loss)).toLocaleString();
+  $$('r-profit').textContent='+¥'+Math.round(profit).toLocaleString();
+  var bs=[];
+  if(sp>0.05)bs.push('<span class="bg r">⚠️ 止损超 5% 铁律!</span>');
+  else bs.push('<span class="bg g">✅ 止损合规</span>');
+  if(rr>=2)bs.push('<span class="bg g">🎯 RR≥2 优秀</span>');
+  else if(rr>=1.5)bs.push('<span class="bg">RR='+rr.toFixed(2)+'</span>');
+  else bs.push('<span class="bg r">⚠️ RR<1.5</span>');
+  if(rsk<=1)bs.push('<span class="bg g">🛡️ 风险≤1%</span>');
+  else bs.push('<span class="bg r">⚠️ 风险 '+rsk.toFixed(1)+'%</span>');
+  if(pos<=0.2)bs.push('<span class="bg g">✅ 仓位合规</span>');
+  else bs.push('<span class="bg r">❌ 仓位超 20%!</span>');
+  $$('b-badges').innerHTML=bs.join('');
+  if(typeof window.rs==='function'){try{rs(e,st,tg);}catch(err){console.warn('[Sandbox] rs err:',err);}}
+}
+['s-entry','s-stop','s-target','s-pos','s-cap'].forEach(function(id){$$(id).oninput=updateSB;});
+// 延迟启动，等 echarts 初始化完
+setTimeout(function(){try{updateSB();}catch(e){}},300);
+
+// ═══ 推演复盘 ═══
+var simLog=[];
+async function runReview(){
+  var e=parseFloat($$('s-entry').value),sp=parseFloat($$('s-stop').value)/100,tp=parseFloat($$('s-target').value)/100,rr=tp/sp,pos=parseFloat($$('s-pos').value)/100;
+  var st=e*(1-sp),tg=e*(1+tp);
+  var scenarios=[
+    {n:'高开 +2%',open:e*1.02,peak:e*1.05,trough:e*0.99,msg:'冲高回落'},
+    {n:'平开',open:e,peak:e*1.03,trough:e*0.97,msg:'震荡为主'},
+    {n:'低开 -2%',open:e*0.98,peak:e*1.01,trough:e*0.95,msg:'恐慌下探有承接'},
+    {n:'恐慌 -3%+',open:e*0.965,peak:e*0.99,trough:e*0.93,msg:'超跌反弹窗口'},
+  ];
+  var logs=[];
+  logs.push({t:new Date().toLocaleTimeString(),m:'🎬 推演: entry=¥'+e+' stop='+(sp*100).toFixed(1)+'% target=+'+(tp*100).toFixed(1)+'% RR='+rr.toFixed(2)});
+  var hs=0,ht=0;
+  scenarios.forEach(function(s){
+    var hitS=s.trough<=st,hitT=s.peak>=tg;
+    var v='➡️ 持有';
+    if(hitS&&hitT)v='⚠️ 先止损后反弹';else if(hitS)v='❌ 止损';else if(hitT)v='✅ 达目标';
+    if(hitS)hs++;else if(hitT)ht++;
+    logs.push({t:new Date().toLocaleTimeString(),m:'  '+s.n+' → '+v+' ('+s.msg+')'});
+  });
+  var wp=(ht/scenarios.length*100).toFixed(0),rp=(hs/scenarios.length*100).toFixed(0);
+  logs.push({t:new Date().toLocaleTimeString(),m:'📊 推演: 达目标 '+ht+'/'+scenarios.length+' | 止损 '+hs+'/'+scenarios.length+' | 胜率 ≈ '+wp+'% | 止损率 ≈ '+rp+'%'});
+  logs.push({t:new Date().toLocaleTimeString(),m:'🧠 十专家自动复盘:'});
+  var crowd=[
+    ['R-01 宏观',hs>=2?'❌ 大盘弱':'✅ 反弹有希望'],
+    ['R-02 板块','✅ 宁德是周五新能源龙头, 承接好'],
+    ['R-03 技术',e<PREV_CLOSE*0.98?'✅ 低开=买点':e>PREV_CLOSE*1.02?'❌ 高开不追':'➡️ 区间合理'],
+    ['R-04 基本','✅ Q3净利环比+18%, 储能业务爆发'],
+    ['R-05 情绪',rp>50?'❌ 恐慌未解':'✅ 冰点有望修复'],
+    ['R-06 风控',sp<=0.05&&pos<=0.2?'✅ 合规':'❌ 铁律违规!'],
+    ['R-07 博弈',hs>=2?'⚠️ 主力洗盘':'✅ 资金承接良好'],
+    ['R-08 统计','📊 RR='+rr.toFixed(2)+' 期望值 '+(rr*wp/100-rp/100).toFixed(2)],
+    ['R-09 情报','➡️ 无重大消息, 技术主导'],
+    ['R-10 周期','✅ 连跌6天后反弹概率 > 45%'],
+  ];
+  crowd.forEach(function(exv){logs.push({t:new Date().toLocaleTimeString(),m:'  '+exv[0]+': '+exv[1]});});
+
+  // 调用 sandbox-suggest 大厅推演
+  try{
+    var rr2 = await fetch('/sa/trading/api/sandbox-suggest',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({symbol:'300750',name:'宁德时代',review:{trade_signal:'BREAKOUT'}})
+    });
+    var jj = await rr2.json();
+    if(jj.success){
+      window.__lastHallCode = jj.hall_code;
+      logs.push({t:new Date().toLocaleTimeString(),m:'🏛️ 仙女座大厅 hall_code='+jj.hall_code+' hall_id='+jj.hall_id});
+      if(jj.crowd){
+        var c=jj.crowd;
+        logs.push({t:new Date().toLocaleTimeString(),m:'👥 十专家投票: '+c.votes_yes+'/'+c.experts_count+' YES · confidence='+c.confidence+' · 决策='+c.decision});
+      }
+    }else{
+      logs.push({t:new Date().toLocaleTimeString(),m:'⚠️ sandbox-suggest 失败: '+(jj.error||jj.message||'未知')});
+    }
+  }catch(err){console.warn('[sandbox-suggest]',err);logs.push({t:new Date().toLocaleTimeString(),m:'⚠️ 大厅 API 异常: '+err.message});}
+  var sm='';
+  sm+='<div class="rev-i"><h4>入场方案</h4><p>¥'+e.toFixed(2)+' · 止损 '+(sp*100).toFixed(1)+'% · 目标 +'+(tp*100).toFixed(1)+'%</p></div>';
+  sm+='<div class="rev-i"><h4>盈亏比</h4><p>'+rr.toFixed(2)+':1 '+(rr>=2?'🟢优秀':rr>=1.5?'🟡可接受':'🔴偏低')+'</p></div>';
+  sm+='<div class="rev-i"><h4>推演结果</h4><p>达目标 '+ht+'/'+scenarios.length+' | 止损 '+hs+'/'+scenarios.length+'</p></div>';
+  sm+='<div class="rev-i"><h4>期望值</h4><p>'+(rr*wp/100-rp/100).toFixed(2)+' '+(rr*wp/100-rp/100>0?'🟢正':'🔴负')+'</p></div>';
+  sm+='<div class="rev-i"><h4>风控门</h4><p>'+(sp<=0.05?'✅止损合规':'❌超5%!')+' '+(pos<=0.2?'✅仓位合规':'❌超20%!')+'</p></div>';
+  var fv=rr>=2?'🟢 可执行':rr>=1.5?'🟡 谨慎执行':'🔴 建议放弃';
+  sm+='<div class="rev-i"><h4>仙女座建议</h4><p>'+fv+'</p></div>';
+  $$('rv-sum').innerHTML=sm;
+  $$('rv-log').innerHTML=logs.map(function(l){return '<div><span class="t">'+l.t+'</span>'+l.m+'</div>';}).join('');
+  simLog=simLog.concat(logs);
+  $$('rv-c').textContent=parseInt($$('rv-c').textContent)+1;
+}
+
+function saveExp(){
+  var e=parseFloat($$('s-entry').value),sp=parseFloat($$('s-stop').value)/100,tp=parseFloat($$('s-target').value)/100,rr=tp/sp,pos=parseFloat($$('s-pos').value)/100;
+  var exp={id:Date.now(),time:new Date().toLocaleString(),params:{entry:e,stopPct:sp,targetPct:tp,rr:rr,pos:pos},
+    lessons:[
+      rr>=2?'🎯 盈亏比 ≥ 2:1 是执行最低门槛':'⚠️ 盈亏比不足 2:1 不重仓',
+      sp<=0.05?'🛡️ 5% 硬止损严格执行':'❌ 止损超 5% 违反铁律!',
+      pos<=0.2?'✅ 单票 ≤ 20% 合规':'❌ 单票超 20%!',
+      '🧊 连跌 6 天后反弹概率 45%+, 防御板块逆势流入是重要信号',
+      '📚 板块树状图: 白酒逆势 +5.15% 是避风港',
+      '⏰ 高开不追, 低开买龙头, 恐慌盘出机会',
+    ],
+    decision:rr>=2?'🟢 执行':rr>=1.5?'🟡 谨慎':'🔴 放弃',
+  };
+  EXP.push(exp);
+  localStorage.setItem('andromeda_exp',JSON.stringify(EXP));
+  $$('rv-e').textContent=EXP.length;
+  renderExp();
+}
+
+// ====== 模拟下单入厅 ======
+async function runOrder(){
+  var e = parseFloat(document.getElementById('s-entry').value);
+  var log = document.getElementById("rv-log");
+  log.innerHTML += '<div><span class="t">'+new Date().toLocaleTimeString()+'</span>📰 准备下单... entry=¥'+e.toFixed(2)+'</div>';
+  // 如果没 hall_code, 先自动入厅
+  if(!window.__lastHallCode){
+    log.innerHTML += '<div><span class="t">'+new Date().toLocaleTimeString()+'</span>⚠️ 无 hall_code, 自动先入厅...</div>';
+    try{
+      var pre = await fetch('/sa/trading/api/sandbox-suggest',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({symbol:'300750',name:'宁德时代',review:{trade_signal:'BREAKOUT'}})
+      });
+      var pj = await pre.json();
+      if(pj.success){
+        window.__lastHallCode = pj.hall_code;
+        log.innerHTML += '<div><span class="t">'+new Date().toLocaleTimeString()+'</span>🏛️ 自动入厅成功: '+pj.hall_code+'</div>';
+      }else{
+        log.innerHTML += '<div><span class="t">'+new Date().toLocaleTimeString()+'</span>❌ 入厅失败, 无法下单</div>';
+        return;
+      }
+    }catch(err){
+      log.innerHTML += '<div><span class="t">'+new Date().toLocaleTimeString()+'</span>❌ 入厅异常: '+err.message+'</div>';
+      return;
+    }
+  }
+  try{
+    var r = await fetch('/sa/trading/api/sandbox-order',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({symbol:'300750',name:'宁德时代',action:'BUY',qty:100,price:e,hall_code:window.__lastHallCode})
+    });
+    var j = await r.json();
+    if(j.success){
+      log.innerHTML += '<div><span class="t">'+new Date().toLocaleTimeString()+'</span>✅ 下单成功! trade_id='+j.trade_id+' @ ¥'+j.executed_price+'</div>';
+      log.innerHTML += '<div><span class="t">'+new Date().toLocaleTimeString()+'</span>'+(j.hall_completed?'🎉 大厅已完结 DONE':'⏳ 大厅处理中...')+'</div>';
+      log.innerHTML += '<div style="color:var(--gold);margin-top:6px">━━━ 闭环完成 ━━━ hall_code='+j.hall_code+' ━━━</div>';
+    }else{
+      log.innerHTML += '<div><span class="t">'+new Date().toLocaleTimeString()+'</span>⚠️ 下单失败: '+(j.error||j.message||'未知')+'</div>';
+    }
+    log.scrollTop = log.scrollHeight;
+  }catch(err){console.warn("[sandbox-order]",err);log.innerHTML += '<div><span class="t">'+new Date().toLocaleTimeString()+'</span>❌ 下单异常: '+err.message+'</div>';}
+}
+
+function renderExp(){
+  var h=EXP.slice(-5).reverse().map(function(e){
+    var ls=e.lessons.map(function(l){return '<div class="e">'+l+'</div>';}).join('');
+    return '<div class="ec"><h4>#'+(EXP.indexOf(e)+1)+' '+e.time+' · RR='+e.params.rr.toFixed(2)+' · '+e.decision+'</h4>'+ls+'</div>';
+  }).join('');
+  $$('rv-exp').innerHTML=h;
+}
+document.addEventListener("DOMContentLoaded", loadSandboxData);
+</script>
+</body>
+</html>

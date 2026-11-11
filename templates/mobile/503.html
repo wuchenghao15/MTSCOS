@@ -1,0 +1,11 @@
+{% extends "mobile/mobile_exception_base.html" %}
+{# mobile/503.html | E_MAINTENANCE | severity=info | L3三端异常页 #}
+{% block exception_meta %}
+{% set status = 503 %}
+{% set err_code = 'E_MAINTENANCE' %}
+{% set title = '系统维护中' %}
+{% set description = 'MTSCOS 正在进行版本升级或日常维护，服务暂时下线。' %}
+{% set repair = '维护完成后将自动恢复，感谢您的耐心等待。' %}
+{% set severity = 'info' %}
+{% set icon = '🔧' %}
+{% endblock %}

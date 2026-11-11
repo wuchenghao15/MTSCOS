@@ -1,0 +1,49 @@
+{
+  "report_type": "year",
+  "generated_at": "2026-11-04 10:44:51",
+  "period_label": "年报 (全部)",
+  "metrics": {
+    "n_trades": 11,
+    "total_buy": 14705.0,
+    "total_sell": 8151.0,
+    "total_fees": 59.29,
+    "realized_pnl": 165.85,
+    "net_flow": -6613.29,
+    "gob_total": 0.0,
+    "gob_count": 0
+  },
+  "top_buys": [
+    {
+      "symbol": "601012",
+      "amount": 7913.0,
+      "trades": 2
+    },
+    {
+      "symbol": "600900",
+      "amount": 3005.0,
+      "trades": 1
+    },
+    {
+      "symbol": "601398",
+      "amount": 1748.0,
+      "trades": 1
+    },
+    {
+      "symbol": "000001",
+      "amount": 1165.0,
+      "trades": 1
+    },
+    {
+      "symbol": "000725",
+      "amount": 874.0,
+      "trades": 1
+    }
+  ],
+  "top_sells": [
+    {
+      "symbol": "601012",
+      "amount": 8151.0,
+      "trades": 5
+    }
+  ]
+}

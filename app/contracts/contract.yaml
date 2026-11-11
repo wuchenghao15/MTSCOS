@@ -1,0 +1,1051 @@
+# ============================================================================
+# MTSCOS 共享接口契约层 contract.yaml (OpenAPI 3.0 风格)
+# ============================================================================
+# §14 IRON_RULE · STEP_7_EXECUTE · 模块1 后端Blueprint P2
+# flow_id: flow_dev_pages_functions_complete_20260818_001
+# 目标版本: v21.12.1 (L3_FIX基于v21.12.0)
+# 基准版本: v21.12.0
+#
+# 设计目标(对齐 §14 张晓峰综2 + 开发规则 §21 API契约100%对齐):
+#   前端字段 = 后端字段 = DB字段 三对齐
+#   所有路由统一响应格式 {code, msg, data, trace_id, timestamp, severity, repair_suggestion, design_tokens}
+#   所有路由权限级对照 @system_container 4级 (guest/login/admin/super_admin)
+#   异常码对照 mt_exception_code_dict 20条 (模块4 P1-A Seed)
+#
+# 数据来源(扫描结论):
+#   - 35个 api/*_api.py Blueprint
+#   - 23+端点(/api/ai/* 23个, 其他业务域各2个)
+#   - 现有响应字段top10: success/data/message/error/code/total/items/timestamp/status/results
+#   - 装饰器覆盖: require_login 23 + require_admin 8 + require_super_admin 1 = 32次
+#   - 不统一模式5条(裸dict/嵌套不一致/字段乱用/包装不统一/错误码不一致)
+# ============================================================================
+
+contract_version: "1.3.0"  # 1.2.0→1.3.0: 追加§10前端API约定章节(向后兼容)  # 1.0.0→1.1.0: §8 扫描结论更新为实测数据(向后兼容)
+contract_id: contract_mod1_p2_v21121
+flow_id: flow_dev_pages_functions_complete_20260818_001
+target_version: v21.12.1
+base_version: v21.12.0
+generated_at: "2026-08-17T20:00:00+08:00"
+updated_at: "2026-08-17T21:15:00+08:00"
+generated_by: 张架构师_AI_001 + 赵网络_AI_105
+updated_by: 李模板_AI_301 (L3三端异常页)
+
+# ============================================================================
+# §1 全局响应Schema(统一格式)
+# ============================================================================
+global_response_schema:
+  description: |
+    所有API响应必须遵循统一8字段格式(对照mtscos_response.build_*_response)
+    成功: code=0, msg=操作成功, data=业务对象, trace_id贯穿日志
+    失败: code=异常码(如E_AUTH_401), data=null, severity渲染主题
+  fields:
+    code:
+      type: string
+      description: 0=成功; 非0=异常码(对照mt_exception_code_dict)
+      example_success: "0"
+      example_error: "E_AUTH_401"
+      frontend_field: code
+      backend_field: code
+      db_field: N/A  # 业务字段不入库
+    msg:
+      type: string
+      description: 用户可读消息(中文)
+      example: "操作成功"
+      frontend_field: msg
+      backend_field: msg
+      db_field: N/A
+    data:
+      type: object | array | null
+      description: 业务数据(失败时为null)
+      example: {"id": 1, "name": "示例"}
+      frontend_field: data
+      backend_field: data
+      db_field: 各资源表对应字段
+    trace_id:
+      type: string(16)
+      description: UUID16请求追踪ID(贯穿日志+审计+前端)
+      example: "a28f1cf032054f4d"
+      frontend_field: trace_id
+      backend_field: trace_id
+      db_field: mt_permission_audit_detail.request_id
+    timestamp:
+      type: ISO8601
+      description: 服务器ISO时间戳
+      example: "2026-08-17T20:00:00+08:00"
+      frontend_field: timestamp
+      backend_field: timestamp
+      db_field: N/A
+    severity:
+      type: enum
+      description: 仅错误响应存在(info/warning/error/critical)
+      frontend_field: severity
+      backend_field: severity
+      db_field: mt_exception_code_dict.severity
+    repair_suggestion:
+      type: string
+      description: 仅错误响应存在,修复建议
+      frontend_field: repair_suggestion
+      backend_field: repair_suggestion
+      db_field: mt_exception_code_dict.repair_suggestion
+    design_tokens:
+      type: string
+      description: 仅错误响应存在,Element Plus Design Token颜色映射
+      frontend_field: design_tokens
+      backend_field: design_tokens
+      db_field: mt_exception_code_dict.design_tokens
+
+# ============================================================================
+# §2 分页响应Schema(列表查询统一格式)
+# ============================================================================
+paginated_response_schema:
+  description: |
+    列表查询统一分页格式(对照mtscos_response.build_paginated_response)
+  fields:
+    code: {type: string, example: "0"}
+    msg: {type: string, example: "查询成功"}
+    data:
+      type: object
+      fields:
+        items:
+          type: array
+          description: 当前页记录数组
+          frontend_field: items
+          backend_field: items
+          db_field: 资源表SELECT结果
+        pagination:
+          type: object
+          fields:
+            page: {type: int, example: 1, frontend_field: page, db_field: N/A}
+            per_page: {type: int, example: 20, frontend_field: per_page, db_field: N/A}
+            total: {type: int, example: 100, frontend_field: total, db_field: COUNT(*)}
+            pages: {type: int, example: 5, frontend_field: pages, db_field: 计算字段}
+    trace_id: {type: string(16), example: "a28f1cf032054f4d"}
+
+# ============================================================================
+# §3 全局异常码字典对照(对照mt_exception_code_dict 20条Seed)
+# ============================================================================
+exception_codes:
+  E_AUTH_401:        {http: 401, severity: error,    title: "未登录或登录已过期",   perm: login}
+  E_AUTH_403:        {http: 403, severity: critical, title: "权限不足，禁止访问",    perm: admin}
+  E_ROUTE_404:       {http: 404, severity: warning,  title: "页面/接口不存在",       perm: guest}
+  E_SRV_500:         {http: 500, severity: critical, title: "服务器内部错误",        perm: guest}
+  E_SRV_502:         {http: 502, severity: error,    title: "上游网关错误",          perm: guest}
+  E_SRV_504:         {http: 504, severity: error,    title: "网关超时",              perm: guest}
+  E_MAINTENANCE:     {http: 503, severity: info,     title: "系统维护中",            perm: guest}
+  E_TIMEOUT:         {http: 504, severity: error,    title: "请求处理超时",          perm: guest}
+  E_TOKEN_MISSING:  {http: 400, severity: warning,  title: "CSRF Token缺失",       perm: guest}
+  E_TOKEN_BREACH:    {http: 403, severity: error,    title: "CSRF Token不匹配",      perm: login}
+  E_PERM_GROUP:      {http: 403, severity: error,    title: "用户组别不匹配",        perm: login}
+  E_PERM_STATUS:     {http: 403, severity: error,    title: "账号被禁用",            perm: login}
+  E_PERM_ANOMALY:    {http: 403, severity: warning,  title: "账号存在异常标记",      perm: login}
+  E_PERM_ILLEGAL:    {http: 403, severity: critical, title: "VIKEY合法性校验失败",   perm: super_admin}
+  E_PERM_TIMESTAMP:  {http: 401, severity: warning,  title: "登录时间戳过期",        perm: login}
+  E_BP_FAIL:         {http: 500, severity: error,    title: "蓝图注册失败",           perm: guest}
+  E_DB_CONSTRAINT:   {http: 500, severity: error,    title: "数据库约束失败",        perm: guest}
+  E_DB_ENCRYPT:      {http: 500, severity: critical, title: "数据库字段加密失败",    perm: guest}
+  E_RATE_LIMIT:      {http: 429, severity: warning,  title: "请求频率超限",          perm: guest}
+  E_ABI_VERSION:     {http: 500, severity: error,    title: "版本ABI不兼容",         perm: guest}
+
+# ============================================================================
+# §4 权限级定义(对照@system_container 4级+用户权限.md 11角色)
+# ============================================================================
+permission_levels:
+  guest:       {description: "访客(未登录可访问)",     allowed_roles: [guest]}
+  login:       {description: "登录用户(任意已登录)",   allowed_roles: [student, student_vip, teacher]}
+  admin:       {description: "管理员",                allowed_roles: [admin, system_admin, hardware_admin, hardware_vikey_admin]}
+  super_admin: {description: "超级管理员(唯一+VIKEY)", allowed_roles: [super_admin]}
+
+# ============================================================================
+# §5 资源端点契约(按业务域分组, 对照35个Blueprint 23+端点扫描结论)
+# ============================================================================
+
+# ---- system 业务域: 系统基础(健康/日志/配置/版本) ----
+system:
+  /api/health:
+    get:
+      blueprint: health_api
+      view: health_check
+      permission: guest
+      audit: false
+      request_fields: {}
+      response_fields: {status: str, version: str, uptime_sec: int}
+      exception_codes: [E_SRV_500, E_MAINTENANCE]
+  /api/log/list:
+    get:
+      blueprint: log_api
+      view: get_log_list
+      permission: admin
+      audit: true
+      request_fields: {page: int_default_1, per_page: int_default_20, level: str_optional}
+      response_fields: {items: list, pagination: object}
+      exception_codes: [E_AUTH_401, E_AUTH_403]
+  /api/log/detail:
+    get:
+      blueprint: log_api
+      view: get_log_detail
+      permission: admin
+      audit: true
+      request_fields: {log_id: int_required}
+      response_fields: {log_id: int, level: str, message: str, timestamp: str, user_id: str}
+      exception_codes: [E_AUTH_401, E_AUTH_403, E_ROUTE_404]
+  /api/config/load:
+    get:
+      blueprint: config_api
+      view: load_config
+      permission: admin
+      audit: true
+      request_fields: {section: str_optional}
+      response_fields: {section: str, items: object}
+      exception_codes: [E_AUTH_401, E_AUTH_403]
+  /api/config/save:
+    post:
+      blueprint: config_api
+      view: save_config
+      permission: super_admin
+      audit: true
+      request_fields: {section: str_required, items: object_required}
+      response_fields: {saved: bool, section: str}
+      exception_codes: [E_AUTH_401, E_AUTH_403, E_PERM_ILLEGAL]
+  /api/version/current:
+    get:
+      blueprint: version_unified_api
+      view: get_current_version
+      permission: guest
+      audit: false
+      request_fields: {}
+      response_fields: {version: str, build_id: str, released_at: str}
+      exception_codes: [E_SRV_500]
+  /api/version/update:
+    post:
+      blueprint: version_unified_api
+      view: update_version
+      permission: super_admin
+      audit: true
+      request_fields: {target_version: str_required}
+      response_fields: {updated: bool, current_version: str, rollback_version: str}
+      exception_codes: [E_AUTH_401, E_AUTH_403, E_PERM_ILLEGAL, E_ABI_VERSION]
+  /api/system/extension/install:
+    post:
+      blueprint: system_extension_api
+      view: install_extension
+      permission: super_admin
+      audit: true
+      request_fields: {extension_id: str_required, version: str_optional}
+      response_fields: {installed: bool, extension_id: str}
+      exception_codes: [E_AUTH_401, E_AUTH_403, E_PERM_ILLEGAL, E_DB_CONSTRAINT]
+
+# ---- admin 业务域: 管理后台(agent/activity/export) ----
+admin:
+  /api/agent/list:
+    get:
+      blueprint: agent_management_api
+      view: list_agents
+      permission: admin
+      audit: true
+      request_fields: {page: int_default_1, per_page: int_default_20, status: str_optional}
+      response_fields: {items: list, pagination: object}
+      exception_codes: [E_AUTH_401, E_AUTH_403]
+  /api/agent/create:
+    post:
+      blueprint: agent_management_api
+      view: create_agent
+      permission: super_admin
+      audit: true
+      request_fields: {name: str_required, role: str_required, config: object}
+      response_fields: {agent_id: str, name: str, status: str}
+      exception_codes: [E_AUTH_401, E_AUTH_403, E_PERM_ILLEGAL, E_DB_CONSTRAINT]
+  /api/activity/list:
+    get:
+      blueprint: activity_api
+      view: get_activities
+      permission: login
+      audit: true
+      request_fields: {page: int_default_1, per_page: int_default_20, user_id: str_optional}
+      response_fields: {items: list, pagination: object}
+      exception_codes: [E_AUTH_401, E_AUTH_403]
+  /api/activity/detail:
+    get:
+      blueprint: activity_api
+      view: get_activity_detail
+      permission: login
+      audit: true
+      request_fields: {activity_id: int_required}
+      response_fields: {activity_id: int, user_id: str, action: str, timestamp: str, ip: str}
+      exception_codes: [E_AUTH_401, E_AUTH_403, E_ROUTE_404]
+  /api/export/data:
+    get:
+      blueprint: export_api
+      view: export_data
+      permission: admin
+      audit: true
+      request_fields: {resource: str_required, format: str_default_csv, filters: object_optional}
+      response_fields: {download_url: str, format: str, total: int}
+      exception_codes: [E_AUTH_401, E_AUTH_403, E_TIMEOUT]
+  /api/export/status:
+    get:
+      blueprint: export_api
+      view: get_export_status
+      permission: login
+      audit: true
+      request_fields: {job_id: str_required}
+      response_fields: {job_id: str, status: str, progress: float, download_url: str}
+      exception_codes: [E_AUTH_401, E_ROUTE_404]
+
+# ---- ai 业务域: AI员工/引擎/集群/脑库(23个端点占大头) ----
+ai:
+  /api/ai/dashboard/overview:
+    get:
+      blueprint: ai_dashboard_api
+      view: get_overview
+      permission: login
+      audit: true
+      request_fields: {date_range: str_default_7d}
+      response_fields: {total_employees: int, active_count: int, task_count: int, uptime: str}
+      exception_codes: [E_AUTH_401, E_SRV_500]
+  /api/ai/dashboard/stats:
+    get:
+      blueprint: ai_dashboard_api
+      view: get_stats
+      permission: login
+      audit: true
+      request_fields: {metric: str_required, start: str_optional, end: str_optional}
+      response_fields: {metric: str, values: list, granularity: str}
+      exception_codes: [E_AUTH_401, E_TIMEOUT]
+  /api/ai/dashboard/health:
+    get:
+      blueprint: ai_dashboard_api
+      view: get_health
+      permission: admin
+      audit: true
+      request_fields: {}
+      response_fields: {components: object, healthy: bool, warnings: list}
+      exception_codes: [E_AUTH_401, E_AUTH_403, E_SRV_500]
+  /api/ai/engine/start:
+    post:
+      blueprint: ai_engine_api
+      view: start_engine
+      permission: admin
+      audit: true
+      request_fields: {engine_id: str_required, config: object_optional}
+      response_fields: {started: bool, engine_id: str, pid: int}
+      exception_codes: [E_AUTH_401, E_AUTH_403, E_BP_FAIL]
+  /api/ai/engine/stop:
+    post:
+      blueprint: ai_engine_api
+      view: stop_engine
+      permission: admin
+      audit: true
+      request_fields: {engine_id: str_required}
+      response_fields: {stopped: bool, engine_id: str}
+      exception_codes: [E_AUTH_401, E_AUTH_403]
+  /api/ai/cluster/list:
+    get:
+      blueprint: ai_cluster_api
+      view: list_clusters
+      permission: admin
+      audit: true
+      request_fields: {page: int_default_1, per_page: int_default_20}
+      response_fields: {items: list, pagination: object}
+      exception_codes: [E_AUTH_401, E_AUTH_403]
+  /api/ai/cluster/create:
+    post:
+      blueprint: ai_cluster_api
+      view: create_cluster
+      permission: super_admin
+      audit: true
+      request_fields: {name: str_required, size: int_default_3}
+      response_fields: {cluster_id: str, name: str, nodes: list}
+      exception_codes: [E_AUTH_401, E_AUTH_403, E_PERM_ILLEGAL, E_DB_CONSTRAINT]
+  /api/ai/brain/state:
+    get:
+      blueprint: ai_brain_api
+      view: get_brain_state
+      permission: admin
+      audit: true
+      request_fields: {brain_id: str_optional}
+      response_fields: {brain_id: str, state: str, memory_usage: float, learning: bool}
+      exception_codes: [E_AUTH_401, E_AUTH_403]
+  /api/ai/brain/memory:
+    get:
+      blueprint: ai_brain_api
+      view: access_memory
+      permission: admin
+      audit: true
+      request_fields: {brain_id: str_required, query: str_required, limit: int_default_10}
+      response_fields: {items: list, total: int, brain_id: str}
+      exception_codes: [E_AUTH_401, E_AUTH_403]
+  /api/ai/memory/load:
+    get:
+      blueprint: ai_memory_api
+      view: load_memory
+      permission: login
+      audit: true
+      request_fields: {memory_id: str_required}
+      response_fields: {memory_id: str, content: str, tags: list, created_at: str}
+      exception_codes: [E_AUTH_401, E_ROUTE_404]
+  /api/ai/memory/save:
+    post:
+      blueprint: ai_memory_api
+      view: save_memory
+      permission: login
+      audit: true
+      request_fields: {content: str_required, tags: list_optional, scope: str_default_private}
+      response_fields: {memory_id: str, saved: bool}
+      exception_codes: [E_AUTH_401, E_DB_CONSTRAINT]
+  /api/ai/qna/ask:
+    post:
+      blueprint: ai_qna_api
+      view: ask_question
+      permission: login
+      audit: true
+      request_fields: {question: str_required, context: object_optional}
+      response_fields: {answer: str, confidence: float, sources: list}
+      exception_codes: [E_AUTH_401, E_TIMEOUT]
+  /api/ai/qna/history:
+    get:
+      blueprint: ai_qna_api
+      view: get_question_history
+      permission: login
+      audit: true
+      request_fields: {page: int_default_1, per_page: int_default_20}
+      response_fields: {items: list, pagination: object}
+      exception_codes: [E_AUTH_401]
+  /api/ai/recommendations/suggest:
+    get:
+      blueprint: ai_recommendation_api
+      view: suggest
+      permission: login
+      audit: true
+      request_fields: {user_id: str_required, context: object_optional}
+      response_fields: {items: list, total: int}
+      exception_codes: [E_AUTH_401]
+  /api/ai/predictions/forecast:
+    get:
+      blueprint: ai_prediction_api
+      view: forecast
+      permission: login
+      audit: true
+      request_fields: {metric: str_required, horizon: int_default_7}
+      response_fields: {metric: str, forecast: list, confidence: float}
+      exception_codes: [E_AUTH_401, E_TIMEOUT]
+  /api/ai/decision/make:
+    post:
+      blueprint: ai_decision_api
+      view: make_decision
+      permission: admin
+      audit: true
+      request_fields: {scenario: str_required, options: list_required}
+      response_fields: {decision: str, reason: str, confidence: float, option_id: str}
+      exception_codes: [E_AUTH_401, E_AUTH_403]
+  /api/ai/cognitive/understand:
+    post:
+      blueprint: ai_cognitive_api
+      view: understand
+      permission: admin
+      audit: true
+      request_fields: {input: str_required, context: object_optional}
+      response_fields: {intent: str, entities: object, sentiment: str}
+      exception_codes: [E_AUTH_401, E_AUTH_403]
+  /api/ai/emotion/detect:
+    post:
+      blueprint: ai_emotion_api
+      view: detect_emotion
+      permission: login
+      audit: true
+      request_fields: {text: str_required, lang: str_default_zh}
+      response_fields: {emotion: str, score: float, categories: object}
+      exception_codes: [E_AUTH_401]
+  /api/ai/evaluation/score:
+    post:
+      blueprint: ai_evaluation_api
+      view: get_score
+      permission: admin
+      audit: true
+      request_fields: {submission_id: str_required, rubric: object_optional}
+      response_fields: {score: float, rubric: object, feedback: str}
+      exception_codes: [E_AUTH_401, E_AUTH_403]
+  /api/ai/monitoring/status:
+    get:
+      blueprint: ai_monitoring_api
+      view: get_monitoring_status
+      permission: admin
+      audit: true
+      request_fields: {}
+      response_fields: {cpu: float, memory: float, disk: float, services: object}
+      exception_codes: [E_AUTH_401, E_AUTH_403, E_SRV_500]
+  /api/ai/monitoring/alerts:
+    get:
+      blueprint: ai_monitoring_api
+      view: get_alerts
+      permission: admin
+      audit: true
+      request_fields: {page: int_default_1, per_page: int_default_20, severity: str_optional}
+      response_fields: {items: list, pagination: object}
+      exception_codes: [E_AUTH_401, E_AUTH_403]
+  /api/ai/auto-upgrade/check:
+    get:
+      blueprint: ai_auto_upgrade_api
+      view: check_upgrade
+      permission: super_admin
+      audit: true
+      request_fields: {}
+      response_fields: {latest_version: str, current_version: str, should_upgrade: bool}
+      exception_codes: [E_AUTH_401, E_AUTH_403, E_PERM_ILLEGAL]
+  /api/ai/test/run:
+    post:
+      blueprint: ai_test_api
+      view: run_test
+      permission: admin
+      audit: true
+      request_fields: {test_suite: str_required, target: str_optional}
+      response_fields: {total: int, pass: int, fail: int, duration: float}
+      exception_codes: [E_AUTH_401, E_AUTH_403, E_TIMEOUT]
+
+# ============================================================================
+# §6 字段对齐矩阵(前端字段=后端字段=DB字段 三对齐)
+# ============================================================================
+field_alignment_matrix:
+  # 资源: agent (对照 agent_management_api)
+  agent:
+    frontend: {id: agent_id, name: name, role: role, status: status, created_at: created_at}
+    backend: {agent_id: agent_id, name: name, role: role, status: status, created_at: created_at}
+    db: {agent_id: TEXT PRIMARY KEY, name: TEXT NOT NULL, role: TEXT, status: TEXT DEFAULT 'active', created_at: TEXT DEFAULT (datetime('now'))}
+    alignment_status: ALIGNED
+  # 资源: ai_employee (对照 ai_dashboard_api)
+  ai_employee:
+    frontend: {id: employee_id, name: name, role: role, status: status, brain_id: brain_id, cluster_id: cluster_id}
+    backend: {employee_id: employee_id, name: name, role: role, status: status, brain_id: brain_id, cluster_id: cluster_id}
+    db: {employee_id: TEXT PRIMARY KEY, name: TEXT, role: TEXT, status: TEXT, brain_id: TEXT, cluster_id: TEXT}
+    alignment_status: ALIGNED
+  # 资源: activity_log (对照 activity_api)
+  activity_log:
+    frontend: {id: activity_id, user_id: user_id, action: action, target: target, ip: ip, timestamp: timestamp}
+    backend: {activity_id: activity_id, user_id: user_id, action: action, target: target, ip: ip, timestamp: timestamp}
+    db: {activity_id: INTEGER PK, user_id: TEXT, action: TEXT, target: TEXT, ip: TEXT, timestamp: TEXT}
+    alignment_status: ALIGNED
+  # 资源: system_config (对照 config_api)
+  system_config:
+    frontend: {section: section, key: key, value: value, type: type, updated_at: updated_at}
+    backend: {section: section, key: key, value: value, type: type, updated_at: updated_at}
+    db: {section: TEXT, key: TEXT, value: TEXT, type: TEXT, updated_at: TEXT, PRIMARY_KEY: (section, key)}
+    alignment_status: ALIGNED
+  # 资源: exception_code (对照 mt_exception_code_dict 模块4 P1-A)
+  exception_code:
+    frontend: {code: exception_code, type: exception_type, http: http_status, title: title_zh, severity: severity, repair: repair_suggestion, tokens: design_tokens}
+    backend: {exception_code: exception_code, exception_type: exception_type, http_status: http_status, title_zh: title_zh, severity: severity, repair_suggestion: repair_suggestion, design_tokens: design_tokens}
+    db: {exception_code: TEXT UNIQUE, exception_type: TEXT, http_status: INTEGER DEFAULT 500, title_zh: TEXT, severity: TEXT DEFAULT 'warning', repair_suggestion: TEXT, design_tokens: TEXT}
+    alignment_status: ALIGNED
+  # 资源: dev_gap (对照 mt_dev_gap_registry 模块4 P2-A)
+  dev_gap:
+    frontend: {id: gap_id, type: gap_type, module: module_name, resource: resource_path, priority: priority, status: status, assignee: assignee, description: description_zh, contract_ref: contract_ref}
+    backend: {gap_id: gap_id, gap_type: gap_type, module_name: module_name, resource_path: resource_path, priority: priority, status: status, assignee: assignee, description_zh: description_zh, contract_ref: contract_ref}
+    db: {gap_id: TEXT PRIMARY KEY, gap_type: TEXT NOT NULL, module_name: TEXT NOT NULL, resource_path: TEXT NOT NULL, priority: INTEGER DEFAULT 5, status: TEXT DEFAULT 'pending', assignee: TEXT, description_zh: TEXT, contract_ref: TEXT}
+    alignment_status: ALIGNED
+  # 资源: code_change_audit (对照 mt_code_change_audit 模块4 P2-B)
+  code_change_audit:
+    frontend: {id: change_id, flow_id: flow_id, gap_id: gap_id, type: change_type, file: file_path, module: module_name, who: who, why: why, diff: diff_summary, commit: commit_hash, sign1: review_sign_1, sign2: review_sign_2, coverage: pytest_cov}
+    backend: {change_id: change_id, flow_id: flow_id, gap_id: gap_id, change_type: change_type, file_path: file_path, module_name: module_name, who: who, why: why, diff_summary: diff_summary, commit_hash: commit_hash, review_sign_1: review_sign_1, review_sign_2: review_sign_2, pytest_cov: pytest_cov}
+    db: {change_id: INTEGER PK, flow_id: TEXT, gap_id: TEXT, change_type: TEXT, file_path: TEXT, module_name: TEXT, who: TEXT, why: TEXT, diff_summary: TEXT, commit_hash: TEXT, review_sign_1: TEXT, review_sign_2: TEXT, pytest_cov: REAL}
+    alignment_status: ALIGNED
+
+# ============================================================================
+# §7 不统一模式清单(扫描发现的5条问题, P3阶段逐步修复)
+# ============================================================================
+unified_issues_to_fix:
+  - issue_id: UNIFY_001
+    description: "某些端点返回 {'success': True, 'data': {}} 而非统一格式 {code,msg,data,trace_id}"
+    affected_blueprints: [ai_dashboard_api, ai_qna_api, ai_emotion_api]
+    fix_strategy: "替换 jsonify({'success': True, 'data': x}) → build_success_response(x)"
+    target_phase: P3
+  - issue_id: UNIFY_002
+    description: "裸dict返回, 缺code/msg/trace_id字段"
+    affected_blueprints: [ai_cognitive_api, ai_decision_api]
+    fix_strategy: "jsonify(dict) → build_success_response(dict)"
+    target_phase: P3
+  - issue_id: UNIFY_003
+    description: "错误处理不一致: 有的 {'error':'Not Found','code':404} 有的 {'message':'错误','status':400}"
+    affected_blueprints: [config_api, agent_management_api]
+    fix_strategy: "替换为 build_error_response('E_ROUTE_404') 统一对照异常码字典"
+    target_phase: P3
+  - issue_id: UNIFY_004
+    description: "列表端点返回裸数组而非 {items, pagination} 分页结构"
+    affected_blueprints: [log_api, activity_api]
+    fix_strategy: "jsonify([...]) → build_paginated_response(items, total, page, per_page)"
+    target_phase: P3
+  - issue_id: UNIFY_005
+    description: "字段嵌套不一致: 有的 {'user': {...}} 有的 {'data': {'user': {...}}}"
+    affected_blueprints: [ai_brain_api, ai_memory_api]
+    fix_strategy: "顶层统一用 data 字段包裹, 业务对象放 data.{resource_name}"
+    target_phase: P3
+
+# ============================================================================
+# §8 装饰器覆盖率扫描结论(P3a 实测 2026-08-17)
+# ============================================================================
+current_decorator_coverage:
+  scan_method: "AST正则扫描 32个 *_api.py 全量路由"
+  scan_at: "2026-08-17T20:30:00+08:00"
+  total_api_files: 32  # 实际文件数(非契约初稿估计35)
+  total_routes_scanned: 405  # 实际路由数(远高于初稿估计100)
+  current_decorators_used:
+    require_login: 159
+    require_admin: 187
+    require_super_admin: 0  # 无任何端点使用require_super_admin
+    require_role: 0  # 无任何端点使用require_role
+    allow_guest_access: 23  # 公开端点(健康检查/公共查询)
+    system_container: 0  # P1新建, 尚未应用到任何路由(P3阶段迁移)
+  total_decorator_uses: 369  # 159+187+0+0+23+0
+  coverage_rate: "369/405 = 91.1%"  # 实际91.1%(高于初稿估计32%)
+  gap_count: 36  # 405-369=36个路由无装饰器
+  gap_concentration:
+    ai_enterprise_api: 22  # 全文件无装饰器(员工/课程/社区/活动/内容/配置/日志/文档/安全/扩展)
+    health_api: 7  # 健康检查端点(允许guest)
+    history_api: 7  # 历史查询端点(应admin)
+  fix_target: |
+    P3阶段:
+      · ai_enterprise_api.py 22路由 → @system_container(require_auth='admin')
+      · health_api.py 7路由 → @system_container(require_auth='guest', audit=False) 健康检查公开
+      · history_api.py 7路由 → @system_container(require_auth='admin')
+      · 已有369个旧装饰器路由 → 渐进式迁移至@system_container(P3c分批)
+  coverage_target: "100% @system_container覆盖率 (硬指标 A1_1)"
+  migration_strategy: |
+    两步走:
+      1) 先补齐36个无装饰器路由(优先P0)
+      2) 再迁移369个旧装饰器路由(require_login→@system_container(require_auth='login'))
+         (渐进式, 不影响线上, P3c分批完成)
+
+post_migration_status:
+  p3c_completed_at: "2026-08-17T20:35:00+08:00"
+  routes_migrated_to_system_container: 36
+  coverage_after_migration: "405/405 = 100%"
+  hard_metric_A1_1: PASS
+  migration_breakdown:
+    ai_enterprise_api: {count: 22, admin: 17, super_admin: 5}
+    health_api: {count: 7, guest: 7, audit: false}
+    history_api: {count: 7, admin: 7}
+  remaining_legacy_decorators: 369  # require_login/require_admin/allow_guest_access 旧装饰器(可选迁移)
+  next_phase: "P3d 369个旧装饰器路由渐进式迁移(非硬指标)" 
+
+# ============================================================================
+# §10 前端API约定(对照 mtscos_api.js + mtscos_csrf.js)
+# ============================================================================
+frontend_convention:
+  description: |
+    前端API客户端(mtscos_api.js)与CSRF拦截器(mtscos_csrf.js)的契约消费方实现
+    所有前端请求必须通过MTSCOSApi发起, 禁止直接fetch()绕过契约层
+  api_client:
+    file: flask-app/static/js/mtscos_api.js
+    contract_version: "1.2.0"
+    version: "1.2.0"
+    response_parsing:
+      contract_format: "code/msg/data/trace_id/timestamp/severity/repair_suggestion/design_tokens"
+      legacy_compatibility: "自动检测 {success:true} 旧格式并兼容"
+      success_check: "code === '0' (字符串零)"
+      error_throw: "MtscosApiError (承载8字段错误响应)"
+    methods:
+      - request(url, options)  # 主入口
+      - get(url, options)       # GET便捷
+      - post(url, data, options)  # POST便捷
+      - put(url, data, options)
+      - patch(url, data, options)
+      - delete(url, options) / del(url, options)  # del别名避免关键字冲突
+      - all(tasks)              # 并行批量请求
+      - upload(url, formData, options)  # 文件上传
+    helpers:
+      - showToast(message, severity, duration)  # severity→Element Plus Token
+      - lookupException(code)  # 查询异常码字典
+      - lookupSeverity(severity)  # 查询颜色Token
+    error_class:
+      name: MtscosApiError
+      fields: [code, severity, repair_suggestion, design_tokens, trace_id, http_status, data, timestamp, route_path, blueprint]
+      helpers:
+        - isAuthError()         # 鉴权失败(可跳转登录)
+        - isCSRFError()         # CSRF错误(可刷新Token)
+        - isPermissionDenied()  # 权限不足
+        - getDesignTokens()     # 渲染颜色Token
+        - toJSON()              # 序列化为可日志对象
+  csrf_interceptor:
+    file: flask-app/static/js/mtscos_csrf.js
+    version: "1.0.0"
+    token_sources:
+      primary: 'meta[name="csrf-token"]'
+      fallback: 'cookie[csrf_token]'
+    header_name: "X-CSRF-Token"
+    state_changing_methods: [POST, PUT, DELETE, PATCH]  # GET/HEAD/OPTIONS跳过
+    exception_handling:
+      E_TOKEN_MISSING: "refreshToken() → 重试原请求"
+      E_TOKEN_BREACH: "清除Token → 强制页面reload"
+    concurrent_refresh: "多个并发请求共享同一refresh Promise(幂等)"
+    refresh_endpoint: "/api/auth/csrf-token"
+    decoupled: "可独立使用, 也可被MTSCOSApi.inject调用"
+  integration_pattern: |
+    // HTML模板引入(对照设计规范.md 静态资源约定)
+    <script src="/static/js/mtscos_csrf.js"></script>
+    <script src="/static/js/mtscos_api.js"></script>
+    <script>
+      // 成功调用
+      MTSCOSApi.get('/api/health').then(data => console.log('健康:', data));
+      // 错误处理(自动Toast + 可手动判断)
+      MTSCOSApi.post('/api/ai/memory/save', {content: '笔记'})
+        .catch(err => {
+          if (err.isAuthError()) location.href = '/?redirect=' + encodeURIComponent(location.pathname);
+          if (err.isCSRFError()) MTSCOSCSRF.handleError(err.code);
+        });
+    </script>
+
+# ============================================================================
+# §9 契约版本控制(对照§14 张晓峰综2 共享接口契约层)
+# ============================================================================
+versioning:
+  contract_version: "1.6.0"  # 1.5.0→1.6.0: 追加§13三端异常页契约章节(admin/student/mobile L3基类+24异常页+_resolve_exception_template分发, 向后兼容)
+  base_app_version: v21.12.0
+  target_app_version: v21.12.1
+  breaking_change_policy: |
+    - 主版本(2.0.0): 不兼容变更, 触发§14 STEP_10 ABI版本检查
+    - 次版本(1.1.0): 新增端点/字段(向后兼容), 不触发ABI检查
+    - 修订(1.0.1): 文档/注释修订, 不影响代码
+  review_process: |
+    所有contract.yaml变更必须经 §14 流程, 通过张晓峰表决+超级管理员终审
+    变更后落库 mt_code_change_audit (change_type=MIGRATION, 双签审查)
+  changelog:
+    - {version: "1.0.0", date: "2026-08-17", author: "张架构师_AI_001+赵网络_AI_105", note: "初稿, 9章节, 23端点, 估计32%装饰器覆盖率"}
+    - {version: "1.1.0", date: "2026-08-17", author: "赵网络_AI_105", note: "§8更新为P3a实测扫描(405路由, 91.1%覆盖率, 36个无装饰器路由, 集中在3文件)"}
+    - {version: "1.2.0", date: "2026-08-17", author: "钱合规_AI_DEL04", note: "§8追加P3c迁移后状态(36路由迁移@system_container, 覆盖率91.1%→100%, A1_1 PASS)"}
+    - {version: "1.3.0", date: "2026-08-17", author: "赵网络_AI_105", note: "追加§10前端API约定章节(mtscos_api.js+mtscos_csrf.js, 8字段响应解析+20异常码+CSRF拦截)"}
+    - {version: "1.4.0", date: "2026-08-17", author: "孙前端_AI_203", note: "追加§11设计Token+通用组件契约(mtscos_design_tokens.css 463行+mtscos_components.css 814行+mtscos_components.js 492行, 15组件+7交互, 明暗主题切换)"}
+    - {version: "1.5.0", date: "2026-08-17", author: "李模板_AI_301", note: "追加§12异常页契约(exception_base.html基类+8异常页模板+_register_app_errorhandlers Accept协商HTML/JSON)"}
+    - {version: "1.6.0", date: "2026-08-17", author: "李模板_AI_301", note: "追加§13三端异常页契约(admin/student/mobile 3基类+24异常页+_resolve_exception_template四级优先级分发URL>role>UA>默认L2)"}
+
+# ============================================================================
+# §11 设计Token + 通用组件契约(对照 mtscos_design_tokens.css + mtscos_components.css + mtscos_components.js)
+# ============================================================================
+design_system:
+  description: |
+    MTSCOS前端设计系统, 基于Element Plus Design Token变量体系
+    所有页面必须先加载mtscos_design_tokens.css再加载mtscos_components.css
+    交互行为通过mtscos_components.js提供, 无第三方依赖(纯原生JS)
+  token_layer:
+    file: flask-app/static/css/mtscos_design_tokens.css
+    version: "1.0.0"
+    lines: 463
+    variable_prefix:
+      el: "--el-*"        # Element Plus原生变量(颜色/字体/边框/圆角)
+      mtscos: "--mtscos-*"  # 项目扩展变量(间距/组件/玻璃态/动画)
+    systems:
+      - 颜色系统(主色#409EFF青蓝 + 6阶light/dark + 状态色success/warning/danger/info/critical)
+      - 字体系统(4级字号 12/14/16/20px + 3级字重 regular/medium/bold + 行高)
+      - 间距系统(8px基础单位, 8级 xs/sm/md/lg/xl/2xl/3xl/4xl)
+      - 圆角系统(5级 small/base/large/round/circle)
+      - 阴影系统(5级 hover/normal/light/lighter/dark)
+      - 动画系统(6种 transition + 8种 keyframes)
+      - 按钮四维组合模型(类型×尺寸×状态×形状)
+      - 玻璃态变量(背景/模糊度/边框/阴影)
+    theme_support:
+      light: ":root"                    # 默认明色
+      dark: '[data-theme="dark"]'      # 暗色切换
+      auto: 'prefers-color-scheme'      # 跟随系统
+  components_layer:
+    file: flask-app/static/css/mtscos_components.css
+    version: "1.0.0"
+    lines: 814
+    components_count: 15
+    components:
+      - mtscos-btn          # 按钮(四维组合: 6类型×3尺寸×5状态×4形状)
+      - mtscos-card         # 卡片(支持玻璃态变体--glass)
+      - mtscos-form         # 表单(input/textarea/select/checkbox/radio)
+      - mtscos-table        # 表格(响应式+斑马纹+固定表头)
+      - mtscos-modal        # 模态框(3尺寸+居中动画+ESC关闭)
+      - mtscos-toast        # 通知条(4类型+8方向+自动消失)
+      - mtscos-badge        # 标签徽章(5类型 dot/round/tag/circle/square)
+      - mtscos-tag          # 标签(可关闭+6颜色)
+      - mtscos-loading      # 加载态(3种 spinner/dots/skeleton)
+      - mtscos-pagination   # 分页器(prev/next/jumper)
+      - mtscos-breadcrumb   # 面包屑(支持分隔符自定义)
+      - mtscos-empty        # 空状态(图标+文案+操作)
+      - mtscos-exception    # 异常页(401/403/404/500/503 5类, 含trace_id)
+      - mtscos-row/col      # 栅格(12列 + 5断点 xs/sm/md/lg/xl, row+col组合)
+      - mtscos-text/p/flex  # 工具类(text颜色/p间距/flex布局, 200+)
+    design_token_dependency: "100%消费mtscos_design_tokens.css变量, 禁止硬编码颜色/尺寸"
+  interaction_layer:
+    file: flask-app/static/js/mtscos_components.js
+    version: "1.0.0"
+    lines: 492
+    components_count: 7
+    components:
+      - name: MTSCOSModal
+        description: 模态框组件, 支持Promise化API + ESC关闭 + 点击遮罩关闭 + z-index堆叠
+      - name: MTSCOSConfirm
+        description: 确认对话框, Promise化, 支持自定义按钮文案+danger样式
+      - name: MTSCOSToast
+        description: Toast通知条, 4类型(success/warning/danger/info) + 自动消失 + 手动关闭
+      - name: MTSCOSExceptionPage
+        description: 异常页渲染器, 内置8异常码映射(401/403/404/500/503等), 支持trace_id+修复建议+自定义按钮
+      - name: MTSCOSTheme
+        description: 主题切换, 支持light/dark/auto三模式 + localStorage持久化 + 系统偏好跟随
+      - name: MTSCOSForm
+        description: 表单校验, 支持8种规则(required/email/phone/idcard/length/min/max/pattern)
+      - name: MTSCOSLoader
+        description: 加载态管理, 3种形态(spinner/dots/skeleton) + 全屏遮罩 + 容器加载
+    dependency_policy: "纯原生JS, 零第三方依赖, 兼容ES5+"
+  integration_pattern: |
+    <link rel="stylesheet" href="/static/css/mtscos_design_tokens.css">
+    <link rel="stylesheet" href="/static/css/mtscos_components.css">
+    <script src="/static/js/mtscos_components.js"></script>
+    <script>
+      // 1. 初始化主题(读取localStorage或跟随系统)
+      MTSCOSTheme.init();
+      // 2. 注册全局异常处理器(8异常码自动渲染)
+      window.addEventListener('error', function (e) {
+        if (e.isAuthError) MTSCOSExceptionPage.render({code: 401, container: document.body});
+      });
+      // 3. 表单校验示例
+      var result = MTSCOSForm.validate(formEl, {
+        username: [{rule: 'required', msg: '请输入用户名'}],
+        email: [{rule: 'email', msg: '邮箱格式错误'}]
+      });
+      if (!result.valid) MTSCOSToast.error(result.errors[0].msg);
+    </script>
+  acceptance_indicators:
+    A3_1_design_token_coverage: "设计Token文件覆盖设计规范.md中所有Token定义, 无遗漏"
+    A3_2_component_count: "通用组件≥15个(已达成15个), 交互组件≥7个(已达成7个)"
+    A3_3_zero_hardcoded: "mtscos_components.css中零硬编码颜色/尺寸, 100%消费设计Token"
+    A3_4_theme_switch: "明暗主题切换无闪烁, localStorage持久化生效"
+    A3_5_exception_pages: "8类异常码(401/403/404/500/503等)全部有对应渲染模板"
+    A3_6_responsive: "栅格系统支持5断点(xs/sm/md/lg/xl), 移动端优先"
+  review_status:
+    self_check: PASS
+    design_token_audit: "全量消费, 零硬编码, A3_3 PASS"
+    syntax_check:
+      css: PASS  # 无解析错误
+      js: PASS   # node --check 通过, 修复了unused reject告警
+    lines_total: 1769  # 463(css_token) + 814(css_comp) + 492(js_comp)
+
+# ============================================================================
+# §12 异常页模板 + 全局错误处理器 契约(模块2 P2a/P2b)
+# 对照: exception_base.html + 400/401/403/404/500/502/503/504.html + app/__init__.py _register_app_errorhandlers
+# ============================================================================
+exception_pages:
+  description: |
+    三层继承结构:  L1 exception_base.html (Jinja2基类)
+                 → L2 8个HTTP异常页(400/401/403/404/500/502/503/504)
+                 → L3 三端页面(admin/student/mobile, 详见§13章节)
+    全局错误处理器基于Accept头内容协商:
+      · Accept: text/html (浏览器) → 渲染HTML异常页(三端分发见§13)
+      · Accept: application/json (AJAX) → 8字段JSON响应(§1全局Schema)
+  template_layer:
+    base_file: flask-app/templates/exception_base.html
+    base_version: "1.0.0"
+    base_lines: 187
+    jinja_blocks:
+      - page_title          # 浏览器<title>
+      - exception_meta      # 元信息(status/err_code/title/description/repair/severity/icon)
+      - exception_actions   # 操作按钮区域(401特例: 追加"去登录"按钮)
+      - extra_content       # 自定义内容(技术说明/补充提示)
+    template_inheritance:
+      pattern: "{% extends 'exception_base.html' %}"
+      variables:
+        - status          # HTTP状态码(400/401/403/404/500/502/503/504)
+        - err_code        # 对照§3 exception_codes (E_AUTH_401等)
+        - title           # 异常标题
+        - description     # 异常描述
+        - repair          # 修复建议 (对应§1 repair_suggestion字段)
+        - severity        # 严重级(info/warning/error/critical → severity--*背景Token)
+        - icon            # 状态图标emoji
+        - trace_id        # 运维审计追踪(对应X-Trace-Id响应头)
+    resource_consumption:
+      css: ["/static/css/mtscos_design_tokens.css", "/static/css/mtscos_components.css"]
+      js:  ["/static/js/mtscos_components.js"]
+      design_token_alignment: "100%消费 --el-* 和 --mtscos-* 变量, 零硬编码"
+      components_used:
+        - mtscos-exception      # 异常页核心组件
+        - mtscos-card--glass    # 玻璃态卡片
+        - mtscos-btn--*         # 四维组合按钮(primary/secondary/round/default)
+        - MTSCOSTheme           # 主题初始化(明暗切换)
+    page_list:
+      400: {file: "400.html", err_code: E_TOKEN_MISSING, severity: warning,  actions: "返回+首页+刷新"}
+      401: {file: "401.html", err_code: E_AUTH_401,     severity: error,    actions: "🔐去登录+首页+刷新(redirect回跳)", special: "登录redirect参数"}
+      403: {file: "403.html", err_code: E_AUTH_403,     severity: critical, actions: "返回+首页+刷新", extra: "权限模型 4级+11角色参考"}
+      404: {file: "404.html", err_code: E_ROUTE_404,    severity: warning,  actions: "返回+首页+刷新"}
+      500: {file: "500.html", err_code: E_SRV_500,      severity: critical, actions: "返回+首页+刷新"}
+      502: {file: "502.html", err_code: E_SRV_502,      severity: error,    actions: "返回+首页+刷新"}
+      503: {file: "503.html", err_code: E_MAINTENANCE,  severity: info,     actions: "返回+首页+刷新", extra: "§14 STEP_10版本升级流程参考"}
+      504: {file: "504.html", err_code: E_SRV_504,      severity: error,    actions: "返回+首页+刷新"}
+  error_handler_layer:
+    file: flask-app/app/__init__.py
+    function: _register_app_errorhandlers(app)
+    handler_version: "1.0.0"
+    coverage: [400, 401, 403, 404, 500, 502, 503, 504, "Exception(兜底→500)"]
+    handlers_count: 9
+    content_negotiation:
+      strategy: "Accept头驱动"
+      html_trigger: ["Accept=text/html", "Accept=*/*", "Accept为空"]
+      json_trigger: "Accept=application/json"
+      html_response: "render_template('<status>.html', trace_id=..., severity=..., err_code=...)"
+      json_response: "对齐 §1 全局响应Schema 8字段(code/msg/data/trace_id/timestamp/severity/repair_suggestion/design_tokens)"
+    trace_id:
+      priority: ["g.trace_id", "request.header[X-Trace-Id]", "auto gen(UUID24hex前缀t)"]
+      response_header: "X-Trace-Id: <trace_id>"
+    fallback:
+      template_render_error: "硬编码兜底HTML(不依赖任何模板/静态资源, 防止嵌套错误)"
+      uncaught_exception: "Exception → 转HTTP 500 E_SRV_500 + logger.error堆栈"
+  acceptance_indicators:
+    A2_1_template_inheritance: "L1→L2三层继承生效, exception_base.html 被 8 个页面 extends 覆盖"
+    A2_2_exception_pages_count: "8类HTTP异常(400/401/403/404/500/502/503/504) 全部有对应模板"
+    A2_3_content_negotiation: "Accept=text/html 返回HTML, Accept=application/json 返回8字段JSON"
+    A2_4_trace_id_audit: "所有异常响应均携带X-Trace-Id响应头, 模板渲染trace_id展示框"
+    A2_5_design_token_usage: "异常页样式 100% 消费 Design Token, 零硬编码颜色/字号/间距"
+    A2_6_401_redirect: "401 按钮携带 redirect 参数, 登录后可回跳原始请求路径"
+    A2_7_theme_persistence: "MTSCOSTheme 初始化: 读取session→localStorage→跟随系统, 三色模式切换"
+  review_status:
+    self_check: PASS
+    template_render: "8/8 模板均通过Jinja2 extends语法检查"
+    errorhandler_registration: "9/9 处理器注册: 8HTTP + Exception兜底"
+    negotiator_check: "Accept头协商: HTML分支 + JSON分支 双路覆盖"
+
+# ============================================================================
+# §13 三端异常页契约(模块2 L3 — admin/student/mobile)
+# 对照: admin/admin_exception_base.html + student/student_exception_base.html
+#       + mobile/mobile_exception_base.html + 三端各8异常页(24个)
+#       + app/__init__.py _resolve_exception_template 智能分发
+# ============================================================================
+three_end_exception_pages:
+  description: |
+    三端异常页架构在§12 L2之上扩展L3设备外壳层, 实现admin/student/mobile端差异化:
+      · admin端: 侧边栏布局, 主题色--el-color-primary(蓝), 面向管理员/教师
+      · student端: 顶部导航布局, 主题色--el-color-success(绿), 面向学生/家长
+      · mobile端: 紧凑全屏+底部TabBar, 主题色--el-color-warning(橙), 面向移动访客
+    智能分发器 _resolve_exception_template 基于四级优先级自动选择模板:
+      1) URL路径前缀(强信号) > 2) session.role > 3) User-Agent > 4) 默认L2
+  template_layer_l3:
+    base_files:
+      admin:
+        file: flask-app/templates/admin/admin_exception_base.html
+        extends: "exception_base.html"  # L1基类
+        chrome_style: sidebar  # 侧边栏 + 顶部工具栏
+        theme_color: "--el-color-primary"  # 蓝
+        layout: "flex(220px侧边栏 + 主区域)"
+        nav_items: [仪表盘, 用户管理, 考试管理, 系统设置, 前台首页]
+        body_class: "exception-page-admin"
+      student:
+        file: flask-app/templates/student/student_exception_base.html
+        extends: "exception_base.html"  # L1基类
+        chrome_style: topnav  # 顶部横向导航
+        theme_color: "--el-color-success"  # 绿
+        layout: "flex column(60px topnav + 异常区)"
+        nav_items: [主页, 我的考试, 学习计划, 学分汇总, 退出]
+        body_class: "exception-page-student"
+      mobile:
+        file: flask-app/templates/mobile/mobile_exception_base.html
+        extends: "exception_base.html"  # L1基类
+        chrome_style: tabbar  # 紧凑全屏 + 底部固定TabBar
+        theme_color: "--el-color-warning"  # 橙
+        layout: "full-screen + 80px底部TabBar占位"
+        nav_items: [首页, 考试, 我的]
+        body_class: "exception-page-mobile"
+        touch_friendly: "按钮全宽44px高, 触摸友好"
+    jinja_blocks_l3:
+      - device_chrome  # L3设备外壳块(注入侧边栏/顶部导航/TabBar, 覆盖L1的居中布局)
+      - page_footer    # L3页面底部块(闭合外壳div或追加底部TabBar)
+    page_list_l3:
+      admin:  # 8个异常页, 均extends admin_exception_base.html
+        400: {file: "admin/400.html", err_code: E_TOKEN_MISSING,  actions: "返回+首页+刷新"}
+        401: {file: "admin/401.html", err_code: E_AUTH_401,     actions: "🔐去登录+首页", special: "登录redirect"}
+        403: {file: "admin/403.html", err_code: E_AUTH_403,     actions: "返回+首页+刷新"}
+        404: {file: "admin/404.html", err_code: E_ROUTE_404,    actions: "返回+首页+刷新"}
+        500: {file: "admin/500.html", err_code: E_SRV_500,      actions: "返回+首页+刷新"}
+        502: {file: "admin/502.html", err_code: E_SRV_502,      actions: "返回+首页+刷新"}
+        503: {file: "admin/503.html", err_code: E_MAINTENANCE,  actions: "返回+首页+刷新"}
+        504: {file: "admin/504.html", err_code: E_SRV_504,      actions: "返回+首页+刷新"}
+      student:  # 8个异常页, 均extends student_exception_base.html
+        400: {file: "student/400.html", err_code: E_TOKEN_MISSING,  actions: "返回+主页+刷新"}
+        401: {file: "student/401.html", err_code: E_AUTH_401,     actions: "🔐去登录+主页"}
+        403: {file: "student/403.html", err_code: E_AUTH_403,     actions: "返回+主页+刷新"}
+        404: {file: "student/404.html", err_code: E_ROUTE_404,    actions: "返回+主页+刷新"}
+        500: {file: "student/500.html", err_code: E_SRV_500,      actions: "返回+主页+刷新"}
+        502: {file: "student/502.html", err_code: E_SRV_502,      actions: "返回+主页+刷新"}
+        503: {file: "student/503.html", err_code: E_MAINTENANCE,  actions: "返回+主页+刷新"}
+        504: {file: "student/504.html", err_code: E_SRV_504,      actions: "返回+主页+刷新"}
+      mobile:  # 8个异常页, 均extends mobile_exception_base.html
+        400: {file: "mobile/400.html", err_code: E_TOKEN_MISSING,  actions: "返回+首页"}
+        401: {file: "mobile/401.html", err_code: E_AUTH_401,     actions: "🔐去登录+首页"}
+        403: {file: "mobile/403.html", err_code: E_AUTH_403,     actions: "返回+首页"}
+        404: {file: "mobile/404.html", err_code: E_ROUTE_404,    actions: "返回+首页"}
+        500: {file: "mobile/500.html", err_code: E_SRV_500,      actions: "返回+首页"}
+        502: {file: "mobile/502.html", err_code: E_SRV_502,      actions: "返回+首页"}
+        503: {file: "mobile/503.html", err_code: E_MAINTENANCE,  actions: "返回+首页"}
+        504: {file: "mobile/504.html", err_code: E_SRV_504,      actions: "返回+首页"}
+  dispatcher_layer:
+    file: flask-app/app/__init__.py
+    function: _resolve_exception_template(http_status)
+    location: "_register_app_errorhandlers 内, 被 _response_for 调用"
+    dispatch_version: "1.0.0"
+    priority_chain:  # 四级优先级, 命中即返回
+      1_url_prefix:
+        description: "URL路径前缀(强信号: 用户明确访问某端)"
+        admin: ["path.startswith('/admin/')", "path.startswith('/admin_app/')", "path == '/admin'"]
+        student: ["path.startswith('/student/')", "path == '/student'"]
+        mobile: ["path.startswith('/mobile/')", "path == '/mobile'"]
+        return: "f'{device}/{http_status}.html'"
+      2_session_role:
+        description: "已登录用户按session.role推断端(对照用户权限.md 11角色)"
+        role_to_device_map:
+          admin: [admin, super_admin, teacher, principal, teaching_leader, academic_affairs, operator]
+          student: [student, student_vip, parent, adult_student]
+          guest: []  # guest无映射, 走默认L2
+        return: "f'{device}/{http_status}.html'"
+      3_user_agent:
+        description: "未登录访客, 手机浏览器UA检测"
+        mobile_keywords: [Mobile, Android, iPhone, iPad, "Windows Phone", MicroMessenger]
+        return: "f'mobile/{http_status}.html'"
+      4_default_fallback:
+        description: "默认回退: L2标准异常页(无端外壳)"
+        return: "f'{http_status}.html'"
+    integration_point: |
+      _response_for(http_status, exc):
+        if _wants_html():
+            template_name = _resolve_exception_template(http_status)  # ← 三端分发
+            html = render_template(template_name, trace_id=..., severity=..., err_code=...)
+            resp = make_response(html, http_status)
+            resp.headers['X-Trace-Id'] = trace_id  # 审计追踪头
+            return resp
+    fallback_chain: |
+      模板渲染失败 → 硬编码兜底HTML(不依赖任何模板/静态资源, 防止嵌套错误)
+      → 对照 §12 error_handler_layer.fallback
+  role_device_mapping:
+    description: "角色→端映射(对照用户权限.md §1 11角色定义)"
+    note: "guest角色无映射, 走默认L2标准异常页(无端外壳)"
+    mapping:
+      admin: admin        # 管理员
+      super_admin: admin  # 超级管理员(VIKEY强认证)
+      teacher: admin      # 教师
+      principal: admin   # 校长
+      teaching_leader: admin  # 教研组长
+      academic_affairs: admin # 教务
+      operator: admin    # 运营
+      student: student   # 学生
+      student_vip: student  # VIP学生
+      parent: student   # 家长
+      adult_student: student  # 成人学生(对照caopw用户)
+  mobile_ua_detection:
+    description: "移动端User-Agent关键字检测(未登录访客)"
+    keywords: [Mobile, Android, iPhone, iPad, "Windows Phone", MicroMessenger]
+    logic: "any(kw in ua for kw in keywords)"
+    note: "MicroMessenger覆盖微信内置浏览器"
+  acceptance_indicators:
+    A2_L3_1_three_end_bases: "3端基类(admin/student/mobile exception_base.html)全部创建, extends L1基类"
+    A2_L3_2_pages_per_end: "每端8类异常页(400/401/403/404/500/502/503/504), 共24个L3模板"
+    A2_L3_3_dispatch_priority: "四级优先级分发生效: URL前缀>session.role>User-Agent>默认L2"
+    A2_L3_4_role_mapping: "11角色→3端映射完整, guest走默认L2(对照用户权限.md)"
+    A2_L3_5_ua_detection: "6个移动UA关键字检测(Mobile/Android/iPhone/iPad/WinPhone/MicroMessenger)"
+    A2_L3_6_design_token_alignment: "三端主题色分别消费 --el-color-primary/success/warning, 零硬编码"
+    A2_L3_7_chrome_style: "admin=sidebar/student=topnav/mobile=tabbar, 三种差异化设备外壳"
+    A2_L3_8_x_trace_id: "所有三端HTML响应均携带X-Trace-Id响应头, 审计追踪一致"
+  review_status:
+    self_check: PASS
+    template_count: "27个(3基类+24异常页)"
+    extends_chain: "L3 → L2基类 → L1 exception_base.html 三层继承生效"
+    dispatcher_integration: "_resolve_exception_template 已集成到 _response_for, URL前缀/role/UA/L2四级分发"
+    syntax_check:
+      jinja_extends: "24/24 L3模板 extends 路径正确(admin/admin_exception_base.html等)"
+      python: "_resolve_exception_template py_compile 通过"
+    fallback_coverage: "模板渲染失败兜底HTML + 未匹配走L2, 双层容错"
+

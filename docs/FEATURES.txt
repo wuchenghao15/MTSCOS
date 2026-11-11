@@ -1,0 +1,90 @@
+════ MTSCOS 功能说明书 (自动生成·doc-sync 同步中心轨道) ════
+════ 最后更新: 2026-11-12 07:37 · 共 22 个功能 ════
+  ■ 教育飞轮 P0 [edu_flywheel_engine.py]
+    功能: 诊断→组卷→作答→错题本→掌握度→学习路径→每日练习→复测 6步自驱闭环
+    启动: launchd com.mtscos.edu-flywheel (600s/轮)
+    使用: 自动运转; 查数据: exam_sessions/exam_results/wrong_book/user_knowledge_mastery/learning_paths/daily_practice
+  ■ 教育智能 P1 [edu_p1_smart_engine.py]
+    功能: AI错因讲解(三段式) / 薄弱点变体题生成(qwen2.5-coder) / 难度自动校准(错误率>70%降档)
+    启动: launchd com.mtscos.edu-p1-smart (900s/轮)
+    使用: 自动运转; 讲解在 wrong_book.ai_explanation, 变体题 question_bank.source='ai_variant'
+  ■ 聊天工具链 [chat_toolbox.py]
+    功能: 18个沙箱工具(读文件/grep/写文件/命令执行/测试/仙女座桥接/主题/用户动作) + tool-use循环 + SSE on_event
+    启动: Flask tick 内懒加载, 无需独立启动
+    使用: 聊天说'查XX/修bug/换主题/改昵称'即触发; /api/sa-prime/chat/stream 流式
+  ■ SA Prime 指挥官 [sa_prime_bp.py]
+    功能: 黑金三栏指挥官台: 工具直通聊天+全模型池+大厅面板+多租户+审计流
+    启动: 浏览器开 /sa-prime (SA 身份)
+    使用: POST /api/sa-prime/tenants 建租户; /tenants/<id>/members 挂成员; /audit?tenant= 审计过滤
+  ■ 小龙 App [xiaolong_app_bp.py]
+    功能: 移动端主聊天引擎: /api/xiaolong/chat + /chat/stream SSE + 反馈闭环
+    启动: 小龙 App / 小龙iOS / /api/xiaolong/*
+    使用: 点踩自动入质量工单(CQ-*)→learner吸收; /api/chat-feedback 两版共用
+  ■ 用户数据空间 [user_space_engine.py]
+    功能: 泛化指令路由: 17字段修改/三级安全闸(low直执/medium备案/high审批)/专属数据文件夹
+    启动: 聊天触发 (modify_setting 工具)
+    使用: 数据在 _runtime/user_spaces/{user_id}/; 载入 GET /api/user-context
+  ■ 个性化主题 [chat_theme_engine.py]
+    功能: 用户说'换粉色'→主题引擎→按user_id存储→登录自动载入专属CSS
+    启动: 聊天触发 (set_theme 工具)
+    使用: GET/POST /api/user-theme; 5预设+动态合成任意颜色
+  ■ 区块链引擎 [sys_blockchain_engine.py]
+    功能: PoA轻量链: 每tick一块, round-robin提议人, GAP/FIX/RND三源交易, 神经元fire机制
+    启动: Flask tick 第21轨 blockchain_neurons
+    使用: 查 mt_blockchain 链高/mt_tx_pool 交易池/mt_neuron 神经元权重
+  ■ 自治学习器 [sys_center_autonomous_learner.py]
+    功能: 9步闭环: DONE吸收/分级反哺(按KP类型)/方向孵化/派单/产出三通道分配
+    启动: Flask tick 第17轨 center_learner
+    使用: 自动运转; 方向池 mt_center_direction_pool, 产出 mt_center_knowledge_points
+  ■ 每日练习 [edu_flywheel_engine.py]
+    功能: 错题重练+薄弱新题自动组单, streak连击统计, 复测达标错题毕业
+    启动: 飞轮Step5/6 自动
+    使用: daily_practice 表: practice_date/accuracy/streak_days
+  ■ 小龙 iOS 原生版 [README_BUILD.txt]
+    功能: iPhone 原生 SwiftUI App: SSE流式+工具事件胶囊+👍👎反馈+主题色+5档模型+服务器可配(Tailscale)
+    启动: XcodeGen: cd flask-app/ios_app && xcodegen generate && open (详见 README_BUILD.txt)
+    使用: 登录(X-XL-Token)→聊天(SSE实时)→反馈→设置页切服务器/模型; 真机调试7天免费证书
+  ■ 教育飞轮 P0 [edu_flywheel_engine.py]
+    功能: 诊断→组卷→作答→错题本→掌握度→学习路径→每日练习→复测 6步自驱闭环
+    启动: launchd com.mtscos.edu-flywheel (600s/轮)
+    使用: 自动运转; 查数据: exam_sessions/exam_results/wrong_book/user_knowledge_mastery/learning_paths/daily_practice
+  ■ 教育智能 P1 [edu_p1_smart_engine.py]
+    功能: AI错因讲解(三段式) / 薄弱点变体题生成(qwen2.5-coder) / 难度自动校准(错误率>70%降档)
+    启动: launchd com.mtscos.edu-p1-smart (900s/轮)
+    使用: 自动运转; 讲解在 wrong_book.ai_explanation, 变体题 question_bank.source='ai_variant'
+  ■ 聊天工具链 [chat_toolbox.py]
+    功能: 18个沙箱工具(读文件/grep/写文件/命令执行/测试/仙女座桥接/主题/用户动作) + tool-use循环 + SSE on_event
+    启动: Flask tick 内懒加载, 无需独立启动
+    使用: 聊天说'查XX/修bug/换主题/改昵称'即触发; /api/sa-prime/chat/stream 流式
+  ■ SA Prime 指挥官 [sa_prime_bp.py]
+    功能: 黑金三栏指挥官台: 工具直通聊天+全模型池+大厅面板+多租户+审计流
+    启动: 浏览器开 /sa-prime (SA 身份)
+    使用: POST /api/sa-prime/tenants 建租户; /tenants/<id>/members 挂成员; /audit?tenant= 审计过滤
+  ■ 小龙 App [xiaolong_app_bp.py]
+    功能: 移动端主聊天引擎: /api/xiaolong/chat + /chat/stream SSE + 反馈闭环
+    启动: 小龙 App / 小龙iOS / /api/xiaolong/*
+    使用: 点踩自动入质量工单(CQ-*)→learner吸收; /api/chat-feedback 两版共用
+  ■ 小龙 iOS 原生版 [README_BUILD.txt]
+    功能: iPhone 原生 SwiftUI App: SSE流式+工具事件胶囊+👍👎反馈+主题色+5档模型+服务器可配(Tailscale)
+    启动: XcodeGen: cd flask-app/ios_app && xcodegen generate && open (详见 README_BUILD.txt)
+    使用: 登录(X-XL-Token)→聊天(SSE实时)→反馈→设置页切服务器/模型; 真机调试7天免费证书
+  ■ 用户数据空间 [user_space_engine.py]
+    功能: 泛化指令路由: 17字段修改/三级安全闸(low直执/medium备案/high审批)/专属数据文件夹
+    启动: 聊天触发 (modify_setting 工具)
+    使用: 数据在 _runtime/user_spaces/{user_id}/; 载入 GET /api/user-context
+  ■ 个性化主题 [chat_theme_engine.py]
+    功能: 用户说'换粉色'→主题引擎→按user_id存储→登录自动载入专属CSS
+    启动: 聊天触发 (set_theme 工具)
+    使用: GET/POST /api/user-theme; 5预设+动态合成任意颜色
+  ■ 区块链引擎 [sys_blockchain_engine.py]
+    功能: PoA轻量链: 每tick一块, round-robin提议人, GAP/FIX/RND三源交易, 神经元fire机制
+    启动: Flask tick 第21轨 blockchain_neurons
+    使用: 查 mt_blockchain 链高/mt_tx_pool 交易池/mt_neuron 神经元权重
+  ■ 自治学习器 [sys_center_autonomous_learner.py]
+    功能: 9步闭环: DONE吸收/分级反哺(按KP类型)/方向孵化/派单/产出三通道分配
+    启动: Flask tick 第17轨 center_learner
+    使用: 自动运转; 方向池 mt_center_direction_pool, 产出 mt_center_knowledge_points
+  ■ 每日练习 [edu_flywheel_engine.py]
+    功能: 错题重练+薄弱新题自动组单, streak连击统计, 复测达标错题毕业
+    启动: 飞轮Step5/6 自动
+    使用: daily_practice 表: practice_date/accuracy/streak_days

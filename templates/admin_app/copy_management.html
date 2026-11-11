@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文案中枢管理系统 - MTSCOS AI</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, "Microsoft YaHei", sans-serif; background: #0f1923; color: #c9d1d9; }
+        .header { background: #161b22; padding: 20px 30px; border-bottom: 1px solid #30363d; display: flex; justify-content: space-between; align-items: center; }
+        .header h1 { font-size: 20px; color: #58a6ff; }
+        .header .version { font-size: 12px; color: #8b949e; }
+        .container { display: flex; min-height: calc(100dvh - 61px); }
+        .sidebar { width: 220px; background: #161b22; border-right: 1px solid #30363d; padding: 15px 0; }
+        .sidebar a { display: block; padding: 10px 20px; color: #c9d1d9; text-decoration: none; font-size: 14px; transition: background 0.2s; }
+        .sidebar a:hover, .sidebar a.active { background: #1f2937; color: #58a6ff; border-left: 3px solid #58a6ff; }
+        .main { flex: 1; padding: 25px; overflow-y: auto; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; margin-bottom: 25px; }
+        .stat-card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 18px; }
+        .stat-card .label { font-size: 12px; color: #8b949e; margin-bottom: 8px; }
+        .stat-card .value { font-size: 28px; font-weight: 600; color: #58a6ff; }
+        .stat-card .sub { font-size: 11px; color: #8b949e; margin-top: 4px; }
+        .stat-card.critical .value { color: #f85149; }
+        .stat-card.warning .value { color: #d29922; }
+        .stat-card.success .value { color: #3fb950; }
+        .panel { background: #161b22; border: 1px solid #30363d; border-radius: 8px; margin-bottom: 20px; }
+        .panel-header { padding: 12px 18px; border-bottom: 1px solid #30363d; display: flex; justify-content: space-between; align-items: center; }
+        .panel-header h2 { font-size: 15px; color: #c9d1d9; }
+        .panel-body { padding: 18px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #21262d; font-size: 13px; }
+        th { color: #8b949e; font-weight: 500; }
+        td { color: #c9d1d9; }
+        tr:hover { background: #1c2128; }
+        .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 500; }
+        .badge-ui_text { background: #1f3a5f; color: #58a6ff; }
+        .badge-ai_prompt { background: #3a2f1f; color: #d29922; }
+        .badge-knowledge { background: #1f3a2f; color: #3fb950; }
+        .badge-rule_text { background: #3a1f1f; color: #f85149; }
+        .badge-notification { background: #2f1f3a; color: #bc8cff; }
+        .badge-doc_text { background: #2f2f1f; color: #e3b341; }
+        .badge-question { background: #1f2f3a; color: #79c0ff; }
+        .btn { display: inline-block; padding: 6px 14px; border-radius: 6px; border: none; cursor: pointer; font-size: 13px; text-decoration: none; }
+        .btn-primary { background: #238636; color: var(--mtscos-text-inverse); }
+        .btn-danger { background: #da3633; color: var(--mtscos-text-inverse); }
+        .btn-secondary { background: #30363d; color: #c9d1d9; }
+        .btn:hover { opacity: 0.9; }
+        .filter-bar { display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; }
+        .filter-bar select, .filter-bar input { background: #0d1117; border: 1px solid #30363d; color: #c9d1d9; padding: 6px 10px; border-radius: 6px; font-size: 13px; }
+        .empty { text-align: center; padding: 40px; color: #8b949e; }
+        .loading { text-align: center; padding: 20px; color: #58a6ff; }
+        .severity-critical { color: #f85149; font-weight: 600; }
+        .severity-warning { color: #d29922; }
+        .severity-info { color: #8b949e; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>文案中枢管理系统 (CHMS)</h1>
+        <span class="version">v21.8.0 | §14 STEP_7 交付</span>
+    </div>
+    <div class="container">
+        <div class="sidebar">
+            <a href="#" class="active" onclick="showPanel('dashboard')">概览看板</a>
+            <a href="#" onclick="showPanel('list')">文案列表</a>
+            <a href="#" onclick="showPanel('create')">新增文案</a>
+            <a href="#" onclick="showPanel('inspection')">巡检报告</a>
+            <a href="#" onclick="showPanel('optimization')">AI优化</a>
+            <a href="#" onclick="showPanel('coverage')">功能覆盖</a>
+            <a href="#" onclick="showPanel('duplicates')">重复检测</a>
+            <a href="#" onclick="showPanel('orphans')">孤立文案</a>
+        </div>
+        <div class="main">
+            <!-- 概览看板 -->
+            <div id="panel-dashboard" class="panel-content">
+                <div class="stats-grid" id="statsGrid">
+                    <div class="loading">加载统计中...</div>
+                </div>
+                <div class="panel">
+                    <div class="panel-header"><h2>分类分布</h2></div>
+                    <div class="panel-body">
+                        <table id="typeTable"><thead><tr><th>分类</th><th>数量</th><th>占比</th></tr></thead><tbody></tbody></table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 文案列表 -->
+            <div id="panel-list" class="panel-content" style="display:none">
+                <div class="filter-bar">
+                    <select id="filterType" onchange="loadList()">
+                        <option value="">全部分类</option>
+                        <option value="UI_TEXT">UI界面文案</option>
+                        <option value="AI_PROMPT">AI提示词</option>
+                        <option value="KNOWLEDGE">知识库</option>
+                        <option value="RULE_TEXT">系统规则</option>
+                        <option value="NOTIFICATION">通知文案</option>
+                        <option value="DOC_TEXT">文档说明</option>
+                        <option value="QUESTION">题库内容</option>
+                    </select>
+                    <select id="filterStatus" onchange="loadList()">
+                        <option value="">全部状态</option>
+                        <option value="ACTIVE">活跃</option>
+                        <option value="INACTIVE">已下线</option>
+                        <option value="PENDING_REVIEW">待审核</option>
+                    </select>
+                </div>
+                <div class="panel">
+                    <div class="panel-body">
+                        <table id="copyTable"><thead><tr><th>Key</th><th>分类</th><th>内容预览</th><th>状态</th><th>来源</th><th>操作</th></tr></thead><tbody></tbody></table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 新增文案 -->
+            <div id="panel-create" class="panel-content" style="display:none">
+                <div class="panel">
+                    <div class="panel-header"><h2>新增文案</h2></div>
+                    <div class="panel-body">
+                        <form id="createForm" onsubmit="createCopy(event)" style="max-width:600px">
+                            <p style="margin-bottom:10px"><label>文案Key *</label><input type="text" id="fKey" required style="width:100%;padding:8px;background:#0d1117;border:1px solid #30363d;color:#c9d1d9;border-radius:6px" placeholder="如 ui.login.title"></p>
+                            <p style="margin-bottom:10px"><label>分类 *</label>
+                                <select id="fType" required style="width:100%;padding:8px;background:#0d1117;border:1px solid #30363d;color:#c9d1d9;border-radius:6px">
+                                    <option value="UI_TEXT">UI界面文案</option><option value="AI_PROMPT">AI提示词</option>
+                                    <option value="KNOWLEDGE">知识库</option><option value="RULE_TEXT">系统规则</option>
+                                    <option value="NOTIFICATION">通知文案</option><option value="DOC_TEXT">文档说明</option>
+                                    <option value="QUESTION">题库内容</option>
+                                </select>
+                            </p>
+                            <p style="margin-bottom:10px"><label>中文内容 *</label><textarea id="fContent" required rows="4" style="width:100%;padding:8px;background:#0d1117;border:1px solid #30363d;color:#c9d1d9;border-radius:6px"></textarea></p>
+                            <p style="margin-bottom:10px"><label>英文内容</label><textarea id="fContentEn" rows="2" style="width:100%;padding:8px;background:#0d1117;border:1px solid #30363d;color:#c9d1d9;border-radius:6px"></textarea></p>
+                            <p style="margin-bottom:10px"><label>模块路径</label><input type="text" id="fModule" style="width:100%;padding:8px;background:#0d1117;border:1px solid #30363d;color:#c9d1d9;border-radius:6px" placeholder="如 templates"></p>
+                            <p style="margin-bottom:10px"><label>页面路径</label><input type="text" id="fPage" style="width:100%;padding:8px;background:#0d1117;border:1px solid #30363d;color:#c9d1d9;border-radius:6px" placeholder="如 login.html"></p>
+                            <button type="submit" class="btn btn-primary">提交入库</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 巡检报告 -->
+            <div id="panel-inspection" class="panel-content" style="display:none">
+                <div class="panel">
+                    <div class="panel-header"><h2>文案巡检报告</h2><button class="btn btn-primary" onclick="runInspection()">执行巡检</button></div>
+                    <div class="panel-body"><div id="inspectionResult" class="empty">点击"执行巡检"开始检测</div></div>
+                </div>
+            </div>
+
+            <!-- AI优化 -->
+            <div id="panel-optimization" class="panel-content" style="display:none">
+                <div class="panel">
+                    <div class="panel-header"><h2>AI文案优化</h2><button class="btn btn-primary" onclick="runOptimize()">批量评估</button></div>
+                    <div class="panel-body"><div id="optimizeResult" class="empty">点击"批量评估"开始分析文案质量</div></div>
+                </div>
+            </div>
+
+            <!-- 功能覆盖 -->
+            <div id="panel-coverage" class="panel-content" style="display:none">
+                <div class="panel"><div class="panel-header"><h2>文案-功能覆盖率</h2></div><div class="panel-body"><div id="coverageResult" class="loading">加载中...</div></div></div>
+            </div>
+
+            <!-- 重复检测 -->
+            <div id="panel-duplicates" class="panel-content" style="display:none">
+                <div class="panel"><div class="panel-header"><h2>重复文案检测</h2></div><div class="panel-body"><div id="dupResult" class="loading">加载中...</div></div></div>
+            </div>
+
+            <!-- 孤立文案 -->
+            <div id="panel-orphans" class="panel-content" style="display:none">
+                <div class="panel"><div class="panel-header"><h2>孤立文案（无功能映射）</h2></div><div class="panel-body"><div id="orphanResult" class="loading">加载中...</div></div></div>
+            </div>
+        </div>
+    </div>
+    <script>
+        const API = '/api/copy';
+        function showPanel(name) {
+            document.querySelectorAll('.panel-content').forEach(p => p.style.display = 'none');
+            document.getElementById('panel-' + name).style.display = 'block';
+            document.querySelectorAll('.sidebar a').forEach(a => a.classList.remove('active'));
+            event.target.classList.add('active');
+            if (name === 'dashboard') loadStats();
+            if (name === 'list') loadList();
+            if (name === 'coverage') loadCoverage();
+            if (name === 'duplicates') loadDuplicates();
+            if (name === 'orphans') loadOrphans();
+        }
+        async function loadStats() {
+            try {
+                const res = await fetch(API + '/stats'); const data = await res.json();
+                const s = data.stats; const grid = document.getElementById('statsGrid');
+                if (s.error) { grid.innerHTML = '<div class="empty">' + s.error + '</div>'; return; }
+                let html = '';
+                html += card('文案总数', s.total, 'success');
+                html += card('云占用待治理', s.cloud_pending || 0, s.cloud_pending > 0 ? 'warning' : 'success');
+                Object.entries(s.by_type || {}).forEach(([k, v]) => html += card(k, v));
+                grid.innerHTML = html;
+                const tbody = document.querySelector('#typeTable tbody');
+                const total = s.total || 1;
+                tbody.innerHTML = Object.entries(s.by_type || {}).map(([k, v]) =>
+                    `<tr><td>${k}</td><td>${v}</td><td>${(v/total*100).toFixed(1)}%</td></tr>`).join('');
+            } catch(e) { document.getElementById('statsGrid').innerHTML = '<div class="empty">加载失败: ' + e + '</div>'; }
+        }
+        function card(label, value, cls) {
+            return `<div class="stat-card ${cls||''}"><div class="label">${label}</div><div class="value">${value}</div></div>`;
+        }
+        async function loadList() {
+            const type = document.getElementById('filterType').value;
+            const status = document.getElementById('filterStatus').value;
+            let url = API + '/list?limit=100';
+            if (type) url += '&type=' + type;
+            if (status) url += '&status=' + status;
+            try {
+                const res = await fetch(url); const data = await res.json();
+                const tbody = document.querySelector('#copyTable tbody');
+                if (!data.copies || data.copies.length === 0) { tbody.innerHTML = '<tr><td colspan="6" class="empty">无数据</td></tr>'; return; }
+                tbody.innerHTML = data.copies.map(c =>
+                    `<tr><td>${c.copy_key}</td><td><span class="badge badge-${c.copy_type.toLowerCase()}">${c.copy_type}</span></td>
+                    <td>${(c.copy_content||'').substring(0,60)}</td><td>${c.status}</td><td>${c.source_status}</td>
+                    <td><button class="btn btn-danger" onclick="delCopy('${c.copy_key}')">下线</button></td></tr>`).join('');
+            } catch(e) { console.error(e); }
+        }
+        async function createCopy(e) {
+            e.preventDefault();
+            const body = {
+                copy_key: document.getElementById('fKey').value,
+                copy_type: document.getElementById('fType').value,
+                copy_content: document.getElementById('fContent').value,
+                copy_content_en: document.getElementById('fContentEn').value,
+                module_path: document.getElementById('fModule').value,
+                page_path: document.getElementById('fPage').value
+            };
+            try {
+                const res = await fetch(API + '/create', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+                const data = await res.json();
+                if (data.success) { alert('入库成功!'); document.getElementById('createForm').reset(); }
+                else { alert('失败: ' + data.error); }
+            } catch(err) { alert('错误: ' + err); }
+        }
+        async function delCopy(key) {
+            if (!confirm('确认下线文案 ' + key + '?')) return;
+            try { await fetch(API + '/delete/' + key, {method:'DELETE'}); loadList(); } catch(e) {}
+        }
+        async function runInspection() {
+            document.getElementById('inspectionResult').innerHTML = '<div class="loading">巡检中...</div>';
+            try {
+                const res = await fetch(API + '/duplicates'); const dupData = await res.json();
+                let html = '<h3>重复文案: ' + (dupData.count||0) + ' 组</h3>';
+                if (dupData.duplicates && dupData.duplicates.length) {
+                    html += '<table><thead><tr><th>内容预览</th><th>数量</th><th>Keys</th></tr></thead><tbody>';
+                    dupData.duplicates.forEach(d => html += `<tr><td>${d.content}</td><td>${d.count}</td><td>${d.keys}</td></tr>`);
+                    html += '</tbody></table>';
+                }
+                document.getElementById('inspectionResult').innerHTML = html;
+            } catch(e) { document.getElementById('inspectionResult').innerHTML = '<div class="empty">巡检失败</div>'; }
+        }
+        async function runOptimize() {
+            document.getElementById('optimizeResult').innerHTML = '<div class="loading">AI评估中...</div>';
+            try {
+                const res = await fetch('/api/copy/optimize', {method:'POST'}); const data = await res.json();
+                document.getElementById('optimizeResult').innerHTML = '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+            } catch(e) { document.getElementById('optimizeResult').innerHTML = '<div class="empty">评估失败</div>'; }
+        }
+        async function loadCoverage() {
+            try {
+                const res = await fetch(API + '/coverage'); const data = await res.json();
+                const c = data.coverage;
+                document.getElementById('coverageResult').innerHTML =
+                    `<div class="stats-grid">${card('总文案', c.total_copies)}${card('已关联', c.linked_copies,'success')}${card('孤立', c.orphan_copies,'warning')}</div>
+                     <p style="margin-top:15px">覆盖率: <strong style="color:#58a6ff;font-size:20px">${c.coverage_percent}%</strong></p>`;
+            } catch(e) { document.getElementById('coverageResult').innerHTML = '<div class="empty">加载失败</div>'; }
+        }
+        async function loadDuplicates() {
+            try {
+                const res = await fetch(API + '/duplicates'); const data = await res.json();
+                let html = `<p>发现 ${data.count} 组重复文案</p>`;
+                if (data.duplicates && data.duplicates.length) {
+                    html += '<table><thead><tr><th>内容预览</th><th>数量</th><th>Keys</th></tr></thead><tbody>';
+                    data.duplicates.forEach(d => html += `<tr><td>${d.content}</td><td>${d.count}</td><td>${d.keys}</td></tr>`);
+                    html += '</tbody></table>';
+                }
+                document.getElementById('dupResult').innerHTML = html;
+            } catch(e) { document.getElementById('dupResult').innerHTML = '<div class="empty">加载失败</div>'; }
+        }
+        async function loadOrphans() {
+            try {
+                const res = await fetch(API + '/orphans'); const data = await res.json();
+                let html = `<p>发现 ${data.count} 条孤立文案</p>`;
+                if (data.orphans && data.orphans.length) {
+                    html += '<table><thead><tr><th>Key</th><th>分类</th><th>内容预览</th></tr></thead><tbody>';
+                    data.orphans.forEach(o => html += `<tr><td>${o.copy_key}</td><td>${o.copy_type}</td><td>${o.content}</td></tr>`);
+                    html += '</tbody></table>';
+                }
+                document.getElementById('orphanResult').innerHTML = html;
+            } catch(e) { document.getElementById('orphanResult').innerHTML = '<div class="empty">加载失败</div>'; }
+        }
+        loadStats();
+    </script>
+{# 🎨 冰山主题矩阵调度器 #}
+<script defer src="{{ url_for('static', filename='js/theme-manager.js') }}"></script>
+</body>
+</html>

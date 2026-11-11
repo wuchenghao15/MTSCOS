@@ -1,0 +1,1755 @@
+{
+  "metadata": {
+    "version": "1.0.0",
+    "generated_by": "COPY-GOVERNANCE-2026-0815 STEP_7 S2-b",
+    "generated_at": 1786788863.870683,
+    "subjects_covered": [
+      "政治",
+      "日语",
+      "英语",
+      "数学",
+      "物理",
+      "化学",
+      "生物",
+      "历史",
+      "地理"
+    ],
+    "types_covered": [
+      "single_choice",
+      "multiple_choice",
+      "true_false",
+      "fill_blank",
+      "short_answer"
+    ]
+  },
+  "questions": [
+    {
+      "question_id": "politics_single_choice_0001",
+      "type": "single_choice",
+      "category": "must_know",
+      "difficulty": "easy",
+      "content": "【政治·马克思主义基本原理】请选择/作答关于马克思主义基本原理的singlechoice题目（种子题 #1）",
+      "options": [
+        {
+          "key": "A",
+          "text": "选项A：政治-马克思主义基本原理正确答案"
+        },
+        {
+          "key": "B",
+          "text": "选项B：政治-马克思主义基本原理干扰项1"
+        },
+        {
+          "key": "C",
+          "text": "选项C：政治-马克思主义基本原理干扰项2"
+        },
+        {
+          "key": "D",
+          "text": "选项D：政治-马克思主义基本原理干扰项3"
+        }
+      ],
+      "correct_answer": "A",
+      "explanation": "本题考查知识点：马克思主义基本原理。答案为 A，详见政治教材对应章节。",
+      "analysis": "考点分析：马克思主义基本原理为政治高频考点。常见误区：易混淆相似概念。",
+      "tags": [
+        "政治",
+        "种子题",
+        "single_choice",
+        "easy",
+        "must_know"
+      ],
+      "knowledge_points": [
+        "马克思主义基本原理"
+      ],
+      "formula_used": [],
+      "year": 2026,
+      "source": "COPY-GOVERNANCE-2026-0815 seed",
+      "score": 1.0,
+      "usage_count": 0,
+      "correct_rate": 0.0,
+      "created_at": 1786788863.870616,
+      "updated_at": 1786788863.870616
+    },
+    {
+      "question_id": "politics_multiple_choice_0002",
+      "type": "multiple_choice",
+      "category": "key_point",
+      "difficulty": "medium",
+      "content": "【政治·毛泽东思想】请选择/作答关于毛泽东思想的multiplechoice题目（种子题 #2）",
+      "options": [
+        {
+          "key": "A",
+          "text": "A. 政治-毛泽东思想正确项1"
+        },
+        {
+          "key": "B",
+          "text": "B. 政治-毛泽东思想正确项2"
+        },
+        {
+          "key": "C",
+          "text": "C. 政治-毛泽东思想错误项"
+        },
+        {
+          "key": "D",
+          "text": "D. 政治-毛泽东思想正确项3"
+        }
+      ],
+      "correct_answer": [
+        "A",
+        "B",
+        "D"
+      ],
+      "explanation": "本题考查知识点：毛泽东思想。答案为 ['A', 'B', 'D']，详见政治教材对应章节。",
+      "analysis": "考点分析：毛泽东思想为政治高频考点。常见误区：易混淆相似概念。",
+      "tags": [
+        "政治",
+        "种子题",
+        "multiple_choice",
+        "medium",
+        "key_point"
+      ],
+      "knowledge_points": [
+        "毛泽东思想"
+      ],
+      "formula_used": [],
+      "year": 2026,
+      "source": "COPY-GOVERNANCE-2026-0815 seed",
+      "score": 1.0,
+      "usage_count": 0,
+      "correct_rate": 0.0,
+      "created_at": 1786788863.87062,
+      "updated_at": 1786788863.87062
+    },
+    {
+      "question_id": "politics_true_false_0003",
+      "type": "true_false",
+      "category": "error_prone",
+      "difficulty": "medium",
+      "content": "【政治·中国特色社会主义】请选择/作答关于中国特色社会主义的truefalse题目（种子题 #3）",
+      "options": [
+        {
+          "key": "T",
+          "text": "正确"
+        },
+        {
+          "key": "F",
+          "text": "错误"
+        }
+      ],
+      "correct_answer": "T",
+      "explanation": "本题考查知识点：中国特色社会主义。答案为 T，详见政治教材对应章节。",
+      "analysis": "考点分析：中国特色社会主义为政治高频考点。常见误区：易混淆相似概念。",
+      "tags": [
+        "政治",
+        "种子题",
+        "true_false",
+        "medium",
+        "error_prone"
+      ],
+      "knowledge_points": [
+        "中国特色社会主义"
+      ],
+      "formula_used": [],
+      "year": 2026,
+      "source": "COPY-GOVERNANCE-2026-0815 seed",
+      "score": 1.0,
+      "usage_count": 0,
+      "correct_rate": 0.0,
+      "created_at": 1786788863.870622,
+      "updated_at": 1786788863.870622
+    },
+    {
+      "question_id": "politics_fill_blank_0004",
+      "type": "fill_blank",
+      "category": "final",
+      "difficulty": "hard",
+      "content": "【政治·思想道德与法治】请选择/作答关于思想道德与法治的fillblank题目（种子题 #4）",
+      "options": [],
+      "correct_answer": "_政治_思想道德与法治_标准答案_",
+      "explanation": "本题考查知识点：思想道德与法治。答案为 _政治_思想道德与法治_标准答案_，详见政治教材对应章节。",
+      "analysis": "考点分析：思想道德与法治为政治高频考点。常见误区：易混淆相似概念。",
+      "tags": [
+        "政治",
+        "种子题",
+        "fill_blank",
+        "hard",
+        "final"
+      ],
+      "knowledge_points": [
+        "思想道德与法治"
+      ],
+      "formula_used": [],
+      "year": 2026,
+      "source": "COPY-GOVERNANCE-2026-0815 seed",
+      "score": 1.0,
+      "usage_count": 0,
+      "correct_rate": 0.0,
+      "created_at": 1786788863.8706229,
+      "updated_at": 1786788863.8706229
+    },
+    {
+      "question_id": "politics_short_answer_0005",
+      "type": "short_answer",
+      "category": "special_topic",
+      "difficulty": "medium",
+      "content": "【政治·近代史纲要】请选择/作答关于近代史纲要的shortanswer题目（种子题 #5）",
+      "options": [],
+      "correct_answer": "政治科目 近代史纲要 简答题参考答案要点：（1）基本概念界定；（2）核心原理解释；（3）案例或应用说明；（4）总结提升。",
+      "explanation": "本题考查知识点：近代史纲要。答案为 政治科目 近代史纲要 简答题参考答案要点：（1）基本概念界定；（2）核心原理解释；（3）案例或应用说明；（4）总结提升。，详见政治教材对应章节。",
+      "analysis": "考点分析：近代史纲要为政治高频考点。常见误区：易混淆相似概念。",
+      "tags": [
+        "政治",
+        "种子题",
+        "short_answer",
+        "medium",
+        "special_topic"
+      ],
+      "knowledge_points": [
+        "近代史纲要"
+      ],
+      "formula_used": [],
+      "year": 2026,
+      "source": "COPY-GOVERNANCE-2026-0815 seed",
+      "score": 1.0,
+      "usage_count": 0,
+      "correct_rate": 0.0,
+      "created_at": 1786788863.870625,
+      "updated_at": 1786788863.870625
+    },
+    {
+      "question_id": "japanese_single_choice_0006",
+      "type": "single_choice",
+      "category": "must_know",
+      "difficulty": "easy",
+      "content": "【日语·平假名/片假名】请选择/作答关于平假名/片假名的singlechoice题目（种子题 #6）",
+      "options": [
+        {
+          "key": "A",
+          "text": "选项A：日语-平假名/片假名正确答案"
+        },
+        {
+          "key": "B",
+          "text": "选项B：日语-平假名/片假名干扰项1"
+        },
+        {
+          "key": "C",
+          "text": "选项C：日语-平假名/片假名干扰项2"
+        },
+        {
+          "key": "D",
+          "text": "选项D：日语-平假名/片假名干扰项3"
+        }
+      ],
+      "correct_answer": "A",
+      "explanation": "本题考查知识点：平假名/片假名。答案为 A，详见日语教材对应章节。",
+      "analysis": "考点分析：平假名/片假名为日语高频考点。常见误区：易混淆相似概念。",
+      "tags": [
+        "日语",
+        "种子题",
+        "single_choice",
+        "easy",
+        "must_know"
+      ],
+      "knowledge_points": [
+        "平假名/片假名"
+      ],
+      "formula_used": [],
+      "year": 2026,
+      "source": "COPY-GOVERNANCE-2026-0815 seed",
+      "score": 1.0,
+      "usage_count": 0,
+      "correct_rate": 0.0,
+      "created_at": 1786788863.8706272,
+      "updated_at": 1786788863.8706272
+    },
+    {
+      "question_id": "japanese_multiple_choice_0007",
+      "type": "multiple_choice",
+      "category": "key_point",
+      "difficulty": "medium",
+      "content": "【日语·N5语法】请选择/作答关于N5语法的multiplechoice题目（种子题 #7）",
+      "options": [
+        {
+          "key": "A",
+          "text": "A. 日语-N5语法正确项1"
+        },
+        {
+          "key": "B",
+          "text": "B. 日语-N5语法正确项2"
+        },
+        {
+          "key": "C",
+          "text": "C. 日语-N5语法错误项"
+        },
+        {
+          "key": "D",
+          "text": "D. 日语-N5语法正确项3"
+        }
+      ],
+      "correct_answer": [
+        "A",
+        "B",
+        "D"
+      ],
+      "explanation": "本题考查知识点：N5语法。答案为 ['A', 'B', 'D']，详见日语教材对应章节。",
+      "analysis": "考点分析：N5语法为日语高频考点。常见误区：易混淆相似概念。",
+      "tags": [
+        "日语",
+        "种子题",
+        "multiple_choice",
+        "medium",
+        "key_point"
+      ],
+      "knowledge_points": [
+        "N5语法"
+      ],
+      "formula_used": [],
+      "year": 2026,
+      "source": "COPY-GOVERNANCE-2026-0815 seed",
+      "score": 1.0,
+      "usage_count": 0,
+      "correct_rate": 0.0,
+      "created_at": 1786788863.870629,
+      "updated_at": 1786788863.870629
+    },
+    {
+      "question_id": "japanese_true_false_0008",
+      "type": "true_false",
+      "category": "error_prone",
+      "difficulty": "medium",
+      "content": "【日语·N4词汇】请选择/作答关于N4词汇的truefalse题目（种子题 #8）",
+      "options": [
+        {
+          "key": "T",
+          "text": "正确"
+        },
+        {
+          "key": "F",
+          "text": "错误"
+        }
+      ],
+      "correct_answer": "T",
+      "explanation": "本题考查知识点：N4词汇。答案为 T，详见日语教材对应章节。",
+      "analysis": "考点分析：N4词汇为日语高频考点。常见误区：易混淆相似概念。",
+      "tags": [
+        "日语",
+        "种子题",
+        "true_false",
+        "medium",
+        "error_prone"
+      ],
+      "knowledge_points": [
+        "N4词汇"
+      ],
+      "formula_used": [],
+      "year": 2026,
+      "source": "COPY-GOVERNANCE-2026-0815 seed",
+      "score": 1.0,
+      "usage_count": 0,
+      "correct_rate": 0.0,
+      "created_at": 1786788863.8706298,
+      "updated_at": 1786788863.8706298
+    },
+    {
+      "question_id": "japanese_fill_blank_0009",
+      "type": "fill_blank",
+      "category": "final",
+      "difficulty": "hard",
+      "content": "【日语·基础句型】请选择/作答关于基础句型的fillblank题目（种子题 #9）",
+      "options": [],
+      "correct_answer": "_日语_基础句型_标准答案_",
+      "explanation": "本题考查知识点：基础句型。答案为 _日语_基础句型_标准答案_，详见日语教材对应章节。",
+      "analysis": "考点分析：基础句型为日语高频考点。常见误区：易混淆相似概念。",
+      "tags": [
+        "日语",
+        "种子题",
+        "fill_blank",
+        "hard",
+        "final"
+      ],
+      "knowledge_points": [
+        "基础句型"
+      ],
+      "formula_used": [],
+      "year": 2026,
+      "source": "COPY-GOVERNANCE-2026-0815 seed",
+      "score": 1.0,
+      "usage_count": 0,
+      "correct_rate": 0.0,
+      "created_at": 1786788863.870631,
+      "updated_at": 1786788863.870631
+    },
+    {
+      "question_id": "japanese_short_answer_0010",
+      "type": "short_answer",
+      "category": "special_topic",
+      "difficulty": "medium",
+      "content": "【日语·日常对话】请选择/作答关于日常对话的shortanswer题目（种子题 #10）",
+      "options": [],
+      "correct_answer": "日语科目 日常对话 简答题参考答案要点：（1）基本概念界定；（2）核心原理解释；（3）案例或应用说明；（4）总结提升。",
+      "explanation": "本题考查知识点：日常对话。答案为 日语科目 日常对话 简答题参考答案要点：（1）基本概念界定；（2）核心原理解释；（3）案例或应用说明；（4）总结提升。，详见日语教材对应章节。",
+      "analysis": "考点分析：日常对话为日语高频考点。常见误区：易混淆相似概念。",
+      "tags": [
+        "日语",
+        "种子题",
+        "short_answer",
+        "medium",
+        "special_topic"
+      ],
+      "knowledge_points": [
+        "日常对话"
+      ],
+      "formula_used": [],
+      "year": 2026,
+      "source": "COPY-GOVERNANCE-2026-0815 seed",
+      "score": 1.0,
+      "usage_count": 0,
+      "correct_rate": 0.0,
+      "created_at": 1786788863.870633,
+      "updated_at": 1786788863.870633
+    },
+    {
+      "question_id": "english_single_choice_0011",
+      "type": "single_choice",
+      "category": "must_know",
+      "difficulty": "easy",
+      "content": "【英语·词汇辨析】请选择/作答关于词汇辨析的singlechoice题目（种子题 #11）",
+      "options": [
+        {
+          "key": "A",
+          "text": "选项A：英语-词汇辨析正确答案"
+        },
+        {
+          "key": "B",
+          "text": "选项B：英语-词汇辨析干扰项1"
+        },
+        {
+          "key": "C",
+          "text": "选项C：英语-词汇辨析干扰项2"
+        },
+        {
+          "key": "D",
+          "text": "选项D：英语-词汇辨析干扰项3"
+        }
+      ],
+      "correct_answer": "A",
+      "explanation": "本题考查知识点：词汇辨析。答案为 A，详见英语教材对应章节。",
+      "analysis": "考点分析：词汇辨析为英语高频考点。常见误区：易混淆相似概念。",
+      "tags": [
+        "英语",
+        "种子题",
+        "single_choice",
+        "easy",
+        "must_know"
+      ],
+      "knowledge_points": [
+        "词汇辨析"
+      ],
+      "formula_used": [],
+      "year": 2026,
+      "source": "COPY-GOVERNANCE-2026-0815 seed",
+      "score": 1.0,
+      "usage_count": 0,
+      "correct_rate": 0.0,
+      "created_at": 1786788863.870634,
+      "updated_at": 1786788863.870634
+    },
+    {
+      "question_id": "english_multiple_choice_0012",
+      "type": "multiple_choice",
+      "category": "key_point",
+      "difficulty": "medium",
+      "content": "【英语·时态语态】请选择/作答关于时态语态的multiplechoice题目（种子题 #12）",
+      "options": [
+        {
+          "key": "A",
+          "text": "A. 英语-时态语态正确项1"
+        },
+        {
+          "key": "B",
+          "text": "B. 英语-时态语态正确项2"
+        },
+        {
+          "key": "C",
+          "text": "C. 英语-时态语态错误项"
+        },
+        {
+          "key": "D",
+          "text": "D. 英语-时态语态正确项3"
+        }
+      ],
+      "correct_answer": [
+        "A",
+        "B",
+        "D"
+      ],
+      "explanation": "本题考查知识点：时态语态。答案为 ['A', 'B', 'D']，详见英语教材对应章节。",
+      "analysis": "考点分析：时态语态为英语高频考点。常见误区：易混淆相似概念。",
+      "tags": [
+        "英语",
+        "种子题",
+        "multiple_choice",
+        "medium",
+        "key_point"
+      ],
+      "knowledge_points": [
+        "时态语态"
+      ],
+      "formula_used": [],
+      "year": 2026,
+      "source": "COPY-GOVERNANCE-2026-0815 seed",
+      "score": 1.0,
+      "usage_count": 0,
+      "correct_rate": 0.0,
+      "created_at": 1786788863.870636,
+      "updated_at": 1786788863.870636
+    },
+    {
+      "question_id": "english_true_false_0013",
+      "type": "true_false",
+      "category": "error_prone",
+      "difficulty": "medium",
+      "content": "【英语·从句结构】请选择/作答关于从句结构的truefalse题目（种子题 #13）",
+      "options": [
+        {
+          "key": "T",
+          "text": "正确"
+        },
+        {
+          "key": "F",
+          "text": "错误"
+        }
+      ],
+      "correct_answer": "T",
+      "explanation": "本题考查知识点：从句结构。答案为 T，详见英语教材对应章节。",
+      "analysis": "考点分析：从句结构为英语高频考点。常见误区：易混淆相似概念。",
+      "tags": [
+        "英语",
+        "种子题",
+        "true_false",
+        "medium",
+        "error_prone"
+      ],
+      "knowledge_points": [
+        "从句结构"
+      ],
+      "formula_used": [],
+      "year": 2026,
+      "source": "COPY-GOVERNANCE-2026-0815 seed",
+      "score": 1.0,
+      "usage_count": 0,
+      "correct_rate": 0.0,
+      "created_at": 1786788863.870637,
+      "updated_at": 1786788863.870637
+    },
+    {
+      "question_id": "english_fill_blank_0014",
+      "type": "fill_blank",
+      "category": "final",
+      "difficulty": "hard",
+      "content": "【英语·阅读理解】请选择/作答关于阅读理解的fillblank题目（种子题 #14）",
+      "options": [],
+      "correct_answer": "_英语_阅读理解_标准答案_",
+      "explanation": "本题考查知识点：阅读理解。答案为 _英语_阅读理解_标准答案_，详见英语教材对应章节。",
+      "analysis": "考点分析：阅读理解为英语高频考点。常见误区：易混淆相似概念。",
+      "tags": [
+        "英语",
+        "种子题",
+        "fill_blank",
+        "hard",
+        "final"
+      ],
+      "knowledge_points": [
+        "阅读理解"
+      ],
+      "formula_used": [],
+      "year": 2026,
+      "source": "COPY-GOVERNANCE-2026-0815 seed",
+      "score": 1.0,
+      "usage_count": 0,
+      "correct_rate": 0.0,
+      "created_at": 1786788863.8706381,
+      "updated_at": 1786788863.8706381
+    },
+    {
+      "question_id": "english_short_answer_0015",
+      "type": "short_answer",
+      "category": "special_topic",
+      "difficulty": "medium",
+      "content": "【英语·完形填空】请选择/作答关于完形填空的shortanswer题目（种子题 #15）",
+      "options": [],
+      "correct_answer": "英语科目 完形填空 简答题参考答案要点：（1）基本概念界定；（2）核心原理解释；（3）案例或应用说明；（4）总结提升。",
+      "explanation": "本题考查知识点：完形填空。答案为 英语科目 完形填空 简答题参考答案要点：（1）基本概念界定；（2）核心原理解释；（3）案例或应用说明；（4）总结提升。，详见英语教材对应章节。",
+      "analysis": "考点分析：完形填空为英语高频考点。常见误区：易混淆相似概念。",
+      "tags": [
+        "英语",
+        "种子题",
+        "short_answer",
+        "medium",
+        "special_topic"
+      ],
+      "knowledge_points": [
+        "完形填空"
+      ],
+      "formula_used": [],
+      "year": 2026,
+      "source": "COPY-GOVERNANCE-2026-0815 seed",
+      "score": 1.0,
+      "usage_count": 0,
+      "correct_rate": 0.0,
+      "created_at": 1786788863.870639,
+      "updated_at": 1786788863.870639
+    },
+    {
+      "question_id": "math_single_choice_0016",
+      "type": "single_choice",
+      "category": "must_know",
+      "difficulty": "easy",
+      "content": "【数学·函数与导数】请选择/作答关于函数与导数的singlechoice题目（种子题 #16）",
+      "options": [
+        {
+          "key": "A",
+          "text": "选项A：数学-函数与导数正确答案"
+        },
+        {
+          "key": "B",
+          "text": "选项B：数学-函数与导数干扰项1"
+        },
+        {
+          "key": "C",
+          "text": "选项C：数学-函数与导数干扰项2"
+        },
+        {
+          "key": "D",
+          "text": "选项D：数学-函数与导数干扰项3"
+        }
+      ],
+      "correct_answer": "A",
+      "explanation": "本题考查知识点：函数与导数。答案为 A，详见数学教材对应章节。",
+      "analysis": "考点分析：函数与导数为数学高频考点。常见误区：易混淆相似概念。",
+      "tags": [
+        "数学",
+        "种子题",
+        "single_choice",
+        "easy",
+        "must_know"
+      ],
+      "knowledge_points": [
+        "函数与导数"
+      ],
+      "formula_used": [],
+      "year": 2026,
+      "source": "COPY-GOVERNANCE-2026-0815 seed",
+      "score": 1.0,
+      "usage_count": 0,
+      "correct_rate": 0.0,
+      "created_at": 1786788863.870641,
+      "updated_at": 1786788863.870641
+    },
+    {
+      "question_id": "math_multiple_choice_0017",
+      "type": "multiple_choice",
+      "category": "key_point",
+      "difficulty": "medium",
+      "content": "【数学·解析几何】请选择/作答关于解析几何的multiplechoice题目（种子题 #17）",
+      "options": [
+        {
+          "key": "A",
+          "text": "A. 数学-解析几何正确项1"
+        },
+        {
+          "key": "B",
+          "text": "B. 数学-解析几何正确项2"
+        },
+        {
+          "key": "C",
+          "text": "C. 数学-解析几何错误项"
+        },
+        {
+          "key": "D",
+          "text": "D. 数学-解析几何正确项3"
+        }
+      ],
+      "correct_answer": [
+        "A",
+        "B",
+        "D"
+      ],
+      "explanation": "本题考查知识点：解析几何。答案为 ['A', 'B', 'D']，详见数学教材对应章节。",
+      "analysis": "考点分析：解析几何为数学高频考点。常见误区：易混淆相似概念。",
+      "tags": [
+        "数学",
+        "种子题",
+        "multiple_choice",
+        "medium",
+        "key_point"
+      ],
+      "knowledge_points": [
+        "解析几何"
+      ],
+      "formula_used": [],
+      "year": 2026,
+      "source": "COPY-GOVERNANCE-2026-0815 seed",
+      "score": 1.0,
+      "usage_count": 0,
+      "correct_rate": 0.0,
+      "created_at": 1786788863.870643,
+      "updated_at": 1786788863.870643
+    },
+    {
+      "question_id": "math_true_false_0018",
+      "type": "true_false",
+      "category": "error_prone",
+      "difficulty": "medium",
+      "content": "【数学·概率统计】请选择/作答关于概率统计的truefalse题目（种子题 #18）",
+      "options": [
+        {
+          "key": "T",
+          "text": "正确"
+        },
+        {
+          "key": "F",
+          "text": "错误"
+        }
+      ],
+      "correct_answer": "T",
+      "explanation": "本题考查知识点：概率统计。答案为 T，详见数学教材对应章节。",
+      "analysis": "考点分析：概率统计为数学高频考点。常见误区：易混淆相似概念。",
+      "tags": [
+        "数学",
+        "种子题",
+        "true_false",
+        "medium",
+        "error_prone"
+      ],
+      "knowledge_points": [
+        "概率统计"
+      ],
+      "formula_used": [],
+      "year": 2026,
+      "source": "COPY-GOVERNANCE-2026-0815 seed",
+      "score": 1.0,
+      "usage_count": 0,
+      "correct_rate": 0.0,
+      "created_at": 1786788863.8706439,
+      "updated_at": 1786788863.8706439
+    },
+    {
+      "question_id": "math_fill_blank_0019",
+      "type": "fill_blank",
+      "category": "final",
+      "difficulty": "hard",
+      "content": "【数学·三角函数】请选择/作答关于三角函数的fillblank题目（种子题 #19）",
+      "options": [],
+      "correct_answer": "_数学_三角函数_标准答案_",
+      "explanation": "本题考查知识点：三角函数。答案为 _数学_三角函数_标准答案_，详见数学教材对应章节。",
+      "analysis": "考点分析：三角函数为数学高频考点。常见误区：易混淆相似概念。",
+      "tags": [
+        "数学",
+        "种子题",
+        "fill_blank",
+        "hard",
+        "final"
+      ],
+      "knowledge_points": [
+        "三角函数"
+      ],
+      "formula_used": [],
+      "year": 2026,
+      "source": "COPY-GOVERNANCE-2026-0815 seed",
+      "score": 1.0,
+      "usage_count": 0,
+      "correct_rate": 0.0,
+      "created_at": 1786788863.870645,
+      "updated_at": 1786788863.870645
+    },
+    {
+      "question_id": "math_short_answer_0020",
+      "type": "short_answer",
+      "category": "special_topic",
+      "difficulty": "medium",
+      "content": "【数学·数列不等式】请选择/作答关于数列不等式的shortanswer题目（种子题 #20）",
+      "options": [],
+      "correct_answer": "数学科目 数列不等式 简答题参考答案要点：（1）基本概念界定；（2）核心原理解释；（3）案例或应用说明；（4）总结提升。",
+      "explanation": "本题考查知识点：数列不等式。答案为 数学科目 数列不等式 简答题参考答案要点：（1）基本概念界定；（2）核心原理解释；（3）案例或应用说明；（4）总结提升。，详见数学教材对应章节。",
+      "analysis": "考点分析：数列不等式为数学高频考点。常见误区：易混淆相似概念。",
+      "tags": [
+        "数学",
+        "种子题",
+        "short_answer",
+        "medium",
+        "special_topic"
+      ],
+      "knowledge_points": [
+        "数列不等式"
+      ],
+      "formula_used": [],
+      "year": 2026,
+      "source": "COPY-GOVERNANCE-2026-0815 seed",
+      "score": 1.0,
+      "usage_count": 0,
+      "correct_rate": 0.0,
+      "created_at": 1786788863.870646,
+      "updated_at": 1786788863.870646
+    },
+    {
+      "question_id": "physics_single_choice_0021",
+      "type": "single_choice",
+      "category": "must_know",
+      "difficulty": "easy",
+      "content": "【物理·力学】请选择/作答关于力学的singlechoice题目（种子题 #21）",
+      "options": [
+        {
+          "key": "A",
+          "text": "选项A：物理-力学正确答案"
+        },
+        {
+          "key": "B",
+          "text": "选项B：物理-力学干扰项1"
+        },
+        {
+          "key": "C",
+          "text": "选项C：物理-力学干扰项2"
+        },
+        {
+          "key": "D",
+          "text": "选项D：物理-力学干扰项3"
+        }
+      ],
+      "correct_answer": "A",
+      "explanation": "本题考查知识点：力学。答案为 A，详见物理教材对应章节。",
+      "analysis": "考点分析：力学为物理高频考点。常见误区：易混淆相似概念。",
+      "tags": [
+        "物理",
+        "种子题",
+        "single_choice",
+        "easy",
+        "must_know"
+      ],
+      "knowledge_points": [
+        "力学"
+      ],
+      "formula_used": [],
+      "year": 2026,
+      "source": "COPY-GOVERNANCE-2026-0815 seed",
+      "score": 1.0,
+      "usage_count": 0,
+      "correct_rate": 0.0,
+      "created_at": 1786788863.870647,
+      "updated_at": 1786788863.8706481
+    },
+    {
+      "question_id": "physics_multiple_choice_0022",
+      "type": "multiple_choice",
+      "category": "key_point",
+      "difficulty": "medium",
+      "content": "【物理·电磁学】请选择/作答关于电磁学的multiplechoice题目（种子题 #22）",
+      "options": [
+        {
+          "key": "A",
+          "text": "A. 物理-电磁学正确项1"
+        },
+        {
+          "key": "B",
+          "text": "B. 物理-电磁学正确项2"
+        },
+        {
+          "key": "C",
+          "text": "C. 物理-电磁学错误项"
+        },
+        {
+          "key": "D",
+          "text": "D. 物理-电磁学正确项3"
+        }
+      ],
+      "correct_answer": [
+        "A",
+        "B",
+        "D"
+      ],
+      "explanation": "本题考查知识点：电磁学。答案为 ['A', 'B', 'D']，详见物理教材对应章节。",
+      "analysis": "考点分析：电磁学为物理高频考点。常见误区：易混淆相似概念。",
+      "tags": [
+        "物理",
+        "种子题",
+        "multiple_choice",
+        "medium",
+        "key_point"
+      ],
+      "knowledge_points": [
+        "电磁学"
+      ],
+      "formula_used": [],
+      "year": 2026,
+      "source": "COPY-GOVERNANCE-2026-0815 seed",
+      "score": 1.0,
+      "usage_count": 0,
+      "correct_rate": 0.0,
+      "created_at": 1786788863.870649,
+      "updated_at": 1786788863.870649
+    },
+    {
+      "question_id": "physics_true_false_0023",
+      "type": "true_false",
+      "category": "error_prone",
+      "difficulty": "medium",
+      "content": "【物理·热学】请选择/作答关于热学的truefalse题目（种子题 #23）",
+      "options": [
+        {
+          "key": "T",
+          "text": "正确"
+        },
+        {
+          "key": "F",
+          "text": "错误"
+        }
+      ],
+      "correct_answer": "T",
+      "explanation": "本题考查知识点：热学。答案为 T，详见物理教材对应章节。",
+      "analysis": "考点分析：热学为物理高频考点。常见误区：易混淆相似概念。",
+      "tags": [
+        "物理",
+        "种子题",
+        "true_false",
+        "medium",
+        "error_prone"
+      ],
+      "knowledge_points": [
+        "热学"
+      ],
+      "formula_used": [],
+      "year": 2026,
+      "source": "COPY-GOVERNANCE-2026-0815 seed",
+      "score": 1.0,
+      "usage_count": 0,
+      "correct_rate": 0.0,
+      "created_at": 1786788863.87065,
+      "updated_at": 1786788863.87065
+    },
+    {
+      "question_id": "physics_fill_blank_0024",
+      "type": "fill_blank",
+      "category": "final",
+      "difficulty": "hard",
+      "content": "【物理·光学】请选择/作答关于光学的fillblank题目（种子题 #24）",
+      "options": [],
+      "correct_answer": "_物理_光学_标准答案_",
+      "explanation": "本题考查知识点：光学。答案为 _物理_光学_标准答案_，详见物理教材对应章节。",
+      "analysis": "考点分析：光学为物理高频考点。常见误区：易混淆相似概念。",
+      "tags": [
+        "物理",
+        "种子题",
+        "fill_blank",
+        "hard",
+        "final"
+      ],
+      "knowledge_points": [
+        "光学"
+      ],
+      "formula_used": [],
+      "year": 2026,
+      "source": "COPY-GOVERNANCE-2026-0815 seed",
+      "score": 1.0,
+      "usage_count": 0,
+      "correct_rate": 0.0,
+      "created_at": 1786788863.870652,
+      "updated_at": 1786788863.870652
+    },
+    {
+      "question_id": "physics_short_answer_0025",
+      "type": "short_answer",
+      "category": "special_topic",
+      "difficulty": "medium",
+      "content": "【物理·近代物理】请选择/作答关于近代物理的shortanswer题目（种子题 #25）",
+      "options": [],
+      "correct_answer": "物理科目 近代物理 简答题参考答案要点：（1）基本概念界定；（2）核心原理解释；（3）案例或应用说明；（4）总结提升。",
+      "explanation": "本题考查知识点：近代物理。答案为 物理科目 近代物理 简答题参考答案要点：（1）基本概念界定；（2）核心原理解释；（3）案例或应用说明；（4）总结提升。，详见物理教材对应章节。",
+      "analysis": "考点分析：近代物理为物理高频考点。常见误区：易混淆相似概念。",
+      "tags": [
+        "物理",
+        "种子题",
+        "short_answer",
+        "medium",
+        "special_topic"
+      ],
+      "knowledge_points": [
+        "近代物理"
+      ],
+      "formula_used": [],
+      "year": 2026,
+      "source": "COPY-GOVERNANCE-2026-0815 seed",
+      "score": 1.0,
+      "usage_count": 0,
+      "correct_rate": 0.0,
+      "created_at": 1786788863.870653,
+      "updated_at": 1786788863.870653
+    },
+    {
+      "question_id": "chemistry_single_choice_0026",
+      "type": "single_choice",
+      "category": "must_know",
+      "difficulty": "easy",
+      "content": "【化学·元素周期律】请选择/作答关于元素周期律的singlechoice题目（种子题 #26）",
+      "options": [
+        {
+          "key": "A",
+          "text": "选项A：化学-元素周期律正确答案"
+        },
+        {
+          "key": "B",
+          "text": "选项B：化学-元素周期律干扰项1"
+        },
+        {
+          "key": "C",
+          "text": "选项C：化学-元素周期律干扰项2"
+        },
+        {
+          "key": "D",
+          "text": "选项D：化学-元素周期律干扰项3"
+        }
+      ],
+      "correct_answer": "A",
+      "explanation": "本题考查知识点：元素周期律。答案为 A，详见化学教材对应章节。",
+      "analysis": "考点分析：元素周期律为化学高频考点。常见误区：易混淆相似概念。",
+      "tags": [
+        "化学",
+        "种子题",
+        "single_choice",
+        "easy",
+        "must_know"
+      ],
+      "knowledge_points": [
+        "元素周期律"
+      ],
+      "formula_used": [],
+      "year": 2026,
+      "source": "COPY-GOVERNANCE-2026-0815 seed",
+      "score": 1.0,
+      "usage_count": 0,
+      "correct_rate": 0.0,
+      "created_at": 1786788863.870655,
+      "updated_at": 1786788863.870655
+    },
+    {
+      "question_id": "chemistry_multiple_choice_0027",
+      "type": "multiple_choice",
+      "category": "key_point",
+      "difficulty": "medium",
+      "content": "【化学·有机化学基础】请选择/作答关于有机化学基础的multiplechoice题目（种子题 #27）",
+      "options": [
+        {
+          "key": "A",
+          "text": "A. 化学-有机化学基础正确项1"
+        },
+        {
+          "key": "B",
+          "text": "B. 化学-有机化学基础正确项2"
+        },
+        {
+          "key": "C",
+          "text": "C. 化学-有机化学基础错误项"
+        },
+        {
+          "key": "D",
+          "text": "D. 化学-有机化学基础正确项3"
+        }
+      ],
+      "correct_answer": [
+        "A",
+        "B",
+        "D"
+      ],
+      "explanation": "本题考查知识点：有机化学基础。答案为 ['A', 'B', 'D']，详见化学教材对应章节。",
+      "analysis": "考点分析：有机化学基础为化学高频考点。常见误区：易混淆相似概念。",
+      "tags": [
+        "化学",
+        "种子题",
+        "multiple_choice",
+        "medium",
+        "key_point"
+      ],
+      "knowledge_points": [
+        "有机化学基础"
+      ],
+      "formula_used": [],
+      "year": 2026,
+      "source": "COPY-GOVERNANCE-2026-0815 seed",
+      "score": 1.0,
+      "usage_count": 0,
+      "correct_rate": 0.0,
+      "created_at": 1786788863.870656,
+      "updated_at": 1786788863.870656
+    },
+    {
+      "question_id": "chemistry_true_false_0028",
+      "type": "true_false",
+      "category": "error_prone",
+      "difficulty": "medium",
+      "content": "【化学·化学反应速率】请选择/作答关于化学反应速率的truefalse题目（种子题 #28）",
+      "options": [
+        {
+          "key": "T",
+          "text": "正确"
+        },
+        {
+          "key": "F",
+          "text": "错误"
+        }
+      ],
+      "correct_answer": "T",
+      "explanation": "本题考查知识点：化学反应速率。答案为 T，详见化学教材对应章节。",
+      "analysis": "考点分析：化学反应速率为化学高频考点。常见误区：易混淆相似概念。",
+      "tags": [
+        "化学",
+        "种子题",
+        "true_false",
+        "medium",
+        "error_prone"
+      ],
+      "knowledge_points": [
+        "化学反应速率"
+      ],
+      "formula_used": [],
+      "year": 2026,
+      "source": "COPY-GOVERNANCE-2026-0815 seed",
+      "score": 1.0,
+      "usage_count": 0,
+      "correct_rate": 0.0,
+      "created_at": 1786788863.8706582,
+      "updated_at": 1786788863.8706582
+    },
+    {
+      "question_id": "chemistry_fill_blank_0029",
+      "type": "fill_blank",
+      "category": "final",
+      "difficulty": "hard",
+      "content": "【化学·电化学】请选择/作答关于电化学的fillblank题目（种子题 #29）",
+      "options": [],
+      "correct_answer": "_化学_电化学_标准答案_",
+      "explanation": "本题考查知识点：电化学。答案为 _化学_电化学_标准答案_，详见化学教材对应章节。",
+      "analysis": "考点分析：电化学为化学高频考点。常见误区：易混淆相似概念。",
+      "tags": [
+        "化学",
+        "种子题",
+        "fill_blank",
+        "hard",
+        "final"
+      ],
+      "knowledge_points": [
+        "电化学"
+      ],
+      "formula_used": [],
+      "year": 2026,
+      "source": "COPY-GOVERNANCE-2026-0815 seed",
+      "score": 1.0,
+      "usage_count": 0,
+      "correct_rate": 0.0,
+      "created_at": 1786788863.870659,
+      "updated_at": 1786788863.870659
+    },
+    {
+      "question_id": "chemistry_short_answer_0030",
+      "type": "short_answer",
+      "category": "special_topic",
+      "difficulty": "medium",
+      "content": "【化学·化学平衡】请选择/作答关于化学平衡的shortanswer题目（种子题 #30）",
+      "options": [],
+      "correct_answer": "化学科目 化学平衡 简答题参考答案要点：（1）基本概念界定；（2）核心原理解释；（3）案例或应用说明；（4）总结提升。",
+      "explanation": "本题考查知识点：化学平衡。答案为 化学科目 化学平衡 简答题参考答案要点：（1）基本概念界定；（2）核心原理解释；（3）案例或应用说明；（4）总结提升。，详见化学教材对应章节。",
+      "analysis": "考点分析：化学平衡为化学高频考点。常见误区：易混淆相似概念。",
+      "tags": [
+        "化学",
+        "种子题",
+        "short_answer",
+        "medium",
+        "special_topic"
+      ],
+      "knowledge_points": [
+        "化学平衡"
+      ],
+      "formula_used": [],
+      "year": 2026,
+      "source": "COPY-GOVERNANCE-2026-0815 seed",
+      "score": 1.0,
+      "usage_count": 0,
+      "correct_rate": 0.0,
+      "created_at": 1786788863.87066,
+      "updated_at": 1786788863.87066
+    },
+    {
+      "question_id": "biology_single_choice_0031",
+      "type": "single_choice",
+      "category": "must_know",
+      "difficulty": "easy",
+      "content": "【生物·细胞结构】请选择/作答关于细胞结构的singlechoice题目（种子题 #31）",
+      "options": [
+        {
+          "key": "A",
+          "text": "选项A：生物-细胞结构正确答案"
+        },
+        {
+          "key": "B",
+          "text": "选项B：生物-细胞结构干扰项1"
+        },
+        {
+          "key": "C",
+          "text": "选项C：生物-细胞结构干扰项2"
+        },
+        {
+          "key": "D",
+          "text": "选项D：生物-细胞结构干扰项3"
+        }
+      ],
+      "correct_answer": "A",
+      "explanation": "本题考查知识点：细胞结构。答案为 A，详见生物教材对应章节。",
+      "analysis": "考点分析：细胞结构为生物高频考点。常见误区：易混淆相似概念。",
+      "tags": [
+        "生物",
+        "种子题",
+        "single_choice",
+        "easy",
+        "must_know"
+      ],
+      "knowledge_points": [
+        "细胞结构"
+      ],
+      "formula_used": [],
+      "year": 2026,
+      "source": "COPY-GOVERNANCE-2026-0815 seed",
+      "score": 1.0,
+      "usage_count": 0,
+      "correct_rate": 0.0,
+      "created_at": 1786788863.870661,
+      "updated_at": 1786788863.870661
+    },
+    {
+      "question_id": "biology_multiple_choice_0032",
+      "type": "multiple_choice",
+      "category": "key_point",
+      "difficulty": "medium",
+      "content": "【生物·遗传变异】请选择/作答关于遗传变异的multiplechoice题目（种子题 #32）",
+      "options": [
+        {
+          "key": "A",
+          "text": "A. 生物-遗传变异正确项1"
+        },
+        {
+          "key": "B",
+          "text": "B. 生物-遗传变异正确项2"
+        },
+        {
+          "key": "C",
+          "text": "C. 生物-遗传变异错误项"
+        },
+        {
+          "key": "D",
+          "text": "D. 生物-遗传变异正确项3"
+        }
+      ],
+      "correct_answer": [
+        "A",
+        "B",
+        "D"
+      ],
+      "explanation": "本题考查知识点：遗传变异。答案为 ['A', 'B', 'D']，详见生物教材对应章节。",
+      "analysis": "考点分析：遗传变异为生物高频考点。常见误区：易混淆相似概念。",
+      "tags": [
+        "生物",
+        "种子题",
+        "multiple_choice",
+        "medium",
+        "key_point"
+      ],
+      "knowledge_points": [
+        "遗传变异"
+      ],
+      "formula_used": [],
+      "year": 2026,
+      "source": "COPY-GOVERNANCE-2026-0815 seed",
+      "score": 1.0,
+      "usage_count": 0,
+      "correct_rate": 0.0,
+      "created_at": 1786788863.870665,
+      "updated_at": 1786788863.870665
+    },
+    {
+      "question_id": "biology_true_false_0033",
+      "type": "true_false",
+      "category": "error_prone",
+      "difficulty": "medium",
+      "content": "【生物·生态系统】请选择/作答关于生态系统的truefalse题目（种子题 #33）",
+      "options": [
+        {
+          "key": "T",
+          "text": "正确"
+        },
+        {
+          "key": "F",
+          "text": "错误"
+        }
+      ],
+      "correct_answer": "T",
+      "explanation": "本题考查知识点：生态系统。答案为 T，详见生物教材对应章节。",
+      "analysis": "考点分析：生态系统为生物高频考点。常见误区：易混淆相似概念。",
+      "tags": [
+        "生物",
+        "种子题",
+        "true_false",
+        "medium",
+        "error_prone"
+      ],
+      "knowledge_points": [
+        "生态系统"
+      ],
+      "formula_used": [],
+      "year": 2026,
+      "source": "COPY-GOVERNANCE-2026-0815 seed",
+      "score": 1.0,
+      "usage_count": 0,
+      "correct_rate": 0.0,
+      "created_at": 1786788863.870666,
+      "updated_at": 1786788863.870666
+    },
+    {
+      "question_id": "biology_fill_blank_0034",
+      "type": "fill_blank",
+      "category": "final",
+      "difficulty": "hard",
+      "content": "【生物·新陈代谢】请选择/作答关于新陈代谢的fillblank题目（种子题 #34）",
+      "options": [],
+      "correct_answer": "_生物_新陈代谢_标准答案_",
+      "explanation": "本题考查知识点：新陈代谢。答案为 _生物_新陈代谢_标准答案_，详见生物教材对应章节。",
+      "analysis": "考点分析：新陈代谢为生物高频考点。常见误区：易混淆相似概念。",
+      "tags": [
+        "生物",
+        "种子题",
+        "fill_blank",
+        "hard",
+        "final"
+      ],
+      "knowledge_points": [
+        "新陈代谢"
+      ],
+      "formula_used": [],
+      "year": 2026,
+      "source": "COPY-GOVERNANCE-2026-0815 seed",
+      "score": 1.0,
+      "usage_count": 0,
+      "correct_rate": 0.0,
+      "created_at": 1786788863.870667,
+      "updated_at": 1786788863.870667
+    },
+    {
+      "question_id": "biology_short_answer_0035",
+      "type": "short_answer",
+      "category": "special_topic",
+      "difficulty": "medium",
+      "content": "【生物·分子生物学】请选择/作答关于分子生物学的shortanswer题目（种子题 #35）",
+      "options": [],
+      "correct_answer": "生物科目 分子生物学 简答题参考答案要点：（1）基本概念界定；（2）核心原理解释；（3）案例或应用说明；（4）总结提升。",
+      "explanation": "本题考查知识点：分子生物学。答案为 生物科目 分子生物学 简答题参考答案要点：（1）基本概念界定；（2）核心原理解释；（3）案例或应用说明；（4）总结提升。，详见生物教材对应章节。",
+      "analysis": "考点分析：分子生物学为生物高频考点。常见误区：易混淆相似概念。",
+      "tags": [
+        "生物",
+        "种子题",
+        "short_answer",
+        "medium",
+        "special_topic"
+      ],
+      "knowledge_points": [
+        "分子生物学"
+      ],
+      "formula_used": [],
+      "year": 2026,
+      "source": "COPY-GOVERNANCE-2026-0815 seed",
+      "score": 1.0,
+      "usage_count": 0,
+      "correct_rate": 0.0,
+      "created_at": 1786788863.870668,
+      "updated_at": 1786788863.870668
+    },
+    {
+      "question_id": "history_single_choice_0036",
+      "type": "single_choice",
+      "category": "must_know",
+      "difficulty": "easy",
+      "content": "【历史·中国古代史】请选择/作答关于中国古代史的singlechoice题目（种子题 #36）",
+      "options": [
+        {
+          "key": "A",
+          "text": "选项A：历史-中国古代史正确答案"
+        },
+        {
+          "key": "B",
+          "text": "选项B：历史-中国古代史干扰项1"
+        },
+        {
+          "key": "C",
+          "text": "选项C：历史-中国古代史干扰项2"
+        },
+        {
+          "key": "D",
+          "text": "选项D：历史-中国古代史干扰项3"
+        }
+      ],
+      "correct_answer": "A",
+      "explanation": "本题考查知识点：中国古代史。答案为 A，详见历史教材对应章节。",
+      "analysis": "考点分析：中国古代史为历史高频考点。常见误区：易混淆相似概念。",
+      "tags": [
+        "历史",
+        "种子题",
+        "single_choice",
+        "easy",
+        "must_know"
+      ],
+      "knowledge_points": [
+        "中国古代史"
+      ],
+      "formula_used": [],
+      "year": 2026,
+      "source": "COPY-GOVERNANCE-2026-0815 seed",
+      "score": 1.0,
+      "usage_count": 0,
+      "correct_rate": 0.0,
+      "created_at": 1786788863.87067,
+      "updated_at": 1786788863.87067
+    },
+    {
+      "question_id": "history_multiple_choice_0037",
+      "type": "multiple_choice",
+      "category": "key_point",
+      "difficulty": "medium",
+      "content": "【历史·中国近现代史】请选择/作答关于中国近现代史的multiplechoice题目（种子题 #37）",
+      "options": [
+        {
+          "key": "A",
+          "text": "A. 历史-中国近现代史正确项1"
+        },
+        {
+          "key": "B",
+          "text": "B. 历史-中国近现代史正确项2"
+        },
+        {
+          "key": "C",
+          "text": "C. 历史-中国近现代史错误项"
+        },
+        {
+          "key": "D",
+          "text": "D. 历史-中国近现代史正确项3"
+        }
+      ],
+      "correct_answer": [
+        "A",
+        "B",
+        "D"
+      ],
+      "explanation": "本题考查知识点：中国近现代史。答案为 ['A', 'B', 'D']，详见历史教材对应章节。",
+      "analysis": "考点分析：中国近现代史为历史高频考点。常见误区：易混淆相似概念。",
+      "tags": [
+        "历史",
+        "种子题",
+        "multiple_choice",
+        "medium",
+        "key_point"
+      ],
+      "knowledge_points": [
+        "中国近现代史"
+      ],
+      "formula_used": [],
+      "year": 2026,
+      "source": "COPY-GOVERNANCE-2026-0815 seed",
+      "score": 1.0,
+      "usage_count": 0,
+      "correct_rate": 0.0,
+      "created_at": 1786788863.870672,
+      "updated_at": 1786788863.870672
+    },
+    {
+      "question_id": "history_true_false_0038",
+      "type": "true_false",
+      "category": "error_prone",
+      "difficulty": "medium",
+      "content": "【历史·世界史】请选择/作答关于世界史的truefalse题目（种子题 #38）",
+      "options": [
+        {
+          "key": "T",
+          "text": "正确"
+        },
+        {
+          "key": "F",
+          "text": "错误"
+        }
+      ],
+      "correct_answer": "T",
+      "explanation": "本题考查知识点：世界史。答案为 T，详见历史教材对应章节。",
+      "analysis": "考点分析：世界史为历史高频考点。常见误区：易混淆相似概念。",
+      "tags": [
+        "历史",
+        "种子题",
+        "true_false",
+        "medium",
+        "error_prone"
+      ],
+      "knowledge_points": [
+        "世界史"
+      ],
+      "formula_used": [],
+      "year": 2026,
+      "source": "COPY-GOVERNANCE-2026-0815 seed",
+      "score": 1.0,
+      "usage_count": 0,
+      "correct_rate": 0.0,
+      "created_at": 1786788863.870673,
+      "updated_at": 1786788863.870673
+    },
+    {
+      "question_id": "history_fill_blank_0039",
+      "type": "fill_blank",
+      "category": "final",
+      "difficulty": "hard",
+      "content": "【历史·史料分析】请选择/作答关于史料分析的fillblank题目（种子题 #39）",
+      "options": [],
+      "correct_answer": "_历史_史料分析_标准答案_",
+      "explanation": "本题考查知识点：史料分析。答案为 _历史_史料分析_标准答案_，详见历史教材对应章节。",
+      "analysis": "考点分析：史料分析为历史高频考点。常见误区：易混淆相似概念。",
+      "tags": [
+        "历史",
+        "种子题",
+        "fill_blank",
+        "hard",
+        "final"
+      ],
+      "knowledge_points": [
+        "史料分析"
+      ],
+      "formula_used": [],
+      "year": 2026,
+      "source": "COPY-GOVERNANCE-2026-0815 seed",
+      "score": 1.0,
+      "usage_count": 0,
+      "correct_rate": 0.0,
+      "created_at": 1786788863.870674,
+      "updated_at": 1786788863.870674
+    },
+    {
+      "question_id": "history_short_answer_0040",
+      "type": "short_answer",
+      "category": "special_topic",
+      "difficulty": "medium",
+      "content": "【历史·史学理论】请选择/作答关于史学理论的shortanswer题目（种子题 #40）",
+      "options": [],
+      "correct_answer": "历史科目 史学理论 简答题参考答案要点：（1）基本概念界定；（2）核心原理解释；（3）案例或应用说明；（4）总结提升。",
+      "explanation": "本题考查知识点：史学理论。答案为 历史科目 史学理论 简答题参考答案要点：（1）基本概念界定；（2）核心原理解释；（3）案例或应用说明；（4）总结提升。，详见历史教材对应章节。",
+      "analysis": "考点分析：史学理论为历史高频考点。常见误区：易混淆相似概念。",
+      "tags": [
+        "历史",
+        "种子题",
+        "short_answer",
+        "medium",
+        "special_topic"
+      ],
+      "knowledge_points": [
+        "史学理论"
+      ],
+      "formula_used": [],
+      "year": 2026,
+      "source": "COPY-GOVERNANCE-2026-0815 seed",
+      "score": 1.0,
+      "usage_count": 0,
+      "correct_rate": 0.0,
+      "created_at": 1786788863.8706748,
+      "updated_at": 1786788863.8706748
+    },
+    {
+      "question_id": "geography_single_choice_0041",
+      "type": "single_choice",
+      "category": "must_know",
+      "difficulty": "easy",
+      "content": "【地理·自然地理】请选择/作答关于自然地理的singlechoice题目（种子题 #41）",
+      "options": [
+        {
+          "key": "A",
+          "text": "选项A：地理-自然地理正确答案"
+        },
+        {
+          "key": "B",
+          "text": "选项B：地理-自然地理干扰项1"
+        },
+        {
+          "key": "C",
+          "text": "选项C：地理-自然地理干扰项2"
+        },
+        {
+          "key": "D",
+          "text": "选项D：地理-自然地理干扰项3"
+        }
+      ],
+      "correct_answer": "A",
+      "explanation": "本题考查知识点：自然地理。答案为 A，详见地理教材对应章节。",
+      "analysis": "考点分析：自然地理为地理高频考点。常见误区：易混淆相似概念。",
+      "tags": [
+        "地理",
+        "种子题",
+        "single_choice",
+        "easy",
+        "must_know"
+      ],
+      "knowledge_points": [
+        "自然地理"
+      ],
+      "formula_used": [],
+      "year": 2026,
+      "source": "COPY-GOVERNANCE-2026-0815 seed",
+      "score": 1.0,
+      "usage_count": 0,
+      "correct_rate": 0.0,
+      "created_at": 1786788863.870677,
+      "updated_at": 1786788863.870677
+    },
+    {
+      "question_id": "geography_multiple_choice_0042",
+      "type": "multiple_choice",
+      "category": "key_point",
+      "difficulty": "medium",
+      "content": "【地理·人文地理】请选择/作答关于人文地理的multiplechoice题目（种子题 #42）",
+      "options": [
+        {
+          "key": "A",
+          "text": "A. 地理-人文地理正确项1"
+        },
+        {
+          "key": "B",
+          "text": "B. 地理-人文地理正确项2"
+        },
+        {
+          "key": "C",
+          "text": "C. 地理-人文地理错误项"
+        },
+        {
+          "key": "D",
+          "text": "D. 地理-人文地理正确项3"
+        }
+      ],
+      "correct_answer": [
+        "A",
+        "B",
+        "D"
+      ],
+      "explanation": "本题考查知识点：人文地理。答案为 ['A', 'B', 'D']，详见地理教材对应章节。",
+      "analysis": "考点分析：人文地理为地理高频考点。常见误区：易混淆相似概念。",
+      "tags": [
+        "地理",
+        "种子题",
+        "multiple_choice",
+        "medium",
+        "key_point"
+      ],
+      "knowledge_points": [
+        "人文地理"
+      ],
+      "formula_used": [],
+      "year": 2026,
+      "source": "COPY-GOVERNANCE-2026-0815 seed",
+      "score": 1.0,
+      "usage_count": 0,
+      "correct_rate": 0.0,
+      "created_at": 1786788863.8706791,
+      "updated_at": 1786788863.8706791
+    },
+    {
+      "question_id": "geography_true_false_0043",
+      "type": "true_false",
+      "category": "error_prone",
+      "difficulty": "medium",
+      "content": "【地理·区域地理】请选择/作答关于区域地理的truefalse题目（种子题 #43）",
+      "options": [
+        {
+          "key": "T",
+          "text": "正确"
+        },
+        {
+          "key": "F",
+          "text": "错误"
+        }
+      ],
+      "correct_answer": "T",
+      "explanation": "本题考查知识点：区域地理。答案为 T，详见地理教材对应章节。",
+      "analysis": "考点分析：区域地理为地理高频考点。常见误区：易混淆相似概念。",
+      "tags": [
+        "地理",
+        "种子题",
+        "true_false",
+        "medium",
+        "error_prone"
+      ],
+      "knowledge_points": [
+        "区域地理"
+      ],
+      "formula_used": [],
+      "year": 2026,
+      "source": "COPY-GOVERNANCE-2026-0815 seed",
+      "score": 1.0,
+      "usage_count": 0,
+      "correct_rate": 0.0,
+      "created_at": 1786788863.87068,
+      "updated_at": 1786788863.87068
+    },
+    {
+      "question_id": "geography_fill_blank_0044",
+      "type": "fill_blank",
+      "category": "final",
+      "difficulty": "hard",
+      "content": "【地理·地图判读】请选择/作答关于地图判读的fillblank题目（种子题 #44）",
+      "options": [],
+      "correct_answer": "_地理_地图判读_标准答案_",
+      "explanation": "本题考查知识点：地图判读。答案为 _地理_地图判读_标准答案_，详见地理教材对应章节。",
+      "analysis": "考点分析：地图判读为地理高频考点。常见误区：易混淆相似概念。",
+      "tags": [
+        "地理",
+        "种子题",
+        "fill_blank",
+        "hard",
+        "final"
+      ],
+      "knowledge_points": [
+        "地图判读"
+      ],
+      "formula_used": [],
+      "year": 2026,
+      "source": "COPY-GOVERNANCE-2026-0815 seed",
+      "score": 1.0,
+      "usage_count": 0,
+      "correct_rate": 0.0,
+      "created_at": 1786788863.870681,
+      "updated_at": 1786788863.870681
+    },
+    {
+      "question_id": "geography_short_answer_0045",
+      "type": "short_answer",
+      "category": "special_topic",
+      "difficulty": "medium",
+      "content": "【地理·地理信息技术】请选择/作答关于地理信息技术的shortanswer题目（种子题 #45）",
+      "options": [],
+      "correct_answer": "地理科目 地理信息技术 简答题参考答案要点：（1）基本概念界定；（2）核心原理解释；（3）案例或应用说明；（4）总结提升。",
+      "explanation": "本题考查知识点：地理信息技术。答案为 地理科目 地理信息技术 简答题参考答案要点：（1）基本概念界定；（2）核心原理解释；（3）案例或应用说明；（4）总结提升。，详见地理教材对应章节。",
+      "analysis": "考点分析：地理信息技术为地理高频考点。常见误区：易混淆相似概念。",
+      "tags": [
+        "地理",
+        "种子题",
+        "short_answer",
+        "medium",
+        "special_topic"
+      ],
+      "knowledge_points": [
+        "地理信息技术"
+      ],
+      "formula_used": [],
+      "year": 2026,
+      "source": "COPY-GOVERNANCE-2026-0815 seed",
+      "score": 1.0,
+      "usage_count": 0,
+      "correct_rate": 0.0,
+      "created_at": 1786788863.870683,
+      "updated_at": 1786788863.870683
+    }
+  ]
+}

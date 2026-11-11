@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>仙女座沙盘 · K线终端</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+:root{
+  --accent-pink:#ff6b9d;
+  --ink-0:#ffffff;
+  --bg:#080a0e;--bg-2:#0e1219;--bg-3:#141a24;
+  --card:#0d1118;--card-hi:#151b27;
+  --rule:#1a2130;--rule-2:#242d40;
+  --amber:#ffb000;--amber-dim:#8a5f00;--amber-glow:rgba(255,176,0,.15);
+  --green:#00ff9c;--green-dim:#00a86a;--green-glow:rgba(0,255,156,.12);
+  --red:#ff3b4e;--red-dim:#a82633;--red-glow:rgba(255,59,78,.12);
+  --blue:#3b9eff;--blue-glow:rgba(59,158,255,.12);
+  --ink:#e8ebf2;--ink-dim:#98a3b8;--ink-mute:#5a6782;
+  --mono:'SF Mono','JetBrains Mono','Menlo','Consolas',monospace;
+  --sans:-apple-system,'SF Pro Display','PingFang SC',system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--bg);color:var(--ink);font-family:var(--sans);min-height:100dvh}
+
+/* ═══ TOPBAR ═══ */
+.topbar{position:sticky;top:0;z-index:100;background:rgba(8,10,14,.95);backdrop-filter:blur(12px);border-bottom:1px solid var(--rule);padding:10px 20px;display:flex;align-items:center;gap:16px}
+.topbar .logo{font-family:var(--mono);font-size:13px;color:var(--amber);letter-spacing:2px}
+.topbar .nav{display:flex;gap:4px;margin-left:20px}
+.topbar .nav a{color:var(--ink-dim);font-size:12px;text-decoration:none;padding:6px 14px;border-radius:4px;font-family:var(--mono);letter-spacing:1px;border:1px solid transparent;transition:all .2s}
+.topbar .nav a.active{color:var(--amber);background:var(--bg-2);border-color:var(--rule-2)}
+.topbar .nav a:hover{color:var(--amber);border-color:var(--rule)}
+.topbar .clock{margin-left:auto;font-family:var(--mono);font-size:12px;color:var(--amber);padding:4px 10px;background:var(--bg-2);border:1px solid var(--rule);border-radius:4px}
+
+/* ═══ LAYOUT ═══ */
+.container{max-width:1400px;margin:0 auto;padding:20px}
+
+/* ═══ KLINE HEADER TABS ═══ */
+.kline-header{display:flex;align-items:center;gap:16px;margin-bottom:16px;flex-wrap:wrap}
+.kline-header .section-title{font-size:14px;color:var(--ink-dim);letter-spacing:2px;font-family:var(--mono)}
+.tabs{display:flex;gap:4px;flex-wrap:wrap}
+.tab{padding:6px 14px;background:var(--bg-2);border:1px solid var(--rule);border-radius:4px;color:var(--ink-dim);font-size:12px;font-family:var(--mono);cursor:pointer;transition:all .2s}
+.tab:hover{color:var(--amber);border-color:var(--rule-2)}
+.tab.active{background:var(--amber-glow);color:var(--amber);border-color:var(--amber-dim)}
+
+/* ═══ KLINE CARD ═══ */
+.kline-card{background:var(--card);border:1px solid var(--rule);border-radius:6px;overflow:hidden;margin-bottom:16px}
+.kline-card-head{padding:14px 18px;border-bottom:1px solid var(--rule);display:flex;align-items:center;gap:16px;background:var(--bg-2)}
+.kline-card-head .sym-big{font-family:var(--mono);font-size:18px;color:var(--amber);font-weight:700}
+.kline-card-head .name{font-size:12px;color:var(--ink-dim)}
+.kline-card-head .price{font-family:var(--mono);font-size:22px;color:var(--amber);margin-left:8px}
+.kline-card-head .chg{font-family:var(--mono);font-size:13px;margin-left:8px;padding:2px 8px;border-radius:3px}
+.kline-card-head .chg.up{color:var(--green);background:var(--green-glow)}
+.kline-card-head .chg.down{color:var(--red);background:var(--red-glow)}
+.kline-card-head .ma-info{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--ink-mute)}
+.kline-card-head .ma-info span{margin-left:10px}
+.kline-card-head .ma-info .ma5{color:var(--ink-0)}
+.kline-card-head .ma-info .ma10{color:var(--amber)}
+.kline-card-head .ma-info .ma20{color:var(--accent-pink)}
+
+.kline-card-body{padding:12px;position:relative}
+.kline-canvas-wrap{position:relative;width:100%;height:360px}
+.kline-canvas-wrap canvas{position:absolute;top:0;left:0;width:100%;height:100%}
+
+/* ═══ TOOLTIP ═══ */
+.kline-tip{position:absolute;background:var(--bg-3);border:1px solid var(--rule-2);border-radius:4px;padding:10px 14px;font-family:var(--mono);font-size:11px;line-height:1.8;pointer-events:none;z-index:50;box-shadow:0 4px 20px rgba(0,0,0,.6);display:none;white-space:nowrap}
+.kline-tip.show{display:block}
+.kline-tip .date{color:var(--ink-dim);margin-bottom:4px}
+.kline-tip .row{display:flex;gap:12px}
+.kline-tip .row .k{color:var(--ink-mute)}
+.kline-tip .row .v{color:var(--ink)}
+.kline-tip .row .v.up{color:var(--green)}
+.kline-tip .row .v.down{color:var(--red)}
+
+/* ═══ EMPTY ═══ */
+.empty{text-align:center;color:var(--ink-mute);font-size:12px;padding:60px 20px}
+.empty .ico{font-size:40px;display:block;margin-bottom:12px;opacity:.3}
+
+/* ═══ RANGE SELECTOR ═══ */
+.range-btns{display:flex;gap:4px}
+.range-btns button{background:transparent;border:1px solid var(--rule);color:var(--ink-mute);font-size:11px;padding:3px 10px;border-radius:3px;cursor:pointer;font-family:var(--mono)}
+.range-btns button.active{color:var(--amber);border-color:var(--amber-dim);background:var(--amber-glow)}
+.range-btns button:hover{color:var(--amber)}
+.mt-ico{display:inline-block;width:1em;height:1em;vertical-align:-0.125em;flex:none}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <span class="logo">ANDROMEDA · KLINE</span>
+  <nav class="nav">
+    <a href="/static/sandbox-trading-terminal.html"><i class="mt-ico" data-icon="gamepad" aria-hidden="true"></i> 操盘终端</a>
+    <a href="/static/sandbox-trading-kline.html" class="active"><i class="mt-ico" data-icon="trend-up" aria-hidden="true"></i> K线复盘</a>
+    <a href="/api/sandbox/status" target="_blank"><i class="mt-ico" data-icon="wrench" aria-hidden="true"></i> API</a>
+  </nav>
+  <span class="clock" id="clock">--:--:--</span>
+</div>
+
+<div class="container">
+
+  <!-- ═══ INDEXES ROW ═══ -->
+  <div class="kline-header">
+    <span class="section-title">▸ 大盘指数</span>
+    <div class="tabs" id="indexTabs"></div>
+  </div>
+  <div id="indexCards"></div>
+
+  <!-- ═══ WATCHLIST ROW ═══ -->
+  <div class="kline-header" style="margin-top:24px">
+    <span class="section-title">▸ 自选股</span>
+    <div class="tabs" id="watchlistTabs"></div>
+  </div>
+  <div id="watchlistCards"></div>
+
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════
+   Canvas K线图渲染器 (零依赖 · 纯 Canvas 2D)
+   ═══════════════════════════════════════════════════════════ */
+
+function drawKLine(canvas, data, opts){
+  const {ohlc, ma5, ma10, ma20, dates} = data;
+  const {width, height} = canvas;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, width, height);
+  if(!ohlc || ohlc.length === 0){return}
+
+  // 布局
+  const PAD = {top:20, right:60, bottom:40, left:10};
+  const chartW = width - PAD.left - PAD.right;
+  const chartH = height - PAD.top - PAD.bottom;
+  const candleW = Math.max(2, Math.floor(chartW / ohlc.length) - 1);
+
+  // 价格范围 (用 ma5 上下限扩大一点)
+  let hi = -Infinity, lo = Infinity;
+  ohlc.forEach(r=>{hi=Math.max(hi,r[1]);lo=Math.min(lo,r[2])});
+  if(ma5){ma5.forEach(v=>{if(v>0){hi=Math.max(hi,v);lo=Math.min(lo,v)}})}
+  if(ma10){ma10.forEach(v=>{if(v>0){hi=Math.max(hi,v);lo=Math.min(lo,v)}})}
+  if(ma20){ma20.forEach(v=>{if(v>0){hi=Math.max(hi,v);lo=Math.min(lo,v)}})}
+  const range = hi - lo;
+  hi += range * 0.05;
+  lo -= range * 0.05;
+  const priceToY = p => PAD.top + chartH * (1 - (p - lo) / (hi - lo));
+
+  // ═══ Grid ═══
+  ctx.strokeStyle = '#1a2130';
+  ctx.lineWidth = 1;
+  const gridLines = 5;
+  for(let i=0;i<=gridLines;i++){
+    const y = PAD.top + chartH * i / gridLines;
+    ctx.beginPath();ctx.moveTo(PAD.left, y);ctx.lineTo(PAD.left+chartW, y);ctx.stroke();
+    // 价格标签
+    const price = hi - (hi - lo) * i / gridLines;
+    ctx.fillStyle = '#5a6782';
+    ctx.font = '10px Menlo, monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText(price.toFixed(2), PAD.left+chartW+4, y+3);
+  }
+  // 竖线 (每 10 根)
+  ctx.strokeStyle = '#1a2130';
+  for(let i=9;i<ohlc.length;i+=10){
+    const x = PAD.left + chartW * (i + 0.5) / ohlc.length;
+    ctx.beginPath();ctx.moveTo(x, PAD.top);ctx.lineTo(x, PAD.top+chartH);ctx.stroke();
+    if(dates && dates[i]){
+      ctx.fillStyle = '#5a6782';
+      ctx.font = '10px Menlo, monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(dates[i].slice(5), x, PAD.top+chartH+14);
+    }
+  }
+
+  // ═══ Candles ═══
+  for(let i=0;i<ohlc.length;i++){
+    const [o,h,l,c] = ohlc[i];
+    const x = PAD.left + chartW * (i + 0.5) / ohlc.length;
+    const up = c >= o;
+    const bodyTop = priceToY(up?c:o);
+    const bodyBot = priceToY(up?o:c);
+    const wickTop = priceToY(h);
+    const wickBot = priceToY(l);
+
+    // 影线
+    ctx.strokeStyle = up ? '#00ff9c' : '#ff3b4e';
+    ctx.lineWidth = 1;
+    ctx.beginPath();ctx.moveTo(x, wickTop);ctx.lineTo(x, wickBot);ctx.stroke();
+
+    // 实体
+    ctx.fillStyle = up ? '#00ff9c' : '#ff3b4e';
+    const bodyH = Math.max(1, bodyBot - bodyTop);
+    ctx.fillRect(x - candleW/2, bodyTop, candleW, bodyH);
+  }
+
+  // ═══ MA Lines ═══
+  function drawMA(arr, color){
+    if(!arr || !arr.length) return;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    let started = false;
+    for(let i=0;i<ohlc.length && i<arr.length;i++){
+      const v = arr[i];
+      if(!v || v<=0) continue;
+      const x = PAD.left + chartW * (i + 0.5) / ohlc.length;
+      const y = priceToY(v);
+      if(!started){ctx.moveTo(x,y);started=true}else{ctx.lineTo(x,y)}
+    }
+    ctx.stroke();
+  }
+  drawMA(ma5, '#ffffff');
+  drawMA(ma10, '#ffb000');
+  drawMA(ma20, '#ff6b9d');
+
+  // ═══ Crosshair + Tooltip (hover) ═══
+  canvas._chartData = {ohlc, ma5, ma10, ma20, dates, PAD, chartW, chartH, lo, hi};
+}
+
+function setupKLineHover(cardEl, canvas){
+  const tip = cardEl.querySelector('.kline-tip');
+  canvas.addEventListener('mousemove', e=>{
+    const d = canvas._chartData; if(!d) return;
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const x = (e.clientX - rect.left) * scaleX;
+    const relX = x - d.PAD.left;
+    if(relX < 0 || relX > d.chartW){tip.classList.remove('show');return}
+    const idx = Math.min(d.ohlc.length-1, Math.floor(relX / d.chartW * d.ohlc.length));
+    if(idx < 0){tip.classList.remove('show');return}
+
+    const [o,h,l,c] = d.ohlc[idx];
+    const up = c >= o;
+    const prevClose = idx > 0 ? d.ohlc[idx-1][3] : c;
+    const chg = (c - prevClose) / prevClose * 100;
+    const ma5v = (d.ma5 && d.ma5[idx]) || 0;
+    const ma10v = (d.ma10 && d.ma10[idx]) || 0;
+    const ma20v = (d.ma20 && d.ma20[idx]) || 0;
+    const date = (d.dates && d.dates[idx]) || '';
+
+    tip.innerHTML = `
+      <div class="date">${date}</div>
+      <div class="row"><span class="k">开</span><span class="v">${o.toFixed(2)}</span>
+       <span class="k">高</span><span class="v up">${h.toFixed(2)}</span></div>
+      <div class="row"><span class="k">低</span><span class="v down">${l.toFixed(2)}</span>
+       <span class="k">收</span><span class="v ${up?'up':'down'}">${c.toFixed(2)}</span></div>
+      <div class="row"><span class="k">涨跌</span><span class="v ${chg>=0?'up':'down'}">${chg>=0?'+':''}${chg.toFixed(2)}%</span></div>
+      ${ma5v?`<div class="row"><span class="k">MA</span><span class="v">5:${ma5v.toFixed(1)}</span><span class="v">10:${ma10v.toFixed(1)}</span><span class="v">20:${ma20v.toFixed(1)}</span></div>`:''}
+    `;
+    // 定位
+    const canvasRect = canvas.parentElement.getBoundingClientRect();
+    const tipX = e.clientX - canvasRect.left + 14;
+    const tipY = e.clientY - canvasRect.top - 20;
+    tip.style.left = Math.min(tipX, canvasRect.width - 180) + 'px';
+    tip.style.top = Math.max(10, tipY) + 'px';
+    tip.classList.add('show');
+  });
+  canvas.addEventListener('mouseleave', ()=>tip.classList.remove('show'));
+}
+
+// ═══════════════════════════════════════════════════════════
+// 应用逻辑
+// ═══════════════════════════════════════════════════════════
+const INDEXES = [
+  {code:'000001', name:'上证指数',  label:'上证'},
+  {code:'399001', name:'深证成指',  label:'深证'},
+  {code:'399006', name:'创业板指',  label:'创业板'},
+];
+const WATCHLIST_SYMBOLS = ['000001','601012','600036','600900','601398'];
+const KLINE_DAYS = 60;
+
+let selectedIndex = '000001';
+let selectedWatch = '601012';
+let watchlistNames = {};
+
+function buildTabs(containerId, items, selected, onSelect){
+  const container = document.getElementById(containerId);
+  container.innerHTML = items.map(it=>{
+    const code = it.code || it;
+    const name = it.name || watchlistNames[code] || code;
+    return `<button class="tab ${code===selected?'active':''}" data-code="${code}">${name} (${code})</button>`;
+  }).join('');
+  container.querySelectorAll('.tab').forEach(b=>{
+    b.onclick = ()=>{
+      onSelect(b.dataset.code);
+      buildTabs(containerId, items, b.dataset.code, onSelect);
+    };
+  });
+}
+
+function renderKLineCard(cardEl, symbol, data){
+  const ohlc = data.ohlc || [];
+  const canvas = cardEl.querySelector('canvas');
+  canvas.width = canvas.offsetWidth * 2; // 2x for retina
+  canvas.height = canvas.offsetHeight * 2;
+  canvas.style.width = cardEl.querySelector('.kline-canvas-wrap').offsetWidth + 'px';
+  canvas.style.height = cardEl.querySelector('.kline-canvas-wrap').offsetHeight + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(2, 2);
+  drawKLine({width: canvas.width/2, height: canvas.height/2}, data);
+
+  // 标题
+  const last = ohlc.length > 0 ? ohlc[ohlc.length-1] : [0,0,0,0];
+  const prev = ohlc.length > 1 ? ohlc[ohlc.length-2][3] : last[0];
+  const price = last[3];
+  const chg = ((price - prev) / prev * 100);
+  const isUp = chg >= 0;
+  cardEl.querySelector('.price').textContent = price.toFixed(2);
+  cardEl.querySelector('.chg').textContent = (isUp?'+':'') + chg.toFixed(2) + '%';
+  cardEl.querySelector('.chg').className = 'chg ' + (isUp?'up':'down');
+  cardEl.querySelector('.sym-big').textContent = symbol;
+  cardEl.querySelector('.name').textContent = data.name || '';
+
+  // MA
+  const ma5 = (data.ma5||[])[ohlc.length-1] || 0;
+  const ma10 = (data.ma10||[])[ohlc.length-1] || 0;
+  const ma20 = (data.ma20||[])[ohlc.length-1] || 0;
+  cardEl.querySelector('.ma5').textContent = ma5 ? 'MA5:'+ma5.toFixed(1) : '';
+  cardEl.querySelector('.ma10').textContent = ma10 ? 'MA10:'+ma10.toFixed(1) : '';
+  cardEl.querySelector('.ma20').textContent = ma20 ? 'MA20:'+ma20.toFixed(1) : '';
+
+  setupKLineHover(cardEl, canvas);
+}
+
+function renderCard(containerId, symbol){
+  const container = document.getElementById(containerId);
+  container.innerHTML = `
+    <div class="kline-card">
+      <div class="kline-card-head">
+        <span class="sym-big">${symbol}</span>
+        <span class="name">加载中...</span>
+        <span class="price">--</span>
+        <span class="chg">--</span>
+        <div class="ma-info">
+          <span class="ma5">MA5:--</span>
+          <span class="ma10">MA10:--</span>
+          <span class="ma20">MA20:--</span>
+        </div>
+      </div>
+      <div class="kline-card-body">
+        <div class="kline-canvas-wrap">
+          <canvas></canvas>
+          <div class="kline-tip"></div>
+        </div>
+      </div>
+    </div>`;
+
+  fetch(`/api/sandbox/kline?symbol=${symbol}&days=${KLINE_DAYS}`, {cache:'no-store'})
+    .then(r=>r.json())
+    .then(d=>{
+      const item = Object.values(d.data||{})[0];
+      if(item){
+        renderKLineCard(container.querySelector('.kline-card'), symbol, item);
+        watchlistNames[symbol] = item.name || watchlistNames[symbol] || symbol;
+        // 更新 tab 名字
+        buildTabs('watchlistTabs', WATCHLIST_SYMBOLS.map(c=>({code:c,name:watchlistNames[c]||c})), selectedWatch, selectWatch);
+      }
+    })
+    .catch(e=>{
+      container.innerHTML = `<div class="empty"><span class="ico">!</span>K线数据加载失败</div>`;
+    });
+}
+
+function selectIndex(code){
+  selectedIndex = code;
+  renderCard('indexCards', code);
+}
+function selectWatch(code){
+  selectedWatch = code;
+  renderCard('watchlistCards', code);
+}
+
+// Clock
+function updateClock(){
+  document.getElementById('clock').textContent = new Date().toLocaleTimeString('zh-CN',{hour12:false});
+}
+setInterval(updateClock,1000); updateClock();
+
+// Boot
+buildTabs('indexTabs', INDEXES, selectedIndex, selectIndex);
+buildTabs('watchlistTabs', WATCHLIST_SYMBOLS.map(c=>({code:c,name:c})), selectedWatch, selectWatch);
+renderCard('indexCards', selectedIndex);
+renderCard('watchlistCards', selectedWatch);
+
+// Resize redraw
+window.addEventListener('resize', ()=>{
+  renderCard('indexCards', selectedIndex);
+  renderCard('watchlistCards', selectedWatch);
+});
+</script>
+<script src="/static/js/mtscos_icons.js" defer></script>
+</body>
+</html>

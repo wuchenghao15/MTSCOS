@@ -1,0 +1,812 @@
+{
+  "report_type": "daily_bank_report",
+  "report_date": "2026-11-09",
+  "generated_at": "2026-11-09 23:46:05",
+  "arch": "古灵阁银行 (Gobelin Bank) + Andromeda 10-Center Orchestrator",
+  "sections": {
+    "overview": {
+      "total_assets": 1800071.53,
+      "today_pnl": 3321.97,
+      "total_pnl": 3321.97,
+      "today_pnl_pct": 0.1845,
+      "cumulative_return_pct": -0.01,
+      "today_trades": 2,
+      "total_trades": 63,
+      "active_sessions": 2,
+      "total_sessions": 11
+    },
+    "audit": {
+      "date": "2026-11-09",
+      "dimensions": {
+        "S1": {
+          "PASS": 48,
+          "WARN": 0,
+          "FAIL": 0,
+          "INFO": 0
+        },
+        "S2": {
+          "PASS": 48,
+          "WARN": 0,
+          "FAIL": 0,
+          "INFO": 0
+        },
+        "S3": {
+          "PASS": 48,
+          "WARN": 0,
+          "FAIL": 0,
+          "INFO": 0
+        },
+        "S4": {
+          "PASS": 48,
+          "WARN": 0,
+          "FAIL": 0,
+          "INFO": 0
+        },
+        "S5": {
+          "PASS": 48,
+          "WARN": 0,
+          "FAIL": 0,
+          "INFO": 0
+        },
+        "S6": {
+          "PASS": 48,
+          "WARN": 0,
+          "FAIL": 0,
+          "INFO": 0
+        },
+        "D07": {
+          "PASS": 0,
+          "WARN": 792,
+          "FAIL": 0,
+          "INFO": 0
+        }
+      },
+      "total_checked": 1080,
+      "total_passed": 288,
+      "total_warned": 792,
+      "total_failed": 0,
+      "pass_rate": 26.7
+    },
+    "risk": {
+      "high_risk": [
+        {
+          "risk_id": "R-SB-46b837317e95-20261102",
+          "session_id": "SB-46b837317e95",
+          "snap_date": "2026-11-02",
+          "var_95": 0.22560575778245157,
+          "cvar_95": 0.23958473648261364,
+          "sharpe": -4.293627157025952,
+          "calmar": -0.06868151312463786,
+          "sortino": -5.182138404841486,
+          "win_rate": 0.3333333333333333,
+          "profit_factor": 0.9146110056926015,
+          "max_drawdown": 6.27,
+          "turnover": 11.22734315307658,
+          "beta": 1.0,
+          "risk_score": 7.14,
+          "risk_level": "CRITICAL",
+          "total_return": -0.05010700000000001,
+          "annualized_return": -0.4306330872914793,
+          "annualized_volatility": 0.10728297321711185,
+          "trade_count": 19,
+          "up_days": 6,
+          "down_days": 15,
+          "created_at": "2026-11-08 15:52:24"
+        },
+        {
+          "risk_id": "R-SB-cbbc14e3b882-20261102",
+          "session_id": "SB-cbbc14e3b882",
+          "snap_date": "2026-11-02",
+          "var_95": 0.17240378635146433,
+          "cvar_95": 0.1810599196366365,
+          "sharpe": -6.606434670441489,
+          "calmar": -0.6543989074683949,
+          "sortino": -6.606434670441489,
+          "win_rate": 0.0,
+          "profit_factor": 0.0,
+          "max_drawdown": 1.19,
+          "turnover": 0.4925358147007632,
+          "beta": 1.0,
+          "risk_score": 14.89,
+          "risk_level": "CRITICAL",
+          "total_return": -0.011900000000000022,
+          "annualized_return": -0.7787346998873899,
+          "annualized_volatility": 0.12241621089599672,
+          "trade_count": 1,
+          "up_days": 0,
+          "down_days": 2,
+          "created_at": "2026-11-08 15:52:24"
+        },
+        {
+          "risk_id": "R-SB-041c1c388719-20261102",
+          "session_id": "SB-041c1c388719",
+          "snap_date": "2026-11-02",
+          "var_95": 0.6141627612824474,
+          "cvar_95": 0.7937253933193773,
+          "sharpe": -0.6341881834104337,
+          "calmar": -0.1362328626508152,
+          "sortino": -0.5537174637299734,
+          "win_rate": 0.0,
+          "profit_factor": 0.0,
+          "max_drawdown": 1.23,
+          "turnover": 0.9584903622206631,
+          "beta": 1.0,
+          "risk_score": 17.24,
+          "risk_level": "CRITICAL",
+          "total_return": -0.005081540770385251,
+          "annualized_return": -0.16756642106050268,
+          "annualized_volatility": 0.3115264936001523,
+          "trade_count": 2,
+          "up_days": 3,
+          "down_days": 4,
+          "created_at": "2026-11-08 15:52:24"
+        },
+        {
+          "risk_id": "R-SB-9901f057388a-20261102",
+          "session_id": "SB-9901f057388a",
+          "snap_date": "2026-11-02",
+          "var_95": 0.41141077652849695,
+          "cvar_95": 0.6903230683728547,
+          "sharpe": -0.0030491077471253712,
+          "calmar": 0.0,
+          "sortino": -1.8975808579960507,
+          "win_rate": 0.0,
+          "profit_factor": 0.0,
+          "max_drawdown": 0.13592289045365347,
+          "turnover": 0.47159273665996815,
+          "beta": 1.0,
+          "risk_score": 35.5,
+          "risk_level": "HIGH",
+          "total_return": -0.1250144291815768,
+          "annualized_return": -0.42403363236133307,
+          "annualized_volatility": 148.9070475746177,
+          "trade_count": 1,
+          "up_days": 26,
+          "down_days": 35,
+          "created_at": "2026-11-08 15:52:24"
+        },
+        {
+          "risk_id": "R-SB-893fe4acb7c3-20261102",
+          "session_id": "SB-893fe4acb7c3",
+          "snap_date": "2026-11-02",
+          "var_95": 0.4365489663256575,
+          "cvar_95": 0.7937253933193773,
+          "sharpe": -0.11952286093343935,
+          "calmar": 0.0,
+          "sortino": 0.0,
+          "win_rate": 0.0,
+          "profit_factor": 0.0,
+          "max_drawdown": 0.05,
+          "turnover": 0.7478739369684843,
+          "beta": 1.0,
+          "risk_score": 38.59,
+          "risk_level": "HIGH",
+          "total_return": 0.0,
+          "annualized_return": 0.0,
+          "annualized_volatility": 0.2509980079602227,
+          "trade_count": 1,
+          "up_days": 0,
+          "down_days": 1,
+          "created_at": "2026-11-08 15:52:24"
+        }
+      ],
+      "low_risk": [
+        {
+          "risk_id": "R-SB-e3105ea094db-20261107",
+          "session_id": "SB-e3105ea094db",
+          "snap_date": "2026-11-07",
+          "var_95": 0.0,
+          "cvar_95": 0.0,
+          "sharpe": 0.0,
+          "calmar": 0.0,
+          "sortino": 0.0,
+          "win_rate": 0.6666666666666666,
+          "profit_factor": 9.386597938144345,
+          "max_drawdown": 0.0,
+          "turnover": 4.649582247198909,
+          "beta": 1.0,
+          "risk_score": 74.29,
+          "risk_level": "MEDIUM",
+          "total_return": 0.0,
+          "annualized_return": 0.0,
+          "annualized_volatility": 0.0,
+          "trade_count": 12,
+          "up_days": 1,
+          "down_days": 0,
+          "created_at": "2026-11-08 15:52:24"
+        },
+        {
+          "risk_id": "R-SB-1ecde8d06f4d-20261109",
+          "session_id": "SB-1ecde8d06f4d",
+          "snap_date": "2026-11-09",
+          "var_95": 0.0,
+          "cvar_95": 0.0,
+          "sharpe": 0.0,
+          "calmar": 0.0,
+          "sortino": 0.0,
+          "win_rate": 0.0,
+          "profit_factor": 0.0,
+          "max_drawdown": 0.0,
+          "turnover": 0.0,
+          "beta": 1.0,
+          "risk_score": 67.5,
+          "risk_level": "MEDIUM",
+          "total_return": 0.0,
+          "annualized_return": 0.0,
+          "annualized_volatility": 0.0,
+          "trade_count": 0,
+          "up_days": 0,
+          "down_days": 0,
+          "created_at": "2026-11-09 09:22:25"
+        },
+        {
+          "risk_id": "R-SB-e3105ea094db-20261109",
+          "session_id": "SB-e3105ea094db",
+          "snap_date": "2026-11-09",
+          "var_95": 0.0,
+          "cvar_95": 0.0,
+          "sharpe": -11.805519131014684,
+          "calmar": 0.0,
+          "sortino": 0.0,
+          "win_rate": 0.6666666666666666,
+          "profit_factor": 9.386597938144345,
+          "max_drawdown": 0.0008580497668864981,
+          "turnover": 5.392252884297509,
+          "beta": 1.0,
+          "risk_score": 64.23,
+          "risk_level": "MEDIUM",
+          "total_return": -0.0008580497668865261,
+          "annualized_return": -0.10251662358378666,
+          "annualized_volatility": 0.011224972160321835,
+          "trade_count": 14,
+          "up_days": 2,
+          "down_days": 0,
+          "created_at": "2026-11-09 00:00:04"
+        },
+        {
+          "risk_id": "R-SB-90d73faf4b9e-20261102",
+          "session_id": "SB-90d73faf4b9e",
+          "snap_date": "2026-11-02",
+          "var_95": 0.07638212398597768,
+          "cvar_95": 0.11538522234380925,
+          "sharpe": 5.100022546384536,
+          "calmar": 0.5106869684688852,
+          "sortino": 8.118172569684674,
+          "win_rate": 0.75,
+          "profit_factor": 1.2751322751322824,
+          "max_drawdown": 0.89,
+          "turnover": 4.603791972960783,
+          "beta": 1.0,
+          "risk_score": 42.09,
+          "risk_level": "HIGH",
+          "total_return": 0.01347100000000001,
+          "annualized_return": 0.45451140193730777,
+          "annualized_volatility": 0.0832371618118137,
+          "trade_count": 8,
+          "up_days": 4,
+          "down_days": 4,
+          "created_at": "2026-11-08 15:52:24"
+        },
+        {
+          "risk_id": "R-SB-ec16bd635406-20261102",
+          "session_id": "SB-ec16bd635406",
+          "snap_date": "2026-11-02",
+          "var_95": 0.45544605902317775,
+          "cvar_95": 0.7937253933193773,
+          "sharpe": 2.9538226430441283,
+          "calmar": 0.7495349455191129,
+          "sortino": 2.8917256039805443,
+          "win_rate": 1.0,
+          "profit_factor": 0.0,
+          "max_drawdown": 1.22,
+          "turnover": 1.5328790666701873,
+          "beta": 1.0,
+          "risk_score": 39.67,
+          "risk_level": "HIGH",
+          "total_return": 0.0287533766883441,
+          "annualized_return": 0.9144326335333177,
+          "annualized_volatility": 0.2994196810076064,
+          "trade_count": 3,
+          "up_days": 5,
+          "down_days": 6,
+          "created_at": "2026-11-08 15:52:24"
+        }
+      ]
+    },
+    "attribution": {
+      "industries": [
+        {
+          "industry": "银行",
+          "total_pnl": -0.13500347332700774
+        },
+        {
+          "industry": "金融科技",
+          "total_pnl": -1.0427555810006224
+        },
+        {
+          "industry": "食品饮料",
+          "total_pnl": -3.8749855708184233
+        }
+      ],
+      "best_trades": [
+        {
+          "session_id": "SB-e3105ea094db",
+          "symbol": "sh600036",
+          "industry": "银行",
+          "value": 697.0000000000006,
+          "details": "{\"trade_id\": \"T-895c6a62c947\", \"symbol\": \"sh600036\", \"industry\": \"银行\", \"action\": \"SELL\", \"price\": 42.88, \"shares\": 100, \"amount\": 4278.71, \"signal_score\": 30.0, \"trade_date\": \"2026-11-06\", \"avg_buy_price\": 35.91, \"pnl\": 697.0000000000006, \"pnl_type\": \"REALIZED\", \"pnl_pct\": 0.194096351991089}"
+        },
+        {
+          "session_id": "SB-90d73faf4b9e",
+          "symbol": "sz002594",
+          "industry": "新能源汽车",
+          "value": 81.00000000000023,
+          "details": "{\"trade_id\": \"T-40a582ff0943\", \"symbol\": \"sz002594\", \"industry\": \"新能源汽车\", \"action\": \"SELL\", \"price\": 81.48, \"shares\": 100, \"amount\": 8134.85, \"signal_score\": 28.0, \"trade_date\": \"2026-11-02\", \"avg_buy_price\": 80.67, \"pnl\": 81.00000000000023, \"pnl_type\": \"REALIZED\", \"pnl_pct\": 0.010040907400520771}"
+        },
+        {
+          "session_id": "SB-46b837317e95",
+          "symbol": "sz002594",
+          "industry": "新能源汽车",
+          "value": 81.00000000000023,
+          "details": "{\"trade_id\": \"T-92ea8e14e2fb\", \"symbol\": \"sz002594\", \"industry\": \"新能源汽车\", \"action\": \"SELL\", \"price\": 81.48, \"shares\": 100, \"amount\": 8134.85, \"signal_score\": 28.0, \"trade_date\": \"2026-11-02\", \"avg_buy_price\": 80.67, \"pnl\": 81.00000000000023, \"pnl_type\": \"REALIZED\", \"pnl_pct\": 0.010040907400520771}"
+        },
+        {
+          "session_id": "SB-e3105ea094db",
+          "symbol": "sh601318",
+          "industry": "金融科技",
+          "value": 61.999999999999744,
+          "details": "{\"trade_id\": \"T-50bff78e4b15\", \"symbol\": \"sh601318\", \"industry\": \"金融科技\", \"action\": \"SELL\", \"price\": 51.01, \"shares\": 100, \"amount\": 5090.9, \"signal_score\": 41.0, \"trade_date\": \"2026-11-06\", \"avg_buy_price\": 50.39, \"pnl\": 61.999999999999744, \"pnl_type\": \"REALIZED\", \"pnl_pct\": 0.012304028577098558}"
+        },
+        {
+          "session_id": "SB-90d73faf4b9e",
+          "symbol": "sh600036",
+          "industry": "银行",
+          "value": 55.99999999999952,
+          "details": "{\"trade_id\": \"T-5678b35f13c2\", \"symbol\": \"sh600036\", \"industry\": \"银行\", \"action\": \"SELL\", \"price\": 44.33, \"shares\": 100, \"amount\": 4423.57, \"signal_score\": 29.0, \"trade_date\": \"2026-11-02\", \"avg_buy_price\": 43.77, \"pnl\": 55.99999999999952, \"pnl_type\": \"REALIZED\", \"pnl_pct\": 0.012794151245145047}"
+        }
+      ],
+      "worst_trades": [
+        {
+          "session_id": "SB-90d73faf4b9e",
+          "symbol": "sh601318",
+          "industry": "金融科技",
+          "value": -62.999999999999545,
+          "details": "{\"trade_id\": \"T-0b1ea0277852\", \"symbol\": \"sh601318\", \"industry\": \"金融科技\", \"action\": \"SELL\", \"price\": 53.28, \"shares\": 100, \"amount\": 5317.67, \"signal_score\": 29.0, \"trade_date\": \"2026-11-02\", \"avg_buy_price\": 53.91, \"pnl\": -62.999999999999545, \"pnl_type\": \"REALIZED\", \"pnl_pct\": -0.011686143572620988}"
+        },
+        {
+          "session_id": "SB-46b837317e95",
+          "symbol": "sz000858",
+          "industry": "食品饮料",
+          "value": -52.99999999999869,
+          "details": "{\"trade_id\": \"T-a88cca9f1a93\", \"symbol\": \"sz000858\", \"industry\": \"食品饮料\", \"action\": \"SELL\", \"price\": 74.54, \"shares\": 100, \"amount\": 7441.55, \"signal_score\": 24.0, \"trade_date\": \"2026-11-02\", \"avg_buy_price\": 75.07, \"pnl\": -52.99999999999869, \"pnl_type\": \"REALIZED\", \"pnl_pct\": -0.007060077261222708}"
+        },
+        {
+          "session_id": "SB-46b837317e95",
+          "symbol": "sh600036",
+          "industry": "银行",
+          "value": -52.00000000000031,
+          "details": "{\"trade_id\": \"T-eedc419e02cb\", \"symbol\": \"sh600036\", \"industry\": \"银行\", \"action\": \"SELL\", \"price\": 43.43, \"shares\": 100, \"amount\": 4333.66, \"signal_score\": 24.0, \"trade_date\": \"2026-11-02\", \"avg_buy_price\": 43.95, \"pnl\": -52.00000000000031, \"pnl_type\": \"REALIZED\", \"pnl_pct\": -0.011831626848691768}"
+        },
+        {
+          "session_id": "SB-041c1c388719",
+          "symbol": "sh601318",
+          "industry": "金融科技",
+          "value": -46.000000000000085,
+          "details": "{\"trade_id\": \"T-e0ed7522620e\", \"symbol\": \"sh601318\", \"industry\": \"金融科技\", \"action\": \"SELL\", \"price\": 47.86, \"shares\": 100, \"amount\": 4776.21, \"signal_score\": 24.0, \"trade_date\": \"2026-11-02\", \"avg_buy_price\": 48.32, \"pnl\": -46.000000000000085, \"pnl_type\": \"REALIZED\", \"pnl_pct\": -0.009519867549668937}"
+        },
+        {
+          "session_id": "SB-0d4fe5553e3d",
+          "symbol": "sz000858",
+          "industry": "食品饮料",
+          "value": 0.0,
+          "details": "{\"trade_id\": \"T-b5c6e96d290d\", \"symbol\": \"sz000858\", \"industry\": \"食品饮料\", \"action\": \"BUY\", \"price\": 74.7, \"shares\": 100, \"amount\": 7475.0, \"signal_score\": 36.0, \"trade_date\": \"2026-11-02\", \"pnl\": 0.0, \"pnl_type\": \"BUY_COST\"}"
+        }
+      ]
+    },
+    "issues": {
+      "frozen_portfolios": [
+        {
+          "session_id": "SB-7a352b4a69a6",
+          "scenario": "WEEK",
+          "status": "FROZEN",
+          "is_frozen": 1,
+          "current_cash": 10000.0,
+          "initial_cash": 10000.0
+        },
+        {
+          "session_id": "SB-9d7bc4e6dd97",
+          "scenario": "WEEK",
+          "status": "FROZEN",
+          "is_frozen": 1,
+          "current_cash": 10000.0,
+          "initial_cash": 10000.0
+        },
+        {
+          "session_id": "SB-96517a0ecb8d",
+          "scenario": "WEEK",
+          "status": "FROZEN",
+          "is_frozen": 1,
+          "current_cash": 10000.0,
+          "initial_cash": 10000.0
+        },
+        {
+          "session_id": "SB-7b089fea3860",
+          "scenario": "WEEK",
+          "status": "FROZEN",
+          "is_frozen": 1,
+          "current_cash": 10000.0,
+          "initial_cash": 10000.0
+        },
+        {
+          "session_id": "SB-fb33cc4e623e",
+          "scenario": "WEEK",
+          "status": "FROZEN",
+          "is_frozen": 1,
+          "current_cash": 10000.0,
+          "initial_cash": 10000.0
+        },
+        {
+          "session_id": "SB-290d343178fa",
+          "scenario": "WEEK",
+          "status": "FROZEN",
+          "is_frozen": 1,
+          "current_cash": 10000.0,
+          "initial_cash": 10000.0
+        },
+        {
+          "session_id": "SB-0d4fe5553e3d",
+          "scenario": "WEEK",
+          "status": "FROZEN",
+          "is_frozen": 1,
+          "current_cash": 2525.0,
+          "initial_cash": 10000.0
+        },
+        {
+          "session_id": "SB-c21656a127a4",
+          "scenario": "WEEK",
+          "status": "FROZEN",
+          "is_frozen": 1,
+          "current_cash": 2525.0,
+          "initial_cash": 10000.0
+        },
+        {
+          "session_id": "SB-ad69dd076b49",
+          "scenario": "WEEK",
+          "status": "FROZEN",
+          "is_frozen": 1,
+          "current_cash": 2525.0,
+          "initial_cash": 10000.0
+        },
+        {
+          "session_id": "SB-4ff7924f2dcd",
+          "scenario": "WEEK",
+          "status": "FROZEN",
+          "is_frozen": 1,
+          "current_cash": 2525.0,
+          "initial_cash": 10000.0
+        },
+        {
+          "session_id": "SB-893fe4acb7c3",
+          "scenario": "WEEK",
+          "status": "FROZEN",
+          "is_frozen": 1,
+          "current_cash": 2525.0,
+          "initial_cash": 10000.0
+        },
+        {
+          "session_id": "SB-90d73faf4b9e",
+          "scenario": "WEEK",
+          "status": "FROZEN",
+          "is_frozen": 1,
+          "current_cash": 10134.708999999999,
+          "initial_cash": 10000.0
+        },
+        {
+          "session_id": "SB-46b837317e95",
+          "scenario": "YEAR",
+          "status": "FROZEN",
+          "is_frozen": 1,
+          "current_cash": 4299.929000000004,
+          "initial_cash": 10000.0
+        },
+        {
+          "session_id": "SB-cf96e1f7c13f",
+          "scenario": "HISTORY_Q4",
+          "status": "FROZEN",
+          "is_frozen": 1,
+          "current_cash": 10000.0,
+          "initial_cash": 10000.0
+        },
+        {
+          "session_id": "SB-9901f057388a",
+          "scenario": "HISTORY_Q4",
+          "status": "FROZEN",
+          "is_frozen": 1,
+          "current_cash": 2525.0,
+          "initial_cash": 10000.0
+        },
+        {
+          "session_id": "SB-8aa990c5b840",
+          "scenario": "TEST_Q3",
+          "status": "FROZEN",
+          "is_frozen": 1,
+          "current_cash": 10000.0,
+          "initial_cash": 10000.0
+        },
+        {
+          "session_id": "SB-ec16bd635406",
+          "scenario": "HIST2024_Q3",
+          "status": "FROZEN",
+          "is_frozen": 1,
+          "current_cash": 1798.3870000000006,
+          "initial_cash": 10000.0
+        },
+        {
+          "session_id": "SB-041c1c388719",
+          "scenario": "NAS_TEST",
+          "status": "FROZEN",
+          "is_frozen": 1,
+          "current_cash": 9944.214,
+          "initial_cash": 10000.0
+        },
+        {
+          "session_id": "SB-cbbc14e3b882",
+          "scenario": "BRAIN_TEST",
+          "status": "FROZEN",
+          "is_frozen": 1,
+          "current_cash": 5095.0,
+          "initial_cash": 10000.0
+        },
+        {
+          "session_id": "SB-abd2b4d82ae4",
+          "scenario": "WEEK",
+          "status": "FROZEN",
+          "is_frozen": 1,
+          "current_cash": 4582.0,
+          "initial_cash": 10000.0
+        },
+        {
+          "session_id": "SB-2f309fdb5eb2",
+          "scenario": "WEEK",
+          "status": "FROZEN",
+          "is_frozen": 1,
+          "current_cash": 4583.0,
+          "initial_cash": 10000.0
+        },
+        {
+          "session_id": "SB-d6baa2733d7d",
+          "scenario": "WEEK",
+          "status": "FROZEN",
+          "is_frozen": 1,
+          "current_cash": 4583.0,
+          "initial_cash": 10000.0
+        },
+        {
+          "session_id": "SB-d9932d14bccc",
+          "scenario": "WEEK",
+          "status": "FROZEN",
+          "is_frozen": 1,
+          "current_cash": 4587.0,
+          "initial_cash": 10000.0
+        },
+        {
+          "session_id": "SB-43b803a6b4aa",
+          "scenario": "WEEK",
+          "status": "FROZEN",
+          "is_frozen": 1,
+          "current_cash": 4589.0,
+          "initial_cash": 10000.0
+        },
+        {
+          "session_id": "SB-2041bd7c04f7",
+          "scenario": "WEEK",
+          "status": "FROZEN",
+          "is_frozen": 1,
+          "current_cash": 4579.0,
+          "initial_cash": 10000.0
+        },
+        {
+          "session_id": "SB-3848b412cac0",
+          "scenario": "WEEK",
+          "status": "FROZEN",
+          "is_frozen": 1,
+          "current_cash": 4584.0,
+          "initial_cash": 10000.0
+        },
+        {
+          "session_id": "SB-107c22df00ad",
+          "scenario": "WEEK",
+          "status": "FROZEN",
+          "is_frozen": 1,
+          "current_cash": 4587.0,
+          "initial_cash": 10000.0
+        },
+        {
+          "session_id": "SB-71bdfe0b10a3",
+          "scenario": "WEEK",
+          "status": "FROZEN",
+          "is_frozen": 1,
+          "current_cash": 4583.0,
+          "initial_cash": 10000.0
+        },
+        {
+          "session_id": "SB-61392b12b335",
+          "scenario": "WEEK",
+          "status": "FROZEN",
+          "is_frozen": 1,
+          "current_cash": 4577.0,
+          "initial_cash": 10000.0
+        },
+        {
+          "session_id": "SB-e3105ea094db",
+          "scenario": "WEEK",
+          "status": "FROZEN",
+          "is_frozen": 1,
+          "current_cash": 3028.9799999999996,
+          "initial_cash": 10000.0
+        }
+      ],
+      "critical_sessions": [
+        {
+          "session_id": "SB-46b837317e95",
+          "risk_score": 7.14,
+          "risk_level": "CRITICAL",
+          "max_drawdown": 6.27
+        },
+        {
+          "session_id": "SB-cbbc14e3b882",
+          "risk_score": 14.89,
+          "risk_level": "CRITICAL",
+          "max_drawdown": 1.19
+        },
+        {
+          "session_id": "SB-041c1c388719",
+          "risk_score": 17.24,
+          "risk_level": "CRITICAL",
+          "max_drawdown": 1.23
+        },
+        {
+          "session_id": "SB-9901f057388a",
+          "risk_score": 35.5,
+          "risk_level": "HIGH",
+          "max_drawdown": 0.13592289045365347
+        },
+        {
+          "session_id": "SB-4ff7924f2dcd",
+          "risk_score": 38.59,
+          "risk_level": "HIGH",
+          "max_drawdown": 0.05
+        },
+        {
+          "session_id": "SB-893fe4acb7c3",
+          "risk_score": 38.59,
+          "risk_level": "HIGH",
+          "max_drawdown": 0.05
+        },
+        {
+          "session_id": "SB-0d4fe5553e3d",
+          "risk_score": 38.77,
+          "risk_level": "HIGH",
+          "max_drawdown": 0.05
+        },
+        {
+          "session_id": "SB-ec16bd635406",
+          "risk_score": 39.67,
+          "risk_level": "HIGH",
+          "max_drawdown": 1.22
+        },
+        {
+          "session_id": "SB-90d73faf4b9e",
+          "risk_score": 42.09,
+          "risk_level": "HIGH",
+          "max_drawdown": 0.89
+        }
+      ],
+      "unresolved_issues": [
+        {
+          "dimension": "D07",
+          "level": "WARN",
+          "description": "佣金不匹配: 实际 ¥0.00, 预期 ¥5.00",
+          "verdict": "WARN"
+        },
+        {
+          "dimension": "D07",
+          "level": "WARN",
+          "description": "佣金不匹配: 实际 ¥0.00, 预期 ¥5.00",
+          "verdict": "WARN"
+        },
+        {
+          "dimension": "D07",
+          "level": "WARN",
+          "description": "佣金不匹配: 实际 ¥0.00, 预期 ¥5.00",
+          "verdict": "WARN"
+        },
+        {
+          "dimension": "D07",
+          "level": "WARN",
+          "description": "佣金不匹配: 实际 ¥0.00, 预期 ¥5.00",
+          "verdict": "WARN"
+        },
+        {
+          "dimension": "D07",
+          "level": "WARN",
+          "description": "佣金不匹配: 实际 ¥0.00, 预期 ¥5.00",
+          "verdict": "WARN"
+        },
+        {
+          "dimension": "D07",
+          "level": "WARN",
+          "description": "佣金不匹配: 实际 ¥0.00, 预期 ¥5.00",
+          "verdict": "WARN"
+        },
+        {
+          "dimension": "D07",
+          "level": "WARN",
+          "description": "佣金不匹配: 实际 ¥0.00, 预期 ¥5.00",
+          "verdict": "WARN"
+        },
+        {
+          "dimension": "D07",
+          "level": "WARN",
+          "description": "佣金不匹配: 实际 ¥0.00, 预期 ¥5.00",
+          "verdict": "WARN"
+        },
+        {
+          "dimension": "D07",
+          "level": "WARN",
+          "description": "佣金不匹配: 实际 ¥0.00, 预期 ¥5.00",
+          "verdict": "WARN"
+        },
+        {
+          "dimension": "D07",
+          "level": "WARN",
+          "description": "佣金不匹配: 实际 ¥0.00, 预期 ¥5.00",
+          "verdict": "WARN"
+        }
+      ],
+      "warnings": [
+        "⚠️ 30 个 portfolio 已冻结/熔断",
+        "🔴 9 个 session 风险等级 CRITICAL/HIGH",
+        "🟡 10 条稽查 WARN/FAIL 未解决"
+      ],
+      "recommendations": [
+        "检查已冻结 portfolio 的风险触发原因, 评估是否需要手动解冻",
+        "对 CRITICAL session 进行风控干预, 考虑减仓或暂停交易",
+        "关注低 VaR / 高夏普 session, 可作为资金迁移目标",
+        "确保每日 15:40 定时风控 + 归因 + 报告全链路跑通"
+      ]
+    },
+    "health_matrix": {
+      "total_score": 82.8,
+      "overall_status": "HEALTHY",
+      "scores": {
+        "andromeda": 100.0,
+        "gobelin": 98.66666666666667,
+        "iceberg": 50.0,
+        "eigenflux": 100.0,
+        "eventbus": 62.666666666666664,
+        "audit": 60.0,
+        "brainfeed": 100.0,
+        "taskhall": 60.0,
+        "hr": 96.25,
+        "autopilot": 100.0
+      },
+      "bottlenecks": [
+        {
+          "center": "iceberg",
+          "cn_name": "冰山题库",
+          "score": 50.0,
+          "issue": "qbank_size"
+        }
+      ],
+      "suggestions": [
+        {
+          "center": "iceberg",
+          "action": "触发 Iceberg 题库自动扩充 (Iceberg AutoQ)",
+          "priority": "MEDIUM"
+        }
+      ]
+    }
+  },
+  "health_score": 0.0
+}

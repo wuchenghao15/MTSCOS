@@ -1,0 +1,74 @@
+
+<style data-inspection-auto-fix="inline-style-template">
+:root {
+    --style-fix-1fe4ed7-0: inherit;
+    --style-fix-1fe4ed7-1: inherit;
+    --style-fix-1fe4ed7-2: inherit;
+    --style-fix-1fe4ed7-3: inherit;
+}
+/* -------- AI 自动修复：status → background 颜色（消除内联模板语法 IDE 红线） -------- */
+.eyebrow-dot { transition: background-color .2s ease; border-radius: 9999px; }
+</style>
+{% extends "mobile/base_mobile.html" %}
+{% block title %}通知{% endblock %}
+{% block page_title %}通知中心{% endblock %}
+
+{% block extra_head %}
+<style>
+.m-tab-bar { display: flex; gap: 8px; margin: 12px 0; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.m-tab { flex-shrink: 0; padding: 6px 14px; border-radius: 999px; font-size: 13px; background: var(--mtscos-bg-card); color: var(--mtscos-text-secondary); border: 1px solid var(--mtscos-border-light); }
+.m-tab.active { background: var(--mtscos-warning); color: #fff; border-color: transparent; }
+.m-notif-item { display: flex; gap: 12px; padding: 14px; background: var(--mtscos-bg-card); border-radius: 12px; margin-bottom: 8px; position: relative; }
+.m-notif-item.unread { background: var(--mtscos-warning-soft); }
+.m-notif-item.unread::before { content: ''; position: absolute; left: 0; top: 14px; bottom: 14px; width: 3px; background: var(--mtscos-warning); border-radius: 2px; }
+.m-notif-ic { width: 36px; height: 36px; border-radius: 10px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 16px; background: var(--mtscos-primary-soft); color: var(--mtscos-primary-base); }
+.m-notif-main { flex: 1; min-width: 0; }
+.m-notif-title { font-size: 15px; font-weight: 500; }
+.m-notif-time { font-size: 12px; color: var(--mtscos-text-secondary); margin-top: 2px; }
+.m-notif-content { font-size: 13px; color: var(--mtscos-text-secondary); margin-top: 6px; line-height: 1.5; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="m-tab-bar">
+    <a class="m-tab active" href="#">全部</a>
+    <a class="m-tab" href="?filter=unread">未读</a>
+    <a class="m-tab" href="?filter=system">系统</a>
+    <a class="m-tab" href="?filter=learn">学习</a>
+</div>
+
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+    <span style="font-size:13px;color:var(--mtscos-text-secondary)">共 <b style="color:var(--mtscos-text-primary)">{% if notifications %}{{ notifications|length }}{% else %}0{% endif %}</b> 条</span>
+    <button class="m-btn m-btn-outline" style="min-height:32px;padding:0 12px;font-size:12px" onclick="mMarkAllRead()"><i class="fas fa-check-double"></i> 全部已读</button>
+</div>
+
+{% if notifications %}
+    {% for n in notifications %}
+    <div role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}" class="m-notif-item {% if not n.is_read %}unread{% endif %}" onclick="mReadNotif({{ n.id }})">
+        <div class="m-notif-ic" style="var(--style-fix-1fe4ed7-0, inherit)background:var(--mtscos-danger-soft);color:var(--mtscos-danger)var(--style-fix-1fe4ed7-1, inherit)background:var(--mtscos-secondary-soft);color:var(--mtscos-secondary-base)var(--style-fix-1fe4ed7-2, inherit)background:var(--mtscos-success-soft);color:var(--mtscos-success)var(--style-fix-1fe4ed7-3, inherit)">
+            <i class="fas {% if n.type == 'wrong' %}fa-circle-xmark{% elif n.type == 'reward' %}fa-gift{% elif n.type == 'welcome' %}fa-hand-wave{% else %}fa-bell{% endif %}"></i>
+        </div>
+        <div class="m-notif-main">
+            <div class="m-notif-title">{{ n.title|default(n.type_label|default('系统通知')) }}</div>
+            <div class="m-notif-time">{{ n.time_ago|default('') }}</div>
+            {% if n.content %}<div class="m-notif-content">{{ n.content }}</div>{% endif %}
+        </div>
+        {% if not n.is_read %}<span class="m-tag m-tag-danger">未读</span>{% endif %}
+    </div>
+    {% endfor %}
+{% else %}
+    <div class="m-empty"><i class="fas fa-bell-slash"></i><h3>暂无通知</h3><p>当前没有可显示的通知</p></div>
+{% endif %}
+
+<script>
+function mMarkAllRead() {
+    mApi('/api/notifications/mark_all_read', {method:'POST'}).then(function(r) {
+        mToast('已全部标记为已读');
+        setTimeout(function() { location.reload(); }, 1000);
+    }).catch(function(e) { mToast('操作失败'); });
+}
+function mReadNotif(id) {
+    mApi('/api/notifications/' + id + '/read', {method:'POST'}).catch(function(){});
+}
+</script>
+{% endblock %}

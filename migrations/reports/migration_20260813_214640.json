@@ -1,0 +1,24 @@
+{
+  "flow_id": "flow_db_encrypt_20260813_001",
+  "started_at": "2026-08-13T21:46:40.372708",
+  "databases": {
+    "ai_auto_mgmt": {
+      "path": "/Users/wuchenghao/Library/CloudStorage/OneDrive-个人/文档/MTSCOS_AI_Project/flask-app/ai_engines/ai_auto_management.db",
+      "size_before": 24576,
+      "tables_total": 4,
+      "tables_encrypted": 4,
+      "rows_migrated": 13,
+      "skipped_l4": 0,
+      "tables_already_encrypted": 0,
+      "errors": [],
+      "effective_level": "L3_INTERNAL",
+      "obfuscated_name": "mt_bea5043e.enc.db",
+      "obfuscated_path": "/Users/wuchenghao/Library/CloudStorage/OneDrive-个人/文档/MTSCOS_AI_Project/flask-app/ai_engines/mt_bea5043e.enc.db",
+      "size_after": 28672
+    }
+  },
+  "errors": [],
+  "backup_dir": "/Users/wuchenghao/Library/CloudStorage/OneDrive-个人/文档/MTSCOS_AI_Project/flask-app/_migration_backups/20260813_214640",
+  "finished_at": "2026-08-13T21:46:40.380364",
+  "success": true
+}

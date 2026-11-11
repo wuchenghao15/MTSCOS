@@ -1,0 +1,113 @@
+#!/usr/bin/env python3
+"""
+仙女座沙盘 · 最小化启动脚本 (hulk-macmini 专用)
+挂载 sandbox_bp + gobelin_bp + 静态文件
+"""
+from __future__ import annotations
+import os, sys, time, logging, socket
+
+# ═══ 路径设置 ═══
+_BASE = os.path.dirname(os.path.abspath(__file__))
+os.chdir(_BASE)
+sys.path.insert(0, _BASE)
+os.environ.setdefault('NODE_ROLE', 'DEV')
+os.environ.setdefault('MT_TRADE_MODE', 'sandbox')
+
+# ═══ 日志 ═══
+logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s')
+log = logging.getLogger('SANDBOX-HULK')
+
+log.info('🚀 仙女座沙盘 Hulk mini 启动')
+log.info(f'   cwd={os.getcwd()}')
+log.info(f'   pid={os.getpid()}')
+
+# ═══ 创建 Flask ═══
+from flask import Flask, send_file, jsonify, redirect
+app = Flask(__name__, static_folder='static', static_url_path='/static')
+app.config['JSON_AS_ASCII'] = False
+
+# ═══ 路由 ═══
+@app.route('/')
+def root():
+    return send_file(os.path.join(_BASE, 'static', 'sandbox-trading-terminal.html'))
+
+@app.route('/Gobelin.html')
+@app.route('/gobelin.html')
+@app.route('/gobelin')
+@app.route('/Gobelin')
+def gobelin_gate():
+    # 古灵阁门户 → 沙盘终端 (最新版)
+    return send_file(os.path.join(_BASE, 'static', 'sandbox-trading-terminal.html'))
+
+@app.route('/live')
+@app.route('/live/')
+@app.route('/live-trading')
+def serve_live():
+    # 实盘终端
+    return send_file(os.path.join(_BASE, 'static', 'live-trading-terminal.html'))
+
+@app.route('/writing')
+@app.route('/writing-studio')
+@app.route('/gobelin-writing')
+def serve_writing():
+    return send_file(os.path.join(_BASE, 'static', 'writing-studio.html'))
+
+@app.route('/stock')
+@app.route('/stock/')
+def stock_redirect():
+    return redirect('/', code=307)
+
+@app.route('/health')
+def health():
+    return jsonify({'status': 'sandbox-5001', 'pid': os.getpid()})
+
+
+# ═══ 挂载蓝图 ═══
+log.info('📦 加载 sandbox_bp...')
+try:
+    from blueprints.sandbox_bp import register_sandbox_bp
+    register_sandbox_bp(app)
+    log.info('✅ sandbox_bp 注册成功')
+except Exception as e:
+    log.error(f'❌ sandbox_bp 加载失败: {e}')
+
+log.info('📦 加载 gobelin_bp...')
+try:
+    from blueprints.gobelin_bp import register_gobelin_bp
+    register_gobelin_bp(app)
+    log.info('✅ gobelin_bp 注册成功')
+except Exception as e:
+    log.warning(f'⚠️ gobelin_bp 加载失败: {e}')
+
+log.info('📦 加载 live_bp (古灵阁实盘)...')
+try:
+    from blueprints.live_bp import register_live_bp
+    register_live_bp(app)
+    log.info('✅ live_bp 注册成功 (运行模式: PAPER)')
+except Exception as e:
+    log.warning(f'⚠️ live_bp 加载失败: {e}')
+
+log.info('📦 加载 gobelin_writing_bp (古灵阁网文创作)...')
+try:
+    from blueprints.gobelin_writing_bp import register_gobelin_writing_bp
+    register_gobelin_writing_bp(app)
+    log.info('✅ gobelin_writing_bp 注册成功')
+except Exception as e:
+    log.warning(f'⚠️ gobelin_writing_bp 加载失败: {e}')
+
+# ═══ 主入口 ═══
+_START_TIME = time.time()
+
+if __name__ == '__main__':
+    sock = socket.socket()
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    try:
+        sock.bind(('0.0.0.0', 5001))
+        sock.close()
+    except OSError:
+        log.error('❌ 端口 5001 被占用!')
+        sys.exit(1)
+
+    log.info('🌐 Flask 启动: http://0.0.0.0:5001')
+    log.info('   stock.mtos.site → Cloudflare Tunnel → 此服务')
+    app.run(host='0.0.0.0', port=5001, debug=False, use_reloader=False, threaded=True)

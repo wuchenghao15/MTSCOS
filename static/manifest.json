@@ -1,0 +1,26 @@
+{
+  "name": "仙女座沙盘 · 操盘终端",
+  "short_name": "沙盘终端",
+  "description": "仙女座 AI 沙盘自动操盘 — 实时行情、AI 决策、复盘会议一手掌握",
+  "start_url": "/static/sandbox-trading-terminal.html",
+  "scope": "/static/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#080a0e",
+  "theme_color": "#ffb000",
+  "lang": "zh-CN",
+  "icons": [
+    {
+      "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTkyIj48cmVjdCB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgcng9IjMyIiBmaWxsPSIjMDgwYTBlIi8+PGNpcmNsZSBjeD0iOTYiIGN5PSI5NiIgcj0iNCIgZmlsbD0iI2ZiYTAwMCIvPjxjaXJjbGUgY3g9Ijk2IiBjeT0iOTYiIHI9IjI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmYmEwMDAiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLW9wYWNpdHk9IjAuNiIvPjxjaXJjbGUgY3g9Ijk2IiBjeT0iOTYiIHI9IjQ4IiBmaWxsPSJub25lIiBzdHJva2U9IiNmYmEwMDAiIHN0cm9rZS13aWR0aD0iMSIgc3Ryb2tlLW9wYWNpdHk9IjAuMyIvPjxjaXJjbGUgY3g9Ijk2IiBjeT0iOTYiIHI9IjcyIiBmaWxsPSJub25lIiBzdHJva2U9IiNmYmEwMDAiIHN0cm9rZS13aWR0aD0iMSIgc3Ryb2tlLW9wYWNpdHk9IjAuMiIvPjxyZWN0IHg9IjgwIiB5PSIzMiIgd2lkdGg9IjMyIiBoZWlnaHQ9IjYiIGZpbGw9IiNmYmEwMDAiIHJ4PSIzIi8+PHJlY3QgeD0iODAiIHk9IjE1NCIgd2lkdGg9IjMyIiBoZWlnaHQ9IjYiIGZpbGw9IiNmYmEwMDAiIHJ4PSIzIi8+PC9zdmc+",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj48cmVjdCB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgcng9IjgwIiBmaWxsPSIjMDgwYTBlIi8+PGNpcmNsZSBjeD0iMjU2IiBjeT0iMjU2IiByPSI1IiBmaWxsPSIjZmZiMDAwIi8+PGNpcmNsZSBjeD0iMjU2IiBjeT0iMjU2IiByPSI2MCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZmZiMDAwIiBzdHJva2Utd2lkdGg9IjMiIHN0cm9rZS1vcGFjaXR5PSIwLjYiLz48Y2lyY2xlIGN4PSIyNTYiIGN5PSIyNTYiIHI9IjEyMCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZmZiMDAwIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1vcGFjaXR5PSIwLjMiLz48Y2lyY2xlIGN4PSIyNTYiIGN5PSIyNTYiIHI9IjE4MCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZmZiMDAwIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1vcGFjaXR5PSIwLjIiLz48cmVjdCB4PSIyMTQiIHk9IjkwIiB3aWR0aD0iODQiIGhlaWdodD0iMTYiIGZpbGw9IiNmYmEwMDAiIHJ4PSI4Ii8+PHJlY3QgeD0iMjE0IiB5PSI0MDYiIHdpZHRoPSI4NCIgaGVpZ2h0PSIxNiIgZmlsbD0iI2ZiYTAwMCIgcng9IjgiLz48L3N2Zz4=",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

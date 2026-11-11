@@ -1,0 +1,47 @@
+{% extends "mobile/base_mobile.html" %}
+{% block title %}学习{% endblock %}
+{% block page_title %}学习中心{% endblock %}
+
+{% block content %}
+<div class="m-welcome" style="background:linear-gradient(135deg,var(--mtscos-success,#16A34A),var(--mtscos-success-dark,#15803D));color:#fff;border-radius:16px;padding:20px;margin:16px 0">
+    <h2 style="font-size:20px;margin-bottom:4px">学习中心</h2>
+    <p style="font-size:13px;opacity:0.9">每日练习，持续进步</p>
+</div>
+
+<div class="m-grid-2" style="margin-bottom:16px">
+    <a class="m-quick" href="/mobile/daily_practice"><div class="m-quick-icon" style="background:var(--mtscos-warning-soft);color:var(--mtscos-warning)"><i class="fas fa-calendar-day"></i></div><div class="m-quick-label">每日练习</div></a>
+    <a class="m-quick" href="/mobile/training"><div class="m-quick-icon" style="background:var(--mtscos-primary-soft);color:var(--mtscos-primary-base)"><i class="fas fa-graduation-cap"></i></div><div class="m-quick-label">专项训练</div></a>
+</div>
+
+<div class="m-section-title">推荐课程</div>
+{% if courses %}
+    {% for c in courses[:5] %}
+    <a class="m-list-item" href="/mobile/learn/{{ c.id }}" style="border-radius:12px;margin-bottom:8px">
+        <div class="m-list-icon" style="background:var(--mtscos-success-soft);color:var(--mtscos-success)"><i class="fas fa-book"></i></div>
+        <div class="m-list-main">
+            <div class="m-list-title">{{ c.title }}</div>
+            <div class="m-list-sub">{{ c.lesson_count|default(0) }} 课时</div>
+        </div>
+        <i class="fas fa-chevron-right m-list-arrow"></i>
+    </a>
+    {% endfor %}
+{% else %}
+    <div class="m-empty"><i class="fas fa-book"></i><h3>暂无课程</h3></div>
+{% endif %}
+
+<div class="m-section-title">学习记录</div>
+{% if learn_records %}
+    {% for r in learn_records[:5] %}
+    <div class="m-list-item" style="border-radius:12px;margin-bottom:8px">
+        <div class="m-list-icon" style="background:var(--mtscos-primary-soft);color:var(--mtscos-primary-base)"><i class="fas fa-clock"></i></div>
+        <div class="m-list-main">
+            <div class="m-list-title">{{ r.title }}</div>
+            <div class="m-list-sub">{{ r.time_ago }}</div>
+        </div>
+        <span class="m-tag m-tag-success">{{ r.progress|default(0) }}%</span>
+    </div>
+    {% endfor %}
+{% else %}
+    <div class="m-empty" style="padding:30px"><i class="fas fa-history"></i><p>暂无学习记录</p></div>
+{% endif %}
+{% endblock %}

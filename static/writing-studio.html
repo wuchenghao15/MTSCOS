@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="zh-CN" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>古灵阁网文创作台 · Gobelin Writing Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Crimson+Pro:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* =========================================================
+   古灵阁网文创作台 · 深夜炼金术士书房
+   深墨绿 + 琥珀金 + 羊皮纸 + 猩红印章
+   ========================================================= */
+:root {
+  --accent-1:#b03048; --bg-1:#ddd1b0; --ink-1:#2a1f0d; --ink-4:#1a1208;
+  --ink: #0a1a14;           /* 深墨绿 */
+  --ink-2: #122a21;          /* 次墨绿 */
+  --ink-3: #1c3d30;          /* 亮墨绿 */
+  --gold: #e8b923;           /* 琥珀金 */
+  --gold-dim: #a68217;       /* 暗金 */
+  --gold-glow: rgba(232,185,35,0.35);
+  --parchment: #e8dcc0;      /* 羊皮纸 */
+  --parchment-dark: #c9b894; /* 旧羊皮 */
+  --blood: #8b2942;          /* 猩红印章 */
+  --ember: #d96c3a;          /* 炭火橙 */
+  --mist: #3a5c4f;           /* 雾气灰绿 */
+  --success: #4ca66a;
+  --danger: #c04851;
+  --mono: 'JetBrains Mono', ui-monospace, monospace;
+  --serif: 'Crimson Pro', 'Noto Serif SC', serif;
+  --display: 'Cinzel', 'Noto Serif SC', serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  background: var(--ink);
+  color: var(--parchment);
+  font-family: var(--serif);
+  font-size: 16px;
+  line-height: 1.65;
+  overflow: clip;
+}
+
+/* 羊皮纸纹理背景层 */
+body::before {
+  content: '';
+  position: fixed; inset: 0; z-index: 0;
+  background:
+    radial-gradient(ellipse at 20% 0%, rgba(232,185,35,0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 100%, rgba(139,41,66,0.06) 0%, transparent 40%),
+    repeating-linear-gradient(0deg, rgba(0,0,0,0.03) 0px, rgba(0,0,0,0.03) 1px, transparent 1px, transparent 3px),
+    var(--ink);
+  pointer-events: none;
+}
+
+.app {
+  position: relative; z-index: 1;
+  height: 100dvh;
+  display: grid;
+  grid-template-rows: 64px 1fr;
+  grid-template-columns: 360px 1fr;
+  grid-template-areas:
+    "header header"
+    "sidebar main";
+}
+
+/* ===== 顶部品牌栏 ===== */
+.header {
+  grid-area: header;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 28px;
+  background: linear-gradient(180deg, var(--ink-2), var(--ink));
+  border-bottom: 1px solid var(--gold-dim);
+  position: relative;
+}
+.header::after {
+  content: ''; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px;
+  background: linear-gradient(90deg, transparent, var(--gold) 20%, var(--gold) 80%, transparent);
+  opacity: 0.6;
+}
+.brand {
+  display: flex; align-items: center; gap: 14px;
+}
+.brand-seal {
+  width: 44px; height: 44px;
+  background: radial-gradient(circle at 30% 30%, var(--accent-1), var(--blood));
+  border-radius: 50%;
+  display: grid; place-items: center;
+  font-family: var(--display); font-weight: 700; font-size: 20px;
+  color: var(--parchment);
+  box-shadow: 0 0 20px rgba(139,41,66,0.4), inset 0 0 10px rgba(0,0,0,0.3);
+  border: 2px solid var(--gold);
+  letter-spacing: 1px;
+}
+.brand-text h1 {
+  font-family: var(--display);
+  font-size: 17px; font-weight: 600;
+  color: var(--gold);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+.brand-text .sub {
+  font-family: var(--mono);
+  font-size: 10px; color: var(--mist);
+  letter-spacing: 3px; text-transform: uppercase;
+}
+.header-right {
+  display: flex; align-items: center; gap: 20px;
+  font-family: var(--mono); font-size: 12px;
+}
+.ollama-status {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 14px;
+  background: var(--ink-2);
+  border: 1px solid var(--mist);
+  border-radius: 4px;
+}
+.ollama-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--danger);
+  box-shadow: 0 0 6px var(--danger);
+  animation: pulse 2s infinite;
+}
+.ollama-dot.on { background: var(--success); box-shadow: 0 0 8px var(--success); }
+@keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:.4;} }
+
+/* ===== 侧栏 ===== */
+.sidebar {
+  grid-area: sidebar;
+  background: var(--ink-2);
+  border-right: 1px solid var(--gold-dim);
+  overflow-y: auto;
+  padding: 24px 22px;
+  position: relative;
+}
+.sidebar::-webkit-scrollbar { width: 6px; }
+.sidebar::-webkit-scrollbar-thumb { background: var(--gold-dim); border-radius: 3px; }
+
+.param-block {
+  margin-bottom: 26px;
+}
+.param-label {
+  font-family: var(--display);
+  font-size: 11px; letter-spacing: 3px; text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 10px;
+  display: flex; align-items: center; gap: 8px;
+}
+.param-label::before, .param-label::after {
+  content: ''; flex: 1; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--gold-dim));
+}
+.param-label::after { background: linear-gradient(90deg, var(--gold-dim), transparent); }
+
+textarea, select, input[type="text"], input[type="number"] {
+  width: 100%;
+  background: var(--ink);
+  border: 1px solid var(--ink-3);
+  color: var(--parchment);
+  font-family: var(--serif);
+  font-size: 14px;
+  padding: 12px 14px;
+  border-radius: 4px;
+  transition: border-color .2s, box-shadow .2s;
+  resize: vertical;
+}
+textarea:focus, select:focus, input:focus {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 2px var(--gold-glow);
+}
+/* 键盘可见焦点: 显式 :focus-visible 描边 */
+textarea:focus-visible, select:focus-visible, input:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+textarea { min-height: 90px; line-height: 1.6; }
+textarea.idea-box { min-height: 110px; font-size: 15px; }
+
+select {
+  font-family: var(--serif);
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23e8b923' fill='none' stroke-width='1.5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  padding-right: 32px;
+}
+
+.row-2 {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+}
+.row-3 {
+  display: grid; grid-template-columns: 2fr 1fr; gap: 10px;
+}
+
+/* 标签选择器（类型等） */
+.tag-group {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  padding: 8px; background: var(--ink); border-radius: 4px;
+  border: 1px solid var(--ink-3);
+  max-height: 160px; overflow-y: auto;
+}
+.tag-group::-webkit-scrollbar { width: 4px; }
+.tag-group::-webkit-scrollbar-thumb { background: var(--gold-dim); }
+.tag {
+  font-family: var(--mono); font-size: 11px;
+  padding: 4px 10px;
+  background: var(--ink-3);
+  border: 1px solid transparent;
+  color: var(--parchment-dark);
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all .15s;
+}
+.tag:hover { color: var(--gold); border-color: var(--gold-dim); }
+.tag.active {
+  background: var(--gold); color: var(--ink);
+  font-weight: 600;
+  box-shadow: 0 0 8px var(--gold-glow);
+}
+
+/* ===== 生成按钮 ===== */
+.gen-btn-wrap {
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px dashed var(--gold-dim);
+}
+.gen-btn {
+  width: 100%;
+  padding: 18px 20px;
+  font-family: var(--display);
+  font-size: 15px; letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--ink);
+  background: linear-gradient(135deg, var(--gold), var(--gold-dim));
+  border: 2px solid var(--gold);
+  border-radius: 6px;
+  cursor: pointer;
+  position: relative; overflow: hidden;
+  transition: all .2s;
+  box-shadow: 0 4px 20px var(--gold-glow);
+}
+.gen-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 28px var(--gold-glow), 0 0 0 3px rgba(232,185,35,0.15);
+}
+.gen-btn:active:not(:disabled) { transform: translateY(0); }
+.gen-btn:disabled {
+  background: var(--ink-3); color: var(--mist); border-color: var(--ink-3);
+  cursor: not-allowed; box-shadow: none;
+}
+.gen-btn .loading-icon {
+  display: none;
+  width: 16px; height: 16px;
+  border: 2px solid transparent; border-top-color: var(--ink);
+  border-radius: 50%;
+  margin-right: 10px;
+  animation: spin 0.8s linear infinite;
+}
+.gen-btn.loading .loading-icon { display: inline-block; vertical-align: middle; }
+.gen-btn.loading .btn-text { opacity: 0.7; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ===== 主区域 ===== */
+.main {
+  grid-area: main;
+  display: grid;
+  grid-template-rows: auto auto 1fr;
+  padding: 28px 36px;
+  gap: 16px;
+  overflow: hidden;
+}
+
+.result-toolbar {
+  display: flex; align-items: center; gap: 12px;
+  font-family: var(--mono); font-size: 12px;
+}
+.result-toolbar .info {
+  flex: 1;
+  color: var(--mist);
+}
+.pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 12px;
+  background: var(--ink-2);
+  border: 1px solid var(--ink-3);
+  border-radius: 20px;
+}
+.pill .k { color: var(--gold); }
+.pill .v { color: var(--parchment); }
+.action-btn {
+  padding: 8px 16px;
+  font-family: var(--mono); font-size: 11px;
+  letter-spacing: 1px; text-transform: uppercase;
+  background: transparent;
+  border: 1px solid var(--gold-dim);
+  color: var(--gold);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all .15s;
+}
+.action-btn:hover:not(:disabled) { background: var(--gold); color: var(--ink); }
+.action-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.action-btn.danger { border-color: var(--blood); color: var(--blood); }
+.action-btn.danger:hover { background: var(--blood); color: var(--parchment); }
+
+/* 羊皮纸正文框 */
+.parchment {
+  background:
+    linear-gradient(180deg, var(--parchment) 0%, var(--bg-1) 100%);
+  color: var(--ink-1);
+  border-radius: 2px;
+  padding: 48px 56px;
+  overflow-y: auto;
+  box-shadow:
+    inset 0 0 60px rgba(10,26,20,0.15),
+    0 8px 40px rgba(0,0,0,0.4),
+    0 0 0 1px var(--gold-dim);
+  position: relative;
+  max-height: calc(100dvh - 260px);
+}
+.parchment::before {
+  content: ''; position: absolute; inset: 0;
+  background-image:
+    radial-gradient(circle at 15% 85%, rgba(0,0,0,0.08) 0%, transparent 30%),
+    radial-gradient(circle at 85% 15%, rgba(0,0,0,0.06) 0%, transparent 25%),
+    repeating-linear-gradient(90deg, rgba(10,26,20,0.015) 0px, rgba(10,26,20,0.015) 1px, transparent 1px, transparent 80px);
+  pointer-events: none;
+  border-radius: 2px;
+}
+.parchment::-webkit-scrollbar { width: 8px; }
+.parchment::-webkit-scrollbar-thumb { background: var(--gold-dim); border-radius: 4px; }
+
+.parchment h2.manuscript-title {
+  font-family: var(--display);
+  font-size: 32px; font-weight: 600;
+  color: var(--ink);
+  text-align: center;
+  margin-bottom: 36px;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  border-bottom: 2px solid var(--blood);
+  padding-bottom: 16px;
+  position: relative;
+}
+.parchment h2.manuscript-title::after {
+  content: '§';
+  position: absolute; bottom: -24px; left: 50%;
+  transform: translateX(-50%);
+  color: var(--blood);
+  background: var(--parchment);
+  padding: 0 14px;
+  font-family: var(--display); font-size: 18px;
+}
+.parchment .manuscript-body {
+  font-family: var(--serif);
+  font-size: 17px; line-height: 2;
+  color: var(--ink-4);
+  text-indent: 2em;
+  white-space: pre-wrap;
+  position: relative;
+  z-index: 1;
+}
+.parchment .manuscript-body p { margin-bottom: 16px; text-indent: 2em; }
+
+/* 空状态 */
+.empty-state {
+  text-align: center;
+  padding: 120px 40px;
+  color: var(--mist);
+}
+.empty-state .feather { font-size: 64px; margin-bottom: 20px; opacity: 0.6; }
+.empty-state h2 {
+  font-family: var(--display); font-weight: 500;
+  font-size: 16px; letter-spacing: 4px; text-transform: uppercase;
+  color: var(--gold-dim);
+  margin-bottom: 12px;
+}
+.empty-state p { font-family: var(--serif); font-size: 15px; font-style: italic; }
+
+/* 进度浮层 */
+.progress-overlay {
+  position: fixed; inset: 0; z-index: 100;
+  background: rgba(10,26,20,0.9);
+  display: none;
+  align-items: center; justify-content: center;
+  flex-direction: column;
+}
+.progress-overlay.show { display: flex; }
+.progress-spinner {
+  width: 64px; height: 64px;
+  border: 3px solid var(--ink-3); border-top-color: var(--gold);
+  border-radius: 50%;
+  animation: spin 1.2s linear infinite;
+}
+.progress-text {
+  font-family: var(--display);
+  font-size: 14px; letter-spacing: 3px; text-transform: uppercase;
+  color: var(--gold); margin-top: 20px;
+}
+.progress-sub {
+  font-family: var(--mono); font-size: 11px;
+  color: var(--mist); margin-top: 8px;
+}
+
+/* Toast */
+.toast {
+  position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(20px);
+  background: var(--ink-2); border: 1px solid var(--gold);
+  color: var(--parchment);
+  padding: 12px 24px;
+  border-radius: 4px;
+  font-family: var(--mono); font-size: 13px;
+  opacity: 0; transition: all .3s;
+  z-index: 200;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.5);
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast.err { border-color: var(--danger); color: var(--danger); }
+.toast.ok { border-color: var(--success); color: var(--success); }
+
+/* ===== 响应式 ===== */
+@media (max-width: 900px) {
+  .app { grid-template-columns: 1fr; grid-template-rows: auto auto 1fr;
+         grid-template-areas: "header" "sidebar" "main"; }
+  .sidebar { border-right: none; border-bottom: 1px solid var(--gold-dim); max-height: 40vh; }
+  .parchment { padding: 28px 24px; }
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ========== 顶部 ========== -->
+  <header class="header">
+    <div class="brand">
+      <div class="brand-seal">古</div>
+      <div class="brand-text">
+        <h1>古灵阁 · 网文创作台</h1>
+        <div class="sub">Gobelin · Writing Studio · Cultural Division</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="ollama-status">
+        <div class="ollama-dot" id="ollamaDot"></div>
+        <span id="ollamaText">检测中…</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ========== 侧栏参数 ========== -->
+  <aside class="sidebar">
+
+    <div class="param-block">
+      <div class="param-label"><i class="mt-ico" data-icon="diamond" aria-hidden="true"></i> 核心创意</div>
+      <textarea id="ideaInput" class="idea-box" placeholder="一句话也行。比如：&#10;一个外卖员能看到顾客头顶的寿命倒计时，他接单的客人今晚全要死。" spellcheck="false"></textarea>
+    </div>
+
+    <div class="param-block">
+      <div class="param-label"><i class="mt-ico" data-icon="diamond" aria-hidden="true"></i> 作品标题</div>
+      <input type="text" id="titleInput" placeholder="留空我来想" aria-label="作品标题">
+    </div>
+
+    <div class="param-block">
+      <div class="param-label"><i class="mt-ico" data-icon="diamond" aria-hidden="true"></i> 题材类型</div>
+      <div class="tag-group" id="genreGroup">
+        <!-- JS 注入 -->
+      </div>
+    </div>
+
+    <div class="param-block">
+      <div class="param-label"><i class="mt-ico" data-icon="diamond" aria-hidden="true"></i> 结构 & 受众 & 字数</div>
+      <div class="row-2">
+        <select id="structureSel">
+          <option value="起承转合">起承转合</option>
+          <option value="三幕式">三幕式</option>
+          <option value="英雄之旅">英雄之旅</option>
+          <option value="冰山结构">冰山结构</option>
+          <option value="环形叙事">环形叙事</option>
+          <option value="多线交织">多线交织</option>
+          <option value="POV切换">POV切换</option>
+        </select>
+        <select id="audienceSel">
+          <option value="男频">男频</option>
+          <option value="女频">女频</option>
+          <option value="中性">中性</option>
+          <option value="青少年">青少年</option>
+          <option value="成人">成人</option>
+        </select>
+      </div>
+      <div style="margin-top:10px">
+        <input type="number" id="wordTarget" value="2000" min="200" max="100000" step="100"
+               style="width:100%;" placeholder="目标字数">
+      </div>
+    </div>
+
+    <div class="param-block">
+      <div class="param-label"><i class="mt-ico" data-icon="diamond" aria-hidden="true"></i> AI 模型</div>
+      <select id="modelSel">
+        <!-- JS 注入 ollama 可用模型 -->
+        <option value="qwen2.5:7b">qwen2.5:7b (默认·推荐)</option>
+        <option value="qwen2.5:3b">qwen2.5:3b (快速·轻量)</option>
+        <option value="qwen2.5:14b-q5">qwen2.5:14b-q5 (深度·精细)</option>
+        <option value="qwen2.5-coder:14b">qwen2.5-coder:14b (代码版)</option>
+      </select>
+    </div>
+
+    <div class="param-block">
+      <div class="param-label"><i class="mt-ico" data-icon="diamond" aria-hidden="true"></i> 妖精九参（留空让 AI 自选）</div>
+      <input type="text" id="fairyRef" aria-label="参考作品" placeholder="【参考作品】 如：诡秘之主, 修真聊天群" style="margin-bottom:8px">
+      <input type="text" id="fairyHooks" aria-label="开篇钩子" placeholder="【开篇钩子】 如：开篇即见主角葬礼" style="margin-bottom:8px">
+      <input type="text" id="fairyRhythm" aria-label="节奏曲线" placeholder="【节奏曲线】 如：慢热-爆-收-爆-反转">
+    </div>
+
+    <!-- 生成按钮 -->
+    <div class="gen-btn-wrap">
+      <button class="gen-btn" id="genBtn">
+        <span class="loading-icon"></span>
+        <span class="btn-text"><i class="mt-ico" data-icon="pen" aria-hidden="true"></i> 一键生文</span>
+      </button>
+    </div>
+
+  </aside>
+
+  <!-- ========== 主区域 ========== -->
+  <main class="main">
+
+    <!-- 结果工具栏 -->
+    <div class="result-toolbar" id="resultToolbar" style="display:none">
+      <div class="info" id="resultInfo"></div>
+      <button class="action-btn" id="copyBtn">复制全文</button>
+      <button class="action-btn" id="reviseBtn"><i class="mt-ico" data-icon="pen" aria-hidden="true"></i> 改稿</button>
+      <button class="action-btn danger" id="clearBtn">清稿重写</button>
+    </div>
+
+    <!-- 羊皮纸正文 -->
+    <div class="parchment" id="parchment">
+      <div class="empty-state" id="emptyState">
+        <div class="feather"><i class="mt-ico" data-icon="feather" aria-hidden="true"></i></div>
+        <h2>羊皮纸上尚无一字</h2>
+        <p>在左侧写下你的核心创意，点击 <i class="mt-ico" data-icon="pen" aria-hidden="true"></i> 一键生文</p>
+        <p style="margin-top:8px;color:var(--gold-dim);font-family:var(--mono);font-size:12px">AI 模型: <span id="defaultModelTag">—</span></p>
+      </div>
+      <div id="manuscript" style="display:none"></div>
+    </div>
+
+  </main>
+</div>
+
+<!-- 进度浮层 -->
+<div class="progress-overlay" id="progress">
+  <div class="progress-spinner"></div>
+  <div class="progress-text" id="progressText">炼金术士正在念咒…</div>
+  <div class="progress-sub" id="progressSub">正在召唤 AI 精灵</div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+/* =========================================================
+   古灵阁网文创作台 · 前端逻辑
+   ========================================================= */
+const $ = id => document.getElementById(id);
+const API = window.location.origin;  // 当前 Flask 根
+
+// ---------- 初始化 ----------
+async function init() {
+  // 注入类型标签
+  const genres = ['玄幻修仙','都市异能','穿越重生','科幻末世','历史架空',
+    '悬疑推理','军事谍战','体育竞技','游戏竞技','二次元',
+    '言情甜宠','耽美BL','百合GL','女尊','种田日常',
+    '武侠江湖','奇幻魔法','蒸汽朋克','赛博朋克','灵异鬼怪',
+    '纪实传记','官场商战','职场奋斗','校园青春','家庭伦理',
+    '轻小说','同人衍生','快穿','系统流','无限流',
+    '克苏鲁','废土','末日','星际','机甲',
+    '仙侠','修真','洪荒','神话','都市',
+    '高武','国术','异能','时空','位面'];
+  const gGroup = $('genreGroup');
+  genres.forEach(g => {
+    const el = document.createElement('span');
+    el.className = 'tag'; el.textContent = g;
+    el.onclick = () => {
+      document.querySelectorAll('.tag.active').forEach(t => t.classList.remove('active'));
+      el.classList.add('active');
+    };
+    gGroup.appendChild(el);
+  });
+
+  // 查询 ollama 状态
+  await refreshStatus();
+
+  // 默认选第一个类型
+  gGroup.children[0].classList.add('active');
+
+  // 绑定按钮
+  $('genBtn').onclick = doGenerate;
+  $('copyBtn').onclick = doCopy;
+  $('clearBtn').onclick = doClear;
+  $('reviseBtn').onclick = doRevise;
+}
+
+async function refreshStatus() {
+  try {
+    const r = await fetch(`${API}/health`, {cache:'no-store'});
+    const d = await r.json();
+    const dot = $('ollamaDot'), txt = $('ollamaText');
+    if (d.ollama_alive) {
+      dot.classList.add('on');
+      txt.textContent = 'OLLAMA ONLINE · ' + (d.ollama_models?.length || 0) + ' 模型';
+    } else {
+      dot.classList.remove('on');
+      txt.textContent = 'OLLAMA OFFLINE · 请启动 ollama serve';
+    }
+    $('defaultModelTag').textContent = d.default_model || '—';
+
+    // 刷新模型下拉
+    if (d.ollama_models && d.ollama_models.length) {
+      const sel = $('modelSel');
+      sel.innerHTML = '';
+      const priority = ['qwen2.5:7b','qwen2.5:3b','qwen2.5:14b-q5','qwen2.5-coder:14b','qwen2.5-coder:7b','qwen2.5:14b'];
+      priority.forEach(m => {
+        if (d.ollama_models.includes(m)) {
+          const opt = document.createElement('option');
+          opt.value = m; opt.textContent = m;
+          if (m === 'qwen2.5:7b') opt.textContent += ' (推荐)';
+          sel.appendChild(opt);
+        }
+      });
+      d.ollama_models.forEach(m => {
+        if (!priority.includes(m)) {
+          const opt = document.createElement('option');
+          opt.value = m; opt.textContent = m;
+          sel.appendChild(opt);
+        }
+      });
+    }
+  } catch(e) {
+    $('ollamaDot').classList.remove('on');
+    $('ollamaText').textContent = '无法连接 Flask · ' + e.message;
+  }
+}
+
+// ---------- 核心创作 ----------
+async function doGenerate() {
+  const idea = $('ideaInput').value.trim();
+  if (!idea) { toast('请先写一句核心创意', 'err'); $('ideaInput').focus(); return; }
+
+  const genreEl = document.querySelector('.tag.active');
+  const payload = {
+    core_idea: idea,
+    title: $('titleInput').value.trim(),
+    genre: genreEl?.textContent || '玄幻修仙',
+    audience: $('audienceSel').value,
+    structure: $('structureSel').value,
+    word_target: parseInt($('wordTarget').value) || 2000,
+    model: $('modelSel').value,
+    extra_params: {
+      '参考作品': $('fairyRef').value.trim(),
+      '开篇钩子': $('fairyHooks').value.trim(),
+      '节奏曲线': $('fairyRhythm').value.trim()
+    }
+  };
+
+  setProgress(true, '炼金术士正在念咒…', `模型 ${payload.model} · 目标 ${payload.word_target} 字`);
+  const btn = $('genBtn'); btn.disabled = true; btn.classList.add('loading'); btn.querySelector('.btn-text').textContent = '召唤 AI 精灵中…';
+
+  const t0 = Date.now();
+  try {
+    const r = await fetch(`${API}/api/writing/generate`, {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+    const d = await r.json();
+    const elapsed = ((Date.now() - t0)/1000).toFixed(1);
+
+    if (d.ok) {
+      showManuscript(payload.title || d.title, d.content, payload.model, d.word_count, elapsed);
+      toast('创作完成', 'ok');
+    } else {
+      toast('创作失败：' + (d.error || '未知'), 'err');
+      setProgress(false);
+    }
+  } catch(e) {
+    toast('请求异常：' + e.message, 'err');
+    setProgress(false);
+  } finally {
+    btn.disabled = false; btn.classList.remove('loading');
+    btn.querySelector('.btn-text').textContent = '一键生文';
+  }
+}
+
+function showManuscript(title, content, model, wordCount, elapsed) {
+  $('emptyState').style.display = 'none';
+  $('resultToolbar').style.display = 'flex';
+  $('resultInfo').innerHTML = `
+    <span class="pill"><span class="k">模型</span> <span class="v">${model}</span></span>
+    <span class="pill"><span class="k">字数</span> <span class="v">${wordCount}</span></span>
+    <span class="pill"><span class="k">耗时</span> <span class="v">${elapsed}s</span></span>
+  `;
+
+  const ms = $('manuscript');
+  ms.style.display = 'block';
+  ms.innerHTML = `
+    <h2 class="manuscript-title">${escapeHTML(title || '无题')}</h2>
+    <div class="manuscript-body">${formatContent(content)}</div>
+  `;
+  ms.scrollIntoView({behavior:'smooth', block:'start'});
+  setProgress(false);
+}
+
+function formatContent(text) {
+  // 把 \n\n 拆成段落
+  return text.split(/\n\n+/).map(p => `<p>${escapeHTML(p).replace(/\n/g,'<br>')}</p>`).join('');
+}
+function escapeHTML(s) {
+  const d = document.createElement('div'); d.textContent = s; return d.innerHTML;
+}
+
+// ---------- 操作按钮 ----------
+async function doCopy() {
+  const text = document.querySelector('#manuscript .manuscript-body').innerText;
+  try {
+    await navigator.clipboard.writeText(text);
+    toast('已复制到剪贴板', 'ok');
+  } catch {
+    toast('复制失败，请手动选中', 'err');
+  }
+}
+function doClear() {
+  if (!confirm('确认清空当前稿件？')) return;
+  $('emptyState').style.display = 'block';
+  $('manuscript').style.display = 'none';
+  $('resultToolbar').style.display = 'none';
+  $('ideaInput').focus();
+}
+async function doRevise() {
+  const ins = prompt('请输入修改意见：\n（如：把主角改成女性 / 加一段反派心理描写 / 节奏更紧凑）', '节奏更紧凑，钩子更密');
+  if (!ins) return;
+  toast('改稿功能需要先在后端查 project_id，请重新生成后从接口 revise 调用', 'err');
+}
+
+// ---------- 辅助 ----------
+function setProgress(show, text, sub) {
+  const p = $('progress');
+  if (show) {
+    p.classList.add('show');
+    $('progressText').textContent = text || '处理中…';
+    $('progressSub').textContent = sub || '';
+  } else {
+    p.classList.remove('show');
+  }
+}
+let toastTimer;
+function toast(msg, type) {
+  const t = $('toast');
+  t.textContent = msg; t.className = 'toast show ' + (type || '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 3200);
+}
+
+init();
+</script>
+
+<script src="/static/js/mtscos_icons.js" defer></script>
+</body>
+</html>

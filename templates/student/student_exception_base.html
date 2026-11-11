@@ -1,0 +1,28 @@
+{% extends "exception_base.html" %}
+{# student端专属异常基类 | L3设备外壳 | 主题色: --el-color-success(绿) | chromeStyle: 顶部导航 #}
+{% block page_title %}{{ status }} MTSCOS 学生中心{% endblock %}
+
+{% block device_chrome %}
+<style>
+  body.exception-page-student {
+    background: radial-gradient(1200px 600px at 10% 0%, var(--el-color-success-light-9) 0%, transparent 60%), var(--el-bg-color-page);
+    flex-direction: column;  /* 顶部导航在上方,异常页在下方 */
+  }
+  .student-topnav { height: 60px; background: var(--el-color-success); color: white; display: flex; align-items: center; padding: 0 var(--mtscos-spacing-lg); box-shadow: var(--el-box-shadow-light); flex-shrink: 0; width: 100%; box-sizing: border-box; }
+  .student-topnav__brand { font-weight: var(--el-font-weight-bold); font-size: 16px; margin-right: var(--mtscos-spacing-xl); }
+  .student-topnav__menu { display: flex; gap: var(--mtscos-spacing-lg); }
+  .student-topnav__menu a { color: white; text-decoration: none; font-size: 14px; padding: 6px 12px; border-radius: var(--el-border-radius-base); transition: var(--mtscos-transition-base); }
+  .student-topnav__menu a:hover { background: rgba(255,255,255,0.2); }
+  body.exception-page-student .exception-wrap { margin-top: var(--mtscos-spacing-3xl); }
+</style>
+<header class="student-topnav">
+  <div class="student-topnav__brand">📚 MTSCOS 学生中心</div>
+  <nav class="student-topnav__menu">
+    <a href="/student/home">🏠 主页</a>
+    <a href="/student/exams">📝 我的考试</a>
+    <a href="/student/learning">📚 学习计划</a>
+    <a href="/student/credits">⭐ 学分汇总</a>
+    <a href="/auth/logout">🚪 退出</a>
+  </nav>
+</header>
+{% endblock %}

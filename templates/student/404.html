@@ -1,0 +1,11 @@
+{% extends "student/student_exception_base.html" %}
+{# student/404.html | E_ROUTE_404 | severity=warning | L3三端异常页 #}
+{% block exception_meta %}
+{% set status = 404 %}
+{% set err_code = 'E_ROUTE_404' %}
+{% set title = '页面或接口不存在' %}
+{% set description = '您访问的内容可能已被移除、URL拼写错误，或该接口尚未实现。' %}
+{% set repair = '请检查URL拼写，或从首页导航重新进入。' %}
+{% set severity = 'warning' %}
+{% set icon = '🧭' %}
+{% endblock %}

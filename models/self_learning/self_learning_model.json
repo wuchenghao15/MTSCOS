@@ -1,0 +1,23 @@
+{
+  "config": {
+    "learning_interval": 1800,
+    "data_retention_days": 7,
+    "optimization_threshold": 0.05,
+    "min_samples": 50,
+    "learning_rate": 0.05,
+    "model_path": "./models/self_learning",
+    "enabled": true,
+    "auto_optimize": true,
+    "batch_size": 32,
+    "feature_importance_enabled": true,
+    "anomaly_detection_enabled": true
+  },
+  "learning_data": {
+    "performance_metrics": [],
+    "system_configs": [],
+    "user_behaviors": [],
+    "error_logs": [],
+    "resource_usage": []
+  },
+  "saved_at": "2026-11-08T17:35:38.424576"
+}

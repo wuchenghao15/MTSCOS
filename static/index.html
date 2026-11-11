@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="zh-CN" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>仙女座 · 教育综合门户</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --hub-indigo:#6366f1;--hub-amber:#fbbf24;--hub-emerald:#10b981;--hub-violet:#8b5cf6;--hub-red:#ef4444;--hub-cyan:#06b6d4;--hub-orange:#f97316;--hub-pink:#ec4899;
+  --mtscos-text-inverse:#FFFFFF;   /* 渐变按钮/标题上的反白色文字 */
+  --ink-1:#a5b4fc; --ink-2:#fcd34d; --ink-3:#86efac; --ink-4:#fca5a5;
+  --bg:#0a0e27;--bg2:#131845;--bg3:#1a2058;
+  --accent:#6366f1;--accent2:#8b5cf6;--gold:#fbbf24;
+  --text:#e2e8f0;--muted:#94a3b8;--border:rgba(255,255,255,.08);
+}
+body{min-height:100dvh;background:linear-gradient(160deg,var(--bg) 0%,var(--bg2) 40%,var(--bg3) 100%);color:var(--text);font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;overflow-x:hidden}
+body::before{content:"";position:fixed;inset:0;background:radial-gradient(circle at 20% 20%,rgba(99,102,241,.15),transparent 40%),radial-gradient(circle at 80% 80%,rgba(139,92,246,.12),transparent 40%);pointer-events:none;z-index:0}
+
+/* Topbar */
+.topbar{position:relative;z-index:10;display:flex;align-items:center;justify-content:space-between;padding:16px 32px;background:rgba(0,0,0,.2);backdrop-filter:blur(16px);border-bottom:1px solid var(--border)}
+.brand{display:flex;align-items:center;gap:12px}
+.brand .logo{font-size:28px}
+.brand h1{font-size:18px;font-weight:700;background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.brand p{font-size:11px;color:var(--muted)}
+.topnav{display:flex;gap:4px}
+.topnav a{padding:8px 16px;border-radius:10px;color:var(--muted);font-size:14px;text-decoration:none;transition:all .2s}
+.topnav a:hover{background:rgba(99,102,241,.15);color:var(--text)}
+.topnav a.active{background:linear-gradient(90deg,rgba(99,102,241,.3),rgba(139,92,246,.3));color:var(--text)}
+.auth{display:flex;align-items:center;gap:10px}
+.auth .user{font-size:13px;color:var(--muted)}
+.btn-login{padding:8px 20px;background:linear-gradient(90deg,var(--accent),var(--accent2));color:var(--mtscos-text-inverse);border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;text-decoration:none;transition:transform .15s}
+.btn-login:hover{transform:translateY(-1px)}
+
+/* Hero */
+.hero{position:relative;z-index:1;padding:80px 40px 40px;text-align:center}
+.hero .badge{display:inline-block;padding:6px 16px;background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.3);border-radius:20px;font-size:12px;color:var(--ink-1);margin-bottom:20px}
+.hero h2{font-size:42px;font-weight:800;margin-bottom:16px;background:linear-gradient(90deg,var(--mtscos-text-inverse),var(--ink-1),var(--gold));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hero p{font-size:17px;color:var(--muted);max-width:680px;margin:0 auto 32px}
+.hero-actions{display:flex;gap:12px;justify-content:center}
+.btn-primary{padding:12px 28px;background:linear-gradient(90deg,var(--accent),var(--accent2));color:var(--mtscos-text-inverse);border:none;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;text-decoration:none;transition:transform .15s,box-shadow .15s;box-shadow:0 4px 20px rgba(99,102,241,.3)}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 6px 28px rgba(99,102,241,.4)}
+.btn-secondary{padding:12px 28px;background:rgba(255,255,255,.06);border:1px solid var(--border);color:var(--text);border-radius:12px;font-size:15px;font-weight:500;cursor:pointer;text-decoration:none;transition:all .15s}
+.btn-secondary:hover{background:rgba(255,255,255,.1)}
+
+/* Hubs Grid */
+.hubs{position:relative;z-index:1;padding:20px 40px 60px;display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px;max-width:1400px;margin:0 auto}
+.hub{position:relative;padding:28px;border-radius:16px;background:rgba(255,255,255,.04);border:1px solid var(--border);cursor:pointer;text-decoration:none;color:inherit;transition:all .25s;overflow:hidden}
+.hub::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--hub-color,#6366f1),transparent);opacity:.6}
+.hub:hover{transform:translateY(-4px);border-color:rgba(99,102,241,.4);background:rgba(255,255,255,.06)}
+.hub-icon{font-size:36px;margin-bottom:16px}
+.hub h3{font-size:18px;font-weight:700;margin-bottom:8px}
+.hub p{font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:16px}
+.hub-meta{display:flex;gap:8px;flex-wrap:wrap}
+.hub-meta span{padding:4px 10px;background:rgba(99,102,241,.12);border-radius:6px;font-size:11px;color:var(--ink-1)}
+.hub-meta span.gold{background:rgba(251,191,36,.12);color:var(--ink-2)}
+.hub-meta span.green{background:rgba(34,197,94,.12);color:var(--ink-3)}
+.hub-meta span.red{background:rgba(239,68,68,.12);color:var(--ink-4)}
+
+/* Stats strip */
+.stats{position:relative;z-index:1;padding:20px 40px;display:flex;gap:24px;justify-content:center;flex-wrap:wrap}
+.stat{display:flex;flex-direction:column;align-items:center;padding:16px 28px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:12px;min-width:160px}
+.stat .num{font-size:28px;font-weight:800;color:var(--ink-1)}
+.stat .lbl{font-size:12px;color:var(--muted);margin-top:4px}
+
+/* Footer */
+.footer{position:relative;z-index:1;padding:30px 40px;text-align:center;color:var(--muted);font-size:12px;border-top:1px solid var(--border);margin-top:20px}
+</style>
+</head>
+<body>
+
+<!-- Topbar -->
+<div class="topbar">
+  <div class="brand">
+    <span class="logo"><i class="mt-ico" data-icon="spiral" aria-hidden="true"></i></span>
+    <div>
+      <h1>仙女座 · 教育综合门户</h1>
+      <p>Andromeda · AI Education Portal</p>
+    </div>
+  </div>
+  <div class="topnav">
+    <a href="/" class="active"><i class="mt-ico" data-icon="home" aria-hidden="true"></i> 首页</a>
+    <a href="/api/shield/status"><i class="mt-ico" data-icon="shield" aria-hidden="true"></i> 金盾状态</a>
+    <a href="/GOBELIN/text"><i class="mt-ico" data-icon="doc" aria-hidden="true"></i> 网文创作</a>
+    <a href="/GOBELIN/chamber/"><i class="mt-ico" data-icon="bank" aria-hidden="true"></i> 会议厅</a>
+  </div>
+  <div class="auth">
+    <span class="user" id="userInfo">加载中...</span>
+    <a href="/login" class="btn-login" id="loginBtn">登 录</a>
+  </div>
+</div>
+
+<!-- Hero -->
+<div class="hero">
+  <div class="badge"><i class="mt-ico" data-icon="bolt" aria-hidden="true"></i> Powered by Andromeda AI · 金盾守护 v2.0</div>
+  <h2>教育 × AI × 安全 — 三位一体</h2>
+  <p>仙女座教育综合门户：AI 聊天导师、题库自动生成、数学/语言双引擎、技能研发中心，全链路金盾守护</p>
+  <div class="hero-actions">
+    <a href="/ai" class="btn-primary"><i class="mt-ico" data-icon="chat" aria-hidden="true"></i> 开始 AI 对话</a>
+    <a href="/GOBELIN/text" class="btn-secondary"><i class="mt-ico" data-icon="doc" aria-hidden="true"></i> 网文创作台</a>
+  </div>
+</div>
+
+<!-- Stats -->
+<div class="stats">
+  <div class="stat"><span class="num" id="s1">—</span><span class="lbl">今日 AI 对话</span></div>
+  <div class="stat"><span class="num" id="s2">—</span><span class="lbl">题库总量</span></div>
+  <div class="stat"><span class="num" id="s3">—</span><span class="lbl">活跃引擎</span></div>
+  <div class="stat"><span class="num" id="s4">—</span><span class="lbl">金盾事件</span></div>
+</div>
+
+<!-- Hubs Grid -->
+<div class="hubs">
+  <a href="/ai" class="hub" style="--hub-color:var(--hub-indigo)">
+    <div class="hub-icon"><i class="mt-ico" data-icon="chat" aria-hidden="true"></i></div>
+    <h3>仙女座 AI 聊天</h3>
+    <p>全场景 AI 对话导师 · 支持文生文 / 教育问答 / 代码辅助 · 多模型切换</p>
+    <div class="hub-meta"><span>多模型</span><span>金盾守护</span><span class="green">实时在线</span></div>
+  </a>
+
+  <a href="/api/shield/status" class="hub" style="--hub-color:var(--hub-amber)">
+    <div class="hub-icon"><i class="mt-ico" data-icon="shield" aria-hidden="true"></i></div>
+    <h3>金盾安全中心</h3>
+    <p>30 中心全量守护 · 15 层金盾注入 · 实时风险拦截 · 审计日志查询</p>
+    <div class="hub-meta"><span class="gold">15 层</span><span class="gold">30 中心</span><span class="red">铁律拦截</span></div>
+  </a>
+
+  <a href="/GOBELIN/chamber/" class="hub" style="--hub-color:var(--hub-emerald)">
+    <div class="hub-icon"><i class="mt-ico" data-icon="bank" aria-hidden="true"></i></div>
+    <h3>会议厅 · 日复盘</h3>
+    <p>晚休市自动切换 · 中心联动分析 · 高层决策备案 · 统一投喂 AI 脑库</p>
+    <div class="hub-meta"><span>7 模块</span><span class="green">自动归档</span></div>
+  </a>
+
+  <a href="/GOBELIN/text" class="hub" style="--hub-color:var(--hub-violet)">
+    <div class="hub-icon"><i class="mt-ico" data-icon="doc" aria-hidden="true"></i></div>
+    <h3>古灵阁 · 网文创作</h3>
+    <p>50 种网文类型 · AI 自动续写 · 本地 Ollama 推理 · 创作即投喂脑库</p>
+    <div class="hub-meta"><span>Qwen 2.5</span><span class="green">本地推理</span></div>
+  </a>
+
+  <a href="/" class="hub" style="--hub-color:var(--hub-red)" onclick="return goStock()">
+    <div class="hub-icon"><i class="mt-ico" data-icon="trend-up" aria-hidden="true"></i></div>
+    <h3>证券沙盘（需 SA/CAOPW）</h3>
+    <p>古灵阁证券交易终端 · 需 SA 或 CAOPW 权限 · 晚休市自动切会议厅</p>
+    <div class="hub-meta"><span class="red">权限</span><span>模拟盘</span></div>
+  </a>
+
+  <a href="/GOBELIN/chamber/grassroots" class="hub" style="--hub-color:var(--hub-cyan)">
+    <div class="hub-icon"><i class="mt-ico" data-icon="flame" aria-hidden="true"></i></div>
+    <h3>基层贡献榜</h3>
+    <p>Top 提案人 · Top 议事人 · 大厅任务完结 · 实战经验共享</p>
+    <div class="hub-meta"><span>实时</span><span>排行榜</span></div>
+  </a>
+
+  <a href="/GOBELIN/chamber/failure" class="hub" style="--hub-color:var(--hub-orange)">
+    <div class="hub-icon"><i class="mt-ico" data-icon="close" aria-hidden="true"></i></div>
+    <h3>失败案例分析</h3>
+    <p>铁律拦截 · VETO 否决 · 大厅未通过提案 · 复盘经验总结</p>
+    <div class="hub-meta"><span class="red">事后审计</span><span>经验库</span></div>
+  </a>
+
+  <a href="/GOBELIN/chamber/emergency" class="hub" style="--hub-color:var(--hub-pink)">
+    <div class="hub-icon"><i class="mt-ico" data-icon="alarm" aria-hidden="true"></i></div>
+    <h3>紧急预案库</h3>
+    <p>自动生成预案模板 · 紧急事件处置 · 备案留档 · 应急响应</p>
+    <div class="hub-meta"><span>自动预案</span><span class="red">24/7</span></div>
+  </a>
+</div>
+
+<!-- Footer -->
+<footer class="footer">
+  <i class="mt-ico" data-icon="spiral" aria-hidden="true"></i> Andromeda AI Education Portal · 金盾 v2.0 · 教育 × AI × 安全 · 2026
+</footer>
+
+<script>
+// 检查登录状态
+(async () => {
+  try {
+    const resp = await fetch('/api/auth/me', {credentials:'include'});
+    if (resp.ok) {
+      const d = await resp.json();
+      if (d.username) {
+        document.getElementById('userInfo').textContent = `${d.username} · ${d.role || 'user'}`;
+        document.getElementById('loginBtn').textContent = '退出';
+        document.getElementById('loginBtn').href = '/api/auth/logout';
+      }
+    }
+  } catch(e){}
+  // 统计数据
+  try {
+    const s = await fetch('/api/shield/status').then(r=>r.json());
+    document.getElementById('s1').textContent = (s.stats?.recent_events_1h || 0).toLocaleString();
+    document.getElementById('s2').textContent = '50+';
+    document.getElementById('s3').textContent = (s.forces?.total || 0) + ' BP';
+    document.getElementById('s4').textContent = (s.stats?.total_events || 0).toLocaleString();
+  } catch(e){}
+})();
+
+function goStock() {
+  const r = confirm('证券沙盘需要 SA 或 CAOPW 权限。确认前往?');
+  if (r) location.href = '/GOBELIN/stock';
+  return false;
+}
+</script>
+<script src="/static/js/mtscos_icons.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+{% extends "student/student_exception_base.html" %}
+{# student/502.html | E_SRV_502 | severity=error | L3三端异常页 #}
+{% block exception_meta %}
+{% set status = 502 %}
+{% set err_code = 'E_SRV_502' %}
+{% set title = '上游网关错误' %}
+{% set description = '上游服务暂时不可用，网关未能接收到有效响应。' %}
+{% set repair = '通常为短暂故障，请稍后重试。' %}
+{% set severity = 'error' %}
+{% set icon = '🌐' %}
+{% endblock %}

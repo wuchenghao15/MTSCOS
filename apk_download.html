@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>📱 MTSCOS AI 冰山移动管理 APK</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f5f5f7;font-family:-apple-system,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px}
+.card{background:#fff;border-radius:20px;padding:32px;max-width:380px;width:100%;box-shadow:0 10px 40px rgba(0,0,0,.1);text-align:center}
+.app-icon{width:96px;height:96px;border-radius:24px;background:linear-gradient(135deg,#667eea,#764ba2);display:inline-flex;align-items:center;justify-content:center;font-size:42px;color:#fff;margin-bottom:16px}
+.app-name{font-size:22px;font-weight:700;color:#2c2e33;margin-bottom:4px}
+.app-ver{font-size:13px;color:#999;margin-bottom:24px}
+.dl-btn{display:block;width:100%;padding:16px;background:linear-gradient(135deg,#1677ff,#0958d9);color:#fff;text-decoration:none;border-radius:12px;font-size:16px;font-weight:600;margin-bottom:12px}
+.dl-btn:active{opacity:.8}
+.info{background:#fafafa;border-radius:10px;padding:12px;font-size:12px;color:#666;margin-top:16px;text-align:left;line-height:1.8}
+.info b{color:#2c2e33}
+.wb{font-size:12px;color:#999;margin-top:16px}
+.wb a{color:#1677ff}
+</style></head>
+<body>
+<div class="card">
+<div class="app-icon">🧊</div>
+<div class="app-name">MTSCOS AI 冰山管理</div>
+<div class="app-ver">v25.3.0 · Android 7.0+ · 5.3MB</div>
+
+<a class="dl-btn" id="realDl" download>⬇️ 点击下载 APK</a>
+
+<div class="info">
+<b>安装步骤:</b><br>
+1. 点上面按钮 → 浏览器弹下载确认<br>
+2. 允许此网站下载文件<br>
+3. 下拉通知栏 → 点开 APK<br>
+4. 允许安装未知应用 → 安装<br>
+5. 桌面出现 🧊 MTSCOS AI 图标
+</div>
+
+<div class="wb">
+或直接 <a href="/iceberg/mobile">浏览器访问 (零安装)</a>
+</div>
+</div>
+
+<script>
+// 真实 APK URL — 由后端注入
+document.getElementById('realDl').href = '/apk/binary';
+
+// 小米 MIUI/HyperOS 特殊处理: 如果点按钮没下载, 自动隐藏 iframe 触发
+(function(){
+    var a = document.getElementById('realDl');
+    a.addEventListener('click', function(e){
+        setTimeout(function(){ location.href='/apk/binary'; }, 100);
+    });
+})();
+</script>
+</body></html>

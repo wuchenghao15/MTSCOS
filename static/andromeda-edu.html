@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>仙女座 · 教育门户 | Andromeda Edu Portal</title>
+<meta name="description" content="仙女座 AI 教育平台 — AI 导师、冰山教育矩阵、古灵阁金融中心、考试院、中英日韩赛道、金盾安全守护">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --accent-cyan:#0891b2; --accent-pink:#ec4899; --accent-indigo:#a78bfa; --accent-purple:#f472b6; --accent-green:#10b981; --accent-blue:#a5b4fc; --accent-cyan-2:#22d3ee; --accent-cyan-3:#67e8f9; --accent-white:#ffffff;
+  --danger:#fca5a5; --success:#86efac; --warning:#fde68a;
+  --bg:#0a0e1a;--bg2:#0f172a;--bg3:#1e1b4b;--bg4:#164e63;
+  --indigo:#6366f1;--cyan:#06b6d4;--violet:#8b5cf6;--sky:#38bdf8;
+  --text:#e2e8f0;--muted:#94a3b8;--border:rgba(99,102,241,.15);
+}
+body{min-height:100dvh;background:linear-gradient(160deg,var(--bg) 0%,var(--bg2) 30%,var(--bg3) 70%,var(--bg4) 100%);color:var(--text);font-family:-apple-system,"PingFang SC","Segoe UI",sans-serif;overflow-x:hidden}
+body::before{content:"";position:fixed;inset:0;background:
+  radial-gradient(circle at 15% 10%,rgba(99,102,241,.12),transparent 45%),
+  radial-gradient(circle at 85% 85%,rgba(6,182,212,.1),transparent 45%),
+  radial-gradient(circle at 50% 50%,rgba(139,92,246,.05),transparent 60%);
+  pointer-events:none;z-index:0}
+
+/* Topbar */
+.topbar{position:relative;z-index:10;display:flex;align-items:center;justify-content:space-between;padding:14px 32px;background:rgba(0,0,0,.3);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);position:sticky;top:0}
+.brand{display:flex;align-items:center;gap:12px}
+.brand .logo{width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,var(--indigo),var(--cyan));display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 4px 16px rgba(99,102,241,.35)}
+.brand h1{font-size:16px;font-weight:700;background:linear-gradient(90deg,var(--indigo),var(--cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.brand p{font-size:10px;color:var(--muted);letter-spacing:3px;text-transform:uppercase}
+.nav{display:flex;gap:2px}
+.nav a{padding:8px 14px;border-radius:10px;color:var(--muted);font-size:13px;text-decoration:none;transition:all .2s;font-weight:500}
+.nav a:hover{background:rgba(99,102,241,.12);color:var(--text)}
+.nav a.active{background:linear-gradient(90deg,rgba(99,102,241,.25),rgba(6,182,212,.2));color:var(--accent-white);border:1px solid rgba(99,102,241,.3)}
+.auth{display:flex;align-items:center;gap:10px}
+.auth .status{font-size:11px;padding:4px 10px;border-radius:20px;background:rgba(6,182,212,.12);color:var(--accent-cyan-3);border:1px solid rgba(6,182,212,.2)}
+.btn-enter{padding:8px 18px;background:linear-gradient(90deg,var(--indigo),var(--cyan));color:var(--accent-white);border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;text-decoration:none;transition:transform .15s,box-shadow .15s;box-shadow:0 4px 16px rgba(99,102,241,.3)}
+.btn-enter:hover{transform:translateY(-1px);box-shadow:0 6px 24px rgba(99,102,241,.4)}
+
+/* Hero */
+.hero{position:relative;z-index:1;padding:72px 40px 32px;text-align:center}
+.hero .badge{display:inline-flex;align-items:center;gap:6px;padding:5px 14px;background:rgba(99,102,241,.12);border:1px solid rgba(99,102,241,.25);border-radius:20px;font-size:11px;color:var(--accent-blue);margin-bottom:22px;letter-spacing:1px}
+.hero h2{font-size:46px;font-weight:800;margin-bottom:14px;background:linear-gradient(100deg,var(--accent-white) 0%,var(--accent-blue) 40%,var(--accent-cyan-3) 70%,var(--accent-white) 100%);background-size:200% 100%;-webkit-background-clip:text;-webkit-text-fill-color:transparent;animation:shine 6s linear infinite}
+@keyframes shine{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.hero p{font-size:16px;color:var(--muted);max-width:620px;margin:0 auto 30px;line-height:1.7}
+.hero-actions{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.btn-primary{padding:13px 32px;background:linear-gradient(90deg,var(--indigo),var(--cyan));color:var(--accent-white);border:none;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;text-decoration:none;transition:all .2s;box-shadow:0 4px 24px rgba(99,102,241,.35);display:inline-flex;align-items:center;gap:8px}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(99,102,241,.5)}
+
+/* 登录按钮 pulse glow 动画 (未登录态) */
+.pulse-login{animation:loginPulse 2.5s ease-in-out infinite;position:relative}
+.pulse-login::after{content:"";position:absolute;inset:-2px;border-radius:inherit;background:linear-gradient(90deg,var(--indigo),var(--cyan));opacity:0;animation:loginGlow 2.5s ease-in-out infinite;z-index:-1;filter:blur(8px)}
+@keyframes loginPulse{0%,100%{box-shadow:0 4px 24px rgba(99,102,241,.35)}50%{box-shadow:0 4px 40px rgba(6,182,212,.6)}}
+@keyframes loginGlow{0%,100%{opacity:.4}50%{opacity:.8}}
+
+/* 导航栏登录高亮 */
+.auth-nav{color:#fff!important;font-weight:700;background:linear-gradient(90deg,rgba(99,102,241,.25),rgba(6,182,212,.25));border:1px solid rgba(99,102,241,.4)!important;border-radius:8px;padding:6px 14px!important}
+.auth-nav:hover{background:linear-gradient(90deg,rgba(99,102,241,.4),rgba(6,182,212,.4));border-color:rgba(6,182,212,.6)!important}
+
+/* 已登录用户名按钮 */
+.btn-user{background:linear-gradient(90deg,#059669,#10b981)!important;box-shadow:0 4px 20px rgba(16,185,129,.4)!important}
+.btn-ghost{padding:13px 28px;background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--text);border-radius:12px;font-size:15px;font-weight:500;cursor:pointer;text-decoration:none;transition:all .2s;display:inline-flex;align-items:center;gap:8px}
+.btn-ghost:hover{background:rgba(255,255,255,.08);border-color:rgba(99,102,241,.4)}
+
+/* Stats */
+.stats{position:relative;z-index:1;padding:16px 40px 8px;display:flex;gap:16px;justify-content:center;flex-wrap:wrap;max-width:1100px;margin:0 auto}
+.stat{display:flex;flex-direction:column;align-items:center;padding:16px 30px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:14px;min-width:150px;backdrop-filter:blur(10px)}
+.stat .num{font-size:26px;font-weight:800;background:linear-gradient(90deg,var(--indigo),var(--cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.stat .lbl{font-size:11px;color:var(--muted);margin-top:4px;letter-spacing:1px}
+
+/* Hub Grid */
+.hubs{position:relative;z-index:1;padding:24px 40px 60px;display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px;max-width:1500px;margin:0 auto}
+.hub{position:relative;padding:28px;border-radius:16px;background:rgba(255,255,255,.04);border:1px solid var(--border);cursor:pointer;text-decoration:none;color:inherit;transition:all .25s;overflow:hidden;backdrop-filter:blur(12px);display:flex;flex-direction:column}
+.hub::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--hub-c1,#6366f1),var(--hub-c2,#06b6d4));opacity:.7;transition:opacity .25s}
+.hub:hover{transform:translateY(-4px);border-color:rgba(99,102,241,.4);background:rgba(255,255,255,.06)}
+.hub:hover::before{opacity:1}
+.hub-head{display:flex;align-items:center;gap:14px;margin-bottom:14px}
+.hub-icon{width:48px;height:48px;border-radius:14px;background:linear-gradient(135deg,var(--hub-c1,#6366f1),var(--hub-c2,#06b6d4));display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 6px 20px rgba(99,102,241,.25);flex-shrink:0}
+.hub h3{font-size:17px;font-weight:700}
+.hub p{font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:16px;flex-grow:1}
+.hub-tags{display:flex;gap:6px;flex-wrap:wrap}
+.hub-tags span{padding:4px 10px;background:rgba(99,102,241,.12);border-radius:6px;font-size:11px;color:var(--accent-blue);font-weight:500}
+.hub-tags span.ok{background:rgba(34,197,94,.12);color:var(--success)}
+.hub-tags span.new{background:rgba(6,182,212,.12);color:var(--accent-cyan-3)}
+.hub-tags span.hot{background:rgba(239,68,68,.12);color:var(--danger)}
+.hub-tags span.warn{background:rgba(245,158,11,.15);color:var(--warning)}
+
+/* Section Titles */
+.section-title{position:relative;z-index:1;padding:32px 40px 0;max-width:1500px;margin:0 auto;display:flex;align-items:center;gap:12px}
+.section-title h3{font-size:18px;font-weight:700;color:var(--accent-white)}
+.section-title .dot{width:8px;height:8px;border-radius:50%;background:linear-gradient(90deg,var(--indigo),var(--cyan))}
+.section-title .sub{font-size:12px;color:var(--muted)}
+
+/* System Bar */
+.sys-bar{position:relative;z-index:1;padding:16px 40px;max-width:1500px;margin:0 auto;display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.sys-chip{padding:8px 14px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:20px;font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px;backdrop-filter:blur(8px)}
+.sys-chip .pulse{width:8px;height:8px;border-radius:50%;background:var(--success);animation:pulse 2s infinite}
+.sys-chip .pulse.warn{background:var(--warning)}
+.sys-chip .pulse.err{background:var(--danger)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* Footer */
+.footer{position:relative;z-index:1;padding:28px 40px;text-align:center;color:var(--muted);font-size:12px;border-top:1px solid var(--border);margin-top:20px}
+.footer .shield-tag{display:inline-block;margin-top:8px;padding:3px 12px;background:rgba(6,182,212,.1);border:1px solid rgba(6,182,212,.2);border-radius:20px;color:var(--accent-cyan-3);font-size:10px;letter-spacing:2px}
+.mt-ico{display:inline-block;width:1em;height:1em;vertical-align:-0.125em;flex:none}
+
+/* Responsive */
+@media(max-width:768px){
+  .topbar{padding:10px 16px;flex-wrap:wrap;gap:10px}
+  .nav{order:3;width:100%;justify-content:center}
+  .hero{padding:48px 20px 24px}
+  .hero h2{font-size:32px}
+  .stats{padding:12px 16px}
+  .hubs{padding:20px 16px 40px}
+  .sys-bar{padding:12px 16px}
+}
+</style>
+</head>
+<body>
+
+<!-- Topbar -->
+<div class="topbar">
+  <div class="brand">
+    <div class="logo"><i class="mt-ico" data-icon="spiral" aria-hidden="true"></i></div>
+    <div>
+      <h1>仙女座 · 教育门户</h1>
+      <p>ANDROMEDA · EDU PORTAL</p>
+    </div>
+  </div>
+  <nav class="nav">
+    <a href="#" class="active"><i class="mt-ico" data-icon="home" aria-hidden="true"></i> 门户首页</a>
+    <a href="/api/shield/status"><i class="mt-ico" data-icon="shield" aria-hidden="true"></i> 安全状态</a>
+    <a href="/login" class="auth-nav"><i class="mt-ico" data-icon="chat" aria-hidden="true"></i> 🔐 登录</a>
+  </nav>
+  <div class="auth">
+    <span class="status" id="authStatus">检测中...</span>
+    <a href="/login" class="btn-enter pulse-login" id="authBtn">🚀 立即登录</a>
+  </div>
+</div>
+
+<!-- Hero -->
+<section class="hero">
+  <div class="badge"><i class="mt-ico" data-icon="brain" aria-hidden="true"></i> Powered by Andromeda AI Engine · 金盾守护 v2.0</div>
+  <h2>让每一个学习者都拥有专属 AI 导师</h2>
+  <p>仙女座教育门户 — AI 驱动的个性化学习平台：智能对话导师、冰山教育矩阵、古灵阁金融中心、自动考试院、中英日韩赛道，金盾 30 层安全守护全链路</p>
+  <div class="hero-actions">
+    <a href="/login" class="btn-primary pulse-login"><i class="mt-ico" data-icon="chat" aria-hidden="true"></i> 🚀 立即登录进入系统</a>
+    <a href="#hubs" class="btn-ghost"><i class="mt-ico" data-icon="book" aria-hidden="true"></i> 浏览功能模块</a>
+  </div>
+</section>
+
+<!-- Stats -->
+<section class="stats">
+  <div class="stat"><span class="num" id="st-emp">36</span><span class="lbl">AI 员工</span></div>
+  <div class="stat"><span class="num" id="st-kb">175</span><span class="lbl">知识库</span></div>
+  <div class="stat"><span class="num" id="st-trk">30</span><span class="lbl">赛道</span></div>
+  <div class="stat"><span class="num" id="st-fin">220</span><span class="lbl">金融账本</span></div>
+</section>
+
+
+<!-- Section 1: 学习入口 -->
+<div class="section-title"><span class="dot"></span><h3>学习入口</h3><span class="sub">直接进入已上线的教育功能</span></div>
+
+<section class="hubs" id="hubs">
+  <a href="/login" class="hub" style="--hub-c1:var(--indigo);--hub-c2:var(--cyan)">
+    <div class="hub-head"><div class="hub-icon"><i class="mt-ico" data-icon="chat" aria-hidden="true"></i></div><h3>仙女座 AI 导师</h3></div>
+    <p>全场景 AI 对话学习导师 · 多模型实时切换 · 认知画像驱动个性化 · 175 知识库条目</p>
+    <div class="hub-tags"><span class="ok">实时在线</span><span>多模型</span><span class="new">认知画像</span></div>
+  </a>
+
+  <a href="/login#iceberg" class="hub" style="--hub-c1:var(--cyan);--hub-c2:var(--sky)">
+    <div class="hub-head"><div class="hub-icon"><i class="mt-ico" data-icon="globe" aria-hidden="true"></i></div><h3>冰山教育矩阵</h3></div>
+    <p>冰山 L1 认证入口 · 30+ 边界矩阵 · 20 项成就徽章 · 技能与认知双重评估</p>
+    <div class="hub-tags"><span class="ok">已上线</span><span>30+ 边界</span><span class="new">L1 认证</span></div>
+  </a>
+
+  <a href="/login#gobelin" class="hub" style="--hub-c1:var(--accent-gold,#fbbf24);--hub-c2:var(--warning,#f59e0b)">
+    <div class="hub-head"><div class="hub-icon"><i class="mt-ico" data-icon="shield" aria-hidden="true"></i></div><h3>🏦 古灵阁金融中心</h3></div>
+    <p>白名单入口（caopw / sa 直通）· 61 笔交易 · 22 张资产负债表 · 实时盈亏 + 风险归因</p>
+    <div class="hub-tags"><span class="hot">白名单</span><span>金融账本</span><span class="new">实时交易</span></div>
+  </a>
+
+  <a href="/exam-auto" class="hub" style="--hub-c1:var(--violet);--hub-c2:var(--indigo)">
+    <div class="hub-head"><div class="hub-icon"><i class="mt-ico" data-icon="doc" aria-hidden="true"></i></div><h3>考试院</h3></div>
+    <p>自动组卷 · 在线答题 · AI 自动批改 · 学情分析报告</p>
+    <div class="hub-tags"><span class="ok">已上线</span><span>自动批改</span></div>
+  </a>
+</section>
+
+<!-- Footer -->
+<footer class="footer">
+  <i class="mt-ico" data-icon="spiral" aria-hidden="true"></i> Andromeda Education Portal · 仙女座 AI 教育 · 金盾 v2.0 守护 · 2026
+  <div class="shield-tag"><i class="mt-ico" data-icon="shield" aria-hidden="true"></i> SHIELD PROTECTED · 15 LAYERS</div>
+</footer>
+
+<script>
+// ═══ copy_portal.json 统一文案注入 (v26.12 文案系统三套合一) ═══
+(async () => {
+  try {
+    const cp = await fetch('/static/copy_portal.json', {cache:'no-cache'}).then(r=>r.json());
+    // site title & meta
+    if (cp.site?.title) document.title = `${cp.site.title} | ${cp.site.title_en}`;
+    if (cp.site?.description) {
+      const meta = document.querySelector('meta[name="description"]');
+      if (meta) meta.content = cp.site.description;
+    }
+    // hero
+    if (cp.hero?.h2)  document.querySelector('.hero h2') && (document.querySelector('.hero h2').textContent = cp.hero.h2);
+    if (cp.hero?.p)   document.querySelector('.hero p') && (document.querySelector('.hero p').textContent = cp.hero.p);
+    if (cp.hero?.badge) document.querySelector('.hero .badge') && (document.querySelector('.hero .badge').innerHTML = `<i class="mt-ico" data-icon="brain"></i> ${cp.hero.badge}`);
+    // stats
+    if (cp.stats) {
+      const statEls = document.querySelectorAll('.stat');
+      statEls.forEach((el, i) => {
+        if (cp.stats[i]) {
+          el.innerHTML = `<span class="num">${cp.stats[i].num}</span><span class="lbl">${cp.stats[i].lbl}</span>`;
+        }
+      });
+    }
+    // footer
+    if (cp.site?.footer) {
+      document.querySelector('.footer') && (document.querySelector('.footer').innerHTML =
+        `<i class="mt-ico" data-icon="spiral"></i> ${cp.site.footer}
+         <div class="shield-tag"><i class="mt-ico" data-icon="shield"></i> SHIELD PROTECTED · 15 LAYERS</div>`);
+    }
+  } catch(e){ /* JSON fetch fail → keep static fallback silently */ console.info('[copy_portal] fallback:', e.message); }
+})();
+
+// Auth status
+(async () => {
+  try {
+    const me = await fetch('/api/auth/me', {credentials:'include'}).then(r=>r.json());
+    const btn = document.getElementById('authBtn');
+    const status = document.getElementById('authStatus');
+    if (me && me.logged_in) {
+      // 已登录: 显示用户名 + 进入系统
+      status.textContent = '👤 ' + (me.username || '学习者');
+      btn.textContent = '📥 进入系统';
+      btn.classList.remove('pulse-login');
+      btn.classList.add('btn-primary','btn-user');
+    } else {
+      // 未登录: 确保按钮是登录态
+      status.textContent = '🔒 未登录';
+      btn.textContent = '🚀 立即登录';
+      btn.classList.add('pulse-login');
+    }
+  } catch(e){
+    // API 不通 → 默认未登录
+    document.getElementById('authStatus').textContent = '🔒 未登录';
+  }
+  // Live stats from API
+  try {
+    const s = await fetch('/api/shield/status').then(r=>r.json());
+    document.getElementById('st-shield').textContent = (s.stats?.recent_events_1h || 0).toLocaleString();
+  } catch(e){}
+})();
+</script>
+<script src="/static/js/mtscos_icons.js" defer></script>
+</body>
+</html>

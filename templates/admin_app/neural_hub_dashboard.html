@@ -1,0 +1,416 @@
+{# AI 母体内核中枢 · Neural Hub 管理面板 (SA 专属 · VIKEY 强校验) #}
+{% extends 'admin_app/base.html' %}
+{% block title %}仙女座-阿尔法 · Andromeda-Alpha — MTSCOS AI 底层架构{% endblock %}
+{% block breadcrumb %}<li class="is-active"><a>{{ page_title or '仙女座-阿尔法 · AI 母体神经元中枢' }}</a></li>{% endblock %}
+
+{% block extra_head %}
+<style>
+  /* 仪表盘网格布局 */
+  .nh-stat-card { transition: all .2s; }
+  .nh-stat-card:hover { transform: translateY(-2px); }
+  .nh-guardrail-pass { color: #67c23a; }
+  .nh-guardrail-warn { color: #e6a23c; }
+  .nh-guardrail-fail { color: #f56c6c; }
+  .nh-route-row-success { border-left: 3px solid #67c23a; }
+  .nh-route-row-slow { border-left: 3px solid #e6a23c; }
+  .nh-route-row-fail { border-left: 3px solid #f56c6c; }
+  .nh-evolved-badge { background: linear-gradient(90deg, #67c23a, #409eff); color: white; font-size: 10px; padding: 1px 6px; border-radius: 4px; }
+  .nh-prompt-diff { font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 1.4; max-height: 180px; overflow-y: auto; background: rgba(0,0,0,0.2); padding: 8px; border-radius: 4px; }
+  .nh-tab-active { border-bottom: 2px solid #409eff; color: #409eff; }
+  .nh-loading { opacity: 0.5; }
+  .nh-spinner { display: inline-block; width: 12px; height: 12px; border: 2px solid currentColor; border-top-color: transparent; border-radius: 50%; animation: nh-spin .8s linear infinite; }
+  @keyframes nh-spin { to { transform: rotate(360deg); } }
+  .nh-refresh-btn { cursor: pointer; user-select: none; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="columns is-multiline mt-2">
+
+  {# ── 页面头 ── #}
+  <div class="column is-12">
+    <div class="box">
+      <div class="level">
+        <div class="level-left">
+          <div>
+            <p class="title is-4 mb-1">🌌 仙女座-阿尔法 · Andromeda-Alpha</p>
+            <p class="subtitle is-6 mb-0">
+              <strong>AI 母体神经元中枢 · 本地 Ollama 大模型 · 系统兜底底层架构</strong>
+              ｜ qwen2.5-coder:7b / qwen2.5:7b @ :11435 ｜ 23+ 路由 ｜ 自进化 4 护栏 ｜ VIKEY 铁律
+            </p>
+          </div>
+        </div>
+        <div class="level-right">
+          <span role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}" class="nh-refresh-btn button is-small is-info is-outlined" onclick="nhRefreshAll()">🔄 刷新</span>
+          <span role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click()}" class="nh-refresh-btn button is-small is-warning is-outlined" onclick="nhRunEvolutionCycle()">⚡ 触发进化一轮</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# ── 5 大统计卡 ── #}
+  <div class="column is-2"><div class="box nh-stat-card has-text-centered">
+    <p class="heading is-size-7">子系统路由</p>
+    <p class="title is-3 mb-1" id="nh-stat-routes">-</p>
+    <p class="is-size-7 has-text-grey">已注册 / 启用</p>
+  </div></div>
+  <div class="column is-2"><div class="box nh-stat-card has-text-centered">
+    <p class="heading is-size-7">总调用次数</p>
+    <p class="title is-3 mb-1" id="nh-stat-calls">-</p>
+    <p class="is-size-7 has-text-grey">累计所有子系统</p>
+  </div></div>
+  <div class="column is-2"><div class="box nh-stat-card has-text-centered">
+    <p class="heading is-size-7">成功率</p>
+    <p class="title is-3 mb-1" id="nh-stat-rate">-</p>
+    <p class="is-size-7 has-text-grey">近 N 次调用</p>
+  </div></div>
+  <div class="column is-2"><div class="box nh-stat-card has-text-centered">
+    <p class="heading is-size-7">Token 节省</p>
+    <p class="title is-3 mb-1" id="nh-stat-saved">-</p>
+    <p class="is-size-7 has-text-grey">本地推理引擎</p>
+  </div></div>
+  <div class="column is-4"><div class="box nh-stat-card">
+    <p class="heading is-size-7">🛡️ 自进化守护进程 (4 重护栏)</p>
+    <div id="nh-daemon-status" class="content is-size-7 mt-1">
+      <p class="nh-loading">加载中...</p>
+    </div>
+  </div></div>
+
+  {# ── 🌌 仙女座-阿尔法 · 自演化引擎实时状态 (追加 stat-card, 不碰现有 DOM) ── #}
+  <div class="column is-3"><div class="box nh-stat-card has-text-centered" style="border-top:3px solid #9B59B6">
+    <p class="heading is-size-7" style="color:#9B59B6">🌌 Cycle</p>
+    <p class="title is-3 mb-1" id="nh-az-cycle">-</p>
+    <p class="is-size-7 has-text-grey">衍生 / 强化</p>
+  </div></div>
+  <div class="column is-3"><div class="box nh-stat-card has-text-centered" style="border-top:3px solid #2E86DE">
+    <p class="heading is-size-7" style="color:#2E86DE">🧠 脑库 & 消息</p>
+    <p class="title is-3 mb-1" id="nh-az-brain">-</p>
+    <p class="is-size-7 has-text-grey">脑库行 / EigenFlux</p>
+  </div></div>
+  <div class="column is-3"><div class="box nh-stat-card has-text-centered" style="border-top:3px solid #FF6B9D">
+    <p class="heading is-size-7" style="color:#FF6B9D">🖥️ Mini</p>
+    <p class="title is-3 mb-1" id="nh-az-mini">-</p>
+    <p class="is-size-7 has-text-grey">Mac mini 双向同步</p>
+  </div></div>
+  <div class="column is-3"><div class="box nh-stat-card has-text-centered" style="border-top:3px solid #FFD700">
+    <p class="heading is-size-7" style="color:#F39C12">🛡️ Health</p>
+    <p class="title is-3 mb-1" id="nh-az-health">-</p>
+    <p class="is-size-7 has-text-grey">仙女座综合评分</p>
+  </div></div>
+
+  {# ── Tab 切换 ── #}
+  <div class="column is-12">
+    <div class="box">
+      <div class="tabs is-small mb-3">
+        <ul>
+          <li class="is-active" data-tab="routes"><a onclick="nhSwitchTab('routes')">📋 16 子系统路由</a></li>
+          <li data-tab="evolution"><a onclick="nhSwitchTab('evolution')">🧬 自进化日志</a></li>
+          <li data-tab="versions"><a onclick="nhSwitchTab('versions')">📜 Prompt 版本历史</a></li>
+        </ul>
+      </div>
+
+      {# Tab 1: 子系统路由表 #}
+      <div id="nh-tab-routes">
+        <div class="table-container">
+          <table class="table is-fullwidth is-size-7 is-hoverable">
+            <thead>
+              <tr>
+                <th>Task</th><th>Domain</th><th>模型</th><th>调用数</th>
+                <th>成功率</th><th>平均耗时</th><th>状态</th><th>最后进化</th>
+              </tr>
+            </thead>
+            <tbody id="nh-routes-body">
+              <tr><td colspan="8" class="has-text-center has-text-grey nh-loading">加载中...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {# Tab 2: 进化日志 #}
+      <div id="nh-tab-evolution" style="display:none;">
+        <table class="table is-fullwidth is-size-7 is-hoverable">
+          <thead>
+            <tr>
+              <th>时间</th><th>触发类型</th><th>目标任务</th>
+              <th>Rationale</th><th>应用状态</th><th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="nh-evolution-body">
+            <tr><td colspan="6" class="has-text-center has-text-grey nh-loading">加载中...</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      {# Tab 3: Prompt 版本历史 #}
+      <div id="nh-tab-versions" style="display:none;">
+        <div class="field is-horizontal mb-3">
+          <div class="field-label is-normal"><label>过滤任务:</label></div>
+          <div class="field-body"><div class="field">
+            <div class="control">
+              <input class="input is-small" id="nh-version-filter" type="text" placeholder="留空=全部, 或输入 task_name" oninput="nhLoadVersions()">
+            </div>
+          </div></div>
+        </div>
+        <table class="table is-fullwidth is-size-7 is-hoverable">
+          <thead>
+            <tr>
+              <th>ID</th><th>版本 Tag</th><th>任务</th>
+              <th>验证门禁</th><th>净化</th><th>限流</th>
+              <th>已应用</th><th>回滚自</th><th>时间</th><th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="nh-versions-body">
+            <tr><td colspan="10" class="has-text-center has-text-grey nh-loading">加载中...</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_body %}
+<script>
+/* =============================================================
+   Neural Hub Dashboard — 前端数据层
+   每 10s 自动刷新, 支持 SA 手动 rollback / 触发进化
+   ============================================================= */
+
+const NH = {
+  statsCache: null,
+  routesCache: null,
+  refreshTimer: null,
+
+  async api(path) {
+    try {
+      const r = await fetch(path);
+      return await r.json();
+    } catch (e) {
+      console.error('[NH] API error', path, e);
+      return { success: false, error: String(e) };
+    }
+  },
+
+  async postApi(path, body) {
+    try {
+      const token = document.cookie.match(/csrf_token=([^;]+)/)?.[1] || '';
+      const r = await fetch(path, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': token,
+        },
+        body: JSON.stringify(body),
+      });
+      return await r.json();
+    } catch (e) { return { success: false, error: String(e) }; }
+  },
+
+  renderStats(stats) {
+    document.getElementById('nh-stat-routes').textContent = stats?.routes_enabled ?? '-';
+    document.getElementById('nh-stat-calls').textContent = (stats?.total_calls ?? '-').toLocaleString();
+    const rate = stats?.success_rate;
+    document.getElementById('nh-stat-rate').textContent = rate != null ? (rate * 100).toFixed(1) + '%' : '-';
+    document.getElementById('nh-stat-saved').textContent = (stats?.tokens_saved ?? '-').toLocaleString();
+  },
+
+  /* 🌌 仙女座-阿尔法 自演化状态 (新增, 不碰现有逻辑) */
+  renderAndromeda(data) {
+    if (!data || !data.success) {
+      document.getElementById('nh-az-cycle').textContent = '-';
+      document.getElementById('nh-az-brain').textContent = '-';
+      document.getElementById('nh-az-mini').textContent = '—';
+      document.getElementById('nh-az-health').textContent = '—';
+      return;
+    }
+    const ev = data.evolution || {};
+    document.getElementById('nh-az-cycle').textContent =
+      '#' + (ev.cycle_count || 0);
+    const db = data.db_tables || {};
+    document.getElementById('nh-az-brain').textContent =
+      (db.brain_enhanced?.count || 0).toLocaleString();
+    const mini = (data.infra || {}).mini || {};
+    document.getElementById('nh-az-mini').textContent =
+      mini.alive ? '✅ ' + (mini.latency_ms || '?') + 'ms' : '❌ 离线';
+    const st = data.andromeda_status || {};
+    document.getElementById('nh-az-health').textContent =
+      (st.score ?? '-') + ' ' + (st.health === 'green' ? '🟢' : st.health === 'yellow' ? '🟡' : '🔴');
+  },
+
+  renderRoutes(routes) {
+    const body = document.getElementById('nh-routes-body');
+    if (!routes || !routes.length) {
+      body.innerHTML = '<tr><td colspan="8" class="has-text-centered">暂无路由</td></tr>';
+      return;
+    }
+    body.innerHTML = routes.map(r => {
+      const rateColor = r.success_rate > 0.95 ? '#67c23a' : r.success_rate > 0.8 ? '#e6a23c' : '#f56c6c';
+      const msColor = r.avg_ms < 30000 ? '#67c23a' : r.avg_ms < 60000 ? '#e6a23c' : '#f56c6c';
+      const statusBadge = r.call_count === 0
+        ? '<span class="tag is-light">未使用</span>'
+        : (r.success_rate < 0.8
+           ? '<span class="tag is-danger">异常</span>'
+           : r.avg_ms > 60000
+             ? '<span class="tag is-warning">慢</span>'
+             : '<span class="tag is-success">正常</span>');
+      const evolvedTag = r.evolved_at ? '<span class="nh-evolved-badge ml-1">🧬进化过</span>' : '';
+      return `<tr>
+        <td><code>${r.task}</code></td>
+        <td>${r.domain}</td>
+        <td><span class="tag is-info is-small">${r.model}</span></td>
+        <td>${(r.call_count || 0).toLocaleString()}</td>
+        <td><span style="color:${rateColor};font-weight:600">${((r.success_rate||0)*100).toFixed(1)}%</span></td>
+        <td><span style="color:${msColor}">${r.avg_ms ? r.avg_ms.toLocaleString() + 'ms' : '-'}</span></td>
+        <td>${statusBadge}</td>
+        <td class="is-size-8">${r.evolved_at || '-'}</td>
+      </tr>`;
+    }).join('');
+  },
+
+  renderDaemon(status) {
+    const el = document.getElementById('nh-daemon-status');
+    if (!status) { el.innerHTML = '<p class="nh-loading">加载失败</p>'; return; }
+    const g = status.guardrails || {};
+    const gr = Object.entries(g).map(([k, v]) =>
+      `<span class="tag is-success is-small ml-1" title="${v}">🛡️${k}</span>`).join('');
+    el.innerHTML = `
+      <p class="mb-1"><strong>${status.running ? '✅ 运行中' : '⏸️ 未启动'}</strong>
+        <span class="is-size-7 has-text-grey ml-2">interval=${status.interval_seconds}s cycles=${status.cycle_count}</span>
+      </p>
+      <p class="mb-0">${gr}</p>
+      ${status.last_run_at ? `<p class="is-size-8 has-text-grey mb-0">最近运行: ${status.last_run_at}</p>` : ''}
+    `;
+  },
+
+  renderEvolutionLogs(logs) {
+    const body = document.getElementById('nh-evolution-body');
+    if (!logs || !logs.length) {
+      body.innerHTML = '<tr><td colspan="6" class="has-text-centered">暂无进化记录（系统还没有产生失败/慢响应信号）</td></tr>';
+      return;
+    }
+    body.innerHTML = logs.map(l => {
+      const triggerIcon = l.trigger_type === 'error_spike' ? '🚨' : l.trigger_type === 'slow_response' ? '🐢' : '🔧';
+      return `<tr>
+        <td class="is-size-8">${l.created_at}</td>
+        <td>${triggerIcon} ${l.trigger_type}</td>
+        <td><code>${l.target_task}</code></td>
+        <td class="is-size-8" style="max-width:300px">${l.rationale_preview || '-'}</td>
+        <td>
+          ${l.applied
+            ? '<span class="tag is-success is-small">✅ 已应用</span>'
+            : '<span class="tag is-danger is-small">❌ 被拒绝</span>'}
+          ${l.approved_by ? `<span class="is-size-8 ml-1">(${l.approved_by})</span>` : ''}
+        </td>
+        <td>-</td>
+      </tr>`;
+    }).join('');
+  },
+
+  renderVersions(versions) {
+    const body = document.getElementById('nh-versions-body');
+    if (!versions || !versions.length) {
+      body.innerHTML = '<tr><td colspan="10" class="has-text-centered">暂无版本记录</td></tr>';
+      return;
+    }
+    body.innerHTML = versions.map(v => {
+      const rollbackable = v.applied && v.rollback_of == null;  // 已应用且自身不是 rollback
+      return `<tr>
+        <td>#${v.version_id}</td>
+        <td><code>${v.version_tag}</code></td>
+        <td><code>${v.task_name}</code></td>
+        <td>${v.validator_ok ? '✅' : '❌'}</td>
+        <td>${v.sanitized_ok ? '✅' : '❌'}</td>
+        <td>${v.rate_limit_ok ? '✅' : '❌'}</td>
+        <td>${v.applied ? '<span class="tag is-success is-small">Yes</span>' : '<span class="tag is-light">No</span>'}</td>
+        <td>${v.rollback_of ? `↩ #${v.rollback_of}` : '-'}</td>
+        <td class="is-size-8">${v.created_at}</td>
+        <td>
+          ${rollbackable ? `<button class="button is-small is-warning is-outlined" onclick="nhRollback(${v.version_id}, '${v.task_name}')">↩ 回滚</button>` : '-'}
+        </td>
+      </tr>`;
+    }).join('');
+  },
+
+  async loadAll() {
+    // 并行加载 4 个数据源 + 仙女座自演化状态
+    const [statsResp, routesResp, daemonResp, azResp] = await Promise.all([
+      this.api('/api/neuralhub/stats'),
+      this.api('/api/neuralhub/routes'),
+      this.api('/api/neuralhub/daemon_status'),
+      fetch('/api/andromeda/stats', { cache: 'no-store' }).then(r => r.ok ? r.json() : { success: false }).catch(() => ({})),
+    ]);
+    this.renderStats(statsResp.stats);
+    this.renderAndromeda(azResp);
+    this.renderRoutes(routesResp.routes || []);
+    this.renderDaemon(daemonResp.daemon);
+    this.routesCache = routesResp.routes || [];
+  },
+
+  async loadEvolutionLogs() {
+    const r = await this.api('/api/neuralhub/evolution_logs');
+    this.renderEvolutionLogs(r.logs || []);
+  },
+
+  async loadVersions() {
+    const filter = document.getElementById('nh-version-filter')?.value?.trim() || '';
+    const qs = filter ? `?task=${encodeURIComponent(filter)}` : '';
+    const r = await this.api(`/api/neuralhub/prompt_versions${qs}`);
+    this.renderVersions(r.versions || []);
+  },
+
+  async rollback(versionId, taskName) {
+    if (!confirm(`确定要把 ${taskName} 的 prompt 回滚到版本 #${versionId} 吗?\n此操作会立即生效, 但会被记录在案。`)) return;
+    const r = await this.postApi('/api/neuralhub/rollback', { version_id: versionId });
+    if (r.success) {
+      alert('✅ 回滚成功');
+      this.loadAll();
+      this.loadVersions();
+    } else {
+      alert('❌ 回滚失败: ' + (r.error || r.message || '未知错误'));
+    }
+  },
+
+  async runEvolutionCycle() {
+    if (!confirm('手动触发一轮自进化扫描?\n注意: 会调 qwen2.5-coder:7b, 耗时较长 (约 2-3 分钟)')) return;
+    const btn = document.querySelector('.nh-refresh-btn.button.is-warning');
+    const origText = btn.textContent;
+    btn.innerHTML = '<span class="nh-spinner"></span> 运行中...';
+    btn.disabled = true;
+    // 调 daemon.run_once 临时端点 (复用 cli)
+    await this.postApi('/api/console/run_cycle', { action: 'evolution_once' });
+    setTimeout(() => { btn.textContent = origText; btn.disabled = false; }, 3000);
+    // 3 秒后刷新
+    setTimeout(() => this.loadAll(), 5000);
+  },
+
+  startAutoRefresh() {
+    this.loadAll();
+    this.refreshTimer = setInterval(() => {
+      const activeTab = document.querySelector('.tabs li.is-active')?.dataset.tab;
+      this.loadAll();
+      if (activeTab === 'evolution') this.loadEvolutionLogs();
+      if (activeTab === 'versions') this.loadVersions();
+    }, 15000);
+  },
+};
+
+function nhSwitchTab(name) {
+  document.querySelectorAll('.tabs li').forEach(li => {
+    li.classList.toggle('is-active', li.dataset.tab === name);
+  });
+  document.getElementById('nh-tab-routes').style.display    = name === 'routes'    ? '' : 'none';
+  document.getElementById('nh-tab-evolution').style.display = name === 'evolution' ? '' : 'none';
+  document.getElementById('nh-tab-versions').style.display  = name === 'versions'  ? '' : 'none';
+  if (name === 'evolution') NH.loadEvolutionLogs();
+  if (name === 'versions')  NH.loadVersions();
+}
+function nhRefreshAll() { NH.loadAll(); const activeTab = document.querySelector('.tabs li.is-active')?.dataset.tab; if (activeTab==='evolution') NH.loadEvolutionLogs(); if (activeTab==='versions') NH.loadVersions(); }
+function nhLoadVersions() { NH.loadVersions(); }
+function nhRollback(id, task) { NH.rollback(id, task); }
+function nhRunEvolutionCycle() { NH.runEvolutionCycle(); }
+
+document.addEventListener('DOMContentLoaded', () => NH.startAutoRefresh());
+</script>
+{% endblock %}

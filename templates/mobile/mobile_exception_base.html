@@ -1,0 +1,34 @@
+{% extends "exception_base.html" %}
+{# mobile端专属异常基类 | L3设备外壳 | 主题色: --el-color-warning(橙) | chromeStyle: 紧凑全屏+底部TabBar #}
+{% block page_title %}{{ status }} MTSCOS Mobile{% endblock %}
+
+{% block device_chrome %}
+<style>
+  body.exception-page-mobile {
+    background: radial-gradient(800px 400px at 50% 0%, var(--el-color-warning-light-9) 0%, transparent 60%), var(--el-bg-color-page);
+    padding: var(--mtscos-spacing-md) var(--mtscos-spacing-sm) 80px;  /* 底部留80px给TabBar */
+    min-height: 100dvh;
+    box-sizing: border-box;
+  }
+  body.exception-page-mobile .exception-wrap { max-width: 100%; padding: 0; }
+  body.exception-page-mobile .mtscos-exception { padding: var(--mtscos-spacing-lg) var(--mtscos-spacing-md); }
+  body.exception-page-mobile .mtscos-exception__code { font-size: 80px; }  /* 移动端字号略小 */
+  body.exception-page-mobile .mtscos-exception__title { font-size: 18px; }
+  body.exception-page-mobile .mtscos-exception__description { font-size: 13px; }
+  body.exception-page-mobile .mtscos-btn { height: 44px; font-size: 15px; padding: 0 20px; width: 100%; margin-bottom: var(--mtscos-spacing-sm); }  /* 移动端按钮全宽+触摸友好 */
+  body.exception-page-mobile .mtscos-exception__actions { flex-direction: column; gap: var(--mtscos-spacing-sm); }
+  .mobile-tabbar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--el-bg-color); border-top: 1px solid var(--el-border-color-light); display: flex; z-index: 100; padding: 8px 0 var(--mtscos-spacing-sm); box-shadow: 0 -2px 8px rgba(0,0,0,0.06); }
+  .mobile-tabbar__item { flex: 1; text-align: center; text-decoration: none; color: var(--el-text-color-secondary); font-size: 11px; }
+  .mobile-tabbar__item--active { color: var(--el-color-warning); }
+  .mobile-tabbar__icon { font-size: 20px; display: block; margin-bottom: 2px; }
+</style>
+{% endblock %}
+
+{# 移动端底部TabBar 在 exception-wrap 之后追加 (page_footer块在exception-wrap之外) #}
+{% block page_footer %}
+<nav class="mobile-tabbar">
+  <a href="/mobile/home" class="mobile-tabbar__item mobile-tabbar__item--active"><span class="mobile-tabbar__icon">🏠</span>首页</a>
+  <a href="/mobile/exam" class="mobile-tabbar__item"><span class="mobile-tabbar__icon">📝</span>考试</a>
+  <a href="/mobile/profile" class="mobile-tabbar__item"><span class="mobile-tabbar__icon">👤</span>我的</a>
+</nav>
+{% endblock %}

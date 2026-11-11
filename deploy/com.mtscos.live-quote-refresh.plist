@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  com.mtscos.live-quote-refresh.plist
+  LIVE 层实时行情自动刷新 — 腾讯行情 API → mt_live_*
+  盘中每 5 分钟执行一次, 非交易时段也拉 (拉到最后收盘价, 无副作用)
+  
+  部署:
+    cp com.mtscos.live-quote-refresh.plist ~/Library/LaunchAgents/
+    launchctl load ~/Library/LaunchAgents/com.mtscos.live-quote-refresh.plist
+  
+  停止:
+    launchctl unload ~/Library/LaunchAgents/com.mtscos.live-quote-refresh.plist
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.mtscos.live-quote-refresh</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/bin/python3</string>
+        <string>-u</string>
+        <string>engines/live_layer_refresh.py</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/wuchenghao/MTSCOS_AI_Project/flask-app</string>
+
+    <!-- 每 300 秒 (5 分钟) 执行一次 -->
+    <key>StartInterval</key>
+    <integer>300</integer>
+
+    <!-- 启动时执行一次 -->
+    <key>RunAtLoad</key>
+    <true/>
+
+    <!-- 日志 -->
+    <key>StandardOutPath</key>
+    <string>/Users/wuchenghao/MTSCOS_AI_Project/_runtime/logs/live_quote_refresh.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/wuchenghao/MTSCOS_AI_Project/_runtime/logs/live_quote_refresh.err.log</string>
+
+    <!-- 环境变量 -->
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    </dict>
+</dict>
+</plist>

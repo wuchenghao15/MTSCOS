@@ -1,0 +1,11 @@
+{% extends "student/student_exception_base.html" %}
+{# student/400.html | E_TOKEN_MISSING | severity=warning | L3三端异常页 #}
+{% block exception_meta %}
+{% set status = 400 %}
+{% set err_code = 'E_TOKEN_MISSING' %}
+{% set title = '请求参数错误或CSRF缺失' %}
+{% set description = '请求被拒绝，可能由于缺少CSRF Token或参数不合法。' %}
+{% set repair = '请返回前页重新填写表单，或清除浏览器缓存后重试。' %}
+{% set severity = 'warning' %}
+{% set icon = '⚠️' %}
+{% endblock %}

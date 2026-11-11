@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>仙女座会议大厅 · 实时大屏</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  :root {
+  --accent-blue:#818cf8; --accent-purple:#f472b6; --accent-violet:#c084fc; --accent-cyan:#22d3ee; --accent-blue-2:#c7d2fe;
+  --danger:#f87171;
+  --success:#34d399; --success-2:#86efac;
+  --warning:#fbbf24;
+    --bg: #0a0e1a;
+    --bg2: #111827;
+    --panel: rgba(30,41,59,0.85);
+    --panel-border: rgba(99,102,241,0.35);
+    --active: #22c55e;
+    --idle: #64748b;
+    --amber: #f59e0b;
+    --emerald: #10b981;
+    --indigo: #6366f1;
+    --purple: #a855f7;
+    --pink: #ec4899;
+    --cyan: #06b6d4;
+    --text: #e2e8f0;
+    --dim: #94a3b8;
+  }
+  body {
+    font-family: -apple-system, "PingFang SC", "Segoe UI", sans-serif;
+    background: var(--bg);
+    background-image:
+      radial-gradient(ellipse 80% 50% at 50% -20%, rgba(99,102,241,0.15), transparent),
+      radial-gradient(ellipse 50% 40% at 100% 100%, rgba(168,85,247,0.08), transparent);
+    color: var(--text);
+    min-height: 100dvh;
+    overflow-x: hidden;
+  }
+
+  /* ===== Header ===== */
+  header {
+    padding: 16px 28px;
+    border-bottom: 1px solid var(--panel-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(10,14,26,0.9);
+    position: sticky; top: 0; z-index: 10;
+    backdrop-filter: blur(12px);
+  }
+  header h1 {
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    background: linear-gradient(90deg, var(--indigo), var(--purple), var(--pink));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  header .meta { display: flex; gap: 24px; font-size: 12px; color: var(--dim); }
+  header .meta b { color: var(--active); font-weight: 600; }
+  .pulse {
+    display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+    background: var(--active); margin-right: 6px;
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(1.3)} }
+
+  /* ===== Stats bar ===== */
+  .stats {
+    display: grid; grid-template-columns: repeat(4,1fr);
+    gap: 14px; padding: 18px 28px 10px;
+  }
+  .stat-card {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 12px;
+    padding: 16px 20px;
+    position: relative; overflow: hidden;
+  }
+  .stat-card::before {
+    content: ''; position: absolute; top:0; left:0; width: 4px; height: 100%;
+  }
+  .stat-card:nth-child(1)::before { background: var(--active); }
+  .stat-card:nth-child(2)::before { background: var(--indigo); }
+  .stat-card:nth-child(3)::before { background: var(--amber); }
+  .stat-card:nth-child(4)::before { background: var(--purple); }
+  .stat-card .num { font-size: 32px; font-weight: 800; letter-spacing: -1px; }
+  .stat-card .label { font-size: 12px; color: var(--dim); margin-top: 4px; text-transform: uppercase; letter-spacing: 1px; }
+
+  /* ===== Room wall ===== */
+  main { padding: 10px 28px 28px; }
+  .section-title {
+    font-size: 13px; font-weight: 600; letter-spacing: 3px; color: var(--dim);
+    margin: 18px 0 12px; text-transform: uppercase;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .section-title::after { flex:1; height:1px; background: linear-gradient(90deg, var(--panel-border), transparent); }
+
+  .room-wall {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 14px;
+  }
+  .room {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 14px;
+    padding: 16px 18px;
+    position: relative;
+    transition: transform .3s ease, box-shadow .3s ease;
+  }
+  .room:hover { transform: translateY(-2px); box-shadow: 0 10px 40px rgba(99,102,241,0.2); }
+  .room.active { border-color: rgba(34,197,94,0.5); box-shadow: 0 0 24px rgba(34,197,94,0.08) inset; }
+  .room.idle { opacity: .55; }
+  .room-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 10px;
+  }
+  .room-name { font-size: 15px; font-weight: 700; }
+  .room-code { font-size: 10px; color: var(--dim); font-family: monospace; }
+  .status-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+  }
+  .status-dot.on { background: var(--active); box-shadow: 0 0 12px var(--active); animation: pulse 2s infinite; }
+  .status-dot.off { background: var(--idle); }
+
+  /* Meeting inside room */
+  .meeting-title {
+    font-size: 13px; font-weight: 600; color: var(--text);
+    margin-bottom: 8px; line-height: 1.4;
+  }
+  .meeting-meta {
+    display: flex; gap: 12px; font-size: 11px; color: var(--dim);
+    margin-bottom: 10px; flex-wrap: wrap;
+  }
+  .meeting-meta span { display: inline-flex; align-items: center; gap: 4px; }
+  .badge {
+    display: inline-block; padding: 2px 8px; border-radius: 20px;
+    font-size: 10px; font-weight: 600;
+  }
+  .badge.roundtable { background: rgba(99,102,241,0.25); color: var(--accent-blue); }
+  .badge.self_check { background: rgba(16,185,129,0.25); color: var(--success); }
+  .badge.self_drive { background: rgba(168,85,247,0.25); color: var(--accent-violet); }
+  .badge.task_hall { background: rgba(245,158,11,0.25); color: var(--warning); }
+  .badge.emergency { background: rgba(236,72,153,0.25); color: var(--accent-purple); }
+  .badge.knowledge_feed { background: rgba(6,182,212,0.25); color: var(--accent-cyan); }
+  .badge.collaboration { background: rgba(239,68,68,0.25); color: var(--danger); }
+
+  /* AI attendees */
+  .attendees {
+    display: flex; gap: 6px; flex-wrap: wrap;
+    border-top: 1px dashed rgba(148,163,184,0.15);
+    padding-top: 10px;
+  }
+  .ai-avatar {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 8px; border-radius: 20px;
+    font-size: 11px; background: rgba(99,102,241,0.1);
+    border: 1px solid rgba(99,102,241,0.25);
+    color: var(--accent-blue-2);
+  }
+  .ai-avatar.host {
+    background: rgba(34,197,94,0.15);
+    border-color: rgba(34,197,94,0.4);
+    color: var(--success-2);
+  }
+  .ai-dot { width:6px; height:6px; border-radius:50%; background: var(--cyan); }
+  .ai-dot.host { background: var(--active); }
+
+  /* ===== Active meetings big board ===== */
+  .active-board {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 14px;
+    padding: 20px 22px;
+  }
+  .meeting-row {
+    display: grid;
+    grid-template-columns: 140px 1fr 110px 120px;
+    gap: 12px; align-items: center;
+    padding: 10px 12px;
+    border-bottom: 1px solid rgba(148,163,184,0.08);
+    font-size: 13px;
+  }
+  .meeting-row:last-child { border-bottom: none; }
+  .meeting-row .center { color: var(--dim); font-size: 12px; font-weight: 600; }
+  .meeting-row .title { font-weight: 600; color: var(--text); }
+  .meeting-row .host-col { font-size: 12px; color: var(--amber); }
+  .meeting-row .att-col { font-size: 12px; color: var(--cyan); }
+  .meeting-row .dur { font-size: 11px; color: var(--dim); font-family: monospace; text-align: right; }
+
+  /* ===== Empty ===== */
+  .empty { text-align: center; padding: 40px; color: var(--dim); font-size: 14px; }
+
+  /* ===== Auto-refresh toast ===== */
+  .refresh-toast {
+    position: fixed; bottom: 20px; right: 20px;
+    background: var(--panel); border: 1px solid var(--panel-border);
+    border-radius: 10px; padding: 8px 14px; font-size: 11px; color: var(--dim);
+    font-family: monospace; z-index: 100;
+  }
+  .refresh-toast b { color: var(--active); }
+
+  /* Responsive */
+  @media (max-width: 720px) {
+    .stats { grid-template-columns: repeat(2,1fr); }
+    header { flex-direction: column; gap: 8px; }
+    .meeting-row { grid-template-columns: 90px 1fr 80px; }
+    .meeting-row .dur { display: none; }
+  }
+.mt-ico{display:inline-block;width:1em;height:1em;vertical-align:-0.125em;flex:none}
+</style>
+</head>
+<body>
+
+<header>
+  <h1><i class="mt-ico" data-icon="bank" aria-hidden="true"></i> 仙女座会议大厅 · 实时大屏</h1>
+  <div class="meta">
+    <span><span class="pulse"></span><b id="live-status">LIVE</b></span>
+    <span><i class="mt-ico" data-icon="clock" aria-hidden="true"></i> <b id="clock">--:--:--</b></span>
+    <span><i class="mt-ico" data-icon="refresh" aria-hidden="true"></i> 自动刷新 <b>15s</b></span>
+  </div>
+</header>
+
+<div class="stats">
+  <div class="stat-card">
+    <div class="num" id="stat-rooms">--</div>
+    <div class="label">会议室总数</div>
+  </div>
+  <div class="stat-card">
+    <div class="num" id="stat-active">--</div>
+    <div class="label">活跃会议</div>
+  </div>
+  <div class="stat-card">
+    <div class="num" id="stat-ais">--</div>
+    <div class="label">AI 出席者</div>
+  </div>
+  <div class="stat-card">
+    <div class="num" id="stat-att">--</div>
+    <div class="label">总出席人次</div>
+  </div>
+</div>
+
+<main>
+  <!-- 活跃会议一览 -->
+  <div class="section-title"><i class="mt-ico" data-icon="dot-on" aria-hidden="true"></i> 正在进行</div>
+  <div class="active-board" id="active-board"><div class="empty">加载中...</div></div>
+
+  <!-- 会议室全景墙 -->
+  <div class="section-title"><i class="mt-ico" data-icon="home" aria-hidden="true"></i> 会议室房间墙</div>
+  <div class="room-wall" id="room-wall"><div class="empty">加载中...</div></div>
+</main>
+
+<div class="refresh-toast">
+  <i class="mt-ico" data-icon="refresh" aria-hidden="true"></i> 刷新于 <b id="last-refresh">--:--:--</b>
+</div>
+
+<script>
+const API = '/api/meetings';
+const TYPE_LABELS = {
+  roundtable: ['<i class="mt-ico" data-icon="target" aria-hidden="true"></i>','圆桌'],
+  self_check: ['<i class="mt-ico" data-icon="search" aria-hidden="true"></i>','自检'],
+  self_drive: ['<i class="mt-ico" data-icon="brain" aria-hidden="true"></i>','自驱动'],
+  task_hall: ['<i class="mt-ico" data-icon="inbox" aria-hidden="true"></i>','大厅 tick'],
+  emergency: ['<i class="mt-ico" data-icon="alert" aria-hidden="true"></i>','应急'],
+  knowledge_feed: ['<i class="mt-ico" data-icon="book" aria-hidden="true"></i>','脑库投喂'],
+  collaboration: ['<i class="mt-ico" data-icon="handshake" aria-hidden="true"></i>','跨中心协作'],
+};
+
+// 时钟
+setInterval(() => {
+  const d = new Date();
+  document.getElementById('clock').textContent = d.toLocaleTimeString('zh-CN', {hour12:false});
+}, 1000);
+
+async function fetchJSON(url) {
+  try {
+    const r = await fetch(url);
+    return await r.json();
+  } catch(e) { return null; }
+}
+
+async function refresh() {
+  const [active, rooms] = await Promise.all([
+    fetchJSON(API + '/active'),
+    fetchJSON(API + '/rooms'),
+  ]);
+  if (!active || !rooms) {
+    document.getElementById('live-status').textContent = 'OFFLINE';
+    document.getElementById('live-status').style.color = '#ef4444';
+    return;
+  }
+  document.getElementById('live-status').textContent = 'LIVE';
+  document.getElementById('live-status').style.color = '';
+  document.getElementById('last-refresh').textContent = new Date().toLocaleTimeString('zh-CN', {hour12:false});
+
+  // Stats
+  document.getElementById('stat-rooms').textContent = rooms.total_rooms;
+  document.getElementById('stat-active').textContent = active.total_active;
+  document.getElementById('stat-ais').textContent = active.unique_ais;
+  const totalAtt = active.meetings.reduce((s,m) => s + m.attendees_cnt, 0);
+  document.getElementById('stat-att').textContent = totalAtt;
+
+  // Active board
+  const ab = document.getElementById('active-board');
+  if (!active.meetings.length) {
+    ab.innerHTML = '<div class="empty">当前没有活跃会议</div>';
+  } else {
+    ab.innerHTML = active.meetings.map(m => {
+      const [icon, _] = TYPE_LABELS[m.meeting_type] || ['<i class="mt-ico" data-icon="clipboard" aria-hidden="true"></i>', m.meeting_type];
+      const dur = m.duration_min ? m.duration_min + 'min' : '--';
+      return `
+        <div class="meeting-row">
+          <div class="center">${icon} ${m.center_name}</div>
+          <div class="title">${m.title}</div>
+          <div class="host-col"><i class="mt-ico" data-icon="user" aria-hidden="true"></i> ${m.host_ai}</div>
+          <div class="att-col"><i class="mt-ico" data-icon="users" aria-hidden="true"></i> ${m.attendees_cnt} AI · <i class="mt-ico" data-icon="stopwatch" aria-hidden="true"></i> ${dur}</div>
+        </div>`;
+    }).join('');
+  }
+
+  // Room wall — 先建 ACTIVE 会议 map
+  const meetingByRoom = {};
+  active.meetings.forEach(m => { meetingByRoom[m.center_code] = m; });
+
+  const rw = document.getElementById('room-wall');
+  rw.innerHTML = rooms.rooms.map(r => {
+    const m = meetingByRoom[r.center_code];
+    const isActive = r.has_active && m;
+    const badgeType = m ? m.meeting_type : 'idle';
+    const [icon, label] = TYPE_LABELS[m?.meeting_type] || ['<i class="mt-ico" data-icon="dot-idle" aria-hidden="true"></i>', '空闲'];
+
+    if (!isActive) {
+      return `
+        <div class="room idle">
+          <div class="room-header">
+            <div>
+              <div class="room-name">${icon} ${r.name}</div>
+              <div class="room-code">${r.center_code}</div>
+            </div>
+            <div class="status-dot off"></div>
+          </div>
+          <div style="font-size:12px;color:var(--dim)">空闲中 · ${r.active_meetings} 活跃 / ${r.ended_meetings} 历史</div>
+        </div>`;
+    }
+
+    const host = m.host_ai;
+    const others = m.attendees.filter(a => a !== host);
+
+    return `
+      <div class="room active">
+        <div class="room-header">
+          <div>
+            <div class="room-name">${icon} ${r.name}</div>
+            <div class="room-code">${r.center_code}</div>
+          </div>
+          <div class="status-dot on"></div>
+        </div>
+        <div class="meeting-title">${m.title}</div>
+        <div class="meeting-meta">
+          <span class="badge ${badgeType}">${label}</span>
+          <span><i class="mt-ico" data-icon="stopwatch" aria-hidden="true"></i> 已开 ${m.duration_min || '--'}min</span>
+          <span><i class="mt-ico" data-icon="user" aria-hidden="true"></i> 主持 ${host}</span>
+        </div>
+        <div class="attendees">
+          <span class="ai-avatar host"><span class="ai-dot host"></span>${host}</span>
+          ${others.map(a => `<span class="ai-avatar"><span class="ai-dot"></span>${a}</span>`).join('')}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+refresh();
+setInterval(refresh, 15000);
+</script>
+<script src="/static/js/mtscos_icons.js" defer></script>
+</body>
+</html>

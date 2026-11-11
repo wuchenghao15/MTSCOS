@@ -1,0 +1,16 @@
+{
+  "date": "2026-11-07",
+  "sessions": [
+    {
+      "session_id": "SB-e3105ea094db",
+      "scenario": "WEEK",
+      "initial": 10000.0,
+      "current": 11665.99,
+      "pnl": 1665.99,
+      "pnl_pct": 16.66,
+      "status": "RUNNING"
+    }
+  ],
+  "trades_today": 0,
+  "total_pnl": 1665.99
+}

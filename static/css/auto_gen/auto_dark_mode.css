@@ -1,0 +1,8 @@
+/* auto_dark_mode v6.0 - 智能深色模式 */
+            html[data-theme="andromeda-dark"] {{ --dm-bg:#0B1F3A; --dm-catd:#132B4A; --dm-catter:#1B3760; --dm-tx:#E8ECF8; --dm-sec:#8892a8; --dm-brd:rgba(155,89,182,0.25); }}
+            html[data-theme="andromeda-dark"] body {{ background:var(--dm-bg); color:var(--dm-tx); }}
+            html[data-theme="andromeda-dark"] .card, html[data-theme="andromeda-dark"] .card-item {{ background:var(--dm-catd); border-color:var(--dm-brd); color:var(--dm-tx); }}
+            html[data-theme="andromeda-dark"] input, html[data-theme="andromeda-dark"] textarea {{ background:var(--dm-catter); color:var(--dm-tx); border-color:var(--dm-brd); }}
+            html[data-theme="andromeda-dark"] ::placeholder {{ color:var(--dm-sec); }}
+            html[data-theme="andromeda-dark"] button {{ border-color:var(--dm-brd); }}
+            @media (prefers-color-scheme: dark) {{ html:not([data-theme]) body {{ background:#0B1F3A; color:#E8ECF8; }} }}

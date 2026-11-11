@@ -1,0 +1,27 @@
+{
+  "audit_id": "FA-20261104_150508",
+  "executed_at": "2026-11-04 15:05:08",
+  "auditors": [
+    "CFO",
+    "精算师",
+    "CPA",
+    "审计师"
+  ],
+  "errors": [
+    "T+1 违规 1 笔"
+  ],
+  "warnings": [],
+  "ledger": {
+    "total_assets": 10096.62,
+    "cash": 3073.62,
+    "pos_value": 7023.0,
+    "n_positions": 4,
+    "realized_pnl": 183.78,
+    "unrealized_pnl": -37.44,
+    "total_fees": 85.38,
+    "gob_total": 0.0,
+    "n_trades": 16,
+    "勾稽差异": 49.7156
+  },
+  "verdict": "EXCEPTION"
+}

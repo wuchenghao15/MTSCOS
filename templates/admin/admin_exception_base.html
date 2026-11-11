@@ -1,0 +1,50 @@
+{% extends "exception_base.html" %}
+{# admin端专属异常基类 | L3设备外壳 | 主题色: --el-color-primary(蓝) | chromeStyle: 侧边栏 #}
+{% block page_title %}{{ status }} MTSCOS 管理后台{% endblock %}
+
+{% block device_chrome %}
+<style>
+  body.exception-page-admin {
+    background: radial-gradient(1200px 600px at 10% 0%, var(--el-color-primary-light-9) 0%, transparent 60%), var(--el-bg-color-page);
+    display: block;  /* 覆盖L1的flex居中,改用侧边栏布局 */
+    align-items: initial;
+    justify-content: initial;
+    padding: 0;
+  }
+  .admin-shell { display: flex; min-height: 100dvh; }
+  .admin-sidebar { width: 220px; background: var(--el-bg-color); border-right: 1px solid var(--el-border-color-light); padding: var(--mtscos-spacing-lg) var(--mtscos-spacing-md); flex-shrink: 0; box-shadow: var(--el-box-shadow-lighter); }
+  .admin-sidebar__logo { font-size: 16px; font-weight: var(--el-font-weight-bold); color: var(--el-color-primary); margin-bottom: var(--mtscos-spacing-lg); padding-bottom: var(--mtscos-spacing-md); border-bottom: 1px solid var(--el-border-color-lighter); }
+  .admin-sidebar__nav { display: flex; flex-direction: column; gap: var(--mtscos-spacing-xs); }
+  .admin-sidebar__item { display: flex; align-items: center; gap: var(--mtscos-spacing-sm); padding: var(--mtscos-spacing-sm) var(--mtscos-spacing-md); border-radius: var(--el-border-radius-base); color: var(--el-text-color-regular); text-decoration: none; font-size: 14px; transition: var(--mtscos-transition-base); }
+  .admin-sidebar__item:hover { background: var(--el-color-primary-light-9); color: var(--el-color-primary); }
+  .admin-sidebar__icon { font-size: 16px; }
+  .admin-main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  .admin-topbar { height: 56px; background: var(--el-bg-color); border-bottom: 1px solid var(--el-border-color-light); padding: 0 var(--mtscos-spacing-lg); display: flex; align-items: center; justify-content: space-between; font-size: 14px; color: var(--el-text-color-regular); flex-shrink: 0; }
+  .admin-topbar__user { color: var(--el-color-primary); font-weight: var(--el-font-weight-primary); }
+  .admin-content { flex: 1; display: flex; align-items: center; justify-content: center; padding: var(--mtscos-spacing-xl); }
+</style>
+<div class="admin-shell">
+  <aside class="admin-sidebar">
+    <div class="admin-sidebar__logo">📋 MTSCOS 管理后台</div>
+    <nav class="admin-sidebar__nav">
+      <a href="/admin/dashboard" class="admin-sidebar__item"><span class="admin-sidebar__icon">📊</span><span>仪表盘</span></a>
+      <a href="/admin/users" class="admin-sidebar__item"><span class="admin-sidebar__icon">👥</span><span>用户管理</span></a>
+      <a href="/admin/exams" class="admin-sidebar__item"><span class="admin-sidebar__icon">📝</span><span>考试管理</span></a>
+      <a href="/admin/settings" class="admin-sidebar__item"><span class="admin-sidebar__icon">⚙️</span><span>系统设置</span></a>
+      <a href="/" class="admin-sidebar__item"><span class="admin-sidebar__icon">🏠</span><span>前台首页</span></a>
+    </nav>
+  </aside>
+  <main class="admin-main">
+    <header class="admin-topbar">
+      <span>⚙️ 管理后台 · 异常中心</span>
+      <span class="admin-topbar__user">{{ session.get('username','管理员') if session else '管理员' }}</span>
+    </header>
+    <div class="admin-content">
+{% endblock %}
+
+{# admin-content div 在 exception-wrap 之后闭合, 用page_footer块(在exception-wrap之外) #}
+{% block page_footer %}
+    </div>{# /.admin-content #}
+  </main>
+</div>{# /.admin-shell #}
+{% endblock %}

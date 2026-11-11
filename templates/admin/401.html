@@ -1,0 +1,16 @@
+{% extends "admin/admin_exception_base.html" %}
+{# admin/401.html | E_AUTH_401 | severity=error | L3三端异常页 #}
+{% block exception_meta %}
+{% set status = 401 %}
+{% set err_code = 'E_AUTH_401' %}
+{% set title = '未登录或登录已过期' %}
+{% set description = '您需要登录后才能访问该页面，或者当前登录会话已过期。' %}
+{% set repair = '点击下方按钮跳转登录，重新认证后即可恢复访问。' %}
+{% set severity = 'error' %}
+{% set icon = '🔐' %}
+{% endblock %}
+{% block exception_actions %}
+<a href="/auth/login?redirect={{ request.path if request else '/' | urlencode }}" class="mtscos-btn mtscos-btn--primary mtscos-btn--round">🔐 去登录</a>
+<a href="/" class="mtscos-btn mtscos-btn--secondary mtscos-btn--round">🏠 返回首页</a>
+<button type="button" class="mtscos-btn mtscos-btn--default mtscos-btn--round" onclick="location.reload()">🔄 刷新</button>
+{% endblock %}

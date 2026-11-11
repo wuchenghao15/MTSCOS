@@ -1,0 +1,29 @@
+{
+  "date": "2026-11-09",
+  "sessions": [
+    {
+      "session_id": "SB-e3105ea094db",
+      "scenario": "WEEK",
+      "initial": 10000.0,
+      "current": 3028.9799999999996,
+      "position_value": 8627.0,
+      "total_value": 11655.98,
+      "pnl": 1655.98,
+      "pnl_pct": 16.56,
+      "status": "FROZEN"
+    },
+    {
+      "session_id": "SB-1ecde8d06f4d",
+      "scenario": "WEEK",
+      "initial": 10000.0,
+      "current": 10000.0,
+      "position_value": 0.0,
+      "total_value": 10000.0,
+      "pnl": 0.0,
+      "pnl_pct": 0.0,
+      "status": "RUNNING"
+    }
+  ],
+  "trades_today": 2,
+  "total_pnl": 1655.98
+}

@@ -1,0 +1,9 @@
+/* auto_responsive v6.0 - 三档断点 */
+            /* Desktop >= 1200px */
+            @media (min-width: 1200px) { .auto-cols { grid-template-columns: repeat(3, 1fr); } .andromeda-sidebar { width: 280px; overflow-y: auto; min-height: 0; } }
+            /* Tablet 768-1199px */
+            @media (min-width: 768px) and (max-width: 1199px) { .auto-cols { grid-template-columns: repeat(2, 1fr); } .andromeda-sidebar { width: 220px; overflow-y: auto; min-height: 0; } }
+            /* Mobile < 768px */
+            @media (max-width: 767px) { .auto-cols { grid-template-columns: 1fr; } .andromeda-sidebar { display: none; } .andromeda-sidebar.collapsed { display: block; position: fixed; bottom: 0; left: 0; right: 0; width: 100%; height: 50px; } }
+            /* 触摸手势区域 */
+            .auto-touch-area { min-width: 44px; min-height: 44px; padding: 8px; touch-action: manipulation; }

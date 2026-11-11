@@ -1,0 +1,41 @@
+# Cloudflare Tunnel — mtos.site 完整配置
+# =========================================================================
+# 步骤 1: 用户需先授权 cloudflared 访问 Cloudflare (需要浏览器交互)
+#         执行: /opt/homebrew/bin/cloudflared tunnel login
+#         浏览器选 mtos.site → 授权后 credentials.json 自动落到 ~/.cloudflared/
+#
+# 步骤 2: 创建 named tunnel (只需一次)
+#         /opt/homebrew/bin/cloudflared tunnel create mtscos-stock
+#         → 输出 tunnel ID (UUID)
+#
+# 步骤 3: 把本 config.yml 里的 credentials-file 替换为对应 tunnel 的 json
+#         /opt/homebrew/bin/cloudflared tunnel route dns mtscos-stock mtos.site
+#         → Cloudflare DNS 自动加 CNAME → *.cfargotunnel.com
+#
+# 步骤 4: 启动 tunnel
+#         /opt/homebrew/bin/cloudflared tunnel --config ~/.cloudflared/config.yml run mtscos-stock
+#
+# 步骤 5: 验证
+#         curl -s -o /dev/null -w "公网: %{http_code}\n" https://mtos.site/stock
+# =========================================================================
+
+# Tunnel 名称 (login + create 后替换)
+tunnel: mtscos-stock
+credentials-file: ~/.cloudflared/mtscos-stock.json
+
+# 路由规则 — hostname → 本地服务
+ingress:
+  # 🆕 仙女座沙盘操盘终端 — mtos.site 根路径全量代理到 Flask 5001
+  - hostname: mtos.site
+    service: http://localhost:5001
+  - hostname: www.mtos.site
+    service: http://localhost:5001
+  # 原有 iceberg.local (内网开发)
+  - hostname: iceberg.local
+    service: http://localhost:8888
+  # 兜底: 其他 hostname 返回 404
+  - service: http_status:404
+
+# DNS override (本地开发时不依赖外网 DNS)
+dns:
+  resolver: 127.0.0.1:15353

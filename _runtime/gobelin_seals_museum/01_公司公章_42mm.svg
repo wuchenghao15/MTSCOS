@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="158" height="158" viewBox="0 0 158 158">
+  <!-- 敲章整体透明度 (不是 100% 实心, 有轻微浓淡) -->
+  <g opacity="0.82">
+    <!-- 外圈: 红色描边, 无填充 (阳刻: 只有凸起边缘蘸到印泥) -->
+    <circle cx="79.0" cy="79.0" r="77.0" fill="none" stroke="#c8102e" stroke-width="4.5354330708" stroke-linecap="round"/>
+    <!-- 内圈: 细红色描边 -->
+    <circle cx="79.0" cy="79.0" r="72.4645669292" fill="none" stroke="#c8102e" stroke-width="2.2677165354"/>
+    <!-- 中央五角星: 只描边不填充! 敲出来中间是白色纸色 -->
+    <polygon points="79.00,52.54 84.94,70.82 104.16,70.82 88.61,82.12 94.55,100.40 79.00,89.11 63.45,100.40 69.39,82.12 53.84,70.82 73.06,70.82" fill="none" stroke="#c8102e" stroke-width="2.49448818894"/>
+    <!-- 五角星内部细线 (增强阳刻效果: 五条交叉对角线) -->
+    <line x1="70.82443227492377" y1="53.83818980547154"
+          x2="87.17556772507623" y2="53.83818980547154"
+          stroke="#c8102e" stroke-width="0.90708661416"/>
+    <!-- 上弧文字路径 -->
+    <path id="arc-top" d="M 21.653543306799996 79.0 A 57.346456693200004 57.346456693200004 0 1 1 136.3464566932 79.0" fill="none"/>
+    <!-- 上弧文字 (宋体, fill=红色 — 文字笔画本身就是凸起的, 笔画内部填满印泥) -->
+    <text font-family="SimSun, STSong, Songti, serif" font-size="30.236220472" font-weight="bold" fill="#c8102e" letter-spacing="auto">
+      <textPath href="#arc-top" startOffset="50%" text-anchor="middle">古灵阁证券交易有限公司</textPath></text>
+    <!-- 下弦章名 (红色填充文字) -->
+    <text x="79.0" y="165.929133857" font-family="SimSun, STSong, Songti, serif" font-size="25.7007874012"
+          fill="#c8102e" text-anchor="middle" font-weight="bold">公  章</text>
+    <!-- 日期小字 -->
+    <text x="79.0" y="196.165354329" font-family="Arial, monospace" font-size="13.6062992124"
+          fill="#c8102e" text-anchor="middle">2026.11.07</text>
+  </g>
+</svg>

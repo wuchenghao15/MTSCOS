@@ -1,0 +1,16 @@
+{
+ "history": [
+  {
+   "ts": "10-30 17:11",
+   "key": "nickname",
+   "value": "小明",
+   "level": "low"
+  },
+  {
+   "ts": "10-30 17:11",
+   "key": "theme",
+   "value": "粉色",
+   "level": "low"
+  }
+ ]
+}

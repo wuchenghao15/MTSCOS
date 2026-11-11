@@ -1,0 +1,387 @@
+/* ═══════════════════════════════════════════════════════════
+   冰山全局升级层 v2.0 · Global Upgrade Layer
+   目标:不动模板 DOM,用 CSS Layer 覆盖旧样式,让全系统自动升级
+   优先级:  Token层 < 组件层 < Tailwind < 旧模板 < ← THIS
+   配色:    青瓷卷(主系统) / 青瓷黛(深色) / 曜金(SA专属)
+   ═══════════════════════════════════════════════════════════ */
+
+/* ═══════════════════════════════════════════════════════════
+   Token 层 (顶级优先级,任何 @layer 都可引用)
+   ═══════════════════════════════════════════════════════════ */
+
+/* ─── 青瓷卷 · 主系统 Light Theme ─── */
+:root, [data-theme="andromeda"], [data-theme="porcelain"] {
+  --ice-bg-0:      #FAF7F0;     /* 纸底 */
+  --ice-bg-1:      #F5F0E5;     /* 主底 */
+  --ice-bg-2:      #FFFFFF;     /* 卡片 */
+  --ice-bg-3:      #EAF4F8;     /* 天青柔 */
+  --ice-surface:   rgba(255,255,255,0.72);
+  --ice-surface-blur: 16px;
+  
+  --ice-primary:    #5B8FB9;    /* 天青釉色 */
+  --ice-primary-2:  #7FB0D4;    /* 浅天青 */
+  --ice-primary-soft: rgba(91,143,185,0.12);
+  --ice-secondary:  #6FA88B;    /* 梅子青 */
+  --ice-accent:     #C9A961;    /* 曜石金 */
+  
+  --ice-ink-90:     #1C3046;    /* 深墨 */
+  --ice-ink-70:     #3D5468;    /* 中墨 */
+  --ice-ink-50:     #6B8AA4;    /* 浅墨 */
+  --ice-ink-30:     #AEC7D8;    /* 极浅 */
+  
+  --ice-up:         #4FBF7A;
+  --ice-down:       #C45656;
+  --ice-flat:       #6B8AA4;
+  
+  --ice-border:     rgba(91,143,185,0.15);
+  --ice-border-hi:  rgba(91,143,185,0.30);
+  
+  --ice-radius-sm:  6px;
+  --ice-radius-md:  10px;
+  --ice-radius-lg:  14px;
+  
+  --ice-shadow-1:   0 1px 2px rgba(28,48,70,0.06);
+  --ice-shadow-2:   0 4px 14px rgba(28,48,70,0.08);
+  --ice-shadow-3:   0 12px 36px rgba(28,48,70,0.12);
+  --ice-shadow-glow: 0 0 40px rgba(91,143,185,0.12);
+}
+
+/* ─── 3. 青瓷黛 · 深色 Dark Theme ─── */
+[data-theme="dark"], [data-theme="andromeda-dark"], [data-theme="celadon-dark"] {
+  --ice-bg-0:      #0B1220;
+  --ice-bg-1:      #0F1A2E;
+  --ice-bg-2:      #142238;
+  --ice-bg-3:      #1A2C47;
+  --ice-surface:   rgba(20,34,56,0.72);
+  
+  --ice-primary:    #7FB0D4;
+  --ice-primary-2:  #A0C8E0;
+  --ice-primary-soft: rgba(127,176,212,0.14);
+  --ice-secondary:  #8EC7AA;
+  --ice-accent:     #E0C27A;
+  
+  --ice-ink-90:     #EAF4F8;
+  --ice-ink-70:     #AEC7D8;
+  --ice-ink-50:     #6B8AA4;
+  --ice-ink-30:     #3D5468;
+  
+  --ice-up:         #5CD48F;
+  --ice-down:       #E07070;
+  
+  --ice-border:     rgba(127,176,212,0.18);
+  --ice-border-hi:  rgba(127,176,212,0.32);
+  
+  --ice-shadow-1:   0 1px 2px rgba(0,0,0,0.3);
+  --ice-shadow-2:   0 4px 14px rgba(0,0,0,0.35);
+  --ice-shadow-3:   0 12px 36px rgba(0,0,0,0.45);
+  --ice-shadow-glow: 0 0 40px rgba(127,176,212,0.15);
+}
+
+/* ─── 4. 曜金 · SA 专属 Gold Theme ─── */
+.sa-theme, [data-sa] {
+  --ice-primary:    #D4A017;    /* 曜金 */
+  --ice-primary-2:  #FFE08A;
+  --ice-primary-soft: rgba(212,160,23,0.14);
+  --ice-secondary:  #6EE7B7;
+  --ice-accent:     #FCA5A5;
+  
+  --ice-ink-90:     #F8FAFC;
+  --ice-ink-70:     rgba(248,250,252,0.75);
+  --ice-ink-50:     rgba(248,250,252,0.50);
+  
+  --ice-border:     rgba(212,160,23,0.20);
+  --ice-border-hi:  rgba(212,160,23,0.45);
+  
+  --ice-bg-0:      #0B0A1E;
+  --ice-bg-1:      #141030;
+  --ice-bg-2:      rgba(255,255,255,0.04);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   组件覆盖层 (@layer: 低于 Tailwind utilities, 高于普通 CSS)
+   ═══════════════════════════════════════════════════════════ */
+@layer global-upgrade {
+
+/* ─── 5. 排版层 Typography ─── */
+*, *::before, *::after { box-sizing: border-box }
+html { 
+  -webkit-font-smoothing: antialiased; 
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+body {
+  font-family: 'PingFang SC', 'Noto Sans SC', 'SF Pro Display',;
+               -apple-system, system-ui, BlinkMacSystemFont, 
+               'Microsoft YaHei', sans-serif !important;
+  font-feature-settings: "tnum" 1, "ss01" 1;
+  letter-spacing: 0.01em;
+}
+
+/* ─── 6. Body 背景 ─── */
+body {
+  background:;
+    radial-gradient(ellipse 80% 50% at 20% 0%, var(--ice-primary-soft), transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 100%, rgba(111,168,139,0.06), transparent 55%),
+    var(--ice-bg-1) !important;
+  background-attachment: fixed;
+  color: var(--ice-ink-70) !important;
+}
+
+[data-theme="dark"] body, [data-theme="andromeda-dark"] body {
+  background:;
+    radial-gradient(ellipse 60% 40% at 20% 0%, rgba(127,176,212,0.08), transparent 60%),
+    radial-gradient(ellipse 50% 50% at 100% 100%, rgba(142,199,170,0.06), transparent 55%),
+    var(--ice-bg-0) !important;
+}
+
+/* ─── 6. Card / Panel 统一 ─── */
+.card, .panel, .card-body, [class*="-card"], [class*="-panel"], 
+.ui-card, .data-card, .info-card {
+  background: var(--ice-surface) !important;
+  backdrop-filter: blur(var(--ice-surface-blur));
+  -webkit-backdrop-filter: blur(var(--ice-surface-blur));
+  border: 1px solid var(--ice-border) !important;
+  border-radius: var(--ice-radius-lg) !important;
+  box-shadow: var(--ice-shadow-1) !important;
+  transition: box-shadow .25s cubic-bezier(0.16,1,0.3,1),;
+              border-color .25s cubic-bezier(0.16,1,0.3,1),
+              transform .25s cubic-bezier(0.16,1,0.3,1) !important;
+}
+.card:hover, .panel:hover, [class*="-card"]:hover, [class*="-panel"]:hover {
+  border-color: var(--ice-border-hi) !important;
+  box-shadow: var(--ice-shadow-2) !important;
+  transform: translateY(-1px) !important;
+}
+
+/* ─── 7. Button 统一 ─── */
+.btn, [class*="btn-"], button.primary, button.action, 
+button[class*="primary"], button[class*="submit"] {
+  font-family: inherit !important;
+  font-weight: 600 !important;
+  font-size: 13px !important;
+  letter-spacing: 0.01em !important;
+  padding: 10px 20px !important;
+  border-radius: var(--ice-radius-md) !important;
+  border: none !important;
+  cursor: pointer !important;
+  transition: all .2s cubic-bezier(0.16,1,0.3,1) !important;
+  background: var(--ice-primary) !important;
+  color: #fff !important;
+  box-shadow: 0 2px 8px var(--ice-primary-soft) !important;
+}
+.btn:hover, [class*="btn-"]:hover, button.primary:hover {
+  background: var(--ice-primary-2) !important;
+  box-shadow: 0 4px 16px var(--ice-primary-soft) !important;
+  transform: translateY(-1px) !important;
+}
+.btn:active, [class*="btn-"]:active {
+  transform: translateY(0) !important;
+}
+.btn-outline, .btn-secondary {
+  background: transparent !important;
+  border: 1px solid var(--ice-border-hi) !important;
+  color: var(--ice-ink-70) !important;
+  box-shadow: none !important;
+}
+.btn-outline:hover {
+  border-color: var(--ice-primary) !important;
+  color: var(--ice-primary) !important;
+  background: var(--ice-primary-soft) !important;
+}
+.btn-danger, [class*="btn-danger"] {
+  background: var(--ice-down) !important;
+}
+.btn-success, [class*="btn-success"] {
+  background: var(--ice-up) !important;
+}
+
+/* ─── 8. Nav / Sidebar 统一 ─── */
+nav, .sidebar, [class*="-nav"], [class*="-sidebar"], 
+.uni-sidebar, .app-sidebar {
+  background: var(--ice-bg-0) !important;
+  border-right: 1px solid var(--ice-border) !important;
+}
+nav a, .sidebar a, [class*="-nav"] a, [class*="-sidebar"] a,
+nav [class*="-item"], .sidebar [class*="-item"] {
+  color: var(--ice-ink-50) !important;
+  border-radius: var(--ice-radius-sm) !important;
+  transition: all .2s cubic-bezier(0.16,1,0.3,1) !important;
+}
+nav a:hover, nav [class*="-item"]:hover {
+  color: var(--ice-primary) !important;
+  background: var(--ice-primary-soft) !important;
+}
+nav a.active, nav [class*="-item"].active {
+  color: var(--ice-primary) !important;
+  background: var(--ice-primary-soft) !important;
+  font-weight: 600 !important;
+}
+
+/* ─── 9. TopBar / Header 统一 ─── */
+.topbar, .navbar, [class*="-topbar"], [class*="-navbar"], 
+.uni-top, .app-header, header.top {
+  background: rgba(250,247,240,0.78) !important;
+  backdrop-filter: blur(18px) saturate(160%) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(160%) !important;
+  border-bottom: 1px solid var(--ice-border) !important;
+  height: 56px !important;
+}
+[data-theme="dark"] .topbar, [data-theme="dark"] .navbar,
+[data-theme="andromeda-dark"] .topbar {
+  background: rgba(11,18,32,0.82) !important;
+}
+
+/* ─── 10. 输入框统一 ─── */
+input, textarea, select, [class*="-input"], [class*="-field"] {
+  font-family: inherit !important;
+  font-size: 14px !important;
+  padding: 10px 14px !important;
+  border-radius: var(--ice-radius-md) !important;
+  border: 1px solid var(--ice-border) !important;
+  background: var(--ice-bg-2) !important;
+  color: var(--ice-ink-90) !important;
+  transition: all .2s cubic-bezier(0.16,1,0.3,1) !important;
+}
+input:focus, textarea:focus, select:focus {
+  outline: none !important;
+  border-color: var(--ice-primary) !important;
+  box-shadow: 0 0 0 3px var(--ice-primary-soft) !important;
+}
+input::placeholder, textarea::placeholder {
+  color: var(--ice-ink-30) !important;
+}
+
+/* ─── 11. 表格统一 ─── */
+table, [class*="-table"] {
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+}
+table th, [class*="-table"] th {
+  background: var(--ice-bg-1) !important;
+  color: var(--ice-ink-70) !important;
+  font-weight: 600 !important;
+  font-size: 12px !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+  padding: 12px 16px !important;
+  border-bottom: 1px solid var(--ice-border) !important;
+}
+table td, [class*="-table"] td {
+  padding: 12px 16px !important;
+  border-bottom: 1px solid var(--ice-border) !important;
+  color: var(--ice-ink-90) !important;
+  font-size: 14px !important;
+}
+table tr:hover td {
+  background: var(--ice-primary-soft) !important;
+}
+
+/* ─── 12. Badge / Tag 统一 ─── */
+.badge, [class*="-badge"], .tag, [class*="-tag"] {
+  font-family: inherit !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  padding: 4px 10px !important;
+  border-radius: 999px !important;
+  letter-spacing: 0.3px !important;
+}
+.badge-success, .tag-success, [class*="-badge"].success, [class*="-tag"].success {
+  background: var(--ice-up) !important;
+  color: #fff !important;
+}
+.badge-danger, .tag-danger, [class*="-badge"].danger, [class*="-tag"].danger {
+  background: var(--ice-down) !important;
+  color: #fff !important;
+}
+.badge-warning, .tag-warning, [class*="-badge"].warning, [class*="-tag"].warning {
+  background: var(--ice-accent) !important;
+  color: var(--ice-bg-0) !important;
+}
+
+/* ─── 13. 数字等宽 Tabular Nums ─── */
+.num, .money, .price, [class*="-num"], [class*="-money"], 
+[class*="-price"], td.num, span.num {
+  font-family: 'JetBrains Mono', 'SF Mono', 'Menlo', monospace !important;
+  font-variant-numeric: tabular-nums !important;
+  letter-spacing: -0.01em !important;
+}
+
+/* ─── 14. 滚动条统一 ─── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { 
+  background: var(--ice-ink-30); 
+  border-radius: 3px; 
+  transition: background .2s;
+}
+::-webkit-scrollbar-thumb:hover { 
+  background: var(--ice-primary); 
+}
+
+/* ─── 15. 入场动效 (通用) ─── */
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes pulse-ring {
+  0%   { transform: scale(0.6); opacity: 0.6; }
+  100% { transform: scale(1.8); opacity: 0; }
+}
+@keyframes float {
+  0%,100% { transform: translateY(0); }
+  50%     { transform: translateY(-4px); }
+}
+.anim-fade-up, [class*="fade-in"], [class*="slide-in"] {
+  animation: fade-up .5s cubic-bezier(0.16,1,0.3,1) both;
+}
+.anim-d1 { animation-delay: .05s; }
+.anim-d2 { animation-delay: .10s; }
+.anim-d3 { animation-delay: .15s; }
+.anim-d4 { animation-delay: .20s; }
+
+/* ─── 16. Bootstrap 兼容层 (旧模板用了这些 class) ─── */
+/* 把 Bootstrap 的 container/row/col 映射到现代 Flex */
+.container, .container-fluid {
+  max-width: 1440px !important;
+  margin: 0 auto !important;
+  padding: 0 24px !important;
+}
+.row {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 16px !important;
+}
+[class*="col-"] {
+  padding: 0 !important;
+  margin: 0 !important;
+}
+.col-md-4 { flex: 0 0 calc(33.333% - 12px); }
+.col-md-6 { flex: 0 0 calc(50% - 8px); }
+.col-md-8 { flex: 0 0 calc(66.666% - 8px); }
+.col-md-12, .col-12 { flex: 0 0 100%; }
+.col-lg-3 { flex: 0 0 calc(25% - 12px); }
+.col-lg-9 { flex: 0 0 calc(75% - 8px); }
+
+/* ─── 17. 旧样式中和 ─── */
+/* 很多模板硬写了 !important 的暗色背景,用更高优先级覆盖 */
+body > [style*="background: #0B"],;
+body > [style*="background:#0B"],;
+body > main > [style*="background"],
+body > .container > [style*="background"] {
+  background: transparent !important;
+}
+[class*="mtscos-lock-overlay"] {
+  display: none !important;
+}
+
+/* ─── 18. 深色模式全局覆盖 ─── */
+[data-theme="dark"] h1, [data-theme="dark"] h2, [data-theme="dark"] h3,
+[data-theme="dark"] h4, [data-theme="dark"] h5, [data-theme="dark"] h6 {
+  color: var(--ice-ink-90) !important;
+}
+[data-theme="dark"] p, [data-theme="dark"] span, [data-theme="dark"] li,
+[data-theme="dark"] label, [data-theme="dark"] td, [data-theme="dark"] th {
+  color: var(--ice-ink-70) !important;
+}
+
+} /* end global-upgrade layer */

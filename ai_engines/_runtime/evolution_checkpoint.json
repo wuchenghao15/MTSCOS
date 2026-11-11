@@ -1,0 +1,19 @@
+{
+  "similarity_threshold": 0.55,
+  "reinforce_threshold": 0.7,
+  "batch_size": 50,
+  "max_associations_per_item": 5,
+  "top_k_search": 10,
+  "derive_enabled": true,
+  "reinforce_enabled": true,
+  "last_knowledge_id": "AE-74121b9eca18",
+  "created_at_checkpoint": 1792622819.287633,
+  "eigenflux_ingest_enabled": true,
+  "eigenflux_last_msg_id": 0,
+  "eigenflux_total_ingested": 0,
+  "cycle_count": 446,
+  "total_vectors": 10739,
+  "total_derived": 13244,
+  "total_associations": 53675,
+  "total_reinforced": 1176743
+}

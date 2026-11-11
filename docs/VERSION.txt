@@ -1,0 +1,29 @@
+════ MTSCOS 版本快照 (自动生成·doc-sync 同步中心轨道) ════
+════ 生成时间: 2026-11-03 04:50 ════
+
+■ 当前版本: 7.6.1
+■ 版本注册 (活跃):
+    V_SECURITY_20261026 [v23.3-security] 安全铁律 + 5 分区 — 守卫对 22 条 + SA 否决 + 5 分区 100/100
+■ 最近升级:
+    7.6.0 → 7.6.1  success  2026-09-22 21:17:48
+    7.6.0 → 7.6.1  success  2026-09-22 18:20:34
+    7.6.0 → 7.6.1  success  2026-09-22 17:33:39
+■ 版本参数 (升级触发配置):
+    [ai_engine]
+      avg_ai_score_drop_pct = 5
+      enabled = True
+      learning_cycle_errors = 3
+      manual_allowed = True
+      min_interval = 3600
+      new_ai_employees = 2
+    [container_monitor]
+      container_errors_1m = 10
+      enabled = True
+      heartbeat_miss_pct = 5
+      manual_allowed = True
+      min_interval = 300
+    [exam_system]
+      enabled = True
+      exam_errors_1h = 5
+      manual_allowed = True
+      min_interval = 7200

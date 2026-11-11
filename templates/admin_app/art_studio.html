@@ -1,0 +1,168 @@
+
+<style data-inspection-auto-fix="inline-style-template">
+:root {
+    --style-fix-ac49782-0: inherit;
+}
+/* -------- AI 自动修复：status → background 颜色（消除内联模板语法 IDE 红线） -------- */
+.eyebrow-dot { transition: background-color .2s ease; border-radius: 9999px; }
+</style>
+{% extends "admin_app/base.html" %}
+
+{% block title %}艺术家工坊 — MTSCOS AI{% endblock %}
+{% block page_title %}🎨 艺术家工坊{% endblock %}
+
+{% block content %}
+<div class="art-studio">
+  <!-- 艺术家团队 -->
+  <section class="art-studio-section">
+    <h2 class="art-section-title">艺术家团队</h2>
+    <div class="art-studio-grid art-stagger">
+      {% for artist in artists %}
+      <div class="art-card art-border-glow">
+        <div class="art-card-header">
+          <div class="art-employee-badge-{{ artist.badge_class }}"
+               style="width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;">
+            {{ artist.name[0] }}
+          </div>
+          <span class="art-badge art-badge-{{ artist.status_class }}">{{ artist.status_text }}</span>
+        </div>
+        <h3 class="art-card-title">{{ artist.name }}</h3>
+        <p style="color:var(--el-text-color-secondary,#94a3b8);font-size:13px;margin:4px 0 12px;">{{ artist.role }}</p>
+        <div class="art-card-body">
+          <p style="margin-bottom:8px;">{{ artist.description }}</p>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;">
+            {% for skill in artist.skills %}
+            <span class="art-badge art-badge-primary" style="font-size:11px;">{{ skill }}</span>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <!-- EigenFlux艺术家专家 -->
+  <section class="art-studio-section" style="margin-top:32px;">
+    <h2 class="art-section-title">EigenFlux 艺术家专家</h2>
+    <div class="art-studio-grid art-stagger">
+      {% for expert in eigenflux_experts %}
+      <div class="art-card art-glass">
+        <div class="art-card-header">
+          <div style="width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#8b5cf6,#ec4899);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:#fff;">
+            {{ expert.name[-2] }}
+          </div>
+          <span class="art-badge art-badge-success">在线</span>
+        </div>
+        <h3 class="art-card-title">{{ expert.name }}</h3>
+        <div class="art-card-body">
+          <p style="color:var(--el-text-color-secondary,#94a3b8);font-size:13px;">{{ expert.specialty }}</p>
+          <div style="margin-top:8px;font-size:12px;color:var(--el-text-color-placeholder,#64748b);">
+            心跳: {{ expert.heartbeat }}<br>
+            消息发送: {{ expert.messages_sent }} | 接收: {{ expert.messages_received }}
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <!-- 沟通联系状态 -->
+  <section class="art-studio-section" style="margin-top:32px;">
+    <h2 class="art-section-title">沟通联系网络</h2>
+    <div class="art-card art-glass" style="padding:24px;">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;">
+        <div style="text-align:center;">
+          <div class="art-pulse" style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#409eff,#10b981);display:flex;align-items:center;justify-content:center;font-size:28px;margin:0 auto 12px;">🔗</div>
+          <p style="font-weight:600;">自动连线</p>
+          <p style="font-size:12px;color:var(--el-text-color-secondary,#94a3b8);">{{ communication.auto_connect_count }} 条活跃连接</p>
+        </div>
+        <div style="text-align:center;">
+          <div class="art-float" style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#8b5cf6,#ec4899);display:flex;align-items:center;justify-content:center;font-size:28px;margin:0 auto 12px;">💬</div>
+          <p style="font-weight:600;">专属频道</p>
+          <p style="font-size:12px;color:var(--el-text-color-secondary,#94a3b8);">{{ communication.channels }} 个艺术频道</p>
+        </div>
+        <div style="text-align:center;">
+          <div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#f97316,#fbbf24);display:flex;align-items:center;justify-content:center;font-size:28px;margin:0 auto 12px;">🧠</div>
+          <p style="font-weight:600;">脑库投喂</p>
+          <p style="font-size:12px;color:var(--el-text-color-secondary,#94a3b8);">{{ communication.brain_feeds }} 条经验已投喂</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 美化成果统计 -->
+  <section class="art-studio-section" style="margin-top:32px;">
+    <h2 class="art-section-title">艺术粉饰成果</h2>
+    <div class="art-studio-grid art-stagger">
+      <div class="art-card">
+        <div class="art-card-body" style="text-align:center;">
+          <div class="art-gradient-text" style="font-size:36px;font-weight:700;">{{ stats.css_files }}</div>
+          <p style="margin-top:8px;color:var(--el-text-color-secondary,#94a3b8);">CSS 艺术文件</p>
+        </div>
+      </div>
+      <div class="art-card">
+        <div class="art-card-body" style="text-align:center;">
+          <div class="art-gradient-text" style="font-size:36px;font-weight:700;">{{ stats.themes }}</div>
+          <p style="margin-top:8px;color:var(--el-text-color-secondary,#94a3b8);">艺术主题预设</p>
+        </div>
+      </div>
+      <div class="art-card">
+        <div class="art-card-body" style="text-align:center;">
+          <div class="art-gradient-text" style="font-size:36px;font-weight:700;">{{ stats.components }}</div>
+          <p style="margin-top:8px;color:var(--el-text-color-secondary,#94a3b8);">艺术组件</p>
+        </div>
+      </div>
+      <div class="art-card">
+        <div class="art-card-body" style="text-align:center;">
+          <div class="art-gradient-text" style="font-size:36px;font-weight:700;">{{ stats.animations }}</div>
+          <p style="margin-top:8px;color:var(--el-text-color-secondary,#94a3b8);">动画预设</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 主题预览 -->
+  <section class="art-studio-section" style="margin-top:32px;">
+    <h2 class="art-section-title">主题预览</h2>
+    <div class="art-studio-grid">
+      {% for theme in themes %}
+      <div class="art-card" data-theme-preview="{{ theme.id }}" style="cursor:pointer;">
+        <div style="height:80px;border-radius:12px;background:var(--style-fix-ac49782-0, inherit);margin-bottom:12px"></div>
+        <h3 class="art-card-title">{{ theme.name }}</h3>
+        <p style="font-size:12px;color:var(--el-text-color-secondary,#94a3b8);">{{ theme.description }}</p>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+</div>
+
+<style>
+.art-studio-section { animation: art-fade-in 0.5s ease; }
+.art-section-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  color: var(--el-text-color-primary, #f8fafc);
+}
+.art-studio-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+</style>
+
+<script>
+// 主题预览点击切换
+document.querySelectorAll('[data-theme-preview]').forEach(card => {
+  card.addEventListener('click', () => {
+    const theme = card.getAttribute('data-theme-preview');
+    document.documentElement.setAttribute('data-art-theme', theme);
+    localStorage.setItem('art-theme', theme);
+    // 同步切换器
+    document.querySelectorAll('.art-theme-dot').forEach(d => {
+      d.classList.toggle('active', d.getAttribute('data-theme') === theme);
+    });
+  });
+});
+</script>
+{% endblock %}

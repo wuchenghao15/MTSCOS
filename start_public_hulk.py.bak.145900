@@ -1,0 +1,71 @@
+#!/usr/bin/env python3
+"""
+hulk-macmini Public 8888 简化启动脚本
+只挂 sandbox_bp + 必要 blueprint, 跳过复杂 daemon
+"""
+from __future__ import annotations
+import os, sys
+
+_BASE = os.path.dirname(os.path.abspath(__file__))
+os.chdir(_BASE)
+sys.path.insert(0, _BASE)
+os.environ.setdefault('NODE_ROLE', 'SERVER')
+
+import logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s [PUBLIC-8888] %(message)s')
+log = logging.getLogger()
+log.info(f'🚀 Public 8888 starting, cwd={_BASE}')
+
+from flask import Flask, send_file, jsonify
+app = Flask(__name__, static_folder='static', static_url_path='/static')
+app.config['JSON_AS_ASCII'] = False
+
+@app.route('/')
+def root():
+    return send_file(os.path.join(_BASE, 'static', 'sandbox-trading-terminal.html'))
+
+@app.route('/Gobelin.html')
+@app.route('/gobelin.html')
+@app.route('/gobelin')
+@app.route('/Gobelin')
+def gobelin():
+    """古灵阁门户(多别名)"""
+    return send_file(os.path.join(_BASE, 'static', 'Gobelin.html'))
+
+@app.route('/health')
+def health():
+    return jsonify({'status': 'public-8888', 'pid': os.getpid()})
+
+try:
+    from blueprints.sandbox_bp import register_sandbox_bp
+    register_sandbox_bp(app)
+    log.info('✅ sandbox_bp registered')
+except Exception as e:
+    log.error(f'sandbox_bp err: {e}')
+
+try:
+    from blueprints.gobelin_bp import register_gobelin_bp
+    register_gobelin_bp(app)
+    log.info('✅ gobelin_bp registered')
+except Exception as e:
+    log.warning(f'⚠️ gobelin_bp: {e}')
+    import traceback; traceback.print_exc()
+
+
+try:
+    from blueprints.app_download_bp import app_download_bp
+    app.register_blueprint(app_download_bp)
+    log.info('✅ app_download_bp registered (/download · TH-20261031-0797 真包下载)')
+except Exception as e:
+    log.error(f'app_download_bp err: {e}')
+
+
+try:
+    from blueprints.xiaolong_app_bp import xiaolong_bp
+    app.register_blueprint(xiaolong_bp)
+    log.info('✅ xiaolong_bp registered (/xiaolong · 小龙 App PWA 本体, 真包打开目标)')
+except Exception as e:
+    log.error(f'xiaolong_bp err: {e}')
+
+log.info('🌐 Listening on 0.0.0.0:8888')
+app.run(host='0.0.0.0', port=8888, debug=False, threaded=True)

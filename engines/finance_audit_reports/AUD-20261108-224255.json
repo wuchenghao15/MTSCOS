@@ -1,0 +1,711 @@
+{
+  "audit_id": "AUD-20261108-224255",
+  "audit_type": "SCHEDULED_DAILY",
+  "date": "2026-11-08",
+  "generated_at": "2026-11-08 22:42:55",
+  "summary": {
+    "total_trades_checked": 61,
+    "sessions_checked": 30,
+    "dimensions": {
+      "D01": {
+        "pass": 0,
+        "warn": 0,
+        "fail": 0
+      },
+      "D02": {
+        "pass": 30,
+        "warn": 0,
+        "fail": 0
+      },
+      "D03": {
+        "pass": 0,
+        "warn": 0,
+        "fail": 0
+      },
+      "D04": {
+        "pass": 0,
+        "warn": 0,
+        "fail": 0
+      },
+      "D05": {
+        "pass": 0,
+        "warn": 0,
+        "fail": 0
+      },
+      "D06": {
+        "pass": 61,
+        "warn": 0,
+        "fail": 0
+      },
+      "D07": {
+        "pass": 0,
+        "warn": 0,
+        "fail": 0
+      },
+      "D08": {
+        "pass": 0,
+        "warn": 0,
+        "fail": 0
+      },
+      "D09": {
+        "pass": 30,
+        "warn": 0,
+        "fail": 0
+      },
+      "D10": {
+        "pass": 0,
+        "warn": 0,
+        "fail": 0
+      },
+      "D11": {
+        "pass": 0,
+        "warn": 0,
+        "fail": 0
+      },
+      "D12": {
+        "pass": 0,
+        "warn": 0,
+        "fail": 0
+      }
+    },
+    "overall_verdict": "WARN",
+    "risk_score": 100,
+    "critical_issues": 0,
+    "warn_issues": 15,
+    "info_items": 46
+  },
+  "details": {
+    "dual_write_consistency": {
+      "sb_count": 61,
+      "tl_count": 61,
+      "sb_only_ids": [],
+      "tl_only_ids": [],
+      "mismatch_count": 0,
+      "verdict": "PASS"
+    },
+    "cash_invariance": {
+      "sessions_checked": 30,
+      "pass": 30,
+      "warn": 0,
+      "fail": 0,
+      "session_details": [
+        {
+          "session_id": "SB-7a352b4a69a6",
+          "initial_cash": 10000.0,
+          "trades_count": 0,
+          "cash_delta_from_trades": 0.0,
+          "expected_cash_after_delta": 10000.0,
+          "actual_current_cash": 10000.0,
+          "gap": 0.0,
+          "gap_pct": 0.0,
+          "verdict": "PASS"
+        },
+        {
+          "session_id": "SB-9d7bc4e6dd97",
+          "initial_cash": 10000.0,
+          "trades_count": 0,
+          "cash_delta_from_trades": 0.0,
+          "expected_cash_after_delta": 10000.0,
+          "actual_current_cash": 10000.0,
+          "gap": 0.0,
+          "gap_pct": 0.0,
+          "verdict": "PASS"
+        },
+        {
+          "session_id": "SB-96517a0ecb8d",
+          "initial_cash": 10000.0,
+          "trades_count": 0,
+          "cash_delta_from_trades": 0.0,
+          "expected_cash_after_delta": 10000.0,
+          "actual_current_cash": 10000.0,
+          "gap": 0.0,
+          "gap_pct": 0.0,
+          "verdict": "PASS"
+        },
+        {
+          "session_id": "SB-7b089fea3860",
+          "initial_cash": 10000.0,
+          "trades_count": 0,
+          "cash_delta_from_trades": 0.0,
+          "expected_cash_after_delta": 10000.0,
+          "actual_current_cash": 10000.0,
+          "gap": 0.0,
+          "gap_pct": 0.0,
+          "verdict": "PASS"
+        },
+        {
+          "session_id": "SB-fb33cc4e623e",
+          "initial_cash": 10000.0,
+          "trades_count": 0,
+          "cash_delta_from_trades": 0.0,
+          "expected_cash_after_delta": 10000.0,
+          "actual_current_cash": 10000.0,
+          "gap": 0.0,
+          "gap_pct": 0.0,
+          "verdict": "PASS"
+        },
+        {
+          "session_id": "SB-290d343178fa",
+          "initial_cash": 10000.0,
+          "trades_count": 0,
+          "cash_delta_from_trades": 0.0,
+          "expected_cash_after_delta": 10000.0,
+          "actual_current_cash": 10000.0,
+          "gap": 0.0,
+          "gap_pct": 0.0,
+          "verdict": "PASS"
+        },
+        {
+          "session_id": "SB-0d4fe5553e3d",
+          "initial_cash": 10000.0,
+          "trades_count": 1,
+          "cash_delta_from_trades": -7475.0,
+          "expected_cash_after_delta": 2525.0,
+          "actual_current_cash": 2525.0,
+          "gap": 0.0,
+          "gap_pct": 0.0,
+          "verdict": "PASS"
+        },
+        {
+          "session_id": "SB-c21656a127a4",
+          "initial_cash": 10000.0,
+          "trades_count": 1,
+          "cash_delta_from_trades": -7475.0,
+          "expected_cash_after_delta": 2525.0,
+          "actual_current_cash": 2525.0,
+          "gap": 0.0,
+          "gap_pct": 0.0,
+          "verdict": "PASS"
+        },
+        {
+          "session_id": "SB-ad69dd076b49",
+          "initial_cash": 10000.0,
+          "trades_count": 1,
+          "cash_delta_from_trades": -7475.0,
+          "expected_cash_after_delta": 2525.0,
+          "actual_current_cash": 2525.0,
+          "gap": 0.0,
+          "gap_pct": 0.0,
+          "verdict": "PASS"
+        },
+        {
+          "session_id": "SB-4ff7924f2dcd",
+          "initial_cash": 10000.0,
+          "trades_count": 1,
+          "cash_delta_from_trades": -7475.0,
+          "expected_cash_after_delta": 2525.0,
+          "actual_current_cash": 2525.0,
+          "gap": 0.0,
+          "gap_pct": 0.0,
+          "verdict": "PASS"
+        },
+        {
+          "session_id": "SB-893fe4acb7c3",
+          "initial_cash": 10000.0,
+          "trades_count": 1,
+          "cash_delta_from_trades": -7475.0,
+          "expected_cash_after_delta": 2525.0,
+          "actual_current_cash": 2525.0,
+          "gap": 0.0,
+          "gap_pct": 0.0,
+          "verdict": "PASS"
+        },
+        {
+          "session_id": "SB-90d73faf4b9e",
+          "initial_cash": 10000.0,
+          "trades_count": 8,
+          "cash_delta_from_trades": 134.71,
+          "expected_cash_after_delta": 10134.71,
+          "actual_current_cash": 10134.71,
+          "gap": 0.0,
+          "gap_pct": 0.0,
+          "verdict": "PASS"
+        },
+        {
+          "session_id": "SB-46b837317e95",
+          "initial_cash": 10000.0,
+          "trades_count": 19,
+          "cash_delta_from_trades": -5700.06,
+          "expected_cash_after_delta": 4299.94,
+          "actual_current_cash": 4299.93,
+          "gap": 0.01,
+          "gap_pct": 0.0003,
+          "verdict": "PASS"
+        },
+        {
+          "session_id": "SB-cf96e1f7c13f",
+          "initial_cash": 10000.0,
+          "trades_count": 0,
+          "cash_delta_from_trades": 0.0,
+          "expected_cash_after_delta": 10000.0,
+          "actual_current_cash": 10000.0,
+          "gap": 0.0,
+          "gap_pct": 0.0,
+          "verdict": "PASS"
+        },
+        {
+          "session_id": "SB-9901f057388a",
+          "initial_cash": 10000.0,
+          "trades_count": 1,
+          "cash_delta_from_trades": -7475.0,
+          "expected_cash_after_delta": 2525.0,
+          "actual_current_cash": 2525.0,
+          "gap": 0.0,
+          "gap_pct": 0.0,
+          "verdict": "PASS"
+        },
+        {
+          "session_id": "SB-8aa990c5b840",
+          "initial_cash": 10000.0,
+          "trades_count": 0,
+          "cash_delta_from_trades": 0.0,
+          "expected_cash_after_delta": 10000.0,
+          "actual_current_cash": 10000.0,
+          "gap": 0.0,
+          "gap_pct": 0.0,
+          "verdict": "PASS"
+        },
+        {
+          "session_id": "SB-ec16bd635406",
+          "initial_cash": 10000.0,
+          "trades_count": 3,
+          "cash_delta_from_trades": -8201.61,
+          "expected_cash_after_delta": 1798.39,
+          "actual_current_cash": 1798.39,
+          "gap": 0.0,
+          "gap_pct": 0.0002,
+          "verdict": "PASS"
+        },
+        {
+          "session_id": "SB-041c1c388719",
+          "initial_cash": 10000.0,
+          "trades_count": 2,
+          "cash_delta_from_trades": -55.79,
+          "expected_cash_after_delta": 9944.21,
+          "actual_current_cash": 9944.21,
+          "gap": 0.0,
+          "gap_pct": 0.0,
+          "verdict": "PASS"
+        },
+        {
+          "session_id": "SB-cbbc14e3b882",
+          "initial_cash": 10000.0,
+          "trades_count": 1,
+          "cash_delta_from_trades": -4905.0,
+          "expected_cash_after_delta": 5095.0,
+          "actual_current_cash": 5095.0,
+          "gap": 0.0,
+          "gap_pct": 0.0,
+          "verdict": "PASS"
+        },
+        {
+          "session_id": "SB-abd2b4d82ae4",
+          "initial_cash": 10000.0,
+          "trades_count": 1,
+          "cash_delta_from_trades": -5418.0,
+          "expected_cash_after_delta": 4582.0,
+          "actual_current_cash": 4582.0,
+          "gap": 0.0,
+          "gap_pct": 0.0,
+          "verdict": "PASS"
+        },
+        {
+          "session_id": "SB-2f309fdb5eb2",
+          "initial_cash": 10000.0,
+          "trades_count": 1,
+          "cash_delta_from_trades": -5417.0,
+          "expected_cash_after_delta": 4583.0,
+          "actual_current_cash": 4583.0,
+          "gap": 0.0,
+          "gap_pct": 0.0,
+          "verdict": "PASS"
+        },
+        {
+          "session_id": "SB-d6baa2733d7d",
+          "initial_cash": 10000.0,
+          "trades_count": 1,
+          "cash_delta_from_trades": -5417.0,
+          "expected_cash_after_delta": 4583.0,
+          "actual_current_cash": 4583.0,
+          "gap": 0.0,
+          "gap_pct": 0.0,
+          "verdict": "PASS"
+        },
+        {
+          "session_id": "SB-d9932d14bccc",
+          "initial_cash": 10000.0,
+          "trades_count": 1,
+          "cash_delta_from_trades": -5413.0,
+          "expected_cash_after_delta": 4587.0,
+          "actual_current_cash": 4587.0,
+          "gap": 0.0,
+          "gap_pct": 0.0,
+          "verdict": "PASS"
+        },
+        {
+          "session_id": "SB-43b803a6b4aa",
+          "initial_cash": 10000.0,
+          "trades_count": 1,
+          "cash_delta_from_trades": -5411.0,
+          "expected_cash_after_delta": 4589.0,
+          "actual_current_cash": 4589.0,
+          "gap": 0.0,
+          "gap_pct": 0.0,
+          "verdict": "PASS"
+        },
+        {
+          "session_id": "SB-2041bd7c04f7",
+          "initial_cash": 10000.0,
+          "trades_count": 1,
+          "cash_delta_from_trades": -5421.0,
+          "expected_cash_after_delta": 4579.0,
+          "actual_current_cash": 4579.0,
+          "gap": 0.0,
+          "gap_pct": 0.0,
+          "verdict": "PASS"
+        },
+        {
+          "session_id": "SB-3848b412cac0",
+          "initial_cash": 10000.0,
+          "trades_count": 1,
+          "cash_delta_from_trades": -5416.0,
+          "expected_cash_after_delta": 4584.0,
+          "actual_current_cash": 4584.0,
+          "gap": 0.0,
+          "gap_pct": 0.0,
+          "verdict": "PASS"
+        },
+        {
+          "session_id": "SB-107c22df00ad",
+          "initial_cash": 10000.0,
+          "trades_count": 1,
+          "cash_delta_from_trades": -5413.0,
+          "expected_cash_after_delta": 4587.0,
+          "actual_current_cash": 4587.0,
+          "gap": 0.0,
+          "gap_pct": 0.0,
+          "verdict": "PASS"
+        },
+        {
+          "session_id": "SB-71bdfe0b10a3",
+          "initial_cash": 10000.0,
+          "trades_count": 1,
+          "cash_delta_from_trades": -5417.0,
+          "expected_cash_after_delta": 4583.0,
+          "actual_current_cash": 4583.0,
+          "gap": 0.0,
+          "gap_pct": 0.0,
+          "verdict": "PASS"
+        },
+        {
+          "session_id": "SB-61392b12b335",
+          "initial_cash": 10000.0,
+          "trades_count": 1,
+          "cash_delta_from_trades": -5423.0,
+          "expected_cash_after_delta": 4577.0,
+          "actual_current_cash": 4577.0,
+          "gap": 0.0,
+          "gap_pct": 0.0,
+          "verdict": "PASS"
+        },
+        {
+          "session_id": "SB-e3105ea094db",
+          "initial_cash": 10000.0,
+          "trades_count": 12,
+          "cash_delta_from_trades": 1665.98,
+          "expected_cash_after_delta": 11665.98,
+          "actual_current_cash": 11665.98,
+          "gap": 0.0,
+          "gap_pct": 0.0,
+          "verdict": "PASS"
+        }
+      ]
+    },
+    "position_rebuild": {
+      "sessions_checked": 30,
+      "pass": 30,
+      "warn": 0,
+      "fail": 0,
+      "session_details": [
+        {
+          "session_id": "SB-7a352b4a69a6",
+          "symbols_in_rebuild": 0,
+          "symbols_in_portfolio": 0,
+          "mismatches": [],
+          "verdict": "PASS"
+        },
+        {
+          "session_id": "SB-9d7bc4e6dd97",
+          "symbols_in_rebuild": 0,
+          "symbols_in_portfolio": 0,
+          "mismatches": [],
+          "verdict": "PASS"
+        },
+        {
+          "session_id": "SB-96517a0ecb8d",
+          "symbols_in_rebuild": 0,
+          "symbols_in_portfolio": 0,
+          "mismatches": [],
+          "verdict": "PASS"
+        },
+        {
+          "session_id": "SB-7b089fea3860",
+          "symbols_in_rebuild": 0,
+          "symbols_in_portfolio": 0,
+          "mismatches": [],
+          "verdict": "PASS"
+        },
+        {
+          "session_id": "SB-fb33cc4e623e",
+          "symbols_in_rebuild": 0,
+          "symbols_in_portfolio": 0,
+          "mismatches": [],
+          "verdict": "PASS"
+        },
+        {
+          "session_id": "SB-290d343178fa",
+          "symbols_in_rebuild": 0,
+          "symbols_in_portfolio": 0,
+          "mismatches": [],
+          "verdict": "PASS"
+        },
+        {
+          "session_id": "SB-0d4fe5553e3d",
+          "symbols_in_rebuild": 1,
+          "symbols_in_portfolio": 1,
+          "mismatches": [],
+          "verdict": "PASS"
+        },
+        {
+          "session_id": "SB-c21656a127a4",
+          "symbols_in_rebuild": 1,
+          "symbols_in_portfolio": 1,
+          "mismatches": [],
+          "verdict": "PASS"
+        },
+        {
+          "session_id": "SB-ad69dd076b49",
+          "symbols_in_rebuild": 1,
+          "symbols_in_portfolio": 1,
+          "mismatches": [],
+          "verdict": "PASS"
+        },
+        {
+          "session_id": "SB-4ff7924f2dcd",
+          "symbols_in_rebuild": 1,
+          "symbols_in_portfolio": 1,
+          "mismatches": [],
+          "verdict": "PASS"
+        },
+        {
+          "session_id": "SB-893fe4acb7c3",
+          "symbols_in_rebuild": 1,
+          "symbols_in_portfolio": 1,
+          "mismatches": [],
+          "verdict": "PASS"
+        },
+        {
+          "session_id": "SB-90d73faf4b9e",
+          "symbols_in_rebuild": 0,
+          "symbols_in_portfolio": 0,
+          "mismatches": [],
+          "verdict": "PASS"
+        },
+        {
+          "session_id": "SB-46b837317e95",
+          "symbols_in_rebuild": 1,
+          "symbols_in_portfolio": 1,
+          "mismatches": [],
+          "verdict": "PASS"
+        },
+        {
+          "session_id": "SB-cf96e1f7c13f",
+          "symbols_in_rebuild": 0,
+          "symbols_in_portfolio": 0,
+          "mismatches": [],
+          "verdict": "PASS"
+        },
+        {
+          "session_id": "SB-9901f057388a",
+          "symbols_in_rebuild": 1,
+          "symbols_in_portfolio": 1,
+          "mismatches": [],
+          "verdict": "PASS"
+        },
+        {
+          "session_id": "SB-8aa990c5b840",
+          "symbols_in_rebuild": 0,
+          "symbols_in_portfolio": 0,
+          "mismatches": [],
+          "verdict": "PASS"
+        },
+        {
+          "session_id": "SB-ec16bd635406",
+          "symbols_in_rebuild": 1,
+          "symbols_in_portfolio": 1,
+          "mismatches": [],
+          "verdict": "PASS"
+        },
+        {
+          "session_id": "SB-041c1c388719",
+          "symbols_in_rebuild": 0,
+          "symbols_in_portfolio": 0,
+          "mismatches": [],
+          "verdict": "PASS"
+        },
+        {
+          "session_id": "SB-cbbc14e3b882",
+          "symbols_in_rebuild": 1,
+          "symbols_in_portfolio": 1,
+          "mismatches": [],
+          "verdict": "PASS"
+        },
+        {
+          "session_id": "SB-abd2b4d82ae4",
+          "symbols_in_rebuild": 1,
+          "symbols_in_portfolio": 1,
+          "mismatches": [],
+          "verdict": "PASS"
+        },
+        {
+          "session_id": "SB-2f309fdb5eb2",
+          "symbols_in_rebuild": 1,
+          "symbols_in_portfolio": 1,
+          "mismatches": [],
+          "verdict": "PASS"
+        },
+        {
+          "session_id": "SB-d6baa2733d7d",
+          "symbols_in_rebuild": 1,
+          "symbols_in_portfolio": 1,
+          "mismatches": [],
+          "verdict": "PASS"
+        },
+        {
+          "session_id": "SB-d9932d14bccc",
+          "symbols_in_rebuild": 1,
+          "symbols_in_portfolio": 1,
+          "mismatches": [],
+          "verdict": "PASS"
+        },
+        {
+          "session_id": "SB-43b803a6b4aa",
+          "symbols_in_rebuild": 1,
+          "symbols_in_portfolio": 1,
+          "mismatches": [],
+          "verdict": "PASS"
+        },
+        {
+          "session_id": "SB-2041bd7c04f7",
+          "symbols_in_rebuild": 1,
+          "symbols_in_portfolio": 1,
+          "mismatches": [],
+          "verdict": "PASS"
+        },
+        {
+          "session_id": "SB-3848b412cac0",
+          "symbols_in_rebuild": 1,
+          "symbols_in_portfolio": 1,
+          "mismatches": [],
+          "verdict": "PASS"
+        },
+        {
+          "session_id": "SB-107c22df00ad",
+          "symbols_in_rebuild": 1,
+          "symbols_in_portfolio": 1,
+          "mismatches": [],
+          "verdict": "PASS"
+        },
+        {
+          "session_id": "SB-71bdfe0b10a3",
+          "symbols_in_rebuild": 1,
+          "symbols_in_portfolio": 1,
+          "mismatches": [],
+          "verdict": "PASS"
+        },
+        {
+          "session_id": "SB-61392b12b335",
+          "symbols_in_rebuild": 1,
+          "symbols_in_portfolio": 1,
+          "mismatches": [],
+          "verdict": "PASS"
+        },
+        {
+          "session_id": "SB-e3105ea094db",
+          "symbols_in_rebuild": 0,
+          "symbols_in_portfolio": 0,
+          "mismatches": [],
+          "verdict": "PASS"
+        }
+      ]
+    },
+    "pnl_reconciliation": {
+      "snapshots_checked": 30,
+      "pass": 30,
+      "warn": 0,
+      "fail": 0
+    },
+    "fee_tax_recalc": {
+      "trades_checked": 61,
+      "fee_mismatch_count": 0,
+      "tax_mismatch_count": 0,
+      "fee_total_diff": 0.0,
+      "tax_total_diff": 0.0
+    },
+    "pattern_scan": {
+      "cross_trades_count": 15,
+      "frequent_traders_count": 0,
+      "cross_trades_sample": [
+        {
+          "session_id": "SB-041c1c388719",
+          "symbol": "sh601318",
+          "time": "2026-11-02 07:12:49",
+          "trades": [
+            "T-2040effc7869",
+            "T-e0ed7522620e"
+          ]
+        },
+        {
+          "session_id": "SB-46b837317e95",
+          "symbol": "sh601318",
+          "time": "2026-11-02 06:51:17",
+          "trades": [
+            "T-1d71bf90c75e",
+            "T-c66d1685efc1",
+            "T-e91b3b653b3b"
+          ]
+        },
+        {
+          "session_id": "SB-46b837317e95",
+          "symbol": "sh601318",
+          "time": "2026-11-02 06:51:18",
+          "trades": [
+            "T-79f7bec41e4b",
+            "T-c081e1bbdf32"
+          ]
+        },
+        {
+          "session_id": "SB-46b837317e95",
+          "symbol": "sz002594",
+          "time": "2026-11-02 06:51:18",
+          "trades": [
+            "T-18e8cf371826",
+            "T-92ea8e14e2fb"
+          ]
+        },
+        {
+          "session_id": "SB-46b837317e95",
+          "symbol": "sh600036",
+          "time": "2026-11-02 06:51:18",
+          "trades": [
+            "T-d4919e696ffd",
+            "T-4cf4d2c5a9a4"
+          ]
+        }
+      ]
+    }
+  },
+  "recommendations": [
+    "发现 15 组同秒对倒模式 — 建议核查交易行为"
+  ]
+}

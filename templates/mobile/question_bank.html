@@ -1,0 +1,116 @@
+
+<style data-inspection-auto-fix="inline-style-template">
+:root {
+    --style-fix-050cb45-0: inherit;
+    --style-fix-d3a6a76-0: inherit;
+    --style-fix-237e26a-0: inherit;
+}
+/* -------- AI 自动修复：status → background 颜色（消除内联模板语法 IDE 红线） -------- */
+.eyebrow-dot { transition: background-color .2s ease; border-radius: 9999px; }
+</style>
+{% extends "mobile/base_mobile.html" %}
+{% block title %}题库管理{% endblock %}
+{% block page_title %}题库管理{% endblock %}
+
+{% block extra_head %}
+<style>
+.m-cat-bar { display: flex; gap: 8px; overflow-x: auto; padding: 12px 0; -webkit-overflow-scrolling: touch; }
+.m-cat-bar::-webkit-scrollbar { display: none; }
+.m-cat { flex-shrink: 0; padding: 6px 14px; border-radius: 999px; font-size: 13px; background: var(--mtscos-bg-card); color: var(--mtscos-text-secondary); border: 1px solid var(--mtscos-border-light); }
+.m-cat.active { background: var(--mtscos-primary-base); color: #fff; border-color: transparent; }
+.m-filter { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; font-size: 13px; color: var(--mtscos-text-secondary); }
+.m-bank-item { background: var(--mtscos-bg-card); border-radius: 12px; padding: 14px; margin-bottom: 10px; box-shadow: var(--mtscos-shadow-card); }
+.m-bank-item:active { background: var(--mtscos-bg-page); }
+.m-bank-head { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 10px; }
+.m-bank-ic { width: 40px; height: 40px; border-radius: 10px; background: var(--mtscos-primary-soft); color: var(--mtscos-primary-base); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+.m-bank-ic.warm { background: var(--mtscos-warning-soft); color: var(--mtscos-warning); }
+.m-bank-ic.cool { background: var(--mtscos-success-soft); color: var(--mtscos-success); }
+.m-bank-title { font-size: 15px; font-weight: 600; line-height: 1.4; }
+.m-bank-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+.m-meta-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--mtscos-text-secondary); background: var(--mtscos-bg-page); padding: 6px 10px; border-radius: 8px; }
+.m-meta-item i { color: var(--mtscos-primary-base); }
+.m-meta-item b { color: var(--mtscos-text-primary); font-weight: 600; }
+.m-bank-foot { display: flex; justify-content: space-between; align-items: center; }
+.m-bank-diff { font-size: 12px; color: var(--mtscos-text-secondary); }
+.m-bank-diff b { color: var(--mtscos-primary-base); }
+.m-diff-bar { display: flex; gap: 3px; margin-top: 4px; }
+.m-diff-seg { flex: 1; height: 4px; border-radius: 2px; background: var(--mtscos-border-light); }
+.m-diff-seg.easy { background: var(--mtscos-success, #16A34A); }
+.m-diff-seg.medium { background: var(--mtscos-warning, #D97706); }
+.m-diff-seg.hard { background: var(--mtscos-danger, #DC2626); }
+
+.m-summary-card { background: linear-gradient(135deg, var(--mtscos-primary-base, #5B8FB9), var(--mtscos-primary-dark-1, #4A7BA0)); color: #fff; border-radius: 16px; padding: 18px; margin: 12px 0; }
+.m-summary-title { font-size: 15px; font-weight: 600; margin-bottom: 10px; }
+.m-summary-nums { display: flex; gap: 16px; }
+.m-summary-num { font-size: 22px; font-weight: 700; }
+.m-summary-label { font-size: 11px; opacity: 0.9; }
+</style>
+{% endblock %}
+
+{% block content %}
+{# 题库汇总卡 #}
+<div class="m-summary-card">
+    <div class="m-summary-title">📊 题库概览</div>
+    <div class="m-summary-nums">
+        <div>
+            <div class="m-summary-num">{{ banks|length }}</div>
+            <div class="m-summary-label">题库数</div>
+        </div>
+        <div>
+            <div class="m-summary-num">{{ total_questions }}</div>
+            <div class="m-summary-label">题目总数</div>
+        </div>
+        <div>
+            <div class="m-summary-num">{{ subjects }}</div>
+            <div class="m-summary-label">学科</div>
+        </div>
+    </div>
+</div>
+
+{# 分类筛选 #}
+<div class="m-cat-bar">
+    <a class="m-cat {% if not category %}active{% endif %}" href="/mobile/question_bank">全部</a>
+    {% for cat in categories %}
+    <a class="m-cat {% if category == cat.key %}active{% endif %}" href="/mobile/question_bank?category={{ cat.key }}">{{ cat.name }}</a>
+    {% endfor %}
+</div>
+
+<div class="m-filter">
+    <span>共 <b style="color:var(--mtscos-text-primary)">{{ banks|length }}</b> 个题库</span>
+    <span style="color:var(--mtscos-primary-base);font-weight:600">🔍 搜索 / 筛选</span>
+</div>
+
+{% if banks %}
+    {% for bank in banks %}
+    <div class="m-bank-item">
+        <div class="m-bank-head">
+            <div class="m-bank-ic {% if bank.icon_type == 'warm' %}warm{% elif bank.icon_type == 'cool' %}cool{% endif %}">
+                <i class="fas {{ bank.icon }}"></i>
+            </div>
+            <div style="flex:1;min-width:0">
+                <div class="m-bank-title">{{ bank.name }}</div>
+                {% if bank.subject %}<div style="font-size:12px;color:var(--mtscos-text-secondary);margin-top:2px">{{ bank.subject }}{% if bank.difficulty %} · {{ bank.difficulty }}{% endif %}</div>{% endif %}
+            </div>
+        </div>
+        <div class="m-bank-meta">
+            <div class="m-meta-item"><i class="fas fa-list-ol"></i> <b>{{ bank.count }}</b> 题</div>
+            <div class="m-meta-item"><i class="fas fa-tag"></i> {{ bank.category }}</div>
+            {% if bank.last_updated %}<div class="m-meta-item"><i class="fas fa-clock"></i> {{ bank.last_updated }}</div>{% endif %}
+            {% if bank.maintenance %}<div class="m-meta-item"><i class="fas fa-wrench"></i> {{ bank.maintenance }}</div>{% endif %}
+        </div>
+        {% if bank.difficulty_dist %}
+        <div class="m-bank-diff">难度分布:
+            <b>易{{ bank.difficulty_dist.easy }}</b>/中<b>{{ bank.difficulty_dist.medium }}</b>/难<b>{{ bank.difficulty_dist.hard }}</b>
+            <div class="m-diff-bar">
+                <div class="m-diff-seg easy" style="flex:var(--style-fix-050cb45-0, inherit)"></div>
+                <div class="m-diff-seg medium" style="flex:var(--style-fix-d3a6a76-0, inherit)"></div>
+                <div class="m-diff-seg hard" style="flex:var(--style-fix-237e26a-0, inherit)"></div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    {% endfor %}
+{% else %}
+    <div class="m-empty"><i class="fas fa-book"></i><h3>暂无题库</h3><p>当前没有可用的题库</p><a href="/mobile/home" class="m-btn m-btn-outline" style="margin-top:16px"><i class="fas fa-arrow-left"></i> 返回首页</a></div>
+{% endif %}
+{% endblock %}

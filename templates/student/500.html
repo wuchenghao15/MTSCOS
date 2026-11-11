@@ -1,0 +1,11 @@
+{% extends "student/student_exception_base.html" %}
+{# student/500.html | E_SRV_500 | severity=critical | L3三端异常页 #}
+{% block exception_meta %}
+{% set status = 500 %}
+{% set err_code = 'E_SRV_500' %}
+{% set title = '服务器内部错误' %}
+{% set description = '服务器处理请求时发生未预期的异常，错误信息已记录至运维审计日志。' %}
+{% set repair = '请稍后重试，若持续出现请联系运维并提供下方TRACE_ID。' %}
+{% set severity = 'critical' %}
+{% set icon = '🛠️' %}
+{% endblock %}

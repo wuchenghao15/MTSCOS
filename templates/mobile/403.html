@@ -1,0 +1,11 @@
+{% extends "mobile/mobile_exception_base.html" %}
+{# mobile/403.html | E_AUTH_403 | severity=critical | L3三端异常页 #}
+{% block exception_meta %}
+{% set status = 403 %}
+{% set err_code = 'E_AUTH_403' %}
+{% set title = '权限不足，禁止访问' %}
+{% set description = '您当前的账号角色没有访问此页面的权限。' %}
+{% set repair = '请联系管理员申请对应权限，或切换至有权限的账号。' %}
+{% set severity = 'critical' %}
+{% set icon = '🚫' %}
+{% endblock %}

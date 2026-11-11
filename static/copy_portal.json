@@ -1,0 +1,143 @@
+{
+  "_meta": {
+    "version": "v26.12",
+    "updated_at": "2026-11-10",
+    "source": "copy_portal_unified",
+    "desc": "门户文案统一源 — andromeda-edu.html 静态落地页 / 登录页 / Flask index() 共用"
+  },
+
+  "site": {
+    "title": "仙女座 · 教育门户",
+    "title_en": "Andromeda Edu Portal",
+    "subtitle": "让每一个学习者都拥有专属 AI 导师",
+    "description": "仙女座 AI 教育平台 — AI 导师、冰山教育矩阵、古灵阁金融中心、考试院、中英日韩赛道、金盾安全守护",
+    "footer": "Andromeda Education Portal · 仙女座 AI 教育 · 金盾 v2.0 守护 · 2026"
+  },
+
+  "login_page": {
+    "title": "双子系统分流 · 入厅",
+    "subtitle": "选择你要进入的世界 — 古灵阁金融沙盘，或冰山教育矩阵",
+    "gobelin": {
+      "badge": "⚜️ GOBELIN · 古灵阁",
+      "heading": "古灵阁金融中心",
+      "sub": "证券沙盘 · 会议厅 · 资金模拟 · 实时行情 — 风控沙盘与实时决策的完整闭环",
+      "serv": "🏛️ 后端 → :5001",
+      "placeholder": "输入古灵阁账号",
+      "btn": "⚜️ 进入古灵阁",
+      "tag": "仅 COO/SA 白名单"
+    },
+    "iceberg": {
+      "badge": "🏔️ ICEBERG · 冰山",
+      "heading": "冰山教育矩阵",
+      "sub": "AI 导师 · 智能组卷 · 自动批改 · 中英日韩多语种赛道 — 全场景学习的元宇宙",
+      "serv": "🧊 后端 → :5001",
+      "placeholder": "输入冰山账号",
+      "btn": "🏔️ 进入冰山",
+      "tag": "全用户开放"
+    }
+  },
+
+  "hero": {
+    "badge": "🌀 Andromeda Lattice · v26.12",
+    "h2": "让每一个学习者都拥有专属 AI 导师",
+    "p": "仙女座教育门户 — AI 驱动的个性化学习平台：智能对话导师、冰山教育矩阵、古灵阁金融中心、自动考试院、中英日韩赛道，金盾 30 层安全守护全链路",
+    "btn_primary": "立即开始学习",
+    "btn_ghost": "了解 AI 导师"
+  },
+
+  "system_status": [
+    { "chip": "冰山教育矩阵 · 在线", "dot": "pulse" },
+    { "chip": "古灵阁金融 · 运行中", "dot": "pulse" },
+    { "chip": "金盾 15 层 · 守护中", "dot": "pulse" },
+    { "chip": "36 AI 员工 · 协作中", "dot": "pulse" }
+  ],
+
+  "stats": [
+    { "num": "36", "lbl": "AI 员工" },
+    { "num": "175", "lbl": "知识库" },
+    { "num": "68", "lbl": "题库条目" },
+    { "num": "30", "lbl": "赛道" },
+    { "num": "220", "lbl": "金融账本" }
+  ],
+
+  "hubs": [
+    {
+      "icon": "chat",
+      "title": "仙女座 AI 导师",
+      "desc": "全场景 AI 对话学习导师 · 多模型实时切换 · 认知画像驱动个性化 · 175 知识库条目",
+      "tags": ["已上线", "多模型", "知识库"],
+      "url": "/andromeda/chat",
+      "color": "cyan"
+    },
+    {
+      "icon": "globe",
+      "title": "冰山教育矩阵",
+      "desc": "冰山 L1 认证入口 · 30+ 边界矩阵 · 20 项成就徽章 · 技能与认知双重评估",
+      "tags": ["已上线", "L1 认证", "双重评估"],
+      "url": "/iceberg/cert",
+      "color": "indigo"
+    },
+    {
+      "icon": "shield",
+      "title": "🏦 古灵阁金融中心",
+      "desc": "证券沙盘 · 会议厅 · 资金模拟 · 实时行情 · 风控沙盘与实时决策的完整闭环",
+      "tags": ["已上线", "沙盘", "白名单"],
+      "url": "/stock",
+      "color": "amber"
+    },
+    {
+      "icon": "doc",
+      "title": "考试院",
+      "desc": "自动组卷 · 在线答题 · AI 自动批改 · 学情分析报告 · 68 题题库 · 英语/数学/多语种",
+      "tags": ["自动批改", "68 题库", "多语种"],
+      "url": "/exam",
+      "color": "pink"
+    },
+    {
+      "icon": "code",
+      "title": "AI Skill 研发",
+      "desc": "AI 员工研发中心 · Lab 沙箱实验 · 一键部署 Skill · 效果自动评估 · 36 AI 员工协作",
+      "tags": ["实验室", "36 AI 员工", "Skill"],
+      "url": "/skills",
+      "color": "violet"
+    },
+    {
+      "icon": "globe",
+      "title": "中英日韩赛道",
+      "desc": "多语种平行语料库 · AI 翻译对比 · 口语评测 · 跨境学习社区 — 四赛道并行",
+      "tags": ["四赛道", "语料库", "口语评测"],
+      "url": "/language",
+      "color": "green"
+    },
+    {
+      "icon": "doc",
+      "title": "仙女座沙盘",
+      "desc": "36 AI 员工协作图 · 跨角色实时联动 · Pact 契约 · 任务大厅派单",
+      "tags": ["已上线", "任务大厅", "Pact"],
+      "url": "/sandbox",
+      "color": "blue"
+    },
+    {
+      "icon": "spiral",
+      "title": "金盾安全中心",
+      "desc": "30 层金盾安全防线 · 合规审计 · 实时情报 · 风险自动拦截 — 全链路守护",
+      "tags": ["30 层", "合规", "实时情报"],
+      "url": "/shield",
+      "color": "red"
+    }
+  ],
+
+  "nav": [
+    { "label": "首页", "href": "/", "active": true },
+    { "label": "冰山矩阵", "href": "/iceberg" },
+    { "label": "古灵阁", "href": "/stock" },
+    { "label": "考试院", "href": "/exam" },
+    { "label": "AI 员工", "href": "/skills" }
+  ],
+
+  "topbar": {
+    "brand_title": "仙女座 · 教育门户",
+    "brand_sub": "ANDROMEDA EDU",
+    "arch": "双子架构 · "
+  }
+}

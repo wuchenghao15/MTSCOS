@@ -1,0 +1,49 @@
+{# OneDrive TCC 自动重建的最小模板 #}
+{% extends 'admin_app/base.html' %}
+{% block title %}表单管理 - MTSCOS{% endblock %}
+{% block breadcrumb %}<li class="is-active"><a>{{ __title__ or '管理' }}</a></li>{% endblock %}
+{% block content %}
+<div class="columns is-multiline mt-2">
+  <div class="column is-12"><div class="box">
+    <div class="level">
+      <div class="level-left">
+        <div>
+          <p class="title is-4">表单管理</p>
+          <p class="subtitle is-6">角色：{{ get_role_name(user.role) if user else '未知' }} ｜ 版本：{{ version or '' }} · OneDrive 本地重建</p>
+        </div>
+      </div>
+      <div class="level-right">
+        <a class="button is-info is-outlined" href="/smart_dashboard">返回智能总览</a>
+      </div>
+    </div>
+  </div></div>
+
+  <div class="column is-3"><div class="box has-background-light">
+    <p class="heading">用户总数</p>
+    <p class="title is-3 mb-0">{{ total_users or 0 }}</p>
+    <p class="is-size-7 has-text-grey mt-1">活跃 {{ active_users or 0 }}</p>
+  </div></div>
+  <div class="column is-3"><div class="box has-background-light">
+    <p class="heading">AI 员工 / 引擎</p>
+    <p class="title is-3 mb-0">{{ total_ai or 0 }}</p>
+    <p class="is-size-7 has-text-grey mt-1">集群 {{ total_clusters or 0 }}</p>
+  </div></div>
+  <div class="column is-3"><div class="box has-background-light">
+    <p class="heading">题库 / 考试</p>
+    <p class="title is-3 mb-0">{{ total_questions or 0 }}</p>
+    <p class="is-size-7 has-text-grey mt-1">考试 {{ total_exams or 0 }} ｜ 课程 {{ total_courses or 0 }}</p>
+  </div></div>
+  <div class="column is-3"><div class="box has-background-light">
+    <p class="heading">规则 / 脑库</p>
+    <p class="title is-3 mb-0">{{ total_rules or 0 }}</p>
+    <p class="is-size-7 has-text-grey mt-1">脑库条目 {{ total_brain_entries or 0 }}</p>
+  </div></div>
+
+  <div class="column is-12"><div class="box">
+    <p class="title is-5 mb-3">表单与问卷</p>
+    <div class="content has-text-grey">
+      自定义表单、问卷、评价模板与回复统计。
+    </div>
+  </div></div>
+</div>
+{% endblock %}

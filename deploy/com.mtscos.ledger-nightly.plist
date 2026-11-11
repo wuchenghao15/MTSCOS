@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  com.mtscos.ledger-nightly.plist
+  LedgerEngine + LIVE 层盘后原子重建
+  每天 16:05 执行 (A股 15:00 收盘, 给 T+1 数据留入库时间)
+  
+  为什么必须用 atomic_rebuild.py:
+    LedgerEngine.build_all() 只清/建 12 张 vault_* 表, 不动 mt_live_*.
+    但 LIVE 层依赖 vault_positions 的干净状态, 所以必须连 seed + refresh +
+    Flask restart 一起做, 中间状态任何一步都不能跳过。
+  
+  部署:
+    cp com.mtscos.ledger-nightly.plist ~/Library/LaunchAgents/
+    launchctl unload ~/Library/LaunchAgents/com.mtscos.ledger-nightly.plist  # 停旧
+    launchctl load   ~/Library/LaunchAgents/com.mtscos.ledger-nightly.plist  # 启新
+  
+  手动触发:
+    launchctl start com.mtscos.ledger-nightly
+  
+  停止:
+    launchctl unload ~/Library/LaunchAgents/com.mtscos.ledger-nightly.plist
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.mtscos.ledger-nightly</string>
+
+    <!-- 调 atomic_rebuild.py 而不是单独调 build_all() -->
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/bin/python3</string>
+        <string>-u</string>
+        <string>/Users/wuchenghao/MTSCOS_AI_Project/flask-app/engines/atomic_rebuild.py</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/wuchenghao/MTSCOS_AI_Project/flask-app</string>
+
+    <!-- 每天 16:05 执行 -->
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>16</integer>
+        <key>Minute</key>
+        <integer>5</integer>
+    </dict>
+
+    <!-- RunAtLoad 也开, 开机自动跑一次 -->
+    <key>RunAtLoad</key>
+    <true/>
+
+    <!-- 日志 -->
+    <key>StandardOutPath</key>
+    <string>/Users/wuchenghao/MTSCOS_AI_Project/_runtime/logs/ledger_nightly.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/wuchenghao/MTSCOS_AI_Project/_runtime/logs/ledger_nightly.err.log</string>
+
+    <!-- 环境变量 -->
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+        <key>GOBELIN_PRIMARY_SESSION_ID</key>
+        <string>SB-e3105ea094db</string>
+    </dict>
+
+    <!-- 失败后 30 秒重跑, 最多 3 次 -->
+    <key>ThrottleInterval</key>
+    <integer>30</integer>
+</dict>
+</plist>

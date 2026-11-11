@@ -1,0 +1,11 @@
+{% extends "mobile/mobile_exception_base.html" %}
+{# mobile/504.html | E_SRV_504 | severity=error | L3三端异常页 #}
+{% block exception_meta %}
+{% set status = 504 %}
+{% set err_code = 'E_SRV_504' %}
+{% set title = '网关超时' %}
+{% set description = '请求处理超时，服务器未在规定时间内返回响应。' %}
+{% set repair = '可能由于查询量过大或网络波动，建议优化查询条件后重试。' %}
+{% set severity = 'error' %}
+{% set icon = '⏱️' %}
+{% endblock %}
