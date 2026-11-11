@@ -1350,6 +1350,196 @@ class SyncCenter:
             "total_duration_ms": round((time.time() - t0) * 1000, 1),
         }
 
+    # ── 守护进程清单 (健康检查 + 自动重启) ──
+    DAEMONS = [
+        ("gobelin_guardian", "Gobelin Guardian",
+         "cd {_B} && nohup /opt/homebrew/bin/python3 -u engines/gobelin_guardian.py --daemon > /tmp/gobelin_guardian.out 2>/tmp/gobelin_guardian.err &"),
+        ("finance_autonomous_engine", "Finance Autonomous",
+         "cd {_B} && nohup /opt/homebrew/bin/python3 -u engines/finance_autonomous_engine.py --daemon --interval 300 > /tmp/finance_autonomous.out 2>/tmp/finance_autonomous.err &"),
+        ("market_data_engine", "Market Data",
+         "cd {_B} && nohup /opt/homebrew/bin/python3 -u engines/market_data_engine.py --daemon > /tmp/market_data.out 2>/tmp/market_data.err &"),
+        ("artery_fix", "Artery Bridge",
+         "cd {_B} && nohup /opt/homebrew/bin/python3 -u engines/artery_fix.py --daemon > /tmp/artery.out 2>/tmp/artery.err &"),
+        ("cloudflared", "CF Tunnel",
+         "/opt/homebrew/bin/cloudflared tunnel run mtscos-stock > /tmp/cloudflared.out 2>/tmp/cloudflared.err &"),
+    ]
+
+    def health_check_daemons(self) -> dict:
+        """守护进程健康检查 — 死了自动重启"""
+        result = {"checked": 0, "alive": 0, "restarted": 0, "actions": []}
+        _B = str(_BASE)
+        for pattern, label, restart_tmpl in self.DAEMONS:
+            result["checked"] += 1
+            try:
+                r = subprocess.run(
+                    ["pgrep", "-f", pattern], capture_output=True, text=True, timeout=5)
+                pids = [p for p in (r.stdout.strip().split("\n") if r.stdout.strip() else [])
+                        if p.strip().isdigit()]
+                if pids:
+                    result["alive"] += 1
+                    result["actions"].append(f"✅ {label}: pid={','.join(pids[:2])}")
+                else:
+                    log.warning(f"⚠️ {label} 已挂, 自动重启...")
+                    subprocess.Popen(restart_tmpl.format(_B=_B), shell=True,
+                                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                    time.sleep(1)
+                    r2 = subprocess.run(
+                        ["pgrep", "-f", pattern], capture_output=True, text=True, timeout=5)
+                    new_pids = [p for p in (r2.stdout.strip().split("\n") if r2.stdout.strip() else [])
+                                if p.strip().isdigit()]
+                    if new_pids:
+                        result["restarted"] += 1
+                        result["actions"].append(f"🔄 {label} 重启成功 pid={new_pids[0]}")
+                    else:
+                        result["actions"].append(f"❌ {label} 重启失败")
+            except Exception as e:
+                result["actions"].append(f"❌ {label}: {e}")
+        return result
+
+    def health_check_flask(self) -> dict:
+        """Flask API 健康探测"""
+        result = {"ok": False, "endpoints": 0, "restarted": False}
+        endpoints = ["/health", "/gobelin/dashboard"]
+        for ep in endpoints:
+            try:
+                req = urllib.request.Request(f"http://localhost:5001{ep}")
+                with urllib.request.urlopen(req, timeout=3) as resp:
+                    if resp.status == 200:
+                        result["endpoints"] += 1
+            except Exception:
+                pass
+        result["ok"] = (result["endpoints"] == len(endpoints))
+        if not result["ok"]:
+            log.warning(f"⚠️ Flask 不健康 ({result['endpoints']}/{len(endpoints)})")
+            try:
+                subprocess.run(["pkill", "-f", "server_real_db.py"], timeout=5)
+                time.sleep(2)
+            except Exception:
+                pass
+            try:
+                subprocess.Popen(
+                    f"cd {_BASE} && nohup /opt/homebrew/bin/python3 -u server_real_db.py > /tmp/flask.out 2> /tmp/flask.err &",
+                    shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            except Exception:
+                pass
+            result["restarted"] = True
+        return result
+
+    def health_check_db(self) -> dict:
+        """DB 完整性检查"""
+        result = {"ok": False, "integrity": "", "size_mb": 0, "warnings": []}
+        try:
+            if not _DB_PATH.exists():
+                result["warnings"].append("DB 不存在")
+                return result
+            result["size_mb"] = round(_DB_PATH.stat().st_size / 1024 / 1024, 1)
+            conn = sqlite3.connect(str(_DB_PATH))
+            cur = conn.execute("PRAGMA integrity_check")
+            result["integrity"] = cur.fetchone()[0] or "UNKNOWN"
+            result["ok"] = (result["integrity"] == "ok")
+            conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+            conn.close()
+        except Exception as e:
+            result["warnings"].append(str(e))
+        return result
+
+    def health_check_three_machines(self) -> dict:
+        """三机连通性"""
+        result = {"dev": True, "mini": False, "hulk": False}
+        for name in ["mini", "hulk"]:
+            m = MACHINES.get(name, {})
+            ip = m.get("ts_ip")
+            if ip:
+                result[name] = _ping_tailscale(ip)[0]
+        return result
+
+    def health_check_github_push(self) -> dict:
+        """GitHub push (调用 sync_github.sh)"""
+        result = {"ok": False}
+        script = _RUNTIME / "git_push_ws" / "mtscos_push" / "sync_github.sh"
+        if script.exists():
+            try:
+                subprocess.run(["bash", str(script), "push"],
+                               capture_output=True, text=True, timeout=120)
+                result["ok"] = True
+            except Exception:
+                pass
+        return result
+
+    def run_full_health_cycle(self) -> dict:
+        """全域健康检查一轮"""
+        t0 = time.time()
+        return {
+            "daemons": self.health_check_daemons(),
+            "flask": self.health_check_flask(),
+            "db": self.health_check_db(),
+            "machines": self.health_check_three_machines(),
+            "duration_ms": round((time.time() - t0) * 1000, 1),
+        }
+
+    def health_audit_cross_domain(self) -> dict:
+        """跨领域协作链审计 + 功能完善度自查
+        
+        核心思想 (用户要求):
+          • Iceberg 考试前 → Gobelin 交易能力可复用? (风险管理 → 题库风险题)
+          • Gobelin 升级 → Iceberg 金融教育可受益? (真实行情 → 教学案例)
+          • 功能完善度 → 各中心需要配合/增强/维护什么?
+        """
+        audit = {"timestamp": datetime.now().isoformat(),
+                 "cross_domain_links": [],
+                 "iceberg_readiness": {},
+                 "gobelin_spillover": {},
+                 "improvement_suggestions": []}
+
+        # 1. Iceberg 考试季准备度
+        calendar = self._get_calendar_context()
+        if "exam_season" in calendar["contexts"]:
+            # 6月考试季: 检查题库更新度
+            try:
+                conn = sqlite3.connect(str(_DB_PATH))
+                qb_count = conn.execute("SELECT COUNT(*) FROM mt_qbank").fetchone()[0]
+                audit["iceberg_readiness"] = {"exam_season": True, "qbank_count": qb_count}
+                if qb_count < 1000:
+                    audit["improvement_suggestions"].append(
+                        f"🔴 考试季题库偏少 ({qb_count}<1000), 需紧急扩充")
+                conn.close()
+            except Exception as e:
+                audit["iceberg_readiness"] = {"exam_season": True, "error": str(e)}
+
+        # 2. Gobelin → Iceberg 正向关联
+        # 交易风控逻辑 → 数学概率题/经济金融题
+        audit["cross_domain_links"].append({
+            "from": "gobelin.risk_engine", "to": "iceberg.math_workshop",
+            "type": "knowledge_spillover",
+            "description": "Gobelin 风险管理的概率计算逻辑可转化为 Iceberg 数学工坊的考试练习题",
+            "priority": "medium"
+        })
+        # 真实行情数据 → 教学案例
+        audit["cross_domain_links"].append({
+            "from": "gobelin.market_data", "to": "iceberg.english_track",
+            "type": "content_reuse",
+            "description": "真实股票行情可作为英语/日语财经新闻阅读素材",
+            "priority": "low"
+        })
+
+        # 3. Iceberg → Gobelin 正向关联
+        audit["cross_domain_links"].append({
+            "from": "iceberg.education_center", "to": "gobelin.audit_center",
+            "type": "personnel_development",
+            "description": "教育中心的人才培养可输送到审计中心 (金融合规人才)",
+            "priority": "high"
+        })
+
+        # 4. 未来子系统预研
+        audit["improvement_suggestions"].append(
+            "💡 星门(web3/bridge) 可复用 Gobelin 行情引擎的数据源和告警逻辑")
+        audit["improvement_suggestions"].append(
+            "💡 量子计算子系统可接入 Iceberg 数学工坊的题库 (量子算法教学)")
+
+        log.info(f"📋 跨领域协作链审计完成: {len(audit['cross_domain_links'])} 条关联, "
+                 f"{len(audit['improvement_suggestions'])} 条建议")
+        return audit
+
     #  ═════════════════════════════════════════════════════════════════════════
     #  ║  24h 主动意识调度矩阵 (Andromeda Auto-Brain)
     # ═════════════════════════════════════════════════════════════════════════
