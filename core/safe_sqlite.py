@@ -34,14 +34,31 @@ _DB_PATH_CANDIDATES = [
 
 
 def _resolve_db_path(custom: Optional[str] = None) -> str:
-    """解析 DB 路径"""
-    if custom and os.path.exists(custom):
-        return custom
+    """解析 DB 路径
+
+    修复: custom 路径只要是合理的 (有父目录或显式 .db 后缀) 就用它,
+    不管文件是否存在 (SQLite 会自动创建)。之前 os.path.exists(custom)
+    导致新文件路径被错误丢弃, 回退到默认 app.db → CryptoWrapper 在
+    app.db 上操作导致 DB 文件头损坏 (malformed)。
+    """
+    if custom:
+        # 绝对路径或带目录 → 直接用
+        if os.path.isabs(custom) or os.path.dirname(custom):
+            _dir = os.path.dirname(os.path.abspath(custom))
+            if os.path.isdir(_dir):
+                return os.path.abspath(custom)
+        # 相对路径带 .db 后缀 → 可能是新文件, 也用它
+        if custom.endswith('.db'):
+            return os.path.abspath(custom)
+        # 文件已存在 → 用它
+        if os.path.exists(custom):
+            return os.path.abspath(custom)
+    # 回退: 在 candidate 里找存在的
     for p in _DB_PATH_CANDIDATES:
         resolved = os.path.abspath(p)
         if os.path.exists(resolved):
             return resolved
-    # 默认返回第一个 candidate (即使不存在)
+    # 兜底: 第一个 candidate (即使不存在)
     return os.path.abspath(_DB_PATH_CANDIDATES[0])
 
 

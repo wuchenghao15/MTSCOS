@@ -181,26 +181,50 @@ class _CryptoWrapper:
     def __init__(self, conn):
         self._conn = conn
         self._active_table = None
-        # 代理所有 sqlite3 方法
-        for name in ['commit', 'rollback', 'close', 'execute', 'executemany',
-                     'creat_function', 'create_aggregate', 'create_collation',
-                     'interrupt', 'set_progress_handler', 'enable_load_extension',
-                     'load_extension']:
-            if hasattr(conn, name):
+        # 代理 sqlite3.Connection 的方法 —— 但 **不能** 代理 execute/executemany
+        # (CryptoWrapper 自己要覆盖它们来拦截加密列)
+        _PROXY_METHODS = [
+            'commit', 'rollback', 'close',
+            'cursor', 'interrupt', 'isolation_level',
+            'enable_load_extension', 'load_extension',
+            'row_factory', 'text_factory', 'total_changes',
+        ]
+        for name in _PROXY_METHODS:
+            if hasattr(conn, name) and not hasattr(self.__class__, name):
                 setattr(self, name, getattr(conn, name))
 
     def __getattr__(self, name):
         return getattr(self._conn, name)
 
     def execute(self, sql, params=()):
-        """拦截 INSERT/UPDATE/SELECT, 自动加解密"""
-        if isinstance(params, (list, tuple)) and ENCRYPTED_COLUMNS:
+        """拦截 INSERT/UPDATE/SELECT, 自动加解密
+
+        注意: sqlite3.Connection.execute(sql, params) 的 params 可以是
+        None, 单值, tuple, 或 list。但 ('text') 在 Python 里是字符串
+        不是 tuple —— 必须正确规范化。
+        """
+        # 规范化 params → tuple 或 None
+        if params is None:
+            params = ()
+        elif isinstance(params, str):
+            params = (params,)
+        elif isinstance(params, (list, tuple)):
+            params = tuple(params)
+        else:
+            # 其他单值 (int, float, dict 等) → 包装
+            params = (params,)
+
+        if ENCRYPTED_COLUMNS and params:
             params = self._transform_params(sql, params)
         cur = self._conn.execute(sql, params)
         return _CryptoCursor(cur, self._conn)
 
     def executemany(self, sql, params_list):
         if ENCRYPTED_COLUMNS:
+            params_list = [
+                tuple(p) if isinstance(p, (list, tuple)) else (p,)
+                for p in params_list
+            ]
             params_list = [self._transform_params(sql, p) for p in params_list]
         return self._conn.executemany(sql, params_list)
 
