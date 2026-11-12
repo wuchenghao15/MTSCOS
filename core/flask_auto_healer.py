@@ -17,6 +17,8 @@ import signal
 import sqlite3
 import subprocess
 import logging
+import urllib.request
+import urllib.error
 from pathlib import Path
 from datetime import datetime
 
