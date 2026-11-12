@@ -55,14 +55,23 @@ class FlaskAutoHealer:
         """HTTP 探测 + pgrep 双保险"""
         result = {'http_ok': False, 'process_ok': False, 'pid': None, 'db_locks': 0}
 
-        # 方式 1: curl /health
-        try:
-            import urllib.request
-            req = urllib.request.Request(f'http://localhost:{self.PORT}/health')
-            with urllib.request.urlopen(req, timeout=2) as resp:
-                result['http_ok'] = (resp.status == 200)
-        except Exception:
-            pass
+        # 方式 1: curl 健康检查 —— 多个候选路径, 只要任意一个返回 200/401/403 都算活着
+        # (401/403 是 auth 拦截, 说明 Flask 确实在响应)
+        _HEALTH_PATHS = ['/health', '/api/health', '/', '/index']
+        for path in _HEALTH_PATHS:
+            try:
+                req = urllib.request.Request(f'http://localhost:{self.PORT}{path}')
+                with urllib.request.urlopen(req, timeout=2) as resp:
+                    if resp.status < 500:
+                        result['http_ok'] = True
+                        break
+            except urllib.error.HTTPError as e:
+                # 401/403 也算 Flask 活着 (是 auth 拦截不是 Flask 崩了)
+                if e.code in (401, 403, 404):
+                    result['http_ok'] = True
+                    break
+            except Exception:
+                continue
 
         # 方式 2: pgrep —— 尝试多个可能的 Flask 启动脚本
         try:
