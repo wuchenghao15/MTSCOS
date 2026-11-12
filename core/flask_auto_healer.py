@@ -25,7 +25,14 @@ log = logging.getLogger('Center30')
 _BASE = Path(__file__).resolve().parent.parent
 _DB = _BASE / 'database' / 'app.db'
 _SB = _BASE / 'database' / 'app_standby.db'
-_FLASK_CMD = f"{sys.executable} -u {_BASE}/server_real_db.py"
+
+# Flask 实际启动脚本: 优先 modular_start.py, 回退 server_real_db.py
+_FLASK_STARTUPS = [
+    f"{sys.executable} -u {_BASE}/modular_start.py --port=5001",
+    f"{sys.executable} -u {_BASE}/server_real_db.py",
+]
+# 用于 pgrep 和 kill 的模式 (取第一个)
+_FLASK_KILL_PATTERN = 'modular_start.py'
 
 
 class FlaskAutoHealer:
@@ -34,6 +41,9 @@ class FlaskAutoHealer:
     PORT = 5001
     MAX_RECOVERIES = 5       # 熔断阈值: 连崩 5 次 → 降级
     RAPID_CRASH_WINDOW = 30  # 秒: 这个窗口内连续崩溃算 rapid crash
+
+    # Flask 可能的启动脚本 (按优先级 pgrep)
+    FLASK_SCRIPTS = ['modular_start.py', 'server_real_db.py', 'app.py', 'wsgi.py']
 
     def __init__(self):
         self._crash_times: list[float] = []
@@ -54,15 +64,17 @@ class FlaskAutoHealer:
         except Exception:
             pass
 
-        # 方式 2: pgrep
+        # 方式 2: pgrep —— 尝试多个可能的 Flask 启动脚本
         try:
-            r = subprocess.run(
-                ['pgrep', '-f', 'server_real_db.py'],
-                capture_output=True, text=True, timeout=3)
-            pids = r.stdout.strip().split('\n')
-            if pids and pids[0]:
-                result['pid'] = int(pids[0])
-                result['process_ok'] = True
+            for script in self.FLASK_SCRIPTS:
+                r = subprocess.run(
+                    ['pgrep', '-f', script],
+                    capture_output=True, text=True, timeout=3)
+                pids = r.stdout.strip().split('\n')
+                if pids and pids[0]:
+                    result['pid'] = int(pids[0])
+                    result['process_ok'] = True
+                    break
         except Exception:
             pass
 
@@ -152,12 +164,32 @@ class FlaskAutoHealer:
 
         # ── Step 4: 重启 Flask ──
         log.info(f"🩺 重启 Flask (downgrade={self._in_downgrade})")
-        proc = subprocess.Popen(
-            f"cd {_BASE} && nohup {_FLASK_CMD} >> /tmp/flask.out 2>> /tmp/flask.err &",
-            shell=True, env=env,
-            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-        )
-        result['steps'].append(f'Flask restarted PID={proc.pid}')
+        # 优先用 launchd 重启 (如果有的话), 回退到 nohup
+        _launchd_label = 'com.mtscos.flask'
+        _restart_cmd = None
+        try:
+            # 先尝试 launchd
+            r = subprocess.run(
+                ['launchctl', 'kickstart', '-k', f'gui/{os.getuid()}/{_launchd_label}'],
+                capture_output=True, text=True, timeout=5)
+            if r.returncode == 0:
+                _restart_cmd = f'launchctl kickstart {_launchd_label}'
+                result['steps'].append(f'launchd kickstart OK')
+        except Exception:
+            pass
+
+        if not _restart_cmd:
+            # 回退方案: nohup 直接启动
+            _startup = _FLASK_STARTUPS[0]
+            proc = subprocess.Popen(
+                f"cd {_BASE} && nohup {_startup} >> /tmp/flask.out 2>> /tmp/flask.err &",
+                shell=True, env=env,
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            )
+            _restart_cmd = 'nohup ' + _startup.split(' ')[-1]
+            result['steps'].append(f'Flask restarted via nohup')
+        else:
+            result['steps'].append(f'Flask restarted via launchd')
 
         # ── Step 5: 验证 ──
         time.sleep(8)
