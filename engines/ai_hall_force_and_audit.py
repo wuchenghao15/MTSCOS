@@ -457,17 +457,34 @@ def run_health_exam() -> dict:
         metrics["H3_avg_resolution_hours"] = round(avg_hours, 1) if avg_hours else None
 
         # ── H4 铁律拦截率 ──
-        v7 = conn.execute("""
-            SELECT COUNT(*) FROM mt_lab_task_hall
-            WHERE created_at > datetime('now','localtime','-7 days')
-              AND (peacekeeper_decision='VETOED' OR review_decision='VETOED' OR approval_status='VETOED')
-        """).fetchone()[0]
+        # 先检查表有哪些列, 兼容不同版本 schema
+        try:
+            _cols = [r[1] for r in conn.execute("PRAGMA table_info(mt_lab_task_hall)").fetchall()]
+            _veto_cols = [c for c in ('peacekeeper_decision', 'review_decision',
+                                       'approval_status', 'decision', 'verdict')
+                          if c in _cols]
+            if _veto_cols:
+                _cond = " OR ".join(f"{c}='VETOED'" for c in _veto_cols) + " OR "
+                # 也检查 REJECTED / REJECT 变体
+                _cond += " OR ".join(f"{c}='REJECTED'" for c in _veto_cols)
+                _cond += " OR " + " OR ".join(f"{c}='REJECT'" for c in _veto_cols)
+                _cond = _cond.replace(" OR OR OR ", " OR ").replace(" OR OR ", " OR ").strip(" OR ")
+                v7 = conn.execute(f"""
+                    SELECT COUNT(*) FROM mt_lab_task_hall
+                    WHERE created_at > datetime('now','localtime','-7 days')
+                      AND ({_cond})
+                """).fetchone()[0]
+            else:
+                v7 = -1  # 表无 veto 相关列, 标记为不可用
+        except Exception:
+            v7 = -1
         t7 = conn.execute("""
             SELECT COUNT(*) FROM mt_lab_task_hall
             WHERE created_at > datetime('now','localtime','-7 days')""").fetchone()[0]
         metrics["H4_veto_rate_7d"] = {
             "vetoed": v7, "total": t7,
-            "rate": round(v7 / max(t7, 1), 3),
+            "rate": round(v7 / max(t7, 1), 3) if v7 >= 0 else None,
+            "note": "表无 veto 列" if v7 < 0 else None,
         }
 
         # ── H5 collab_bus 活跃度 ──
@@ -661,3 +678,48 @@ def clear_hall_session(session) -> None:
         session.pop("submit_hall_expire", None)
     except Exception:
         pass
+
+
+# ═══════════════════════════════════════════════════════════════════
+# §6 CLI 入口 (被 cron / launchd 定时触发)
+# ═══════════════════════════════════════════════════════════════════
+
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Hall Force + Audit + Exam")
+    parser.add_argument("--action", default="once",
+                        choices=["once", "audit", "exam", "force-gate", "daemon"])
+    parser.add_argument("--interval", type=int, default=900,
+                        help="daemon 模式下每次 run_once 的间隔秒数 (默认 900=15min)")
+    args = parser.parse_args()
+
+    if args.action == "daemon":
+        print(f"[hall-force] 🛡️ daemon 模式启动, interval={args.interval}s", file=sys.stderr)
+        import signal
+        _stop = False
+        def _sigterm(signum, frame):
+            global _stop
+            _stop = True
+        signal.signal(signal.SIGTERM, _sigterm)
+        signal.signal(signal.SIGINT, _sigterm)
+        while not _stop:
+            try:
+                run_once()
+            except Exception as e:
+                print(f"[hall-force] ❌ run_once error: {e}", file=sys.stderr)
+            for _ in range(args.interval):
+                if _stop:
+                    break
+                time.sleep(1)
+        print("[hall-force] 🛑 daemon stopped", file=sys.stderr)
+
+    elif args.action == "audit":
+        result = run_anomaly_audit()
+        print(json.dumps(result, indent=2, default=str))
+    elif args.action == "exam":
+        result = run_health_exam()
+        print(json.dumps(result, indent=2, default=str))
+    else:  # once
+        result = run_once()
+        print(json.dumps(result, indent=2, default=str))
